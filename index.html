@@ -1,0 +1,322 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BMS Mobile</title><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preconnect" href="https://unpkg.com" crossorigin><link rel="preconnect" href="https://mqqrfhwqgcpkjeaasdsr.supabase.co" crossorigin><link rel="stylesheet" href="./style.css?v=2036-rhpp-compact-summary"></head>
+<body><div id="app"><main class="login"><h1>BMS Mitra Online</h1><p>Memuat aplikasi…</p></main></div>
+<script>
+(function(){
+  const app=document.getElementById('app');
+  const setStatus=(text,isError=false)=>{
+    if(!app)return;
+    app.innerHTML='<main class="login"><h1>BMS Mitra Online</h1><p'+(isError?' class="error"':'')+'>'+text+'</p></main>';
+  };
+  setStatus('Menyiapkan aplikasi…');
+  const loadScript=(src,timeoutMs)=>new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    let done=false;
+    const timer=setTimeout(()=>{
+      if(done)return;
+      done=true;
+      s.remove();
+      reject(new Error('timeout '+src));
+    },timeoutMs);
+    s.src=src;
+    s.onload=()=>{
+      if(done)return;
+      done=true;
+      clearTimeout(timer);
+      resolve();
+    };
+    s.onerror=()=>{
+      if(done)return;
+      done=true;
+      clearTimeout(timer);
+      s.remove();
+      reject(new Error('gagal '+src));
+    };
+    document.head.appendChild(s);
+  });
+  (async()=>{
+    try{
+      try{
+        await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js',5000);
+      }catch(_){
+        await loadScript('https://unpkg.com/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js',5000);
+      }
+      if(!window.supabase?.createClient)throw new Error('Supabase tidak tersedia');
+      await loadScript('./main-1958.js?v=2068-export-all-data',10000);
+    }catch(error){
+      console.error(error);
+      setStatus('Gagal memuat komponen aplikasi. Periksa koneksi lalu muat ulang halaman.',true);
+    }
+  })();
+})();
+</script></body></html>
+
+<!-- deploy-refresh: 2026-09-23 barn-auto-code -->
+
+<!-- deploy-refresh: 2026-09-23 auto-code-all-id-format -->
+
+<!-- deploy-refresh: 2026-09-23 23:57 contract-table-ui -->
+<!-- final-stage-refresh-0032 -->
+<!-- user-management-0045 -->
+<!-- logistik-menu-0115 -->
+<!-- logistik-contract-0130 -->
+<!-- logistik-shipping-return-0150 -->
+<!-- logistik-report-0205 -->
+<!-- logistik-final-0215 -->
+<!-- logistik-report-retur-0225 -->
+<!-- logistik-sj-0235 -->
+<!-- logistik-sj-only-0245 -->
+<!-- admin-logistics-control-0300 -->
+<!-- logistics-search-lock-0335 -->
+<!-- force-search-0345 -->
+<!-- autocomplete-0400 -->
+<!-- global-barn-search-0430 -->
+<!-- logistics-contract-is-cycle-0500 -->
+<!-- shipping-detail-kg-0520 -->
+<!-- print-landscape-0540 -->
+<!-- edit-delete-before-close-0600 -->
+<!-- draft-delete-visible-0620 -->
+<!-- logistics-final-0700 -->
+<!-- logistics-start-date-0730 -->
+<!-- inline-start-date-0745 -->
+<!-- real-shipping-price-0800 -->
+<!-- logistics-grand-total-0830 -->
+<!-- report-bottom-total-0845 -->
+<!-- company-letterhead-0900 -->
+<!-- unique-sj-0915 -->
+<!-- return-save-fix-0930 -->
+<!-- detailed-totals-0945 -->
+<!-- grouped-logistics-report-1000 -->
+<!-- print-one-page-1015 -->
+<!-- readable-print-1030 -->
+<!-- one-page-lined-totals-1045 -->
+<!-- remove-bottom-totals-1100 -->
+<!-- wait-logo-print-1115 -->
+<!-- master-supplier-1130 -->
+<!-- supplier-sapronak-1145 -->
+<!-- kiriman-luar-1200 -->
+<!-- tambah-sapronak-daging-1215 -->
+<!-- trading-bl-rhpp-1230 -->
+<!-- marketing-panen-kontrak-1245 -->
+<!-- edit-hapus-konversi-1300 -->
+<!-- tambah-daging-1315 -->
+<!-- tambah-daging-only-1320 -->
+<!-- supplier-split-1335 -->
+<!-- marketing-report-1350 -->
+<!-- audit-admin-logistik-marketing-1410 -->
+<!-- produksi-menu-1430 -->
+<!-- multi-abk-contract-1500 -->
+<!-- multi-abk-contract-1515 -->
+<!-- production-flow-1630 -->
+<!-- startup-speed-1700 -->
+<!-- startup-recovery-1730 -->
+<!-- startup-dashboard-shell-1715 -->
+<!-- startup-dependency-recovery-1745 -->
+
+<!-- startup-no-hang-1800 -->
+
+<!-- startup-bootstrap-timeout-1805 -->
+
+<!-- indonesia-form2-format-1810 -->
+
+<!-- chickin-live-format-1811 -->
+
+<!-- chickin-submit-fix-1812 -->
+
+<!-- chickin-simple-1813 -->
+
+<!-- collapsed-nav-1814 -->
+
+<!-- forced-collapsed-nav-1815 -->
+
+<!-- recording-day-sequence-1816 -->
+
+<!-- recording-no-date-1817 -->
+
+<!-- recording-logistics-stock-1818 -->
+
+<!-- uncached-main-1819 -->
+
+<!-- feed-kg-balance-1820 -->
+
+<!-- feed-short-label-1821 -->
+
+<!-- league-abk-atomic-edit-delete-1869 -->
+
+<!-- league-abk-population-feed-reuse-1870 -->
+
+<!-- league-abk-separate-initial-population-form-1871 -->
+
+<!-- league-abk-feed-bag-input-1872 -->
+
+<!-- league-abk-lock-basics-before-harvest-1873 -->
+
+<!-- league-abk-inline-lock-warning-1874 -->
+
+<!-- global-number-format-2-decimals-1875 -->
+
+<!-- mobile-short-assignment-label-1876 -->
+
+<!-- global-mobile-short-labels-1877 -->
+
+<!-- league-abk-keep-selection-1878 -->
+
+<!-- recording-league-abk-contract-link-1879 -->
+
+<!-- restore-recording-daily-pass-1880 -->
+
+<!-- league-abk-population-separated-1881 -->
+
+<!-- league-abk-full-harvest-history-1882 -->
+
+<!-- league-abk-short-display-1883 -->
+
+<!-- league-abk-compact-all-display-1884 -->
+
+<!-- compact-global-barn-names-1885 -->
+
+<!-- league-abk-full-harvest-details-1886 -->
+
+<!-- force-refresh-abk-history-1887 -->
+
+<!-- hide-abk-price-income-1888 -->
+
+<!-- abk-history-show-all-1889 -->
+
+<!-- abk-multi-harvest-same-date-1890 -->
+
+<!-- league-abk-profit-per-bird-1891 -->
+
+<!-- league-abk-history-follow-selection-1892 -->
+
+<!-- league-abk-fcr-interpolation-1893 -->
+
+<!-- production-estimate-save-edit-consistency-1894 -->
+
+<!-- admin-rhpp-menu-1895 -->
+
+<!-- rhpp-block-layout-1896 -->
+
+<!-- logistics-menu-simple-1897 -->
+
+<!-- return-sapronak-search-1898 -->
+
+<!-- global-sapronak-search-1899 -->
+
+<!-- retur-submenu-tambah-sapronak-1900 -->
+
+<!-- compact-global-search-1901 -->
+
+<!-- return-rhpp-compact-valid-1902 -->
+
+<!-- split-rhpp-external-return-1903 -->
+
+<!-- fix-external-return-open-1904 -->
+
+<!-- external-return-transfer-1905 -->
+
+<!-- professional-admin-layout-1906 -->
+
+<!-- global-professional-ui-1907 -->
+
+<!-- clean-light-global-ui-1908 -->
+
+<!-- global-layout-rebalance-1909 -->
+
+<!-- global-barn-search-1910 -->
+
+<!-- contract-active-detail-1911 -->
+
+<!-- rhpp-compact-layout-1912 -->
+
+<!-- marketing-meat-rhpp-1913 -->
+
+<!-- rhpp-full-audit-fix-1914 -->
+
+<!-- rhpp-master-complete-1915 -->
+
+<!-- rhpp-audit-pass-1916 -->
+
+<!-- rhpp-population-comparison-only-1917 -->
+
+<!-- admin-close-transaction-1918 -->
+
+<!-- rhpp-system-real-split-1919 -->
+
+<!-- clean-rhpp-close-flow-1920 -->
+
+<!-- finance-owner-1921 -->
+
+<!-- finance-bop-menu-1922 -->
+
+<!-- finance-bop-form-aligned-1923 -->
+
+<!-- finance-bop-kantor-1924 -->
+
+<!-- finance-bop-lain-lain-1925 -->
+
+<!-- finance-menu-structure-1926 -->
+
+<!-- admin-super-access-finance-1927 -->
+
+<!-- rhpp-professional-ui-1928 -->
+
+<!-- rhpp-export-print-pdf-excel-1929 -->
+
+<!-- enterprise-ui-standardization-1930 -->
+
+<!-- universal-responsive-mobile-1931 -->
+
+<!-- compact-rhpp-feed-table-1932 -->
+
+<!-- global-mobile-long-text-compact-1933 -->
+
+<!-- owner-production-command-center-1933 -->
+
+<!-- owner-mobile-cards-1934 -->
+
+<!-- admin-owner-preview-menu-1935 -->
+
+<!-- role-command-centers-1936 -->
+
+<!-- admin-control-center-1937 -->
+
+<!-- admin-live-analytics-1938 -->
+
+<!-- professional-navigation-icons-1939 -->
+
+<!-- four-barn-admin-state-1940 -->
+
+<!-- owner-simulation-audit-1941 -->
+
+<!-- owner-fc-standard-1942 -->
+
+<!-- owner-estimate-attention-1943 -->
+
+<!-- owner-estimate-kpi-1944 -->
+
+<!-- owner-estimate-scroll-1945 -->
+
+<!-- admin-all-role-preview-1946 -->
+
+<!-- owner-liga-clean-1947 -->
+
+<!-- klasemen-performa-abk-1948 -->
+
+<!-- ppl-klasemen-abk-1949 -->
+
+<!-- abk-cumulative-1950 -->
+
+<!-- abk-league-season-reset-1951 -->
+
+<!-- abk-ranking-label-1952 -->
+
+<!-- ppl-owner-abk-match-1953 -->
+
+<!-- bms-mobile-title-1954 -->
+
+<!-- finance-command-ui-1956 -->
+
+<!-- owner-admin-parity-1957 -->
+
+<!-- login-admin-only-1958 -->
