@@ -276,7 +276,7 @@ async function ensureLegacyData(){
 }
 
 const NAV_SECTIONS=[
-  {label:'Master Data',items:['kandang','item','supplier_sapronak','supplier_daging','kontrak','standar_performa','reset_klasemen','karyawan','pengguna','perusahaan']},
+  {label:'Master Data',items:['kandang','item','supplier_sapronak','supplier_daging','kontrak','standar_performa','reset_klasemen','karyawan','pengguna','perusahaan','expedisi_master']},
   {label:'Logistik',items:['logistik_kontrak','logistik_pengiriman','logistik_kiriman_luar','logistik_retur_luar','logistik_laporan']},
   {label:'Produksi / PPL',items:['chick_in','recording','kunjungan','estimasi','liga_abk','rekap_produksi','ppl_rhpp_view','laporan']},
   {label:'Marketing',items:['marketing_panen_kontrak','marketing_tambah_daging','marketing_laporan']},
@@ -326,11 +326,10 @@ function appNav(){
     }).join('');
     html+='<details class="nav-group"'+open+'><summary>'+esc(section.label)+'</summary><div class="nav-sub">'+itemHtml+'</div></details>';
     if(section.label==='Logistik'){
-      const expedisiItems=['expedisi_master','expedisi_usaha','bop_expedisi'].filter(canViewTab);
+      const expedisiItems=['expedisi_usaha','bop_expedisi'].filter(canViewTab);
       if(expedisiItems.length){
         const expedisiActive=expedisiItems.includes(tab);
         html+='<details class="nav-group"'+(expedisiActive?' open':'')+'><summary>Expedisi</summary><div class="nav-sub">'+
-          (canViewTab('expedisi_master')?navButton('expedisi_master'):'')+
           (canViewTab('expedisi_usaha')?navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<'):'')+
           (canViewTab('bop_expedisi')?navButton('bop_expedisi'):'')+
           '</div></details>';
