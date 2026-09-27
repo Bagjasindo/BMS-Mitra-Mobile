@@ -2558,3 +2558,37 @@ form#fxTripForm.form-vertical,
     outline-offset:2px!important;
   }
 }
+
+/* Shared mobile choice list stays within the visible phone area. */
+@media (max-width:900px){
+  main label,main input,main select,main textarea,main button{
+    font-size:clamp(13px,3.5vw,15px)!important;
+  }
+  .mobile-select-shade{
+    position:fixed;inset:0;z-index:10000;
+    display:flex;align-items:flex-end;justify-content:center;
+    padding:12px;
+    background:rgba(4,17,27,.45);
+  }
+  .mobile-select-picker{
+    width:min(420px,100%);max-height:min(62dvh,480px);
+    display:flex;flex-direction:column;gap:8px;
+    padding:12px;
+    border:1px solid #315163;border-radius:14px;
+    background:#102737;color:#f0f8fc;
+    box-shadow:0 14px 38px rgba(0,0,0,.35);
+  }
+  .mobile-select-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .mobile-select-heading strong{font-size:clamp(14px,3.8vw,16px);overflow-wrap:anywhere}
+  .mobile-select-heading .mobile-select-close{width:40px;min-width:40px;height:40px;padding:0}
+  .mobile-select-search{flex:none;min-height:42px}
+  .mobile-select-options{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .mobile-select-options button{
+    display:block;width:100%;min-height:44px!important;
+    margin:0 0 5px;padding:9px 11px!important;
+    text-align:left;white-space:normal;overflow-wrap:anywhere;
+    color:#e8f2fa;background:#17394c;
+  }
+  .mobile-select-options button.selected{background:#17617a;color:#fff}
+  .mobile-select-options button:focus-visible{outline:3px solid #66e6ef}
+}
