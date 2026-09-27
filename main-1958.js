@@ -1956,110 +1956,188 @@ async function logisticsMandiriPurchasePage(editId=null){
   const cancel=document.getElementById('cancelMandiriPurchase');if(cancel)cancel.onclick=()=>logisticsMandiriPurchasePage();
 }
 
+
+async function marketingCustomerPage(){
+  const {data,error}=await db.from('marketing_customers').select('*').order('name',{ascending:true});
+  const rows=data||[];
+  let html='<section class="panel"><h3>Master Pelanggan</h3><p class="muted">Dipakai untuk penjualan Panen Mandiri.</p>'+
+    '<form id="marketingCustomerForm" class="form-vertical"><input type="hidden" name="id">'+
+      '<label>Nama Pelanggan<input name="name" required></label>'+
+      '<label>Alamat<textarea name="address"></textarea></label>'+
+      '<label>Telepon / WhatsApp<input name="phone"></label>'+
+      '<label>Catatan<textarea name="notes"></textarea></label>'+
+      '<button type="submit" id="marketingCustomerSave">Simpan Pelanggan</button><button type="button" id="marketingCustomerCancel" hidden>Batal Edit</button>'+
+    '</form></section>'+
+    '<section class="panel"><h3>Data Pelanggan</h3><div class="tablewrap"><table><thead><tr><th>Nama</th><th>Alamat</th><th>Telepon</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+      rows.map(x=>'<tr><td>'+esc(x.name||'')+'</td><td>'+esc(x.address||'-')+'</td><td>'+esc(x.phone||'-')+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td><td><button type="button" data-edit-marketing-customer="'+esc(x.id)+'">Edit</button> <button type="button" data-toggle-marketing-customer="'+esc(x.id)+'">'+(x.active?'Nonaktifkan':'Aktifkan')+'</button></td></tr>').join('')+
+    '</tbody></table></div>'+(!rows.length?'<p>Belum ada pelanggan.</p>':'')+'</section>';
+  layout(html);if(error)msg(error.message);
+  const form=document.getElementById('marketingCustomerForm'),save=document.getElementById('marketingCustomerSave'),cancel=document.getElementById('marketingCustomerCancel');
+  const reset=()=>{form.reset();form.elements.id.value='';save.textContent='Simpan Pelanggan';cancel.hidden=true;};
+  cancel.onclick=reset;
+  root.querySelectorAll('[data-edit-marketing-customer]').forEach(btn=>btn.onclick=()=>{
+    const x=rows.find(v=>v.id===btn.dataset.editMarketingCustomer);if(!x)return;
+    ['id','name','address','phone','notes'].forEach(k=>{form.elements[k].value=x[k]||'';});
+    save.textContent='Simpan Perubahan';cancel.hidden=false;form.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  root.querySelectorAll('[data-toggle-marketing-customer]').forEach(btn=>btn.onclick=async()=>{
+    const x=rows.find(v=>v.id===btn.dataset.toggleMarketingCustomer);if(!x)return;
+    const {error}=await db.from('marketing_customers').update({active:!x.active,updated_at:new Date().toISOString()}).eq('id',x.id);
+    if(error)return msg(error.message);
+    await marketingCustomerPage();msg(x.active?'Pelanggan dinonaktifkan.':'Pelanggan diaktifkan.',true);
+  });
+  form.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(form),id=fd.get('id');
+    const payload={name:String(fd.get('name')||'').trim(),address:String(fd.get('address')||'')||null,phone:String(fd.get('phone')||'')||null,notes:String(fd.get('notes')||'')||null,updated_at:new Date().toISOString()};
+    if(!payload.name)return msg('Nama pelanggan wajib diisi.');
+    const q=id?db.from('marketing_customers').update(payload).eq('id',id):db.from('marketing_customers').insert(payload);
+    const {error}=await q;if(error)return msg(error.message);
+    await marketingCustomerPage();msg(id?'Pelanggan diperbarui.':'Pelanggan tersimpan.',true);
+  };
+}
+
 async function marketingContractHarvestPage(editId=null){
-  const [br,ar,cr,hr,lpr]=await Promise.all([
+  const [br,ar,cr,hr,lpr,cur]=await Promise.all([
     db.from('barns').select('id,code,name,active').eq('active',true).order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active').order('start_date',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('marketing_contract_harvests').select('*').order('harvested_on',{ascending:false}).order('created_at',{ascending:false}),
-    db.from('contract_live_prices').select('contract_id,min_weight_kg,max_weight_kg,price_per_kg').order('min_weight_kg')
+    db.from('contract_live_prices').select('contract_id,min_weight_kg,max_weight_kg,price_per_kg').order('min_weight_kg'),
+    db.from('marketing_customers').select('id,name,address,phone,active').eq('active',true).order('name',{ascending:true})
   ]);
-  const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],rows=hr.data||[],livePrices=lpr.data||[];
-  const txnHarvest=txnListState(rows,'marketingHarvest','harvested_on',5,barns,'barn_id',{assignmentKey:'contract_assignment_id',assignments:assignments.map(a=>({id:a.id,barn_id:a.barn_id,label:assignmentCycleLabel(assignments,a)+' · '+(a.active?'AKTIF':'CLOSED')}))}),pageRows=txnHarvest.rows;
+  const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],rows=hr.data||[],livePrices=lpr.data||[],customers=cur.data||[];
+  const txnHarvest=txnListState(rows,'marketingHarvest','harvested_on',5,barns,'barn_id',{assignmentKey:'contract_assignment_id',assignments:assignments.map(a=>({id:a.id,barn_id:a.barn_id,label:assignmentCycleLabel(assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+(a.active?'AKTIF':'CLOSED')}))}),pageRows=txnHarvest.rows;
   const activeAssignments=assignments.filter(a=>a.active);
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const allowedBarns=barns.filter(b=>activeByBarn.has(b.id));
   const selected=editId?rows.find(x=>x.id===editId):null;
-  const todayID=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const todayID=prodToday();
 
-  let html='<section class="panel"><h3>'+(selected?'Edit Panen Kontrak':'Panen Kontrak')+'</h3>'+
-    '<p class="muted">Input hasil panen kontrak Marketing. BW rata-rata, harga kontrak, dan total panen dihitung otomatis untuk RHPP.</p>'+
+  let html='<section class="panel"><h3>'+(selected?'Edit Panen':'Panen')+'</h3>'+
+    '<p class="muted">Mitra: harga otomatis dari kontrak. Mandiri: pilih pelanggan dan isi harga jual aktual.</p>'+
     '<form id="contractHarvestForm" class="form-vertical">'+
       '<input type="hidden" name="id" value="'+esc(selected?.id||'')+'">'+
       '<label>Cari / Pilih Kandang<input id="harvestBarnSearch" autocomplete="off" placeholder="Contoh: cicurug" value="'+(selected?esc(shortBarnLabel(barns.find(b=>b.id===selected.barn_id))):'')+'" required></label>'+
       '<input type="hidden" name="barn_id" id="harvestBarnId" value="'+esc(selected?.barn_id||'')+'">'+
       '<div id="harvestBarnSuggestions" class="search-suggestions"></div>'+
-      '<label>Tanggal<input type="date" name="harvested_on" value="'+esc(selected?.harvested_on||todayID())+'" required></label>'+
-      '<label>Pembeli / RPA<input name="buyer_name" value="'+esc(selected?.buyer_name||'')+'" required></label>'+
+      '<div id="harvestCycleInfo" class="muted"></div>'+
+      '<label>Tanggal<input type="date" name="harvested_on" value="'+esc(selected?.harvested_on||todayID)+'" required></label>'+
+      '<div id="harvestMitraBuyer"><label>Pembeli / RPA<input name="buyer_name" value="'+esc(selected?.buyer_name||'')+'"></label></div>'+
+      '<div id="harvestMandiriBuyer" hidden><label>Pelanggan<select name="buyer_id" id="harvestBuyerId"><option value="">Pilih Pelanggan</option>'+customers.map(c=>'<option value="'+esc(c.id)+'" '+(selected?.buyer_id===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></label></div>'+
       '<label>No Mobil<input name="vehicle_number" value="'+esc(selected?.vehicle_number||'')+'" required></label>'+
       '<label>Ekor<input name="birds" id="contractHarvestBirds" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.birds):'')+'" required></label>'+
       '<label>KG<input name="net_weight_kg" id="contractHarvestWeight" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.net_weight_kg):'')+'" required></label>'+
-      '<button type="submit">'+(selected?'Simpan Perubahan':'Simpan')+'</button>'+
+      '<div id="harvestMandiriPrice" hidden><label>Harga Jual / Kg<input name="manual_price_per_kg" id="harvestManualPrice" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.price_per_kg):'')+'"></label></div>'+
+      '<label>Harga / Kg<input id="harvestPricePreview" readonly tabindex="-1"></label>'+
+      '<label>Total Penjualan<input id="harvestTotalPreview" readonly tabindex="-1"></label>'+
+      '<button type="submit">'+(selected?'Simpan Perubahan':'Simpan Panen')+'</button>'+
       (selected?' <button type="button" id="cancelHarvestEdit">Batal Edit</button>':'')+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Panen Kontrak</h3>'+txnHarvest.controls+'<div class="tablewrap"><table><thead><tr>'+
-    '<th>Tanggal</th><th>Kandang</th><th>Pembeli / RPA</th><th>No Mobil</th><th>Ekor</th><th>KG</th><th>Aksi</th>'+
+  html+='<section class="panel"><h3>Riwayat Panen</h3>'+txnHarvest.controls+'<div class="tablewrap"><table><thead><tr>'+
+    '<th>Tanggal</th><th>Kandang / Siklus</th><th>Jenis</th><th>Pembeli</th><th>No Mobil</th><th>Ekor</th><th>KG</th><th>Harga/Kg</th><th>Total</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     pageRows.map(x=>{
-      const b=barns.find(v=>v.id===x.barn_id);
       const a=assignments.find(v=>v.id===x.contract_assignment_id);
       const isLocked=!a?.active;
-      return '<tr><td>'+esc(x.harvested_on||'')+'</td><td>'+esc(assignmentIdentity(assignments,barns,contractsRows,a))+'</td><td>'+esc(x.buyer_name||'-')+'</td><td>'+esc(x.vehicle_number||'-')+'</td><td>'+fmtNumber(x.birds)+'</td><td>'+fmtNumber(x.net_weight_kg)+'</td><td>'+(isLocked?'<strong>Terkunci</strong>':'<button type="button" data-edit-harvest="'+esc(x.id)+'">Edit</button> <button type="button" data-delete-harvest="'+esc(x.id)+'">Hapus</button>')+'</td></tr>';
+      return '<tr><td>'+esc(x.harvested_on||'')+'</td><td>'+esc(assignmentIdentity(assignments,barns,contractsRows,a))+'</td><td><strong>'+esc(a?.cycle_type||'MITRA')+'</strong></td><td>'+esc(x.buyer_name||'-')+'</td><td>'+esc(x.vehicle_number||'-')+'</td><td>'+fmtNumber(x.birds)+'</td><td>'+fmtNumber(x.net_weight_kg)+'</td><td>Rp '+fmtNumber(x.price_per_kg)+'</td><td>Rp '+fmtNumber(x.total_amount)+'</td><td>'+(isLocked?'<strong>Terkunci</strong>':'<button type="button" data-edit-harvest="'+esc(x.id)+'">Edit</button> <button type="button" data-delete-harvest="'+esc(x.id)+'">Hapus</button>')+'</td></tr>';
     }).join('')+
-    '</tbody></table></div>'+(!txnHarvest.total?'<p>Data Panen Kontrak tidak ditemukan.</p>':'')+txnHarvest.pager+'</section>';
+    '</tbody></table></div>'+(!txnHarvest.total?'<p>Data Panen tidak ditemukan.</p>':'')+txnHarvest.pager+'</section>';
 
-  layout(html);
-  [br,ar,cr,hr,lpr].forEach(x=>{if(x.error)msg(x.error.message)});
-  bindNumberInputs();
-  bindTxnList(txnHarvest,()=>marketingContractHarvestPage());
+  layout(html);bindNumberInputs();bindTxnList(txnHarvest,()=>marketingContractHarvestPage());
+  const err=[br,ar,cr,hr,lpr,cur].find(x=>x.error)?.error;if(err)msg(err.message);
 
   const harvestBarnSearch=document.getElementById('harvestBarnSearch');
   const harvestBarnId=document.getElementById('harvestBarnId');
   const harvestBarnSuggestions=document.getElementById('harvestBarnSuggestions');
-  if(harvestBarnSearch&&harvestBarnId&&harvestBarnSuggestions){
-    harvestBarnSearch.oninput=()=>{
-      const q=(harvestBarnSearch.value||'').trim().toLowerCase();
-      harvestBarnId.value='';
-      const rows=q?allowedBarns.filter(b=>[b.code,b.name].filter(Boolean).join(' ').toLowerCase().includes(q)).slice(0,5):[];
-      harvestBarnSuggestions.innerHTML=rows.map(b=>'<button type="button" class="search-suggestion" data-harvest-barn="'+esc(b.id)+'"><strong>'+esc(shortBarnLabel(b))+'</strong></button>').join('');
-      if(q&&!rows.length)harvestBarnSuggestions.innerHTML='<div class="search-empty">Kandang aktif tidak ditemukan.</div>';
-      harvestBarnSuggestions.querySelectorAll('[data-harvest-barn]').forEach(btn=>btn.onclick=()=>{
-        const b=allowedBarns.find(x=>x.id===btn.dataset.harvestBarn);if(!b)return;
-        harvestBarnId.value=b.id;harvestBarnSearch.value=shortBarnLabel(b);harvestBarnSuggestions.innerHTML='';
-      });
-    };
-  }
+  const cycleInfo=document.getElementById('harvestCycleInfo');
+  const mitraBuyer=document.getElementById('harvestMitraBuyer');
+  const mandiriBuyer=document.getElementById('harvestMandiriBuyer');
+  const mandiriPrice=document.getElementById('harvestMandiriPrice');
+  const buyerId=document.getElementById('harvestBuyerId');
+  const manualPrice=document.getElementById('harvestManualPrice');
+  const birds=document.getElementById('contractHarvestBirds');
+  const weight=document.getElementById('contractHarvestWeight');
+  const pricePreview=document.getElementById('harvestPricePreview');
+  const totalPreview=document.getElementById('harvestTotalPreview');
+
+  const currentAssignment=()=>activeByBarn.get(harvestBarnId.value);
+  const updateHarvestMode=()=>{
+    const a=currentAssignment();
+    const mandiri=a?.cycle_type==='MANDIRI';
+    cycleInfo.textContent=a?(assignmentCycleLabel(assignments,a)+' · '+(mandiri?'MANDIRI':'MITRA')):'';
+    mitraBuyer.hidden=!!mandiri;
+    mandiriBuyer.hidden=!mandiri;
+    mandiriPrice.hidden=!mandiri;
+    buyerId.required=!!mandiri;
+    manualPrice.required=!!mandiri;
+    const n=normalizeInputID(birds.value)||0,w=normalizeInputID(weight.value)||0,avg=n>0?w/n:0;
+    let price=0;
+    if(a&&mandiri){
+      price=normalizeInputID(manualPrice.value)||0;
+      pricePreview.value=price?'Rp '+fmtNumber(price):'Input manual';
+    }else if(a&&avg>0){
+      const row=livePrices.find(p=>p.contract_id===a.master_contract_id&&avg>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||avg<prodNum(p.max_weight_kg)));
+      price=prodNum(row?.price_per_kg);
+      pricePreview.value=price?'Rp '+fmtNumber(price):'Harga kontrak belum tersedia';
+    }else pricePreview.value='';
+    totalPreview.value=w>0&&price>0?'Rp '+fmtNumber(w*price):'';
+  };
+
+  const renderBarnSuggestions=()=>{
+    const q=(harvestBarnSearch.value||'').trim().toLowerCase();
+    harvestBarnId.value='';updateHarvestMode();
+    const list=q?allowedBarns.filter(b=>[b.code,b.name].filter(Boolean).join(' ').toLowerCase().includes(q)).slice(0,5):[];
+    harvestBarnSuggestions.innerHTML=list.map(b=>{const a=activeByBarn.get(b.id);return '<button type="button" class="search-suggestion" data-harvest-barn="'+esc(b.id)+'"><strong>'+esc(shortBarnLabel(b))+'</strong><small>'+esc((a?.cycle_type||'MITRA')+' · '+assignmentCycleLabel(assignments,a))+'</small></button>';}).join('');
+    if(q&&!list.length)harvestBarnSuggestions.innerHTML='<div class="search-empty">Kandang aktif tidak ditemukan.</div>';
+    harvestBarnSuggestions.querySelectorAll('[data-harvest-barn]').forEach(btn=>btn.onclick=()=>{
+      const b=allowedBarns.find(x=>x.id===btn.dataset.harvestBarn);if(!b)return;
+      harvestBarnId.value=b.id;harvestBarnSearch.value=shortBarnLabel(b);harvestBarnSuggestions.innerHTML='';updateHarvestMode();
+    });
+  };
+  harvestBarnSearch.oninput=renderBarnSuggestions;
+  birds.oninput=updateHarvestMode;weight.oninput=updateHarvestMode;manualPrice.oninput=updateHarvestMode;
+  if(selected)updateHarvestMode();
 
   const form=document.getElementById('contractHarvestForm');
   form.onsubmit=async ev=>{
     ev.preventDefault();
     const fd=new FormData(form),barnId=fd.get('barn_id'),assignment=activeByBarn.get(barnId);
-    if(!assignment)return msg('Kandang belum memiliki kontrak aktif.');
+    if(!assignment)return msg('Kandang belum memiliki siklus aktif.');
     const n=normalizeInputID(fd.get('birds')),w=normalizeInputID(fd.get('net_weight_kg'));
     if(!(n>0))return msg('Ekor harus lebih dari 0.');
     if(!(w>0))return msg('KG harus lebih dari 0.');
     const avg=w/n;
-    const priceRow=livePrices.find(p=>p.contract_id===assignment.master_contract_id&&avg>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||avg<prodNum(p.max_weight_kg)));
-    if(!priceRow)return msg('Harga kontrak untuk BW rata-rata '+prodFmt(avg,3)+' Kg belum tersedia.');
-    const price=prodNum(priceRow.price_per_kg);
+    let price=0,buyer=null,buyerName=null;
+    if(assignment.cycle_type==='MANDIRI'){
+      price=normalizeInputID(fd.get('manual_price_per_kg'))||0;
+      buyer=String(fd.get('buyer_id')||'');
+      if(!(price>0))return msg('Harga jual Mandiri wajib lebih dari 0.');
+      if(!buyer)return msg('Pilih pelanggan Mandiri.');
+      buyerName=customers.find(c=>c.id===buyer)?.name||null;
+    }else{
+      const priceRow=livePrices.find(p=>p.contract_id===assignment.master_contract_id&&avg>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||avg<prodNum(p.max_weight_kg)));
+      if(!priceRow)return msg('Harga kontrak untuk BW rata-rata '+prodFmt(avg,3)+' Kg belum tersedia.');
+      price=prodNum(priceRow.price_per_kg);
+      buyerName=String(fd.get('buyer_name')||'').trim()||null;
+    }
     const payload={
-      contract_assignment_id:assignment.id,
-      barn_id:barnId,
-      harvested_on:fd.get('harvested_on'),
-      birds:n,
-      net_weight_kg:w,
-      price_per_kg:price,
-      buyer_name:String(fd.get('buyer_name')||'').trim()||null,
-      vehicle_number:String(fd.get('vehicle_number')||'').trim()||null,
-      transaction_number:null,
-      notes:null
+      contract_assignment_id:assignment.id,barn_id:barnId,harvested_on:fd.get('harvested_on'),
+      birds:n,net_weight_kg:w,price_per_kg:price,buyer_id:buyer||null,buyer_name:buyerName,
+      vehicle_number:String(fd.get('vehicle_number')||'').trim()||null,transaction_number:null,notes:null
     };
     const id=fd.get('id');
     const q=id?db.from('marketing_contract_harvests').update(payload).eq('id',id):db.from('marketing_contract_harvests').insert(payload);
-    const {error}=await q;
-    if(error)return msg(error.message);
-    await marketingContractHarvestPage();
-    msg(id?'Panen Kontrak berhasil diperbarui.':'Panen Kontrak berhasil disimpan.',true);
+    const {error}=await q;if(error)return msg(error.message);
+    await marketingContractHarvestPage();msg(id?'Panen berhasil diperbarui.':'Panen berhasil disimpan.',true);
   };
 
-  document.querySelectorAll('[data-edit-harvest]').forEach(btn=>btn.onclick=()=>marketingContractHarvestPage(btn.dataset.editHarvest));
-  document.querySelectorAll('[data-delete-harvest]').forEach(btn=>btn.onclick=async()=>{
-    if(!await appConfirm('Hapus data Panen Kontrak ini?'))return;
+  root.querySelectorAll('[data-edit-harvest]').forEach(btn=>btn.onclick=()=>marketingContractHarvestPage(btn.dataset.editHarvest));
+  root.querySelectorAll('[data-delete-harvest]').forEach(btn=>btn.onclick=async()=>{
+    if(!await appConfirm('Hapus data Panen ini?'))return;
     const {error}=await db.from('marketing_contract_harvests').delete().eq('id',btn.dataset.deleteHarvest);
     if(error)return msg(error.message);
-    await marketingContractHarvestPage();
-    msg('Panen Kontrak berhasil dihapus.',true);
+    await marketingContractHarvestPage();msg('Panen berhasil dihapus.',true);
   });
   const cancel=document.getElementById('cancelHarvestEdit');if(cancel)cancel.onclick=()=>marketingContractHarvestPage();
 }
