@@ -24,3 +24,13 @@
 - Target: domain resmi milik perusahaan, tanpa memindahkan database sebelum diperlukan.
 - Source tetap dapat berada di GitHub Pages atau dipindahkan ke hosting lain bila dibutuhkan.
 - Perubahan domain tidak mengubah data Supabase; yang berubah hanya alamat akses aplikasi dan konfigurasi hosting/DNS.
+
+## Tambahan Mitra / Mandiri
+- Pembuatan siklus sekarang memilih **Mitra** atau **Mandiri**.
+- Mitra tetap memakai kontrak dan harga panen otomatis dari kontrak.
+- Mandiri tidak memakai kontrak; Logistik memakai **Pembelian Mandiri** dengan harga beli aktual dan pembagian langsung ke beberapa kandang.
+- Sisa jumlah pembelian yang belum dibagi tercatat sebagai sisa gudang pada transaksi pembelian.
+- Marketing memiliki **Master Pelanggan**; Panen Mandiri memilih pelanggan dan harga jual diinput manual.
+- Produksi/PPL, recording, BOP, dan struktur kandang tetap memakai alur yang sudah ada.
+- Laba/Rugi Kandang dan Laba/Rugi Global membaca Mitra dan Mandiri dalam laporan yang sama tanpa mencampur rumus sumber pendapatannya.
+
