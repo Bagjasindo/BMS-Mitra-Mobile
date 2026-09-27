@@ -4796,6 +4796,7 @@ async function financeExpeditionMasterPage(){
       '<div style="margin-top:14px"><h4>Biaya BOP Standar per Rute</h4><p class="muted">Isi sekali. Keuangan nanti cukup klik Masukkan BOP pada Trip.</p>'+
       '<form id="expRouteBopForm" class="form-vertical">'+
         '<label>Pilih Rute<select name="route_id" id="expRouteBopRoute" required><option value="">Pilih Rute</option>'+routes.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.route_name)+'</option>').join('')+'</select></label>'+
+        '<label>Operasional (total OP buku besar)<input name="bop_operasional" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>BBM<input name="bop_bbm" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Tol<input name="bop_tol" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Uang Jalan<input name="bop_uang_jalan" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
@@ -4846,7 +4847,7 @@ async function financeExpeditionMasterPage(){
   const syncRouteBopForm=()=>{
     if(!rb||!rbRoute)return;
     const x=routes.find(v=>v.id===rbRoute.value);
-    for(const k of ['bop_bbm','bop_tol','bop_uang_jalan','bop_makan_sopir','bop_bongkar_muat']){
+    for(const k of ['bop_operasional','bop_bbm','bop_tol','bop_uang_jalan','bop_makan_sopir','bop_bongkar_muat']){
       rb.elements[k].value=fmtNumber(prodNum(x?.[k]||0));
     }
   };
@@ -4855,7 +4856,7 @@ async function financeExpeditionMasterPage(){
     ev.preventDefault();const fd=new FormData(rb),id=String(fd.get('route_id')||'');
     if(!id)return msg('Pilih rute.');
     const payload={};
-    for(const k of ['bop_bbm','bop_tol','bop_uang_jalan','bop_makan_sopir','bop_bongkar_muat']){
+    for(const k of ['bop_operasional','bop_bbm','bop_tol','bop_uang_jalan','bop_makan_sopir','bop_bongkar_muat']){
       const v=normalizeInputID(fd.get(k)); if(v===null||v<0)return msg('Biaya BOP rute tidak valid.'); payload[k]=v;
     }
     const {error}=await db.from('expedition_routes').update(payload).eq('id',id);
@@ -5254,15 +5255,16 @@ async function financeExpeditionBopPage(){
   const autoRows=rows.filter(x=>x.reference==='AUTO_TRIP');
   const autoTotalFor=id=>autoRows.filter(x=>x.trip_id===id).reduce((n,x)=>n+prodNum(x.amount),0);
   const routeFor=t=>routes.find(r=>r.route_name===t.zone);
-  const routeCost=r=>r?['bop_bbm','bop_tol','bop_uang_jalan','bop_makan_sopir','bop_bongkar_muat'].reduce((n,k)=>n+prodNum(r[k]),0):0;
+  const routeCost=r=>r?['bop_operasional','bop_bbm','bop_tol','bop_uang_jalan','bop_makan_sopir','bop_bongkar_muat'].reduce((n,k)=>n+prodNum(r[k]),0):0;
 
-  let html='<section class="panel"><h3>BOP Expedisi</h3><p class="muted"><strong>Keuangan cukup klik Masukkan BOP.</strong> Nilai biaya diambil otomatis dari Master Rute dan tidak bisa masuk dua kali untuk Trip yang sama.</p></section>'+
-    '<section class="panel"><h3>Trip Belum / Sudah Masuk BOP</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Rute</th><th>Sopir / Truk</th><th>Biaya Standar</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+  let html='<section class="panel"><h3>BOP Expedisi</h3><p class="muted"><strong>Keuangan cukup klik Masukkan BOP.</strong> Untuk trip dengan OP berbeda dari standar, isi Total OP Khusus sesuai buku besar sebelum klik. Satu trip hanya dapat diposting sekali.</p></section>'+
+    '<section class="panel"><h3>Trip Belum / Sudah Masuk BOP</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Rute</th><th>Sopir / Truk</th><th>Biaya Standar</th><th>Total OP Khusus</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
       trips.map(t=>{
         const r=routeFor(t),std=routeCost(r),posted=autoTotalFor(t.id),done=posted>0;
         return '<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.zone||'-')+'</td>'+
           '<td>'+esc((t.driver||'-')+' · '+(t.vehicle||'-'))+'</td>'+
           '<td>'+(std>0?'Rp '+prodFmt(std,0):'<span class="muted">Belum diatur</span>')+'</td>'+
+          '<td>'+(done?'-':'<input type="text" inputmode="decimal" data-number="1" data-bop-override="'+esc(t.id)+'" aria-label="Total OP khusus '+esc(t.mts_sj||t.trip_date)+'" placeholder="Kosong = standar" style="min-width:145px">')+'</td>'+
           '<td>'+(done?'<span class="pill">SUDAH MASUK</span>':std>0?'<span class="finance-status finance-status-wait">BELUM</span>':'<span class="finance-status finance-status-diff">MASTER KOSONG</span>')+'</td>'+
           '<td>'+(done?'<button type="button" disabled>Sudah Masuk</button>':std>0?'<button type="button" data-post-exp-bop="'+esc(t.id)+'">Masukkan BOP</button>':'<button type="button" disabled>Atur Master Rute</button>')+'</td></tr>';
       }).join('')+
@@ -5274,11 +5276,15 @@ async function financeExpeditionBopPage(){
         '<td>'+(x.reference==='AUTO_TRIP'?'Otomatis Master Rute':'Manual')+'</td></tr>';}).join('')+
       '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada BOP Expedisi.</p>')+'</section>';
 
-  layout(html);if(err)msg(err.message);
+  layout(html);bindNumberInputs();if(err)msg(err.message);
   const p=document.getElementById('fxBopPrint');if(p)p.onclick=()=>printFinanceDocument('fxBopPrintArea','Laporan BOP Expedisi');
   document.querySelectorAll('[data-post-exp-bop]').forEach(btn=>btn.onclick=async()=>{
+    const custom=document.querySelector('[data-bop-override="'+btn.dataset.postExpBop+'"]');
+    const raw=String(custom?.value||'').trim();
+    const override=raw?normalizeInputID(raw):null;
+    if(raw&&(override===null||override<=0))return msg('Total OP khusus harus lebih dari nol.');
     btn.disabled=true;btn.textContent='Memproses...';
-    const {data,error}=await db.rpc('finance_post_expedition_bop_for_trip',{p_trip_id:btn.dataset.postExpBop});
+    const {data,error}=await db.rpc('finance_post_expedition_bop_for_trip',{p_trip_id:btn.dataset.postExpBop,p_operational_override:override});
     if(error){btn.disabled=false;btn.textContent='Masukkan BOP';return msg(error.message);}
     await financeExpeditionBopPage();msg('BOP Expedisi otomatis masuk: Rp '+prodFmt(data||0,0)+'.',true);
   });
