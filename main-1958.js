@@ -338,10 +338,32 @@ function appNav(){
       navButton('arsip_data')+
       '</div></details>';
   }
+
   for(const section of NAV_SECTIONS){
-    const items=(profile?.role==='ADMIN'&&section.label==='Keuangan')
-      ?section.items.filter(key=>key!=='rhpp'&&key!=='rhpp_history')
-      :section.items;
+    if(section.label==='Keuangan'){
+      const mitraItems=['rhpp','rhpp_history','finance_rhpp_real','hutang_supplier']
+        .filter(key=>canViewTab(key)&&!(profile?.role==='ADMIN'&&(key==='rhpp'||key==='rhpp_history')));
+      const mandiriItems=['finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan']
+        .filter(canViewTab);
+      const umumItems=['bop','perawatan_kandang','kasbon','cicilan','bop_umum','arus_kas','laba_rugi_kandang','laporan_keuangan']
+        .filter(canViewTab);
+      const allFinance=[...mitraItems,...mandiriItems,...umumItems];
+      if(allFinance.length){
+        const subgroup=(label,items)=>{
+          if(!items.length)return '';
+          const opened=items.includes(tab)?' open':'';
+          return '<details class="nav-subgroup"'+opened+'><summary>'+esc(label)+'</summary><div class="nav-child-item">'+items.map(navButton).join('')+'</div></details>';
+        };
+        html+='<details class="nav-group"'+(allFinance.includes(tab)?' open':'')+'><summary>Keuangan</summary><div class="nav-sub">'+
+          subgroup('Mitra',mitraItems)+
+          subgroup('Mandiri',mandiriItems)+
+          subgroup('Umum / Operasional',umumItems)+
+          '</div></details>';
+      }
+      continue;
+    }
+
+    const items=section.items;
     const logisticsNested=['logistik_retur','logistik_retur_sebagian','logistik_retur_luar'];
     const sectionActive=items.includes(tab)||(section.label==='Logistik'&&logisticsNested.includes(tab));
     const open=sectionActive?' open':'';
@@ -365,25 +387,26 @@ function appNav(){
       return navButton(key);
     }).join('');
     html+='<details class="nav-group"'+open+'><summary>'+esc(section.label)+'</summary><div class="nav-sub">'+itemHtml+'</div></details>';
+
     if(section.label==='Logistik'){
       const expedisiItems=['expedisi_usaha','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi'].filter(canViewTab);
       if(expedisiItems.length){
-        const expedisiActive=expedisiItems.includes(tab);
-        html+='<details class="nav-group"'+(expedisiActive?' open':'')+'><summary>Expedisi</summary><div class="nav-sub">'+
-          (canViewTab('expedisi_usaha')?navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<'):'')+
-          (canViewTab('expedisi_pembayaran')?navButton('expedisi_pembayaran'):'')+
-          (canViewTab('bop_expedisi')?navButton('bop_expedisi'):'')+
-          (canViewTab('perawatan_expedisi')?navButton('perawatan_expedisi'):'')+
-          (canViewTab('laporan_expedisi')?navButton('laporan_expedisi'):'')+
+        const expOpen=expedisiItems.includes(tab)?' open':'';
+        html+='<details class="nav-group"'+expOpen+'><summary>Expedisi</summary><div class="nav-sub">'+
+          '<details class="nav-subgroup"'+(tab==='expedisi_usaha'?' open':'')+'><summary>Operasional</summary><div class="nav-child-item">'+
+            (canViewTab('expedisi_usaha')?navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<'):'')+
+          '</div></details>'+
+          '<details class="nav-subgroup"'+(['expedisi_pembayaran','bop_expedisi','perawatan_expedisi'].includes(tab)?' open':'')+'><summary>Keuangan Expedisi</summary><div class="nav-child-item">'+
+            (canViewTab('expedisi_pembayaran')?navButton('expedisi_pembayaran'):'')+
+            (canViewTab('bop_expedisi')?navButton('bop_expedisi'):'')+
+            (canViewTab('perawatan_expedisi')?navButton('perawatan_expedisi'):'')+
+          '</div></details>'+
+          (canViewTab('laporan_expedisi')?'<details class="nav-subgroup"'+(tab==='laporan_expedisi'?' open':'')+'><summary>Laporan</summary><div class="nav-child-item">'+navButton('laporan_expedisi')+'</div></details>':'')+
           '</div></details>';
       }
     }
   }
-  if(['ADMIN','KEUANGAN'].includes(profile?.role)){
-    const mandiriFinanceItems=['finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan'].filter(canViewTab);
-    const mandiriFinanceActive=mandiriFinanceItems.includes(tab);
-    html+='<details class="nav-group"'+(mandiriFinanceActive?' open':'')+'><summary>Keuangan Mandiri</summary><div class="nav-sub">'+mandiriFinanceItems.map(navButton).join('')+'</div></details>';
-  }
+
   html+=navButton('profil');
   return html;
 }
