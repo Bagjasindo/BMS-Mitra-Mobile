@@ -298,7 +298,7 @@ async function ensureDashboardData(force=false){
 async function ensureLegacyData(){
   if(legacyDataLoaded)return;
   const [ar,b,i,su,e,a,p,k]=await Promise.all([
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active').order('created_at',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('created_at',{ascending:false}),
     db.from('barns').select('id,code,name'),
     db.from('items').select('id,code,name,supplier_id'),
     db.from('suppliers').select('id,code,name,active,supplier_type').order('code',{ascending:true}),
@@ -1077,7 +1077,7 @@ async function logisticsContractPage(){
     db.from('barns').select('id,code,name,location,kind,active').eq('active',true).order('code',{ascending:true}),
     db.from('contracts').select('id,number,contract_date,performance_template_name').is('cycle_id',null).order('contract_date',{ascending:false,nullsFirst:false}).order('number',{ascending:true}),
     db.from('performance_standards').select('contract_id,template_name').order('template_name',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,start_date,active,created_at,ppl_id').order('created_at',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,start_date,active,created_at,ppl_id,cycle_type').order('created_at',{ascending:false}),
     db.from('employees').select('id,code,name,kind,active').eq('kind','ABK').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_contract_assignment_abks').select('id,contract_assignment_id,abk_id,initial_birds,feed_pre_bags,feed_starter_bags,feed_finisher_bags,basics_locked_at,created_at').order('created_at',{ascending:true}),
     db.from('profiles').select('user_id,full_name,role,active').eq('role','PPL').eq('active',true).order('full_name',{ascending:true})
@@ -2146,7 +2146,7 @@ async function marketingExternalMeatPage(editId=null){
     db.from('suppliers').select('id,code,name,active,supplier_type').eq('active',true).eq('supplier_type','DAGING').order('code',{ascending:true}),
     db.from('marketing_external_meat_purchases').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('barns').select('id,code,name,active').eq('active',true).order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active').order('start_date',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null)
   ]);
   const supplierRows=sr.data||[], rows=pr.data||[], barnRows=br.data||[], assignments=ar.data||[], contractsRows=cr.data||[];
@@ -2813,7 +2813,7 @@ const prodAge=(a,b)=>Math.max(1,Math.floor((new Date(b+'T00:00:00')-new Date(a+'
 const prodDateAdd=(iso,days)=>{const d=new Date(String(iso).slice(0,10)+'T00:00:00');d.setDate(d.getDate()+Number(days||0));return d.toISOString().slice(0,10)};
 async function productionBase(){
   const [ar,br,cr,cir,abr,er,ir,psr,mhr,lpr,costr]=await Promise.all([
-    db.from('logistics_contract_assignments').select('id,barn_id,ppl_id,master_contract_id,performance_template_name,start_date,active,created_at').order('created_at',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,ppl_id,master_contract_id,performance_template_name,start_date,active,created_at,cycle_type').order('created_at',{ascending:false}),
     db.from('barns').select('id,code,name,active').order('code'),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('chick_ins').select('*').order('arrived_on',{ascending:false}),
@@ -4867,7 +4867,7 @@ async function financeMaintenancePage(){
 async function financeSupplierPayablesPage(){
   const [pr,ar,br,cr]=await Promise.all([
     db.rpc('finance_supplier_payables_v1'),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null)
   ]);
@@ -5626,7 +5626,7 @@ async function financeAdvancePaymentPage(){
     db.from('advances').select('id,employee_id,contract_assignment_id,barn_id,advanced_on,amount,description,reference,created_at').order('advanced_on',{ascending:true}),
     db.from('advance_payments').select('id,advance_id,paid_on,amount,method,reference,notes,created_at').order('paid_on',{ascending:false}),
     db.from('employees').select('id,code,name,kind,active').eq('active',true).order('name',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null)
   ]);
@@ -5750,7 +5750,7 @@ async function financeCashflowPage(){
   const [xr,bar,assr,cr,cpr]=await Promise.all([
     db.rpc('finance_cashflow_entries_v2'),
     db.from('barns').select('id,code,name'),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
   ]);
@@ -5777,7 +5777,7 @@ async function financeCashflowPage(){
 async function financeBarnProfitLossPage(){
   const [xr,ar,br,cr,rr]=await Promise.all([
     db.rpc('finance_cycle_profit_loss_v2'),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('barns').select('id,code,name').order('code',{ascending:true}),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('rhpp_real').select('contract_assignment_id')
@@ -5868,7 +5868,7 @@ async function financeGlobalProfitLossPage(){
   const [xr,rr,ar,br,cr,er,mr,gr]=await Promise.all([
     db.rpc('finance_cycle_profit_loss_v2'),
     db.from('rhpp_real').select('contract_assignment_id'),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.rpc('finance_expedition_profit_loss_v2'),
@@ -5966,7 +5966,7 @@ async function financeGlobalProfitLossPage(){
 async function financeReportPage(){
   const [xr,ar,br,cr,rr]=await Promise.all([
     db.rpc('finance_cycle_profit_loss_v2'),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('rhpp_real').select('contract_assignment_id')
@@ -6407,7 +6407,7 @@ async function financeRhppRealPage(){
   const [sr,rr,ar,br,cr]=await Promise.all([
     db.from('rhpp_system_final').select('*').order('created_at',{ascending:false}),
     db.from('rhpp_real').select('*').order('created_at',{ascending:false}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null)
   ]);
@@ -6550,7 +6550,7 @@ async function ownerProfitLossPage(){
     db.from('rhpp_system_final').select('*').order('created_at',{ascending:false}),
     db.from('rhpp_real').select('*').order('created_at',{ascending:false}),
     db.from('barns').select('id,code,name'),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('bop').select('contract_assignment_id,amount'),
     db.from('barn_maintenance_costs').select('contract_assignment_id,amount')
@@ -7488,7 +7488,7 @@ async function dashboard(){
 async function marketingReports(){
   const [br,ar,cr,hr,mr,sr,cpr]=await Promise.all([
     db.from('barns').select('id,code,name').order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active').order('start_date',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('marketing_contract_harvests').select('*').order('harvested_on',{ascending:false}),
     db.from('marketing_external_meat_purchases').select('*').order('purchase_date',{ascending:false}),
@@ -7627,7 +7627,7 @@ async function logisticsReports(){
     db.from('logistics_external_return_items').select('id,external_return_id,external_shipment_item_id,item_id,quantity'),
     db.from('logistics_external_return_transfers').select('id,external_return_item_id,item_id,source_barn_id,target_barn_id,quantity,transferred_on,notes').order('transferred_on',{ascending:false}),
     db.from('suppliers').select('id,code,name,supplier_type').eq('supplier_type','SAPRONAK').order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active').order('start_date',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email,website').eq('id',true).maybeSingle()
   ]);
@@ -8001,7 +8001,7 @@ async function logisticsReports(){
 
 async function reports(){
   const [ar,br,cr,rr,hr,bopr,rhppr,bal]=await Promise.all([
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active').order('start_date',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('recordings').select('contract_assignment_id,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null),
