@@ -5723,20 +5723,16 @@ async function financeGlobalProfitLossPage(){
 }
 
 async function financeReportPage(){
-  const [xr,ar,br,cr,cpr,rr,companyR,expR]=await Promise.all([
+  const [xr,ar,br,cr,rr]=await Promise.all([
     db.rpc('finance_cycle_profit_loss_v2'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle(),
-    db.from('rhpp_real').select('contract_assignment_id'),
-    db.rpc('finance_company_profit_loss_v2'),
-    db.rpc('finance_expedition_profit_loss_v1')
+    db.from('rhpp_real').select('contract_assignment_id')
   ]);
-  const rows=xr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[],company=cpr.data||{};
+  const rows=xr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[];
   const realIds=new Set((rr.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
-  const companyRow=(companyR.data||[])[0]||{},expRow=(expR.data||[])[0]||{};
-  const err=[xr,ar,br,cr,cpr,rr,companyR,expR].find(x=>x.error)?.error;
+  const err=[xr,ar,br,cr,rr].find(x=>x.error)?.error;
   window.__financeReportState=window.__financeReportState||{barn:'',assignment:'',shown:false};
   const st=window.__financeReportState;
   const visible=st.shown?rows.filter(x=>(!st.barn||x.barn_id===st.barn)&&(!st.assignment||x.contract_assignment_id===st.assignment)):[];
@@ -5749,8 +5745,6 @@ async function financeReportPage(){
   const finalOperational=sum(finalRows,'laba_operasional_produksi');
   const finalMaint=sum(finalRows,'perawatan_jangka_panjang');
   const finalNet=sum(finalRows,'laba_bersih_akhir');
-  // The company total covers every barn, even while the detail filter shows one barn.
-  const companyFinal=prodNum(companyRow.company_profit_loss);
   const selectedRows=st.assignment?visible:[];
   const selected=selectedRows[0]||null;
   const cycleStatus=x=>x.active?'PROSES':realIds.has(x.contract_assignment_id)?'FINAL':'MENUNGGU RHPP REAL';
@@ -5764,10 +5758,9 @@ async function financeReportPage(){
         '<div class="rhpp-summary-card"><span>Biaya Produksi Berjalan</span><strong>Rp '+prodFmt(processCost,0)+'</strong><small>'+processRows.length+' siklus PROSES</small></div>'+
         '<div class="rhpp-summary-card"><span>Menunggu RHPP Real</span><strong>'+waitingRows.length+' Siklus</strong><small>Belum dihitung laba/rugi final</small></div>'+
         '<div class="rhpp-summary-card"><span>Laba Bersih Siklus Final</span><strong>Rp '+prodFmt(finalNet,0)+'</strong><small>'+finalRows.length+' siklus FINAL</small></div>'+
-        '<div class="rhpp-summary-card"><span>Laba/Rugi Perusahaan Final</span><strong>Rp '+prodFmt(companyFinal,0)+'</strong><small>Final kandang + ekspedisi − BOP umum</small></div>'+
       '</div>'+
       (processMaint?'<p class="muted">Perawatan Jangka Panjang pada siklus berjalan: Rp '+prodFmt(processMaint,0)+' · tidak dimasukkan ke Biaya Produksi Berjalan.</p>':'')+
-      '<p class="muted">Ekspedisi: Rp '+prodFmt(companyRow.expedition_profit_loss||0,0)+' · BOP Umum: Rp '+prodFmt(companyRow.bop_umum||0,0)+' · Piutang Ekspedisi: Rp '+prodFmt(expRow.expedition_receivable||0,0)+'</p></section>';
+      '<p class="muted">Laba/Rugi Global tersedia khusus di bagian Owner agar tidak tercampur dengan laporan operasional Keuangan.</p></section>';
 
     if(selected){
       const status=cycleStatus(selected);
