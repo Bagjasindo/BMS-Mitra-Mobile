@@ -4580,13 +4580,14 @@ async function financeBopGeneralPage(){
 
 
 async function financeExpeditionMasterPage(){
-  const [dr,vr,cr]=await Promise.all([
+  const [dr,vr,cr,rr]=await Promise.all([
     db.from('expedition_drivers').select('*').order('code',{ascending:true}),
     db.from('expedition_vehicles').select('*').order('plate_number',{ascending:true}),
-    db.from('expedition_customers').select('*').order('code',{ascending:true})
+    db.from('expedition_customers').select('*').order('code',{ascending:true}),
+    db.from('expedition_routes').select('*').order('code',{ascending:true})
   ]);
-  const drivers=dr.data||[],vehicles=vr.data||[],customers=cr.data||[];
-  const err=[dr,vr,cr].find(x=>x.error)?.error;
+  const drivers=dr.data||[],vehicles=vr.data||[],customers=cr.data||[],routes=rr.data||[];
+  const err=[dr,vr,cr,rr].find(x=>x.error)?.error;
 
   let html='<section class="panel"><h3>Master Data Expedisi</h3><p class="muted">Acuan untuk Data / Operasional dan hasil cetak Invoice Expedisi. Hanya Administrator yang mengubah master.</p></section>'+
     '<section class="panel"><h3>Master Sopir</h3><form id="expDriverForm" class="form-vertical">'+
@@ -4606,6 +4607,16 @@ async function financeExpeditionMasterPage(){
       '<button type="submit">Simpan Kendaraan</button></form>'+
       '<div class="tablewrap"><table><thead><tr><th>No. Polisi</th><th>Jenis</th><th>Kapasitas</th><th>Status</th></tr></thead><tbody>'+
       vehicles.map(x=>'<tr><td>'+esc(x.plate_number)+'</td><td>'+esc(x.vehicle_type||'-')+'</td><td>'+prodFmt(x.capacity_qty||0,0)+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
+      '</tbody></table></div></section>'+
+    '<section class="panel"><h3>Master Rute Expedisi</h3><form id="expRouteForm" class="form-vertical">'+
+      '<label>Kode Rute<input name="code" required placeholder="RTE-001"></label>'+
+      '<label>Zona / Rute<input name="route_name" required placeholder="Cirebon-Majalengka"></label>'+
+      '<label>Harga Trip Default<input name="default_trip_price" type="text" inputmode="decimal" data-number="1" required></label>'+
+      '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
+      '<label>Catatan<input name="notes"></label>'+
+      '<button type="submit">Simpan Rute</button></form>'+
+      '<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Zona / Rute</th><th>Harga Trip</th><th>Status</th></tr></thead><tbody>'+
+      routes.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.route_name)+'</td><td>Rp '+prodFmt(x.default_trip_price,0)+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div></section>'+
     '<section class="panel"><h3>Master Pelanggan Expedisi</h3><form id="expCustomerForm" class="form-vertical">'+
       '<label>Kode<input name="code" required placeholder="CUST-EXP-001"></label>'+
@@ -4630,6 +4641,12 @@ async function financeExpeditionMasterPage(){
     const {error}=await db.from('expedition_vehicles').insert({plate_number:String(fd.get('plate_number')||'').trim().toUpperCase(),vehicle_type:String(fd.get('vehicle_type')||'')||null,capacity_qty:cap,active:String(fd.get('active'))==='true'});
     if(error)return msg(error.message);await financeExpeditionMasterPage();msg('Master kendaraan tersimpan.',true);
   };
+  const r=document.getElementById('expRouteForm');if(r)r.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(r),price=normalizeInputID(fd.get('default_trip_price'));
+    if(price===null||price<0)return msg('Harga trip tidak valid.');
+    const {error}=await db.from('expedition_routes').insert({code:String(fd.get('code')||'').trim(),route_name:String(fd.get('route_name')||'').trim(),default_trip_price:price,active:String(fd.get('active'))==='true',notes:String(fd.get('notes')||'')||null});
+    if(error)return msg(error.message);await financeExpeditionMasterPage();msg('Master rute tersimpan.',true);
+  };
   const c=document.getElementById('expCustomerForm');if(c)c.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(c);
     const {error}=await db.from('expedition_customers').insert({code:String(fd.get('code')||'').trim(),name:String(fd.get('name')||'').trim(),address:String(fd.get('address')||'')||null,phone:String(fd.get('phone')||'')||null,tax_number:String(fd.get('tax_number')||'')||null,active:String(fd.get('active'))==='true'});
@@ -4638,7 +4655,7 @@ async function financeExpeditionMasterPage(){
 }
 
 async function financeExpeditionBusinessPage(){
-  const [tr,ir,iir,pr,sr,cpr,dr,vr,cur]=await Promise.all([
+  const [tr,ir,iir,pr,sr,cpr,dr,vr,cur,rr]=await Promise.all([
     db.from('finance_expedition_trips').select('*').order('trip_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_expedition_invoices').select('*').order('invoice_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_expedition_invoice_items').select('invoice_id,trip_id'),
@@ -4647,11 +4664,12 @@ async function financeExpeditionBusinessPage(){
     db.from('company_profile').select('*').eq('id',true).maybeSingle(),
     db.from('expedition_drivers').select('*').eq('active',true).order('name',{ascending:true}),
     db.from('expedition_vehicles').select('*').eq('active',true).order('plate_number',{ascending:true}),
-    db.from('expedition_customers').select('*').eq('active',true).order('name',{ascending:true})
+    db.from('expedition_customers').select('*').eq('active',true).order('name',{ascending:true}),
+    db.from('expedition_routes').select('*').eq('active',true).order('route_name',{ascending:true})
   ]);
   const trips=tr.data||[],invoices=ir.data||[],links=iir.data||[],payments=pr.data||[],summaries=sr.data||[],company=cpr.data||{};
-  const drivers=dr.data||[],vehicles=vr.data||[],customers=cur.data||[];
-  const err=[tr,ir,iir,pr,sr,cpr,dr,vr,cur].find(x=>x.error)?.error;
+  const drivers=dr.data||[],vehicles=vr.data||[],customers=cur.data||[],routes=rr.data||[];
+  const err=[tr,ir,iir,pr,sr,cpr,dr,vr,cur,rr].find(x=>x.error)?.error;
   const role=profile?.role||'';
   const canOps=['ADMIN','LOGISTIK'].includes(role);
   const canFinance=['ADMIN','KEUANGAN'].includes(role);
@@ -4687,9 +4705,10 @@ async function financeExpeditionBusinessPage(){
         '<label>MTS/SJ<input name="mts_sj"></label><label>RR<input name="rr"></label>'+
         '<label>Sopir<select name="driver" required><option value="">Pilih Sopir</option>'+drivers.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
         '<label>Truk<select name="vehicle" required><option value="">Pilih Kendaraan</option>'+vehicles.map(x=>'<option value="'+esc(x.plate_number)+'">'+esc(x.plate_number+(x.vehicle_type?' · '+x.vehicle_type:''))+'</option>').join('')+'</select></label>'+
-        '<label>Zona / Rute<input name="zone"></label><label>Tujuan<input name="destination" required></label>'+
+        '<label>Zona / Rute<select id="fxRouteSelect" name="route_id" required><option value="">Pilih Rute</option>'+routes.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.route_name+' · Rp '+prodFmt(x.default_trip_price,0))+'</option>').join('')+'</select></label>'+
+        '<input type="hidden" name="zone"><label>Tujuan<input name="destination" required></label>'+
         '<label>Jenis Muatan / Qty<input name="cargo"></label><label>Total Qty<input name="total_qty" type="text" inputmode="decimal" data-number="1"></label>'+
-        '<label>Harga Trip<input name="trip_price" type="text" inputmode="decimal" data-number="1" required></label>'+
+        '<label>Harga Trip<input id="fxTripPrice" name="trip_price" type="text" inputmode="decimal" data-number="1" required readonly></label>'+
         '<label>Tambahan<input name="additional" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Catatan<textarea name="notes"></textarea></label><button type="submit">Simpan Trip</button>'+
@@ -4730,6 +4749,16 @@ async function financeExpeditionBusinessPage(){
   const reportPrint=document.getElementById('fxReportPrint');if(reportPrint)reportPrint.onclick=()=>printFinanceDocument('fxInvoiceReport','Laporan Invoice dan Piutang Expedisi');
 
   const tf=document.getElementById('fxTripForm');
+  const routeSel=document.getElementById('fxRouteSelect');
+  if(tf&&routeSel){
+    const syncRoute=()=>{
+      const r=routes.find(x=>x.id===routeSel.value);
+      tf.elements.zone.value=r?.route_name||'';
+      const price=document.getElementById('fxTripPrice');
+      if(price)price.value=r?fmtNumber(r.default_trip_price):'';
+    };
+    routeSel.onchange=syncRoute;
+  }
   if(tf)tf.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(tf);
     const tripPrice=normalizeInputID(fd.get('trip_price')),additional=normalizeInputID(fd.get('additional'))||0,deduction=normalizeInputID(fd.get('deduction'))||0,totalQty=normalizeInputID(fd.get('total_qty'));
