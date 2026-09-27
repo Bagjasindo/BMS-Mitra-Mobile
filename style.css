@@ -2899,8 +2899,8 @@ main select.app-select-native{
    Desktop: sidebar lebih lebar dan label menu tidak terpotong.
    Mobile: tetap 1 kolom, full width, tanpa memaksa sidebar desktop. */
 @media (min-width:701px){
-  .shell{grid-template-columns:300px minmax(0,1fr)}
-  aside{min-width:300px}
+  .shell{grid-template-columns:270px minmax(0,1fr)}
+  aside{min-width:270px}
   nav button,
   .nav-group summary,
   .nav-subgroup>summary{
