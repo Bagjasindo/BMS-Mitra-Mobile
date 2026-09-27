@@ -234,7 +234,45 @@ async function start(){
     msg('Koneksi awal gagal: '+(error?.message||'tidak diketahui')+'. Silakan coba masuk kembali.');
   }
 }
-function login(){root.innerHTML='<main class="login"><h1>BMS Mobile</h1><p>Masuk dengan akun yang diberikan Administrator.</p><form id="auth"><label>Email<input name="email" type="email" required autocomplete="username"></label><label>Kata sandi<input name="password" type="password" required autocomplete="current-password" minlength="8"></label><button type="submit">Masuk</button></form><p id="message"></p><footer>Bagjasindo Mandiri Sindangkasih @gunzleite</footer></main>';document.getElementById('auth').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target);const {error}=await db.auth.signInWithPassword({email:fd.get('email'),password:fd.get('password')});if(error)return msg(error.message);await start()};}
+function login(){
+  root.innerHTML='<div class="login-shell"><main class="login">'+
+    '<h1>BMS Mobile</h1><p>Masuk dengan akun yang diberikan Administrator.</p>'+
+    '<form id="auth">'+
+      '<label>Email<input name="email" type="email" required autocomplete="username"></label>'+
+      '<label>Kata sandi<span class="login-password"><input name="password" type="password" required autocomplete="current-password" minlength="8"><button type="button" id="togglePassword" aria-label="Lihat kata sandi" aria-pressed="false">Lihat</button></span></label>'+
+      '<button type="submit" id="loginSubmit">Masuk</button>'+
+    '</form><p id="message" role="status" aria-live="polite"></p>'+
+    '<footer>Bagjasindo Mandiri Sindangkasih @gunzleite</footer>'+
+  '</main></div>';
+  const pass=root.querySelector('input[name="password"]');
+  const toggle=document.getElementById('togglePassword');
+  toggle.onclick=()=>{
+    const visible=pass.type==='password';
+    pass.type=visible?'text':'password';
+    toggle.textContent=visible?'Sembunyikan':'Lihat';
+    toggle.setAttribute('aria-label',visible?'Sembunyikan kata sandi':'Lihat kata sandi');
+    toggle.setAttribute('aria-pressed',visible?'true':'false');
+    pass.focus();
+  };
+  document.getElementById('auth').onsubmit=async e=>{
+    e.preventDefault();
+    const button=document.getElementById('loginSubmit');
+    button.disabled=true;
+    button.textContent='Sedang masuk…';
+    msg('Memeriksa akun…',true);
+    try{
+      const fd=new FormData(e.target);
+      const {error}=await db.auth.signInWithPassword({email:fd.get('email'),password:fd.get('password')});
+      if(error){
+        const detail=String(error.message||'').toLowerCase();
+        msg(detail.includes('invalid login')?'Email atau kata sandi salah.':detail.includes('fetch')||detail.includes('network')?'Koneksi bermasalah. Coba lagi.':'Gagal masuk. Periksa akun atau hubungi Administrator.');
+        return;
+      }
+      await start();
+    }catch(_){msg('Koneksi bermasalah. Coba lagi.')}
+    finally{if(button.isConnected){button.disabled=false;button.textContent='Masuk'}}
+  };
+}
 async function logout(){await db.auth.signOut();session=null;profile=null;login()}
 let legacyDataLoaded=false;
 let dashboardDataLoaded=false;
