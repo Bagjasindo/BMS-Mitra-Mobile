@@ -280,7 +280,7 @@ const NAV_SECTIONS=[
   {label:'Logistik',items:['logistik_kontrak','logistik_pengiriman','logistik_kiriman_luar','logistik_retur_luar','logistik_laporan']},
   {label:'Produksi / PPL',items:['chick_in','recording','kunjungan','estimasi','liga_abk','rekap_produksi','ppl_rhpp_view','laporan']},
   {label:'Marketing',items:['marketing_panen_kontrak','marketing_tambah_daging','marketing_laporan']},
-  {label:'Keuangan',items:['rhpp','rhpp_history','finance_rhpp_real','bop','perawatan_kandang','hutang_supplier','gaji_abk','kasbon','cicilan','bop_umum','bop_expedisi','arus_kas','laporan_keuangan']},
+  {label:'Keuangan',items:['rhpp','rhpp_history','finance_rhpp_real','bop','perawatan_kandang','hutang_supplier','gaji_abk','kasbon','cicilan','bop_umum','arus_kas','laporan_keuangan']},
   {label:'Owner',items:['owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report']}
 ];
 const navLabel=(key)=>title[key];
@@ -291,7 +291,14 @@ const navButton=(key)=>{
 };
 function appNav(){
   let html=navButton('dashboard');
-  if(canViewTab('expedisi_usaha'))html+=navButton('expedisi_usaha');
+  const expedisiItems=['expedisi_usaha','bop_expedisi'].filter(canViewTab);
+  if(expedisiItems.length){
+    const expedisiActive=expedisiItems.includes(tab);
+    html+='<details class="nav-group"'+(expedisiActive?' open':'')+'><summary>Expedisi</summary><div class="nav-sub">'+
+      (canViewTab('expedisi_usaha')?navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<'):'')+
+      (canViewTab('bop_expedisi')?navButton('bop_expedisi'):'')+
+      '</div></details>';
+  }
   if(profile?.role==='ADMIN'){
     const adminRhppActive=['rhpp','rhpp_history','arsip_data'].includes(tab);
     html+='<details class="nav-group"'+(adminRhppActive?' open':'')+'><summary>Administrator</summary><div class="nav-sub">'+
