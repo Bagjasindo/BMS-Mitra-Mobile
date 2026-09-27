@@ -1313,13 +1313,13 @@ async function logisticsShippingPage(editId=null){
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_shipments').select('*').order('shipment_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('logistics_shipment_items').select('*').order('created_at',{ascending:false}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at').order('created_at',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at,cycle_type').order('created_at',{ascending:false}),
     db.from('contracts').select('id,number,pre_starter_price,starter_price,finisher_price,doc_price,ovk_price_basis,ovk_price,ovk_vat_percent').is('cycle_id',null)
   ]);
 
   const barns=br.data||[], itemsAll=ir.data||[], shipments=sr.data||[], shipmentItems=sir.data||[], assignments=ar.data||[], masters=kr.data||[];
   const txnShipping=txnListState(shipments,'shipping','shipment_date',5,barns),shownShipments=txnShipping.rows;
-  const activeAssignments=assignments.filter(a=>a.active);
+  const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const selectableBarns=barns.filter(b=>activeByBarn.has(b.id));
   const selected=editId?shipments.find(x=>x.id===editId):null;
@@ -1603,14 +1603,14 @@ async function logisticsExternalShippingPage(editId=null){
     db.from('barns').select('id,code,name,location,active').eq('active',true).order('code',{ascending:true}),
     db.from('suppliers').select('id,code,name,active,supplier_type').eq('active',true).eq('supplier_type','SAPRONAK').order('code',{ascending:true}),
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit,supplier_id,active').eq('active',true).order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,active,start_date').order('created_at',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,active,start_date,cycle_type').order('created_at',{ascending:false}),
     db.from('logistics_external_shipments').select('*').order('shipment_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('logistics_external_shipment_items').select('*').order('created_at',{ascending:false})
   ]);
   const barns=br.data||[], supplierRows=sr.data||[], itemRows=ir.data||[], assignments=ar.data||[];
   const headers=hr.data||[], detailRows=hir.data||[];
   const txnExternal=txnListState(headers,'externalSapronak','shipment_date',5,barns),shownHeaders=txnExternal.rows;
-  const activeAssignments=assignments.filter(a=>a.active);
+  const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const allowedBarns=barns.filter(b=>activeByBarn.has(b.id));
   const selected=editId?headers.find(h=>h.id===editId):null;
@@ -2250,7 +2250,7 @@ async function marketingExternalMeatPage(editId=null){
 async function logisticsExternalReturnPage(editId=null){
   const [br,ar,ir,sr,supr,er,rr,rir,tr]=await Promise.all([
     db.from('barns').select('id,code,name,location,active').eq('active',true).order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,active').order('created_at',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,active,cycle_type').order('created_at',{ascending:false}),
     db.from('items').select('id,code,name,unit,kg_per_unit,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_external_shipments').select('*').order('shipment_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('suppliers').select('id,code,name').eq('supplier_type','SAPRONAK').order('code',{ascending:true}),
@@ -2260,7 +2260,7 @@ async function logisticsExternalReturnPage(editId=null){
     db.from('logistics_external_return_transfers').select('*').order('created_at',{ascending:false})
   ]);
   const barns=br.data||[],assignments=ar.data||[],items=ir.data||[],heads=sr.data||[],suppliers=supr.data||[],details=er.data||[],returns=rr.data||[],returnItems=rir.data||[],transfers=tr.data||[];
-  const activeAssignments=assignments.filter(a=>a.active),activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
+  const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA'),activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const selected=editId?returns.find(r=>r.id===editId):null;
   const selectedItem=selected?returnItems.find(x=>x.external_return_id===selected.id):null;
   const sourceById=new Map(details.map(x=>[x.id,x]));
@@ -2478,13 +2478,13 @@ async function logisticsReturnPage(editId=null){
     db.from('items').select('id,code,name,category,unit,kg_per_unit,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_returns').select('*').order('return_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('logistics_return_items').select('*').order('created_at',{ascending:false}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at').order('created_at',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at,cycle_type').order('created_at',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null)
   ]);
 
   const barns=br.data||[], itemsAll=ir.data||[], returns=rr.data||[], returnItems=rir.data||[], assignments=ar.data||[], masters=kr.data||[];
   const txnReturn=txnListState(returns,'logisticsReturn','return_date',5,barns),shownReturns=txnReturn.rows;
-  const activeAssignments=assignments.filter(a=>a.active);
+  const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const selectableBarns=barns.filter(b=>activeByBarn.has(b.id));
   const selected=editId?returns.find(x=>x.id===editId):null;
