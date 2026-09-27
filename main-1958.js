@@ -4283,7 +4283,11 @@ async function financeBopPage(){
         '<option value="TENAGA_KERJA">Tenaga Kerja</option>'+
         '<option value="TRANSPORTASI">Transportasi</option>'+
         '<option value="LISTRIK">Listrik</option>'+
-        '<option value="GAS">Gas</option>'+\n        '<option value="AIR">Air</option>'+\n        '<option value="SEKAM">Sekam</option>'+\n        '<option value="SANITASI">Sanitasi</option>'+\n        '<option value="OPERASIONAL">Operasional Produksi Lain</option>'+
+        '<option value="GAS">Gas</option>'+
+        '<option value="AIR">Air</option>'+
+        '<option value="SEKAM">Sekam</option>'+
+        '<option value="SANITASI">Sanitasi</option>'+
+        '<option value="OPERASIONAL">Operasional Produksi Lain</option>'+
         '<option value="EKSPEDISI">Ekspedisi</option>'+
         '<option value="LAINNYA">Lainnya</option>'+
       '</select></label>'+
@@ -5448,7 +5452,9 @@ async function ownerProfitLossPage(){
         '<tr><td>RHPP Real</td><td><strong>'+(real?'Rp '+prodFmt(real.amount,0):'MENUNGGU KEUANGAN')+'</strong></td></tr>'+
         '<tr><td>Selisih Real − Sistem</td><td><strong>'+(real?'Rp '+prodFmt(variance,0):'-')+'</strong></td></tr>'+
         '<tr><td>BOP Produksi</td><td><strong>Rp '+prodFmt(bop,0)+'</strong></td></tr>'+
-        '<tr><td>Laba Operasional Produksi</td><td><strong>'+(real?'Rp '+prodFmt(operational,0):'-')+'</strong></td></tr>'+\n        '<tr><td>Perawatan Jangka Panjang</td><td><strong>Rp '+prodFmt(maint,0)+'</strong></td></tr>'+\n        '<tr><td>Laba Bersih Akhir</td><td><strong>'+(real?'Rp '+prodFmt(profit,0):'-')+'</strong></td></tr>'+
+        '<tr><td>Laba Operasional Produksi</td><td><strong>'+(real?'Rp '+prodFmt(operational,0):'-')+'</strong></td></tr>'+
+        '<tr><td>Perawatan Jangka Panjang</td><td><strong>Rp '+prodFmt(maint,0)+'</strong></td></tr>'+
+        '<tr><td>Laba Bersih Akhir</td><td><strong>'+(real?'Rp '+prodFmt(profit,0):'-')+'</strong></td></tr>'+
         '<tr><td>Hasil</td><td><strong>'+resultLabel+'</strong></td></tr>'+
       '</tbody></table></div>'+
       (real?'<p class="muted">RHPP Real diterima '+prodDateId(real.received_on)+'.</p>':'<p class="muted">Perhitungan laba/rugi aktif setelah Keuangan menyimpan RHPP Real.</p>')+
