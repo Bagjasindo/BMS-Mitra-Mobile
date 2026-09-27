@@ -1316,7 +1316,7 @@ async function logisticsShippingPage(editId=null){
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_shipments').select('*').order('shipment_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('logistics_shipment_items').select('*').order('created_at',{ascending:false}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at,cycle_type').order('created_at',{ascending:false}),
+    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at,start_date,cycle_type').order('created_at',{ascending:false}),
     db.from('contracts').select('id,number,pre_starter_price,starter_price,finisher_price,doc_price,ovk_price_basis,ovk_price,ovk_vat_percent').is('cycle_id',null)
   ]);
 
@@ -2476,30 +2476,33 @@ async function logisticsExternalReturnPage(editId=null){
 }
 
 async function logisticsReturnPage(editId=null){
-  const [br,ir,rr,rir,ar,kr]=await Promise.all([
+  const [br,ir,rr,rir,ar,kr,retainedResult,movementResult]=await Promise.all([
     db.from('barns').select('id,code,name,location,kind,active').eq('active',true).order('code',{ascending:true}),
     db.from('items').select('id,code,name,category,unit,kg_per_unit,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_returns').select('*').order('return_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('logistics_return_items').select('*').order('created_at',{ascending:false}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at,cycle_type').order('created_at',{ascending:false}),
-    db.from('contracts').select('id,number').is('cycle_id',null)
+    db.from('contracts').select('id,number').is('cycle_id',null),
+    db.from('logistics_mitra_retained_feed').select('*').order('created_at',{ascending:false}),
+    db.from('logistics_company_feed_movements').select('*').order('created_at',{ascending:false})
   ]);
 
   const barns=br.data||[], itemsAll=ir.data||[], returns=rr.data||[], returnItems=rir.data||[], assignments=ar.data||[], masters=kr.data||[];
+  const retained=retainedResult.data||[],movements=movementResult.data||[];
   const txnReturn=txnListState(returns,'logisticsReturn','return_date',5,barns),shownReturns=txnReturn.rows;
   const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const selectableBarns=barns.filter(b=>activeByBarn.has(b.id));
   const selected=editId?returns.find(x=>x.id===editId):null;
   const selectedAssignment=selected?assignments.find(a=>a.id===selected.contract_assignment_id):null;
-  const locked=selected?selectedAssignment?.active===false:false;
+  const locked=selected?selectedAssignment?.active===false||retained.some(l=>l.return_id===selected.id):false;
   let draftItems=selected?returnItems.filter(x=>x.return_id===selected.id).map(x=>({item_id:x.item_id,quantity:x.quantity,id:x.id})):[];
   window.__logisticsReturnDraftItems=draftItems;
 
   const todayID=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
   let html='<section class="panel"><h3>Retur</h3>'+
-    '<p class="muted">Retur mengikuti Kontrak Logistik aktif. Pilih kandang, tambahkan Sapronak yang diretur, lalu Simpan Draft. Harga Retur mengikuti harga kontrak.</p>'+
+    '<p class="muted">Untuk pakan, isi sisa fisik dan jumlah yang diterima inti. Selisihnya otomatis menjadi stok BMS dengan harga kontrak asal. DOC/OVK menggunakan jumlah retur seperti sebelumnya.</p>'+
     '<form id="logisticsReturnForm" class="form-vertical">'+
       '<input type="hidden" name="return_id" value="'+(selected?esc(selected.id):'')+'">'+
       '<label>Cari / Pilih Kandang<input id="returnBarnSearch" autocomplete="off" placeholder="Contoh: cicurug" value="'+(selected?esc((barns.find(b=>b.id===selected.barn_id)?.code||'')+' · '+(barns.find(b=>b.id===selected.barn_id)?.name||'')):'')+'" '+(locked?'disabled':'')+' required></label>'+
@@ -2516,37 +2519,74 @@ async function logisticsReturnPage(editId=null){
       '<input type="hidden" id="returnItem">'+
       '<div id="returnItemSuggestions" class="search-suggestions"></div>'+
       '<label id="returnQtyLabel">Jumlah Retur<input id="returnQty" data-number="1" inputmode="decimal"></label>'+
+      '<label id="returnAcceptedLabel" style="display:none">Diterima inti<input id="returnAccepted" data-number="1" inputmode="decimal"></label>'+
       '<p id="returnQtyInfo" class="muted"></p>'+
       '<button type="button" id="addReturnItem">Tambah Retur</button>'+
     '</div>';
   }
 
-  html+='<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th>'+(locked?'':'<th>Aksi</th>')+'</tr></thead><tbody id="returnDraftBody"></tbody></table></div>';
-  if(locked) html+='<p><strong>Status: Terkunci</strong> — Kontrak Logistik periode ini sudah CLOSED.</p>';
+  html+='<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Sapronak</th><th>Sisa Fisik</th><th>Diterima Inti</th><th>Stok BMS</th><th>Satuan</th><th>Kg Fisik</th>'+(locked?'':'<th>Aksi</th>')+'</tr></thead><tbody id="returnDraftBody"></tbody></table></div>';
+  if(locked) html+='<p><strong>Status: Terkunci</strong> — Siklus sudah CLOSED atau stok BMS dari retur ini sudah tercatat.</p>';
   else{
     html+='<button type="button" id="saveReturnDraft">Simpan Draft</button>';
     if(selected) html+=' <button type="button" id="cancelReturnEdit">Batal Edit</button>';
   }
   html+='</section>';
 
+  const stockRows=retained.map(l=>{
+    const balance=Number(l.quantity)+movements.filter(m=>m.retained_feed_id===l.id).reduce((n,m)=>n+(m.direction==='OUT'?Number(m.quantity):-Number(m.quantity)),0);
+    return {...l,balance};
+  });
+  html+='<section class="panel"><h3>Stok Pakan BMS dari Retur Mitra</h3><p class="muted">Pilih lot asal dan kandang tujuan. Jika ada sisa di kandang penerima, gunakan arah Kembali ke Stok BMS; nilai per zak tetap harga kontrak asal.</p>'+
+    '<div class="tablewrap"><table><thead><tr><th>Asal</th><th>Pakan</th><th>Stok Gudang</th><th>Harga/Zak</th></tr></thead><tbody>'+
+    stockRows.map(l=>'<tr><td>'+esc(barns.find(b=>b.id===assignments.find(a=>a.id===l.source_assignment_id)?.barn_id)?.name||'-')+'</td><td>'+esc(itemsAll.find(i=>i.id===l.item_id)?.name||'-')+'</td><td>'+fmtNumber(l.balance)+'</td><td>Rp '+fmtNumber(l.unit_price)+'</td></tr>').join('')+'</tbody></table></div>'+
+    (!stockRows.length?'<p>Belum ada stok BMS dari retur Mitra.</p>':'')+
+    '<form id="companyFeedMoveForm" class="form-vertical"><label>Stok asal<select name="lot" required><option value="">Pilih stok</option>'+stockRows.map(l=>'<option value="'+esc(l.id)+'">'+esc((itemsAll.find(i=>i.id===l.item_id)?.name||'-')+' · '+(barns.find(b=>b.id===assignments.find(a=>a.id===l.source_assignment_id)?.barn_id)?.name||'-')+' · sisa '+fmtNumber(l.balance))+'</option>').join('')+'</select></label>'+
+    '<label>Arah<select name="direction"><option value="IN">Kirim ke kandang</option><option value="OUT">Kembali ke stok BMS</option></select></label>'+
+    '<label>Kandang<select name="assignment" required><option value="">Pilih kandang aktif</option>'+assignments.filter(a=>a.active).map(a=>'<option value="'+esc(a.id)+'">'+esc((barns.find(b=>b.id===a.barn_id)?.name||'-')+' · '+(a.cycle_type||'MITRA'))+'</option>').join('')+'</select></label>'+
+    '<label>Jumlah zak<input name="quantity" data-number="1" inputmode="decimal" required></label>'+
+    '<label>Tanggal<input name="date" type="date" value="'+esc(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()))+'" required></label>'+
+    '<label>Referensi<input name="reference"></label><button type="submit">Catat Pemindahan</button></form>'+
+    '<h4>Riwayat Perpindahan</h4><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal Pakan</th><th>Kandang</th><th>Arah</th><th>Jumlah</th><th>Nilai</th><th>Referensi</th></tr></thead><tbody>'+
+    movements.map(m=>{const lot=retained.find(l=>l.id===m.retained_feed_id),cycle=assignments.find(a=>a.id===m.contract_assignment_id);
+      return '<tr><td>'+esc(m.transferred_on||'-')+'</td><td>'+esc(itemsAll.find(i=>i.id===lot?.item_id)?.name||'-')+'</td><td>'+esc(barns.find(b=>b.id===cycle?.barn_id)?.name||'-')+'</td><td>'+esc(m.direction==='IN'?'Ke kandang':'Ke stok BMS')+'</td><td>'+fmtNumber(m.quantity)+'</td><td>Rp '+fmtNumber(Number(m.quantity)*Number(lot?.unit_price||0))+'</td><td>'+esc(m.reference||'-')+'</td></tr>';}).join('')+
+    '</tbody></table></div></section>';
+
   html+='<section class="panel"><h3>Riwayat Retur</h3>'+txnReturn.controls+'<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>Referensi</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
     shownReturns.flatMap(r=>{
       const b=barns.find(x=>x.id===r.barn_id), a=assignments.find(x=>x.id===r.contract_assignment_id);
-      const isLocked=a?.active===false;
+      const isLocked=a?.active===false||retained.some(l=>l.return_id===r.id);
       const details=returnItems.filter(x=>x.return_id===r.id);
       if(!details.length){
-        return ['<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(r.return_date||'-')+'</td><td>'+esc(r.reference||'-')+'</td><td>-</td><td>-</td><td>-</td><td>-</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(isLocked?'<button type="button" data-view-return="'+esc(r.id)+'">Lihat</button>':'<button type="button" data-view-return="'+esc(r.id)+'">Edit</button> <button type="button" data-delete-return="'+esc(r.id)+'">Hapus</button>')+'</td></tr>'];
+        const surplus=retained.filter(l=>l.return_id===r.id),physical=surplus.reduce((n,l)=>n+Number(l.quantity),0);
+        return ['<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(r.return_date||'-')+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(surplus.map(l=>itemsAll.find(i=>i.id===l.item_id)?.name||'-').join(', ')||'-')+'</td><td>'+fmtNumber(physical)+' fisik · 0 inti · '+fmtNumber(physical)+' BMS</td><td>-</td><td>-</td><td>-</td><td>-</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(isLocked?'<button type="button" data-view-return="'+esc(r.id)+'">Lihat</button>':'<button type="button" data-view-return="'+esc(r.id)+'">Edit</button> <button type="button" data-delete-return="'+esc(r.id)+'">Hapus</button>')+'</td></tr>'];
       }
       return details.map((d,idx)=>{
         const i=itemsAll.find(x=>x.id===d.item_id);
-        const kg=d.quantity_kg!=null?d.quantity_kg:(i?.category==='PAKAN'?Number(d.quantity)*Number(i.kg_per_unit||50):null);
-        return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(r.return_date||'-')+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(d.quantity)+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td><td>'+fmtNumber(d.unit_price)+'</td><td>'+fmtNumber(Number(d.quantity||0)*Number(d.unit_price||0))+'</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(idx===0?(isLocked?'<button type="button" data-view-return="'+esc(r.id)+'">Lihat</button>':'<button type="button" data-view-return="'+esc(r.id)+'">Edit</button> <button type="button" data-delete-return="'+esc(r.id)+'">Hapus</button>'):'')+'</td></tr>';
-      });
+        const surplus=retained.find(l=>l.return_item_id===d.id);
+        const physical=Number(d.quantity)+Number(surplus?.quantity||0);
+        const kg=i?.category==='PAKAN'?physical*Number(i.kg_per_unit||50):d.quantity_kg;
+        return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(r.return_date||'-')+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(physical)+(surplus?' fisik · '+fmtNumber(d.quantity)+' inti · '+fmtNumber(surplus.quantity)+' BMS':'')+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td><td>'+fmtNumber(d.unit_price)+'</td><td>'+fmtNumber(Number(d.quantity||0)*Number(d.unit_price||0))+'</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(idx===0?(isLocked?'<button type="button" data-view-return="'+esc(r.id)+'">Lihat</button>':'<button type="button" data-view-return="'+esc(r.id)+'">Edit</button> <button type="button" data-delete-return="'+esc(r.id)+'">Hapus</button>'):'')+'</td></tr>';
+      }).concat(retained.filter(l=>l.return_id===r.id&&!l.return_item_id).map(l=>{
+        const i=itemsAll.find(x=>x.id===l.item_id);
+        return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(r.return_date||'-')+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(l.quantity)+' fisik · 0 inti · '+fmtNumber(l.quantity)+' BMS</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(Number(l.quantity)*Number(i?.kg_per_unit||50))+'</td><td>'+fmtNumber(l.unit_price)+'</td><td>0</td><td>Terkunci</td><td></td></tr>';
+      }));
     }).join('')+
     '</tbody></table></div>'+(!txnReturn.total?'<p>Data Retur tidak ditemukan.</p>':'')+txnReturn.pager+'<p class="muted">Riwayat lengkap tersedia di Laporan Logistik.</p></section>';
 
   layout(html);
   bindNumberInputs();
+  const moveForm=document.getElementById('companyFeedMoveForm');
+  moveForm.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(moveForm),qty=normalizeInputID(fd.get('quantity'));
+    if(qty==null||qty<=0)return msg('Jumlah pemindahan harus lebih dari nol.');
+    const {error}=await db.rpc('move_company_feed_atomic',{
+      p_retained_feed_id:fd.get('lot'),p_contract_assignment_id:fd.get('assignment'),
+      p_direction:fd.get('direction'),p_quantity:qty,p_transferred_on:fd.get('date'),p_reference:fd.get('reference')||null
+    });
+    if(error)return msg(error.message);
+    await logisticsReturnPage();msg('Pemindahan stok BMS tercatat.',true);
+  };
   bindTxnList(txnReturn,()=>logisticsReturnPage());
 
   const returnBarnSearch=document.getElementById('returnBarnSearch');
@@ -2582,6 +2622,7 @@ async function logisticsReturnPage(editId=null){
   const returnItemSearch=document.getElementById('returnItemSearch');
   const returnItemSuggestions=document.getElementById('returnItemSuggestions');
   const returnQty=document.getElementById('returnQty');
+  const returnAccepted=document.getElementById('returnAccepted');
   const returnQtyLabel=document.getElementById('returnQtyLabel');
   const returnQtyInfo=document.getElementById('returnQtyInfo');
   const updateReturnQtyContext=()=>{
@@ -2590,9 +2631,11 @@ async function logisticsReturnPage(editId=null){
     if(!item){
       returnQtyLabel.firstChild.textContent='Jumlah Retur';
       returnQtyInfo.textContent='';
+      document.getElementById('returnAcceptedLabel').style.display='none';
       return;
     }
-    returnQtyLabel.firstChild.textContent='Jumlah Retur ('+(item.unit||'-')+')';
+    returnQtyLabel.firstChild.textContent=(item.category==='PAKAN'?'Sisa Fisik':'Jumlah Retur')+' ('+(item.unit||'-')+')';
+    document.getElementById('returnAcceptedLabel').style.display=item.category==='PAKAN'&&!selected?'':'none';
     if(item.category==='PAKAN'){
       const kg=Number(item.kg_per_unit||50);
       returnQtyInfo.textContent='Pakan: 1 '+(item.unit||'ZAK')+' = '+fmtNumber(kg)+' kg. Total kg dihitung otomatis.';
@@ -2626,7 +2669,7 @@ async function logisticsReturnPage(editId=null){
     body.innerHTML=arr.map((x,idx)=>{
       const i=itemsAll.find(v=>v.id===x.item_id);
       const kg=i?.category==='PAKAN'?Number(x.quantity)*Number(i.kg_per_unit||50):null;
-      return '<tr><td>'+esc(i?.code||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(x.quantity)+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td>'+
+      return '<tr><td>'+esc(i?.code||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(x.quantity)+'</td><td>'+fmtNumber(x.accepted_quantity??x.quantity)+'</td><td>'+fmtNumber(Number(x.quantity)-Number(x.accepted_quantity??x.quantity))+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td>'+
         (locked?'':'<td><button type="button" data-remove-return="'+idx+'">Hapus</button></td>')+'</tr>';
     }).join('');
     if(!locked) body.querySelectorAll('[data-remove-return]').forEach(btn=>btn.onclick=()=>{
@@ -2642,14 +2685,19 @@ async function logisticsReturnPage(editId=null){
       const itemId=returnItem.value;
       const qty=normalizeInputID(returnQty.value);
       if(!itemId||qty==null||qty<=0)return msg('Pilih Sapronak dan isi jumlah retur yang benar.');
+      const isFeed=itemsAll.find(i=>i.id===itemId)?.category==='PAKAN';
+      const accepted=isFeed&&!selected?normalizeInputID(returnAccepted.value):qty;
+      if(accepted==null||accepted<0||accepted>qty)return msg('Jumlah diterima inti boleh nol dan tidak boleh melebihi sisa fisik.');
       const arr=window.__logisticsReturnDraftItems||[];
+      if(!selected&&arr.some(x=>(itemsAll.find(i=>i.id===x.item_id)?.category==='PAKAN')!==isFeed))return msg('Catat retur pakan dan DOC/OVK sebagai dua transaksi terpisah.');
       const exists=arr.find(x=>x.item_id===itemId);
-      if(exists) exists.quantity=Number(exists.quantity)+Number(qty);
-      else arr.push({item_id:itemId,quantity:qty});
+      if(exists){exists.quantity=Number(exists.quantity)+Number(qty);exists.accepted_quantity=Number(exists.accepted_quantity??0)+Number(accepted);}
+      else arr.push({item_id:itemId,quantity:qty,accepted_quantity:accepted});
       returnItem.value='';
       if(returnItemSearch)returnItemSearch.value='';
       if(returnItemSuggestions)returnItemSuggestions.innerHTML='';
       returnQty.value='';
+      if(returnAccepted)returnAccepted.value='';
       updateReturnQtyContext();
       renderDraft();
     };
@@ -2671,14 +2719,15 @@ async function logisticsReturnPage(editId=null){
       if(!arr.length)return msg('Tambahkan minimal satu Sapronak retur.');
 
       const returnId=fd.get('return_id')||null;
-      const {error:saveError}=await db.rpc('save_logistics_return_atomic',{
-        p_id:returnId,
+      const feedSplit=!returnId&&arr.every(x=>itemsAll.find(i=>i.id===x.item_id)?.category==='PAKAN');
+      const {error:saveError}=await db.rpc(feedSplit?'save_mitra_split_return_atomic':'save_logistics_return_atomic',{
+        ...(feedSplit?{}:{p_id:returnId}),
         p_barn_id:barnId,
         p_assignment_id:assignment.id,
         p_return_date:fd.get('return_date'),
         p_reference:fd.get('reference')||null,
         p_notes:fd.get('notes')||null,
-        p_items:arr.map(x=>({item_id:x.item_id,quantity:x.quantity}))
+        p_items:arr.map(x=>feedSplit?{item_id:x.item_id,physical_quantity:x.quantity,accepted_quantity:x.accepted_quantity}:{item_id:x.item_id,quantity:x.quantity})
       });
       if(saveError)return msg(saveError.message);
 
@@ -2697,7 +2746,7 @@ async function logisticsReturnPage(editId=null){
     await logisticsReturnPage();
     msg('Draft retur dihapus.',true);
   });
-  const err=br.error||ir.error||rr.error||rir.error||ar.error||kr.error;
+  const err=br.error||ir.error||rr.error||rir.error||ar.error||kr.error||retainedResult.error||movementResult.error;
   if(err)msg(err.message);
 }
 
@@ -5822,7 +5871,7 @@ async function financeBarnProfitLossPage(){
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>Pendapatan Kandang</span><strong>Rp '+prodFmt(totalRhpp,0)+'</strong><small>RHPP Real Mitra + Penjualan Mandiri</small></div>'+
         '<div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(totalBop,0)+'</strong></div>'+
-        '<div class="rhpp-summary-card"><span>Biaya Sapronak / Tambahan</span><strong>Rp '+prodFmt(totalSapronakLuar+totalTambahDaging,0)+'</strong><small>Sapronak Mitra/Mandiri + tambah daging</small></div>'+
+        '<div class="rhpp-summary-card"><span>Biaya Sapronak / Tambahan</span><strong>Rp '+prodFmt(totalSapronakLuar+totalTambahDaging,0)+'</strong><small>Termasuk stok BMS dari retur dan pemindahan kandang</small></div>'+
         '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(totalNet,0)+'</strong><small>'+finalRows.length+' siklus · perawatan terpisah</small></div>'+
       '</div>'+
       '<div class="tablewrap"><table><thead><tr>'+
@@ -5927,7 +5976,7 @@ async function financeGlobalProfitLossPage(){
     '<div class="tablewrap"><table><thead><tr><th>Komponen</th><th>Nominal</th></tr></thead><tbody>'+
       '<tr><td>Pendapatan Kandang (RHPP Real Mitra + Penjualan Mandiri)</td><td>Rp '+prodFmt(totalRhpp,0)+'</td></tr>'+
       '<tr><td>BOP Produksi</td><td>Rp '+prodFmt(totalBop,0)+'</td></tr>'+
-      '<tr><td>Biaya Sapronak (Mitra / Mandiri)</td><td>Rp '+prodFmt(totalSapronakLuar,0)+'</td></tr>'+
+      '<tr><td>Biaya Sapronak (Mitra / Mandiri, termasuk stok retur BMS)</td><td>Rp '+prodFmt(totalSapronakLuar,0)+'</td></tr>'+
       '<tr><td>Tambah Daging</td><td>Rp '+prodFmt(totalTambahDaging,0)+'</td></tr>'+
       '<tr><td><strong>Laba/Rugi Kandang</strong></td><td><strong>Rp '+prodFmt(labaKandang,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
