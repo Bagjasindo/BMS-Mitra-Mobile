@@ -4794,15 +4794,48 @@ async function financeExpeditionBusinessPage(){
   const destWrap=document.getElementById('fxTripDestinations');
   const addDestBtn=document.getElementById('fxAddDestination');
   const destinationOptions='<option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('');
-  const cargoOptions='<option value="">Pilih Jenis Muatan</option>'+feedItems.map(x=>'<option value="'+esc(x.name.trim())+'">'+esc(x.name.trim()+(x.feed_phase?' · '+x.feed_phase:'')+(x.unit?' · '+String(x.unit).toLowerCase():''))+'</option>').join('');
+  const cargoLabel=x=>x.name.trim()+(x.feed_phase?' · '+x.feed_phase:'')+(x.unit?' · '+String(x.unit).toLowerCase():'');
   const addDestinationRow=()=>{
     if(!destWrap)return;
     const row=document.createElement('div');row.className='fx-destination-row';row.style.cssText='display:flex;flex-direction:column;gap:8px;margin:10px 0;padding:12px;border:1px solid #d7dde5;border-radius:10px;background:#fff';
     row.innerHTML='<label>Tujuan<select class="fx-dest-id" required>'+destinationOptions+'</select></label>'+
-      '<label>Jenis Muatan<select class="fx-dest-cargo" required>'+cargoOptions+'</select></label>'+
+      '<label>Jenis Muatan<input class="fx-dest-cargo-search" autocomplete="off" placeholder="Cari: BFP, CBC, BSC, Tongwai..." required></label>'+
+      '<input type="hidden" class="fx-dest-cargo">'+
+      '<div class="fx-cargo-suggestions search-suggestions"></div>'+
       '<label>Qty<input class="fx-dest-qty" type="text" inputmode="decimal"></label>'+
       '<label>Satuan<select class="fx-dest-unit"><option value="zak">zak</option><option value="kg">kg</option><option value="ekor">ekor</option><option value="unit">unit</option></select></label>'+
       '<button type="button" class="fx-remove-dest">Hapus Tujuan</button>';
+    const cargoSearch=row.querySelector('.fx-dest-cargo-search');
+    const cargoHidden=row.querySelector('.fx-dest-cargo');
+    const cargoSuggestions=row.querySelector('.fx-cargo-suggestions');
+    const renderCargoSuggestions=()=>{
+      const q=String(cargoSearch.value||'').trim().toLowerCase();
+      cargoHidden.value='';
+      if(!q){cargoSuggestions.innerHTML='';return;}
+      const found=feedItems.filter(x=>{
+        const hay=(x.name+' '+(x.feed_phase||'')+' '+(x.unit||'')).toLowerCase();
+        return hay.includes(q);
+      }).slice(0,8);
+      cargoSuggestions.innerHTML=found.length
+        ?found.map(x=>'<button type="button" class="search-suggestion" data-cargo-id="'+esc(x.id)+'"><strong>'+esc(x.name.trim())+'</strong><small>'+esc((x.feed_phase||'')+(x.unit?' · '+String(x.unit).toLowerCase():''))+'</small></button>').join('')
+        :'<div class="search-empty">Jenis muatan tidak ditemukan di Master Sapronak.</div>';
+      cargoSuggestions.querySelectorAll('[data-cargo-id]').forEach(btn=>btn.onclick=()=>{
+        const item=feedItems.find(x=>x.id===btn.dataset.cargoId);
+        if(!item)return;
+        cargoSearch.value=item.name.trim();
+        cargoHidden.value=item.name.trim();
+        cargoSuggestions.innerHTML='';
+      });
+    };
+    cargoSearch.oninput=renderCargoSuggestions;
+    cargoSearch.onfocus=()=>{if(cargoSearch.value)renderCargoSuggestions();};
+    cargoSearch.onblur=()=>setTimeout(()=>{
+      if(!cargoHidden.value){
+        const exact=feedItems.find(x=>x.name.trim().toLowerCase()===String(cargoSearch.value||'').trim().toLowerCase());
+        if(exact){cargoSearch.value=exact.name.trim();cargoHidden.value=exact.name.trim();}
+      }
+      cargoSuggestions.innerHTML='';
+    },180);
     row.querySelector('.fx-remove-dest').onclick=()=>{if(destWrap.children.length>1)row.remove();else msg('Minimal satu tujuan wajib ada.');};
     destWrap.appendChild(row);
   };
@@ -4830,6 +4863,7 @@ async function financeExpeditionBusinessPage(){
       };
     });
     if(!detailData.length||detailData.some(x=>!x.destination_id||!x.destination_name))return msg('Pilih tujuan untuk setiap baris.');
+    if(detailData.some(x=>!x.cargo))return msg('Pilih Jenis Muatan dari hasil pencarian Master Sapronak.');
     if(detailData.some(x=>x.qty!==null&&(x.qty<0||!Number.isFinite(x.qty))))return msg('Qty tujuan tidak valid.');
     const {error}=await db.rpc('finance_save_expedition_trip_atomic',{
       p_trip_date:String(fd.get('trip_date')||''),p_mts_sj:String(fd.get('mts_sj')||'')||null,p_rr:String(fd.get('rr')||'')||null,
