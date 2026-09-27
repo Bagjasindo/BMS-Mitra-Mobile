@@ -5095,7 +5095,7 @@ async function financeExpeditionBopPage(){
           '<td>'+(done?'<span class="pill">SUDAH MASUK</span>':std>0?'<span class="finance-status finance-status-wait">BELUM</span>':'<span class="finance-status finance-status-diff">MASTER KOSONG</span>')+'</td>'+
           '<td>'+(done?'<button type="button" disabled>Sudah Masuk</button>':std>0?'<button type="button" data-post-exp-bop="'+esc(t.id)+'">Masukkan BOP</button>':'<button type="button" disabled>Atur Master Rute</button>')+'</td></tr>';
       }).join('')+
-    '</tbody></table></div></section>'+
+    '</tbody></table></div>'+(trips.length?'':'<p class="muted">Belum ada Trip Expedisi.</p>')+'</section>'+
     '<section class="panel" id="fxBopPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Expedisi</h3></div><div class="report-actions"><button type="button" id="fxBopPrint">Cetak / PDF</button></div></div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Trip</th><th>Rute</th><th>Nominal</th><th>Sumber</th></tr></thead><tbody>'+
       rows.map(x=>{const t=trips.find(t=>t.id===x.trip_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td>'+
