@@ -2890,3 +2890,5 @@ main select.app-select-native{
   .login-shell{align-items:center;padding:14px}
   .login-shell > main.login{padding:22px!important}
 }
+
+.login-shell .login .login-password button{width:88px!important;min-width:88px!important;max-width:88px!important;justify-self:auto!important}
