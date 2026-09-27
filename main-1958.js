@@ -7515,7 +7515,7 @@ async function marketingReports(){
       '<div id="marketingReportBarnSuggestions" class="search-suggestions"></div>'+
       '<button type="button" id="marketingReportAllBarns">Semua Kandang</button>'+
       '<label>Siklus<select name="assignment_id" id="marketingReportCycle" disabled><option value="">Semua Siklus</option></select></label>'+
-      '<label>Jenis<select name="kind"><option value="">Semua</option><option value="PANEN">Panen Kontrak</option><option value="DAGING">Tambah Daging</option></select></label>'+
+      '<label>Jenis<select name="kind"><option value="">Semua</option><option value="PANEN">Panen</option><option value="DAGING">Tambah Daging</option></select></label>'+
       '<button type="submit">Tampilkan</button>'+
     '</form></section>'+
     '<section class="panel" id="marketingReportOutput" style="display:none"><div id="marketingReportSummary"></div>'+
@@ -7535,7 +7535,7 @@ async function marketingReports(){
     const rows=bid?assignments.filter(a=>a.barn_id===bid):[];
     if(marketingReportCycle){
       marketingReportCycle.disabled=!bid;
-      marketingReportCycle.innerHTML='<option value="">Semua Siklus</option>'+rows.map(a=>'<option value="'+esc(a.id)+'">'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'AKTIF':'CLOSED'))+'</option>').join('');
+      marketingReportCycle.innerHTML='<option value="">Semua Siklus</option>'+rows.map(a=>'<option value="'+esc(a.id)+'">'+esc(assignmentCycleLabel(assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · '+(a.active?'AKTIF':'CLOSED'))+'</option>').join('');
     }
   };
   if(marketingReportBarnSearch&&marketingReportBarnId&&marketingReportBarnSuggestions){
@@ -7574,12 +7574,12 @@ async function marketingReports(){
 
     document.getElementById('marketingReportSummary').innerHTML=
       '<div class="tablewrap"><table><tbody>'+
-      '<tr><th>Panen Kontrak</th><td>'+fmtNumber(birds)+' ekor</td><td>'+fmtNumber(harvestKg)+' Kg</td><td>Rp '+fmtNumber(harvestValue)+'</td></tr>'+
+      '<tr><th>Panen</th><td>'+fmtNumber(birds)+' ekor</td><td>'+fmtNumber(harvestKg)+' Kg</td><td>Rp '+fmtNumber(harvestValue)+'</td></tr>'+
       '<tr><th>Tambah Daging</th><td>-</td><td>'+fmtNumber(meatKg)+' Kg</td><td>Rp '+fmtNumber(meatCost)+'</td></tr>'+
       '</tbody></table></div>';
 
-    const harvestTable=filteredHarvests.length?'<section class="report-section-block"><h3>PANEN KONTRAK</h3><div class="tablewrap"><table class="marketingReportTable"><thead><tr><th>Tanggal</th><th>Kandang</th><th>Kontrak</th><th>Ekor</th><th>Kg</th><th>Avg Kg</th><th>Harga/Kg</th><th>Total</th><th>Pembeli</th><th>Referensi</th></tr></thead><tbody>'+
-      filteredHarvests.map(x=>{const b=barns.find(v=>v.id===x.barn_id),a=assignmentById.get(x.contract_assignment_id),k=contractsRows.find(v=>v.id===a?.master_contract_id);return '<tr><td>'+esc(x.harvested_on||'')+'</td><td>'+esc(assignmentIdentity(assignments,barns,contractsRows,a))+'</td><td>'+esc(shortContractLabel(k?.number)||'-')+'</td><td>'+fmtNumber(x.birds)+'</td><td>'+fmtNumber(x.net_weight_kg)+'</td><td>'+fmtNumber(x.avg_weight_kg)+'</td><td>'+fmtNumber(x.price_per_kg)+'</td><td>'+fmtNumber(x.total_amount)+'</td><td>'+esc(x.buyer_name||'-')+'</td><td>'+esc(x.transaction_number||'-')+'</td></tr>';}).join('')+
+    const harvestTable=filteredHarvests.length?'<section class="report-section-block"><h3>PANEN</h3><div class="tablewrap"><table class="marketingReportTable"><thead><tr><th>Tanggal</th><th>Kandang / Siklus</th><th>Jenis</th><th>Ekor</th><th>Kg</th><th>Avg Kg</th><th>Harga/Kg</th><th>Total</th><th>Pembeli</th><th>Referensi</th></tr></thead><tbody>'+
+      filteredHarvests.map(x=>{const b=barns.find(v=>v.id===x.barn_id),a=assignmentById.get(x.contract_assignment_id),k=contractsRows.find(v=>v.id===a?.master_contract_id);return '<tr><td>'+esc(x.harvested_on||'')+'</td><td>'+esc(assignmentIdentity(assignments,barns,contractsRows,a))+'</td><td><strong>'+esc(a?.cycle_type||'MITRA')+'</strong></td><td>'+fmtNumber(x.birds)+'</td><td>'+fmtNumber(x.net_weight_kg)+'</td><td>'+fmtNumber(x.avg_weight_kg)+'</td><td>'+fmtNumber(x.price_per_kg)+'</td><td>'+fmtNumber(x.total_amount)+'</td><td>'+esc(x.buyer_name||'-')+'</td><td>'+esc(x.transaction_number||'-')+'</td></tr>';}).join('')+
       '</tbody></table></div></section>':'';
 
     const meatTable=filteredMeat.length?'<section class="report-section-block"><h3>TAMBAH DAGING</h3><div class="tablewrap"><table class="marketingReportTable"><thead><tr><th>Tanggal</th><th>Kandang</th><th>Kontrak</th><th>Supplier</th><th>Barang</th><th>Kg</th><th>Harga/Kg</th><th>Total</th><th>Referensi</th></tr></thead><tbody>'+
