@@ -4580,14 +4580,15 @@ async function financeBopGeneralPage(){
 
 
 async function financeExpeditionMasterPage(){
-  const [dr,vr,cr,rr]=await Promise.all([
+  const [dr,vr,cr,rr,der]=await Promise.all([
     db.from('expedition_drivers').select('*').order('code',{ascending:true}),
     db.from('expedition_vehicles').select('*').order('plate_number',{ascending:true}),
     db.from('expedition_customers').select('*').order('code',{ascending:true}),
-    db.from('expedition_routes').select('*').order('code',{ascending:true})
+    db.from('expedition_routes').select('*').order('code',{ascending:true}),
+    db.from('expedition_destinations').select('*').order('code',{ascending:true})
   ]);
-  const drivers=dr.data||[],vehicles=vr.data||[],customers=cr.data||[],routes=rr.data||[];
-  const err=[dr,vr,cr,rr].find(x=>x.error)?.error;
+  const drivers=dr.data||[],vehicles=vr.data||[],customers=cr.data||[],routes=rr.data||[],destinations=der.data||[];
+  const err=[dr,vr,cr,rr,der].find(x=>x.error)?.error;
 
   let html='<section class="panel"><h3>Master Data Expedisi</h3><p class="muted">Acuan untuk Data / Operasional dan hasil cetak Invoice Expedisi. Hanya Administrator yang mengubah master.</p></section>'+
     '<section class="panel"><h3>Master Sopir</h3><form id="expDriverForm" class="form-vertical">'+
@@ -4618,6 +4619,16 @@ async function financeExpeditionMasterPage(){
       '<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Zona / Rute</th><th>Harga Trip</th><th>Status</th></tr></thead><tbody>'+
       routes.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.route_name)+'</td><td>Rp '+prodFmt(x.default_trip_price,0)+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div></section>'+
+    '<section class="panel"><h3>Master Tujuan Expedisi</h3><form id="expDestinationForm" class="form-vertical">'+
+      '<label>Kode Tujuan<input name="code" required placeholder="DST-001"></label>'+
+      '<label>Nama Tujuan<input name="name" required placeholder="Kandang Putri A"></label>'+
+      '<label>Alamat / Lokasi<textarea name="address"></textarea></label>'+
+      '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
+      '<label>Catatan<input name="notes"></label>'+
+      '<button type="submit">Simpan Tujuan</button></form>'+
+      '<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Tujuan</th><th>Alamat / Lokasi</th><th>Status</th></tr></thead><tbody>'+
+      destinations.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.address||'-')+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
+      '</tbody></table></div></section>'+
     '<section class="panel"><h3>Master Pelanggan Expedisi</h3><form id="expCustomerForm" class="form-vertical">'+
       '<label>Kode<input name="code" required placeholder="CUST-EXP-001"></label>'+
       '<label>Nama Pelanggan<input name="name" required></label>'+
@@ -4647,6 +4658,17 @@ async function financeExpeditionMasterPage(){
     const {error}=await db.from('expedition_routes').insert({code:String(fd.get('code')||'').trim(),route_name:String(fd.get('route_name')||'').trim(),default_trip_price:price,active:String(fd.get('active'))==='true',notes:String(fd.get('notes')||'')||null});
     if(error)return msg(error.message);await financeExpeditionMasterPage();msg('Master rute tersimpan.',true);
   };
+  const de=document.getElementById('expDestinationForm');if(de)de.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(de);
+    const {error}=await db.from('expedition_destinations').insert({
+      code:String(fd.get('code')||'').trim(),
+      name:String(fd.get('name')||'').trim(),
+      address:String(fd.get('address')||'')||null,
+      active:String(fd.get('active'))==='true',
+      notes:String(fd.get('notes')||'')||null
+    });
+    if(error)return msg(error.message);await financeExpeditionMasterPage();msg('Master tujuan tersimpan.',true);
+  };
   const c=document.getElementById('expCustomerForm');if(c)c.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(c);
     const {error}=await db.from('expedition_customers').insert({code:String(fd.get('code')||'').trim(),name:String(fd.get('name')||'').trim(),address:String(fd.get('address')||'')||null,phone:String(fd.get('phone')||'')||null,tax_number:String(fd.get('tax_number')||'')||null,active:String(fd.get('active'))==='true'});
@@ -4655,7 +4677,7 @@ async function financeExpeditionMasterPage(){
 }
 
 async function financeExpeditionBusinessPage(){
-  const [tr,ir,iir,pr,sr,cpr,dr,vr,cur,rr]=await Promise.all([
+  const [tr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der]=await Promise.all([
     db.from('finance_expedition_trips').select('*').order('trip_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_expedition_invoices').select('*').order('invoice_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_expedition_invoice_items').select('invoice_id,trip_id'),
@@ -4665,11 +4687,12 @@ async function financeExpeditionBusinessPage(){
     db.from('expedition_drivers').select('*').eq('active',true).order('name',{ascending:true}),
     db.from('expedition_vehicles').select('*').eq('active',true).order('plate_number',{ascending:true}),
     db.from('expedition_customers').select('*').eq('active',true).order('name',{ascending:true}),
-    db.from('expedition_routes').select('*').eq('active',true).order('route_name',{ascending:true})
+    db.from('expedition_routes').select('*').eq('active',true).order('route_name',{ascending:true}),
+    db.from('expedition_destinations').select('*').eq('active',true).order('name',{ascending:true})
   ]);
   const trips=tr.data||[],invoices=ir.data||[],links=iir.data||[],payments=pr.data||[],summaries=sr.data||[],company=cpr.data||{};
-  const drivers=dr.data||[],vehicles=vr.data||[],customers=cur.data||[],routes=rr.data||[];
-  const err=[tr,ir,iir,pr,sr,cpr,dr,vr,cur,rr].find(x=>x.error)?.error;
+  const drivers=dr.data||[],vehicles=vr.data||[],customers=cur.data||[],routes=rr.data||[],destinations=der.data||[];
+  const err=[tr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der].find(x=>x.error)?.error;
   const role=profile?.role||'';
   const canOps=['ADMIN','LOGISTIK'].includes(role);
   const canFinance=['ADMIN','KEUANGAN'].includes(role);
@@ -4706,7 +4729,7 @@ async function financeExpeditionBusinessPage(){
         '<label>Sopir<select name="driver" required><option value="">Pilih Sopir</option>'+drivers.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
         '<label>Truk<select name="vehicle" required><option value="">Pilih Kendaraan</option>'+vehicles.map(x=>'<option value="'+esc(x.plate_number)+'">'+esc(x.plate_number+(x.vehicle_type?' · '+x.vehicle_type:''))+'</option>').join('')+'</select></label>'+
         '<label>Zona / Rute<select id="fxRouteSelect" name="route_id" required><option value="">Pilih Rute</option>'+routes.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.route_name+' · Rp '+prodFmt(x.default_trip_price,0))+'</option>').join('')+'</select></label>'+
-        '<input type="hidden" name="zone"><label>Tujuan<input name="destination" required></label>'+
+        '<input type="hidden" name="zone"><label>Tujuan<select name="destination" required><option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
         '<label>Jenis Muatan / Qty<input name="cargo"></label><label>Total Qty<input name="total_qty" type="text" inputmode="decimal" data-number="1"></label>'+
         '<label>Harga Trip<input id="fxTripPrice" name="trip_price" type="text" inputmode="decimal" data-number="1" required readonly></label>'+
         '<label>Tambahan<input name="additional" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
