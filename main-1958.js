@@ -404,62 +404,99 @@ function decorateNavigation(rootEl){
     summary.textContent='';summary.append(icon,label);
   });
 }
-function openMobileSelectPicker(select){
-  document.querySelector('.mobile-select-shade')?.remove();
-  const options=Array.from(select.options).filter(o=>!o.disabled);
-  const shade=document.createElement('div');
-  shade.className='mobile-select-shade';
-  const picker=document.createElement('div');
-  picker.className='mobile-select-picker';
-  picker.setAttribute('role','dialog');
-  picker.setAttribute('aria-modal','true');
-  const label=select.closest('label')?.firstChild?.textContent?.trim()||'Pilih data';
-  picker.innerHTML='<div class="mobile-select-heading"><strong>'+esc(label)+'</strong><button type="button" class="mobile-select-close" aria-label="Tutup pilihan">×</button></div>'+
-    '<input type="search" class="mobile-select-search" placeholder="Cari pilihan" aria-label="Cari pilihan">'+
-    '<div class="mobile-select-options"></div>';
-  const list=picker.querySelector('.mobile-select-options');
-  const draw=(query='')=>{
-    const matches=options.map((o,i)=>({o,i})).filter(({o})=>o.textContent.toLocaleLowerCase('id').includes(query.toLocaleLowerCase('id')));
-    list.innerHTML=matches.length?matches.map(({o,i})=>'<button type="button" data-option-index="'+i+'" class="'+(o.selected?'selected':'')+'">'+esc(o.textContent)+'</button>').join(''):'<p class="muted">Pilihan tidak ditemukan.</p>';
-  };
-  draw();
-  shade.appendChild(picker);
-  document.body.appendChild(shade);
-  const box=select.getBoundingClientRect();
-  const width=Math.min(Math.max(box.width,220),380,window.innerWidth-24);
-  const left=Math.max(12,Math.min(box.left,window.innerWidth-width-12));
-  picker.style.width=width+'px';
-  picker.style.left=left+'px';
-  const height=picker.getBoundingClientRect().height;
-  const below=window.innerHeight-box.bottom-12;
-  const top=below>=Math.min(height,160)||below>=window.innerHeight-box.top?box.bottom+4:box.top-height-4;
-  picker.style.top=Math.max(12,Math.min(top,window.innerHeight-height-12))+'px';
-  const close=()=>{shade.remove();document.removeEventListener('keydown',onKey)};
-  const onKey=e=>{if(e.key==='Escape')close()};
-  document.addEventListener('keydown',onKey);
-  const openedAt=Date.now();
-  shade.onclick=e=>{
-    if(e.target===shade&&Date.now()-openedAt<500)return;
-    if(e.target===shade||e.target.closest('.mobile-select-close'))close();
-  };
-  picker.querySelector('.mobile-select-search')?.addEventListener('input',e=>draw(e.target.value));
-  list.onclick=e=>{
-    const choice=e.target.closest('[data-option-index]');
-    if(!choice)return;
-    select.value=options[Number(choice.dataset.optionIndex)].value;
-    close();
-    select.dispatchEvent(new Event('input',{bubbles:true}));
-    select.dispatchEvent(new Event('change',{bubbles:true}));
-  };
-  picker.querySelector('.mobile-select-close').focus();
+const searchableSelectObservers=[];
+function enhanceSearchableSelects(){
+  root.querySelectorAll('main select:not([multiple])').forEach(select=>{
+    if(select.dataset.searchEnhanced)return;
+    select.dataset.searchEnhanced='1';
+    select.classList.add('app-select-native');
+    const control=document.createElement('span');
+    control.className='app-select-control';
+    const input=document.createElement('input');
+    input.type='search';
+    input.className='app-select-input';
+    input.autocomplete='off';
+    input.setAttribute('role','combobox');
+    input.setAttribute('aria-autocomplete','list');
+    input.setAttribute('aria-expanded','false');
+    const list=document.createElement('span');
+    list.className='app-select-results';
+    list.setAttribute('role','listbox');
+    control.append(input,list);
+    select.insertAdjacentElement('afterend',control);
+    const label=()=>select.selectedOptions[0]?.textContent?.trim()||'';
+    const sync=()=>{
+      input.value=label();
+      input.disabled=select.disabled;
+      input.placeholder='Cari pilihan';
+      input.setAttribute('aria-label',(select.closest('label')?.firstChild?.textContent?.trim()||'Pilih data')+' - cari pilihan');
+    };
+    const close=()=>{list.classList.remove('open');input.setAttribute('aria-expanded','false')};
+    const draw=(query='')=>{
+      const term=query.toLocaleLowerCase('id').trim();
+      const all=Array.from(select.options).filter(o=>!o.disabled&&o.textContent.toLocaleLowerCase('id').includes(term));
+      const matches=all.slice(0,60);
+      list.innerHTML=matches.length?matches.map(o=>{
+        const index=Array.prototype.indexOf.call(select.options,o);
+        return '<button type="button" role="option" aria-selected="'+(o.selected?'true':'false')+'" data-option-index="'+index+'">'+esc(o.textContent.trim())+'</button>';
+      }).join(''):'<span class="app-select-empty">Pilihan tidak ditemukan.</span>';
+      if(all.length>60)list.innerHTML+='<span class="app-select-empty">Ketik lebih spesifik untuk melihat hasil lain.</span>';
+      list.classList.add('open');
+      input.setAttribute('aria-expanded','true');
+    };
+    input.addEventListener('focus',()=>{if(!select.disabled){input.select();draw()}});
+    input.addEventListener('input',()=>{
+      select.value='';
+      input.removeAttribute('aria-invalid');
+      draw(input.value);
+    });
+    input.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){close();input.value=label();input.blur()}
+      if(e.key==='ArrowDown'&&list.classList.contains('open')){e.preventDefault();list.querySelector('button')?.focus()}
+    });
+    list.addEventListener('click',e=>{
+      const choice=e.target.closest('[data-option-index]');
+      if(!choice)return;
+      const option=select.options[Number(choice.dataset.optionIndex)];
+      if(!option)return;
+      select.value=option.value;
+      sync();
+      close();
+      select.dispatchEvent(new Event('input',{bubbles:true}));
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+    list.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){close();input.focus()}
+      if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+        e.preventDefault();
+        const buttons=Array.from(list.querySelectorAll('button'));
+        const index=buttons.indexOf(document.activeElement);
+        buttons[Math.max(0,Math.min(buttons.length-1,index+(e.key==='ArrowDown'?1:-1)))]?.focus();
+      }
+    });
+    select.addEventListener('change',sync);
+    select.addEventListener('invalid',e=>{e.preventDefault();input.setAttribute('aria-invalid','true');input.focus()});
+    const observer=new MutationObserver(sync);
+    observer.observe(select,{childList:true,attributes:true});
+    searchableSelectObservers.push(observer);
+    sync();
+  });
 }
-for(const eventType of ['pointerdown','click'])root.addEventListener(eventType,e=>{
-  const select=e.target.closest('main select');
-  if(!select||select.multiple||select.disabled)return;
-  e.preventDefault();
-  e.stopPropagation();
-  if(!document.querySelector('.mobile-select-shade'))openMobileSelectPicker(select);
-},true);
+let searchableSelectEnhanceQueued=false;
+new MutationObserver(()=>{
+  if(searchableSelectEnhanceQueued)return;
+  searchableSelectEnhanceQueued=true;
+  requestAnimationFrame(()=>{searchableSelectEnhanceQueued=false;enhanceSearchableSelects()});
+}).observe(root,{childList:true,subtree:true});
+document.addEventListener('click',e=>{
+  if(e.target.closest('.app-select-control'))return;
+  document.querySelectorAll('.app-select-results.open').forEach(list=>{
+    list.classList.remove('open');
+    list.previousElementSibling?.setAttribute('aria-expanded','false');
+    const select=list.parentElement?.previousElementSibling;
+    if(select?.tagName==='SELECT')list.previousElementSibling.value=select.selectedOptions[0]?.textContent?.trim()||'';
+  });
+});
 
 function appConfirm(message){
   return new Promise(resolve=>{
@@ -491,6 +528,7 @@ function updateTableScrollHints(){
 window.addEventListener('resize',()=>requestAnimationFrame(updateTableScrollHints));
 
 function layout(content){
+  searchableSelectObservers.splice(0).forEach(observer=>observer.disconnect());
   const navHtml=appNav();
   root.innerHTML=
     '<div class="mobile-topbar">'+
@@ -507,6 +545,7 @@ function layout(content){
       '<main><header><div><h2>'+title[tab]+'</h2><small>'+esc(profile.full_name)+' · '+esc(profile.role)+'</small></div></header><p id="message"></p>'+content+'</main>'+
     '</div>';
   decorateNavigation(root);
+  enhanceSearchableSelects();
   requestAnimationFrame(updateTableScrollHints);
   if(navInitialCollapsePending){root.querySelectorAll('details.nav-group').forEach(d=>d.open=false);navInitialCollapsePending=false;}
   const sidebar=document.getElementById('appSidebar');
