@@ -455,7 +455,7 @@ function openMobileSelectPicker(select){
 }
 for(const eventType of ['pointerdown','click'])root.addEventListener(eventType,e=>{
   const select=e.target.closest('main select');
-  if(!select||select.multiple||select.disabled||!window.matchMedia('(max-width:900px)').matches)return;
+  if(!select||select.multiple||select.disabled)return;
   e.preventDefault();
   e.stopPropagation();
   if(!document.querySelector('.mobile-select-shade'))openMobileSelectPicker(select);
