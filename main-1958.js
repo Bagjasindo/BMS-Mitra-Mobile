@@ -3611,7 +3611,7 @@ async function productionRecapPage(){
   const d=await productionBase();
   const [cpr,pr,fr,...feedResponses]=await Promise.all([
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
-    db.from('profiles').select('user_id,full_name,role,active').eq('role','PPL'),
+    db.rpc('production_ppl_directory'),
     db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
