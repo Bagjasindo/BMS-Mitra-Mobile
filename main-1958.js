@@ -426,7 +426,7 @@ function openMobileSelectPicker(select){
   shade.appendChild(picker);
   document.body.appendChild(shade);
   const box=select.getBoundingClientRect();
-  const width=Math.min(Math.max(box.width,220),window.innerWidth-24);
+  const width=Math.min(Math.max(box.width,220),380,window.innerWidth-24);
   const left=Math.max(12,Math.min(box.left,window.innerWidth-width-12));
   picker.style.width=width+'px';
   picker.style.left=left+'px';
