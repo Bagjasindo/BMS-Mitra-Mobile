@@ -2592,3 +2592,50 @@ form#fxTripForm.form-vertical,
   .mobile-select-options button.selected{background:#17617a;color:#fff}
   .mobile-select-options button:focus-visible{outline:3px solid #66e6ef}
 }
+
+/* Compact anchored mobile picker, aligned to the selected field. */
+@media (max-width:900px){
+  .mobile-select-shade{
+    background:transparent!important;
+    padding:0!important;
+    display:block!important;
+  }
+  .mobile-select-picker{
+    position:fixed!important;
+    bottom:auto!important;
+    width:auto;
+    max-height:min(42dvh,320px)!important;
+    gap:4px!important;
+    padding:6px!important;
+    border:1px solid #aebdc5!important;
+    border-radius:9px!important;
+    background:#fff!important;
+    color:#172a35!important;
+    box-shadow:0 8px 24px rgba(0,0,0,.2)!important;
+  }
+  .mobile-select-heading{padding:2px 4px 5px}
+  .mobile-select-heading strong{font-size:13px!important;color:#344b58!important}
+  .mobile-select-heading .mobile-select-close{
+    width:28px!important;min-width:28px!important;
+    height:28px!important;min-height:28px!important;
+    border-radius:6px!important;
+    background:#edf3f6!important;color:#344b58!important;
+  }
+  .mobile-select-options button{
+    min-height:36px!important;
+    margin:0!important;
+    padding:7px 9px!important;
+    border-radius:4px!important;
+    background:#fff!important;
+    color:#172a35!important;
+    font-size:clamp(13px,3.5vw,15px)!important;
+    font-weight:500!important;
+  }
+  .mobile-select-options button + button{border-top:1px solid #e1e9ed!important}
+  .mobile-select-options button.selected{
+    background:#e8f6f9!important;
+    color:#075369!important;
+    font-weight:700!important;
+  }
+  .mobile-select-options button:hover{background:#edf6f8!important}
+}
