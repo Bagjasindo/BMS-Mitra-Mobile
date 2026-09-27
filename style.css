@@ -2684,3 +2684,66 @@ form#fxTripForm.form-vertical,
   .mobile-select-options button:hover{background:#edf6f8}
   .mobile-select-options button:focus-visible,.mobile-select-search:focus-visible{outline:2px solid #0b90ab}
 }
+
+/* Shared search results and confirmation surfaces. */
+.search-suggestions{
+  max-height:min(42dvh,320px)!important;
+  overflow-y:auto!important;
+  border:1px solid #b7c8d0!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-shadow:0 5px 16px rgba(0,0,0,.09)!important;
+}
+.search-suggestion{
+  min-height:38px!important;
+  padding:8px 10px!important;
+  background:#fff!important;
+  color:#172a35!important;
+  font-size:14px!important;
+  line-height:1.35!important;
+}
+.search-suggestion strong,.search-suggestion small{
+  color:#172a35!important;
+  font-size:13px!important;
+  line-height:1.35!important;
+}
+.search-suggestion:hover,.search-suggestion:focus-visible{
+  background:#e8f6f9!important;
+  outline:2px solid #0b90ab!important;
+}
+.search-empty{padding:10px!important;color:#536a77!important;font-size:13px!important}
+.app-confirm-shade{
+  position:fixed;inset:0;z-index:11000;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(7,23,35,.48);
+}
+.app-confirm{
+  width:min(440px,100%);max-height:80dvh;overflow:auto;
+  padding:20px;border:1px solid #c7d5dc;border-radius:14px;
+  background:#fff;color:#172a35;
+  box-shadow:0 16px 48px rgba(0,0,0,.24);
+}
+.app-confirm h3{margin:0 0 8px;font-size:18px}
+.app-confirm p{margin:0 0 20px;color:#344b58;line-height:1.45;overflow-wrap:anywhere}
+.app-confirm-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.app-confirm-actions button{min-height:42px}
+.app-confirm-actions [data-cancel]{background:#e8eef1;color:#263d49}
+@media(max-width:900px){
+  small,.muted,.pill,.finance-status,
+  .search-suggestion small,.search-empty{
+    font-size:max(12px,3.1vw)!important;
+    line-height:1.35!important;
+  }
+  .search-suggestions{max-height:min(38dvh,290px)!important}
+  .search-suggestion{min-height:40px!important;font-size:clamp(13px,3.5vw,15px)!important}
+  .tablewrap.has-overflow::before{
+    content:"Geser tabel untuk melihat kolom lain →";
+    display:block;position:sticky;left:0;z-index:1;
+    width:max-content;max-width:100%;
+    padding:6px 8px;
+    background:#e8f6f9;color:#075369;
+    border-radius:6px;font-size:12px;font-weight:700;
+  }
+  .app-confirm{padding:16px}
+  .app-confirm-actions button{flex:1 1 120px}
+}
