@@ -178,14 +178,14 @@ const bindTxnList=(x,render)=>{
   if(prev)prev.onclick=()=>{x.st.page=Math.max(0,x.st.page-1);render()};
   if(next)next.onclick=()=>{x.st.page=Math.min(x.pages-1,x.st.page+1);render()};
 };
-const roles={kandang:['ADMIN'],liga_abk:['ADMIN','PPL'],rekap_produksi:['ADMIN','PPL'],item:['ADMIN'],supplier:['ADMIN'],supplier_sapronak:['ADMIN'],supplier_daging:['ADMIN'],kontrak:['ADMIN'],harga_hidup:['ADMIN'],bonus_kontrak:['ADMIN'],standar_performa:['ADMIN'],chick_in:['ADMIN','PPL'],sapronak:['ADMIN','LOGISTIK'],recording:['ADMIN','PPL'],kunjungan:['ADMIN','PPL'],panen:['ADMIN','MARKETING'],ekspedisi:['ADMIN','LOGISTIK','MARKETING'],estimasi:['ADMIN','PPL'],rhpp:['ADMIN','KEUANGAN'],finance_rhpp_real:['ADMIN','KEUANGAN','OWNER'],bop:['ADMIN','KEUANGAN'],perawatan_kandang:['ADMIN','KEUANGAN'],hutang_supplier:['ADMIN','KEUANGAN'],bop_umum:['ADMIN','KEUANGAN'],arus_kas:['ADMIN','KEUANGAN'],laporan_keuangan:['ADMIN','KEUANGAN'],perusahaan:['ADMIN'],karyawan:['ADMIN'],kasbon:['ADMIN','KEUANGAN'],cicilan:['ADMIN','KEUANGAN'],gaji_abk:['ADMIN','KEUANGAN'],expedisi_usaha:['ADMIN','LOGISTIK'],bop_expedisi:['ADMIN','KEUANGAN']};
+const roles={kandang:['ADMIN'],liga_abk:['ADMIN','PPL'],rekap_produksi:['ADMIN','PPL'],item:['ADMIN'],supplier:['ADMIN'],supplier_sapronak:['ADMIN'],supplier_daging:['ADMIN'],kontrak:['ADMIN'],harga_hidup:['ADMIN'],bonus_kontrak:['ADMIN'],standar_performa:['ADMIN'],chick_in:['ADMIN','PPL'],sapronak:['ADMIN','LOGISTIK'],recording:['ADMIN','PPL'],kunjungan:['ADMIN','PPL'],panen:['ADMIN','MARKETING'],ekspedisi:['ADMIN','LOGISTIK','MARKETING'],estimasi:['ADMIN','PPL'],rhpp:['ADMIN','KEUANGAN'],finance_rhpp_real:['ADMIN','KEUANGAN','OWNER'],bop:['ADMIN','KEUANGAN'],perawatan_kandang:['ADMIN','KEUANGAN'],hutang_supplier:['ADMIN','KEUANGAN'],bop_umum:['ADMIN','KEUANGAN'],arus_kas:['ADMIN','KEUANGAN'],laporan_keuangan:['ADMIN','KEUANGAN'],perusahaan:['ADMIN'],karyawan:['ADMIN'],kasbon:['ADMIN','KEUANGAN'],cicilan:['ADMIN','KEUANGAN'],gaji_abk:['ADMIN','KEUANGAN'],expedisi_usaha:['ADMIN','LOGISTIK','KEUANGAN','OWNER'],bop_expedisi:['ADMIN','KEUANGAN']};
 const visibleTabs={
   ADMIN:['dashboard','kandang','item','supplier_sapronak','supplier_daging','kontrak','harga_hidup','bonus_kontrak','standar_performa','reset_klasemen','karyawan','pengguna','perusahaan','logistik_kontrak','logistik_pengiriman','logistik_kiriman_luar','logistik_retur_luar','logistik_retur','logistik_laporan','chick_in','recording','kunjungan','estimasi','liga_abk','rekap_produksi','ppl_rhpp_view','laporan','marketing_panen_kontrak','marketing_tambah_daging','marketing_laporan','rhpp','rhpp_history','finance_rhpp_real','bop','perawatan_kandang','hutang_supplier','bop_umum','expedisi_usaha','bop_expedisi','gaji_abk','kasbon','cicilan','arus_kas','laporan_keuangan','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report','arsip_data','profil'],
   LOGISTIK:['dashboard','logistik_kontrak','logistik_pengiriman','logistik_kiriman_luar','logistik_retur_luar','logistik_retur','expedisi_usaha','logistik_laporan','profil'],
   PPL:['dashboard','kandang','kontrak','harga_hidup','bonus_kontrak','standar_performa','chick_in','recording','kunjungan','estimasi','liga_abk','rekap_produksi','ppl_rhpp_view','laporan','profil'],
   MARKETING:['dashboard','kandang','kontrak','harga_hidup','marketing_panen_kontrak','marketing_tambah_daging','marketing_laporan','profil'],
-  KEUANGAN:['dashboard','rhpp','finance_rhpp_real','bop','perawatan_kandang','hutang_supplier','bop_umum','bop_expedisi','gaji_abk','kasbon','cicilan','arus_kas','laporan_keuangan','profil'],
-  OWNER:['dashboard','finance_rhpp_real','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report']
+  KEUANGAN:['dashboard','expedisi_usaha','rhpp','finance_rhpp_real','bop','perawatan_kandang','hutang_supplier','bop_umum','bop_expedisi','gaji_abk','kasbon','cicilan','arus_kas','laporan_keuangan','profil'],
+  OWNER:['dashboard','expedisi_usaha','finance_rhpp_real','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report']
 };
 const canViewTab=k=>k==='profil'||(profile?.role&&visibleTabs[profile.role]?.includes(k));
 const modules={
@@ -4580,65 +4580,79 @@ async function financeExpeditionBusinessPage(){
   ]);
   const trips=tr.data||[],invoices=ir.data||[],links=iir.data||[],payments=pr.data||[],summaries=sr.data||[],company=cpr.data||{};
   const err=[tr,ir,iir,pr,sr,cpr].find(x=>x.error)?.error;
+  const role=profile?.role||'';
+  const canOps=['ADMIN','LOGISTIK'].includes(role);
+  const canFinance=['ADMIN','KEUANGAN'].includes(role);
+  const canReport=['ADMIN','LOGISTIK','KEUANGAN','OWNER'].includes(role);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const used=new Set(links.map(x=>x.trip_id));
   const unbilled=trips.filter(x=>!used.has(x.id));
   const tripTotal=t=>prodNum(t.trip_price)+prodNum(t.additional)-prodNum(t.deduction);
   const invoiceTrips=id=>links.filter(x=>x.invoice_id===id).map(x=>trips.find(t=>t.id===x.trip_id)).filter(Boolean);
   const sumFor=id=>summaries.find(x=>x.invoice_id===id);
-  const invoiceLabel=id=>{const i=invoices.find(x=>x.id===id),s=sumFor(id);return i?i.invoice_number+' · '+i.customer_name+' · Sisa Rp '+prodFmt(s?.receivable||0,0):'-';};
+  const invoiceLabel=id=>{const i=invoices.find(x=>x.id===id),x=sumFor(id);return i?i.invoice_number+' · '+i.customer_name+' · Sisa Rp '+prodFmt(x?.receivable||0,0):'-';};
+  const totalInvoice=summaries.reduce((n,x)=>n+prodNum(x.invoice_total),0);
+  const totalPaid=summaries.reduce((n,x)=>n+prodNum(x.paid_total),0);
+  const totalReceivable=summaries.reduce((n,x)=>n+prodNum(x.receivable),0);
 
-  let html='<section class="panel"><h3>Tambah Trip Expedisi</h3>'+
-    '<p class="muted">Unit usaha Expedisi berdiri sendiri dan tidak terhubung ke kandang/RHPP internal.</p>'+
-    '<form id="fxTripForm" class="form-vertical">'+
-      '<label>Tanggal<input name="trip_date" type="date" value="'+today+'" required></label>'+
-      '<label>MTS/SJ<input name="mts_sj"></label>'+
-      '<label>RR<input name="rr"></label>'+
-      '<label>Sopir<input name="driver"></label>'+
-      '<label>Truk<input name="vehicle" placeholder="Contoh: D 9399 UA"></label>'+
-      '<label>Zona / Rute<input name="zone" placeholder="Contoh: Cirebon-Majalengka"></label>'+
-      '<label>Tujuan<input name="destination" required></label>'+
-      '<label>Jenis Muatan / Qty<input name="cargo" placeholder="Contoh: BFP Premium 160 zak"></label>'+
-      '<label>Total Qty<input name="total_qty" type="text" inputmode="decimal" data-number="1"></label>'+
-      '<label>Harga Trip<input name="trip_price" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Tambahan<input name="additional" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
-      '<label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
-      ''+
-      '<label>Catatan<textarea name="notes"></textarea></label>'+
-      '<button type="submit">Simpan Trip</button>'+
-    '</form></section>'+
-    '<section class="panel"><h3>Trip Belum Ditagihkan</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>RR</th><th>Sopir</th><th>Truk</th><th>Zona</th><th>Tujuan</th><th>Muatan</th><th>Qty</th><th>Total Trip</th></tr></thead><tbody>'+
-      unbilled.map(t=>'<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.rr||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td>'+esc(t.destination||'-')+'</td><td>'+esc(t.cargo||'-')+'</td><td>'+prodFmt(t.total_qty||0,0)+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('')+
-    '</tbody></table></div>'+(unbilled.length?'':'<p class="muted">Tidak ada trip yang belum ditagihkan.</p>')+'</section>'+
-    '<section class="panel"><h3>Buat Invoice Expedisi</h3>'+
-      '<p class="muted">Pilih satu atau beberapa trip. Total invoice dihitung otomatis dari Harga Trip + Tambahan − Potongan.</p>'+
-      '<form id="fxInvoiceForm" class="form-vertical">'+
-        '<label>No Invoice<input name="invoice_number" placeholder="Contoh: 001/BMS-BSI/FMC/2026" required></label>'+
-        '<label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
-        '<label>Jatuh Tempo<input name="due_date" type="date"></label>'+
-        '<label>Tagihan Kepada<input name="customer_name" required></label>'+
-        '<label>Alamat Pelanggan<textarea name="customer_address"></textarea></label>'+
-        '<fieldset><legend>Pilih Trip</legend>'+
+  let html='<section class="panel"><h3>Expedisi</h3><p class="muted"><strong>Unit usaha terpisah dari RHPP/Kandang.</strong> '+
+    (role==='LOGISTIK'?'Logistik mengelola Trip dan Invoice.':role==='KEUANGAN'?'Keuangan mengelola Pembayaran, Piutang dan BOP Expedisi.':role==='OWNER'?'Owner melihat laporan Expedisi.':'Administrator memiliki akses penuh.')+
+    '</p></section>';
+
+  if(canReport){
+    html+='<section class="panel"><h3>Ringkasan Expedisi</h3><div class="rhpp-summary-cards">'+
+      '<div class="rhpp-summary-card"><span>Total Invoice</span><strong>Rp '+prodFmt(totalInvoice,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Kas Diterima</span><strong>Rp '+prodFmt(totalPaid,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Piutang</span><strong>Rp '+prodFmt(totalReceivable,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Trip Belum Ditagihkan</span><strong>'+unbilled.length+'</strong></div>'+
+    '</div></section>';
+  }
+
+  if(canOps){
+    html+='<section class="panel"><h3>Tambah Trip Expedisi</h3>'+
+      '<form id="fxTripForm" class="form-vertical">'+
+        '<label>Tanggal<input name="trip_date" type="date" value="'+today+'" required></label>'+
+        '<label>MTS/SJ<input name="mts_sj"></label><label>RR<input name="rr"></label>'+
+        '<label>Sopir<input name="driver"></label><label>Truk<input name="vehicle"></label>'+
+        '<label>Zona / Rute<input name="zone"></label><label>Tujuan<input name="destination" required></label>'+
+        '<label>Jenis Muatan / Qty<input name="cargo"></label><label>Total Qty<input name="total_qty" type="text" inputmode="decimal" data-number="1"></label>'+
+        '<label>Harga Trip<input name="trip_price" type="text" inputmode="decimal" data-number="1" required></label>'+
+        '<label>Tambahan<input name="additional" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
+        '<label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
+        '<label>Catatan<textarea name="notes"></textarea></label><button type="submit">Simpan Trip</button>'+
+      '</form></section>'+
+      '<section class="panel"><h3>Trip Belum Ditagihkan</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th></tr></thead><tbody>'+
+        unbilled.map(t=>'<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.destination||'-')+'</td><td>'+esc(t.cargo||'-')+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('')+
+      '</tbody></table></div>'+(unbilled.length?'':'<p class="muted">Tidak ada trip yang belum ditagihkan.</p>')+'</section>'+
+      '<section class="panel"><h3>Buat Invoice Expedisi</h3><form id="fxInvoiceForm" class="form-vertical">'+
+        '<label>No Invoice<input name="invoice_number" required></label><label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
+        '<label>Jatuh Tempo<input name="due_date" type="date"></label><label>Tagihan Kepada<input name="customer_name" required></label>'+
+        '<label>Alamat Pelanggan<textarea name="customer_address"></textarea></label><fieldset><legend>Pilih Trip</legend>'+
           unbilled.map(t=>'<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="trip_ids" value="'+esc(t.id)+'"><span>'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-')+' · '+t.destination+' · Rp '+prodFmt(tripTotal(t),0))+'</span></label>').join('')+
           (unbilled.length?'':'<p class="muted">Belum ada trip tersedia.</p>')+
-        '</fieldset>'+
-        '<label>Catatan<textarea name="notes"></textarea></label>'+
-        '<button type="submit" '+(!unbilled.length?'disabled':'')+'>Buat Invoice</button>'+
-      '</form></section>'+
-    '<section class="panel"><h3>Invoice Expedisi</h3><div class="tablewrap"><table><thead><tr><th>No Invoice</th><th>Tanggal</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Piutang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
-      summaries.map(s=>'<tr><td>'+esc(s.invoice_number)+'</td><td>'+prodDateId(s.invoice_date)+'</td><td>'+esc(s.customer_name)+'</td><td>Rp '+prodFmt(s.invoice_total,0)+'</td><td>Rp '+prodFmt(s.paid_total,0)+'</td><td>Rp '+prodFmt(s.receivable,0)+'</td><td>'+esc(s.status)+'</td><td><button type="button" data-fx-print="'+esc(s.invoice_id)+'">Cetak</button></td></tr>').join('')+
-    '</tbody></table></div>'+(summaries.length?'':'<p class="muted">Belum ada invoice Expedisi.</p>')+'</section>'+
-    '<section class="panel"><h3>Pembayaran Invoice Expedisi</h3><form id="fxPaymentForm" class="form-vertical">'+
-      '<label>Invoice<select name="invoice_id" required><option value="">Pilih Invoice</option>'+summaries.filter(s=>prodNum(s.receivable)>0&&s.status!=='VOID').map(s=>'<option value="'+esc(s.invoice_id)+'">'+esc(invoiceLabel(s.invoice_id))+'</option>').join('')+'</select></label>'+
-      '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
-      '<label>Nominal<input name="amount" id="fxBopAmount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Metode<input name="method" placeholder="Transfer / Tunai"></label>'+
-      ''+
-      '<label>Catatan<textarea name="notes"></textarea></label>'+
-      '<button type="submit">Simpan Pembayaran</button>'+
-    '</form></section>';
+        '</fieldset><label>Catatan<textarea name="notes"></textarea></label><button type="submit" '+(!unbilled.length?'disabled':'')+'>Buat Invoice</button>'+
+      '</form></section>';
+  }
+
+  html+='<section class="panel" id="fxInvoiceReport"><div class="rhpp-section-head"><div><h3>Invoice & Piutang Expedisi</h3></div><div class="report-actions"><button type="button" id="fxReportPrint">Cetak / PDF</button></div></div>'+
+    '<div class="tablewrap"><table><thead><tr><th>No Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Piutang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+      summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+prodDateId(x.invoice_date)+'</td><td>'+(x.due_date?prodDateId(x.due_date):'-')+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td><td><button type="button" data-fx-print="'+esc(x.invoice_id)+'">Cetak Invoice</button></td></tr>').join('')+
+    '</tbody></table></div>'+(summaries.length?'':'<p class="muted">Belum ada invoice Expedisi.</p>')+'</section>';
+
+  if(canFinance){
+    html+='<section class="panel"><h3>Pembayaran Invoice Expedisi</h3><p class="muted">Pembayaran hanya dapat dicatat oleh Keuangan / Administrator.</p>'+
+      '<form id="fxPaymentForm" class="form-vertical">'+
+        '<label>Invoice<select name="invoice_id" required><option value="">Pilih Invoice</option>'+summaries.filter(x=>prodNum(x.receivable)>0&&x.status!=='VOID').map(x=>'<option value="'+esc(x.invoice_id)+'">'+esc(invoiceLabel(x.invoice_id))+'</option>').join('')+'</select></label>'+
+        '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
+        '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
+        '<label>Metode<select name="method"><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option></select></label>'+
+        '<label>Referensi<input name="reference" placeholder="Opsional"></label><label>Catatan<textarea name="notes"></textarea></label>'+
+        '<button type="submit">Simpan Pembayaran</button></form></section>';
+  }
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+
+  const reportPrint=document.getElementById('fxReportPrint');if(reportPrint)reportPrint.onclick=()=>printFinanceDocument('fxInvoiceReport','Laporan Invoice dan Piutang Expedisi');
 
   const tf=document.getElementById('fxTripForm');
   if(tf)tf.onsubmit=async ev=>{
@@ -4666,25 +4680,27 @@ async function financeExpeditionBusinessPage(){
 
   const pf=document.getElementById('fxPaymentForm');
   if(pf)pf.onsubmit=async ev=>{
-    ev.preventDefault();const fd=new FormData(pf),id=String(fd.get('invoice_id')||''),amount=normalizeInputID(fd.get('amount')),s=summaries.find(x=>x.invoice_id===id);
-    if(!s)return msg('Pilih invoice.');if(amount===null||amount<=0||amount>prodNum(s.receivable))return msg('Nominal pembayaran tidak valid atau melebihi piutang.');
-    const {error}=await db.from('finance_expedition_payments').insert({invoice_id:id,paid_on:fd.get('paid_on'),amount,method:fd.get('method')||null,reference:null,notes:fd.get('notes')||null});
+    ev.preventDefault();const fd=new FormData(pf),id=String(fd.get('invoice_id')||''),amount=normalizeInputID(fd.get('amount'));
+    const x=summaries.find(v=>v.invoice_id===id);
+    if(!x)return msg('Pilih invoice.');
+    if(amount===null||amount<=0||amount>prodNum(x.receivable))return msg('Nominal pembayaran tidak valid atau melebihi piutang.');
+    const {error}=await db.rpc('finance_save_expedition_payment_atomic',{
+      p_invoice_id:id,p_paid_on:String(fd.get('paid_on')||''),p_amount:amount,
+      p_method:String(fd.get('method')||'TRANSFER'),p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null
+    });
     if(error)return msg(error.message);
-    if(Math.abs(amount-prodNum(s.receivable))<0.001)await db.from('finance_expedition_invoices').update({status:'PAID'}).eq('id',id);
-    await financeExpeditionBusinessPage();msg('Pembayaran invoice Expedisi berhasil disimpan.',true);
+    await financeExpeditionBusinessPage();msg('Pembayaran Expedisi tersimpan dan piutang diperbarui.',true);
   };
 
   document.querySelectorAll('[data-fx-print]').forEach(btn=>btn.onclick=()=>{
-    const id=btn.dataset.fxPrint,i=invoices.find(x=>x.id===id),its=invoiceTrips(id),s=sumFor(id);if(!i)return;
-    const rows=its.map((t,idx)=>'<tr><td>'+(idx+1)+'</td><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.rr||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td>'+esc(t.destination||'-')+'</td><td>'+esc(t.cargo||'-')+'</td><td>'+prodFmt(t.total_qty||0,0)+'</td><td>Rp '+prodFmt(t.trip_price,0)+'</td><td>Rp '+prodFmt(t.additional,0)+'</td><td>Rp '+prodFmt(t.deduction,0)+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('');
+    const id=btn.dataset.fxPrint,i=invoices.find(x=>x.id===id),its=invoiceTrips(id),x=sumFor(id);if(!i)return;
+    const rows=its.map((t,idx)=>'<tr><td>'+(idx+1)+'</td><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.destination||'-')+'</td><td>'+esc(t.cargo||'-')+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('');
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write('<html><head><meta charset="utf-8"><title>'+esc(i.invoice_number)+'</title><style>body{font-family:Arial,sans-serif;padding:24px;font-size:12px}h1{text-align:right}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #ccc;padding:5px}th{background:#eee}.head{display:flex;justify-content:space-between}.total{text-align:right;font-size:18px;font-weight:bold;margin-top:14px}</style></head><body>'+
-      '<div class="head"><div><h2>'+esc(company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2><div>'+esc(company.address||'')+'</div></div><div><h1>INVOICE</h1><div>No: '+esc(i.invoice_number)+'</div><div>Tanggal: '+prodDateId(i.invoice_date)+'</div><div>Jatuh Tempo: '+(i.due_date?prodDateId(i.due_date):'-')+'</div></div></div>'+
-      '<hr><h3>Tagihan Kepada:</h3><strong>'+esc(i.customer_name)+'</strong><div>'+esc(i.customer_address||'')+'</div>'+
-      '<table><thead><tr><th>No</th><th>Tanggal</th><th>MTS/SJ</th><th>RR</th><th>Sopir</th><th>Truk</th><th>Zona</th><th>Tujuan</th><th>Jenis Pakan / Qty</th><th>Total Qty</th><th>Harga Trip</th><th>Tambahan</th><th>Potongan</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div class="total">TOTAL INVOICE &nbsp; Rp '+prodFmt(s?.invoice_total||0,0)+'</div>'+
-      '<h3>PEMBAYARAN</h3><div>Bank: '+esc(company.bank_name||'-')+'</div><div>No. Rekening: '+esc(company.bank_account_number||'-')+'</div><div>a.n. '+esc(company.bank_account_name||company.company_name||company.legal_name||'-')+'</div>'+
-      '</body></html>');
+    w.document.write('<html><head><meta charset="utf-8"><title>'+esc(i.invoice_number)+'</title><style>body{font-family:Arial,sans-serif;padding:24px;font-size:12px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #ccc;padding:6px}th{background:#eee}.head{display:flex;justify-content:space-between}.total{text-align:right;font-size:18px;font-weight:bold;margin-top:14px}</style></head><body>'+
+      '<div class="head"><div><h2>'+esc(company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2><div>'+esc(company.address||'')+'</div></div><div><h1>INVOICE</h1><div>No: '+esc(i.invoice_number)+'</div><div>Tanggal: '+prodDateId(i.invoice_date)+'</div></div></div>'+
+      '<hr><h3>Tagihan Kepada</h3><strong>'+esc(i.customer_name)+'</strong><div>'+esc(i.customer_address||'')+'</div>'+
+      '<table><thead><tr><th>No</th><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="total">TOTAL INVOICE Rp '+prodFmt(x?.invoice_total||0,0)+'</div></body></html>');
     w.document.close();setTimeout(()=>{w.focus();w.print();},400);
   });
 }
