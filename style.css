@@ -2836,3 +2836,57 @@ main select.app-select-native{
   .app-select-results{width:100%;max-height:min(34dvh,240px)}
   .app-select-results button{min-height:40px!important;font-size:clamp(13px,3.5vw,15px)!important}
 }
+
+/* Centered login card across desktop and phone. */
+.login-shell{
+  min-height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:clamp(16px,4vw,32px);
+  background:#f3f6f8;
+}
+.login-shell > main.login{
+  display:block!important;
+  width:min(440px,100%)!important;
+  min-width:0!important;
+  max-width:440px!important;
+  margin:0!important;
+  padding:clamp(22px,4vw,32px)!important;
+  overflow:visible!important;
+  border:1px solid #d7e3e9!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  color:#172a35!important;
+  box-shadow:0 16px 44px rgba(18,48,63,.10)!important;
+}
+.login-shell .login h1{margin:0 0 8px;font-size:clamp(24px,5vw,30px);color:#172a35}
+.login-shell .login p{margin:0 0 20px;color:#536a77;line-height:1.45}
+.login-shell .login form{width:100%!important;max-width:none!important;display:grid!important;gap:14px!important}
+.login-shell .login label{font-size:14px!important;font-weight:600!important;color:#344b58!important}
+.login-shell .login input{
+  min-height:44px!important;
+  background:#fff!important;color:#172a35!important;
+  border:1px solid #bfcfd7!important;
+}
+.login-password{display:flex;align-items:stretch;position:relative;width:100%}
+.login-password input{padding-right:112px!important}
+.login-password button{
+  position:absolute;right:5px;top:5px;bottom:5px;
+  min-height:34px!important;
+  padding:5px 10px!important;
+  border-radius:6px!important;
+  background:#e8f3f6!important;color:#075369!important;
+  font-size:13px!important;
+}
+.login-shell #loginSubmit{
+  width:100%!important;min-height:44px!important;
+  background:#16a9c2!important;color:#fff!important;
+  font-size:15px!important;
+}
+.login-shell #loginSubmit:disabled{opacity:.65}
+.login-shell #message{min-height:20px;margin:12px 0 0}
+.login-shell .login footer{padding:18px 0 0;text-align:center;color:#718b99}
+@media(max-width:480px){
+  .login-shell{align-items:center;padding:14px}
+  .login-shell > main.login{padding:22px!important}
+}
