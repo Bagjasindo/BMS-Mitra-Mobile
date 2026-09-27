@@ -4491,9 +4491,10 @@ async function financeBopPage(){
         '<div class="report-actions"><button type="submit">Tampilkan</button><button type="button" id="bopKandangReset">Reset</button></div>'+
       '</form>'+
       (st.shown?
-        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang / Siklus</th><th>Status</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th></tr></thead><tbody>'+
-          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(assignmentText(x.contract_assignment_id))+'</td><td>'+(a?.active?'PROSES':'CLOSED')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+'</td></tr>';}).join('')+
-        '</tbody></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
+        '<div class="rhpp-summary-card"><span>Total BOP</span><strong>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</strong></div>'+
+        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+
+          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td></tr>';}).join('')+
+        '</tbody><tfoot><tr><th colspan="3">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
 
