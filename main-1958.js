@@ -5410,18 +5410,19 @@ async function financeRhppRealPage(){
 }
 
 async function ownerProfitLossPage(){
-  const [sr,rr,br,ar,cr,bopr]=await Promise.all([
+  const [sr,rr,br,ar,cr,bopr,mr]=await Promise.all([
     db.from('rhpp_system_final').select('*').order('created_at',{ascending:false}),
     db.from('rhpp_real').select('*').order('created_at',{ascending:false}),
     db.from('barns').select('id,code,name'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
     db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('bop').select('contract_assignment_id,amount')
+    db.from('bop').select('contract_assignment_id,amount'),
+    db.from('barn_maintenance_costs').select('contract_assignment_id,amount')
   ]);
-  const systems=sr.data||[],reals=rr.data||[],barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],bops=bopr.data||[];
-  const err=[sr,rr,br,ar,cr,bopr].find(x=>x.error)?.error;
+  const systems=sr.data||[],reals=rr.data||[],barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],bops=bopr.data||[],maintenance=mr.data||[];
+  const err=[sr,rr,br,ar,cr,bopr,mr].find(x=>x.error)?.error;
 
-  let html='<section class="panel"><h3>Owner · Laba/Rugi per Kandang</h3><p class="muted">Dasar Owner: RHPP Real yang diterima Keuangan dikurangi BOP kandang. RHPP Sistem tetap ditampilkan sebagai pembanding dan tidak diubah.</p></section>';
+  let html='<section class="panel"><h3>Owner · Laba/Rugi per Kandang</h3><p class="muted">Owner melihat dua hasil: hasil operasional produksi tanpa perawatan jangka panjang, lalu hasil bersih akhir setelah perawatan dihitung.</p></section>';
   if(!systems.length){
     html+='<section class="panel"><p>Belum ada RHPP Sistem Final dari Administrator.</p></section>';
     layout(html);if(err)msg(err.message);return;
@@ -5434,7 +5435,9 @@ async function ownerProfitLossPage(){
     const real=reals.find(x=>x.contract_assignment_id===s.contract_assignment_id);
     const bop=bops.filter(x=>x.contract_assignment_id===s.contract_assignment_id).reduce((n,x)=>n+prodNum(x.amount),0);
     const variance=real?prodNum(real.amount)-prodNum(s.system_amount):null;
-    const profit=real?prodNum(real.amount)-bop:null;
+    const maint=maintenance.filter(x=>x.contract_assignment_id===s.contract_assignment_id).reduce((n,x)=>n+prodNum(x.amount),0);
+    const operational=real?prodNum(real.amount)-bop:null;
+    const profit=operational===null?null:operational-maint;
     const resultLabel=profit===null?'MENUNGGU RHPP REAL':profit>0?'LABA':profit<0?'RUGI':'IMPAS';
 
     html+='<section class="panel">'+
@@ -5444,8 +5447,8 @@ async function ownerProfitLossPage(){
         '<tr><td>RHPP Sistem Final</td><td><strong>Rp '+prodFmt(s.system_amount,0)+'</strong></td></tr>'+
         '<tr><td>RHPP Real</td><td><strong>'+(real?'Rp '+prodFmt(real.amount,0):'MENUNGGU KEUANGAN')+'</strong></td></tr>'+
         '<tr><td>Selisih Real − Sistem</td><td><strong>'+(real?'Rp '+prodFmt(variance,0):'-')+'</strong></td></tr>'+
-        '<tr><td>BOP Kandang</td><td><strong>Rp '+prodFmt(bop,0)+'</strong></td></tr>'+
-        '<tr><td>RHPP Real − BOP</td><td><strong>'+(real?'Rp '+prodFmt(profit,0):'-')+'</strong></td></tr>'+
+        '<tr><td>BOP Produksi</td><td><strong>Rp '+prodFmt(bop,0)+'</strong></td></tr>'+
+        '<tr><td>Laba Operasional Produksi</td><td><strong>'+(real?'Rp '+prodFmt(operational,0):'-')+'</strong></td></tr>'+<tr><td>Perawatan Jangka Panjang</td><td><strong>Rp '+prodFmt(maint,0)+'</strong></td></tr>'+<tr><td>Laba Bersih Akhir</td><td><strong>'+(real?'Rp '+prodFmt(profit,0):'-')+'</strong></td></tr>'+
         '<tr><td>Hasil</td><td><strong>'+resultLabel+'</strong></td></tr>'+
       '</tbody></table></div>'+
       (real?'<p class="muted">RHPP Real diterima '+prodDateId(real.received_on)+'.</p>':'<p class="muted">Perhitungan laba/rugi aktif setelah Keuangan menyimpan RHPP Real.</p>')+
