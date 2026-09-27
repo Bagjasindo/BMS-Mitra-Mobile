@@ -291,14 +291,6 @@ const navButton=(key)=>{
 };
 function appNav(){
   let html=navButton('dashboard');
-  const expedisiItems=['expedisi_usaha','bop_expedisi'].filter(canViewTab);
-  if(expedisiItems.length){
-    const expedisiActive=expedisiItems.includes(tab);
-    html+='<details class="nav-group"'+(expedisiActive?' open':'')+'><summary>Expedisi</summary><div class="nav-sub">'+
-      (canViewTab('expedisi_usaha')?navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<'):'')+
-      (canViewTab('bop_expedisi')?navButton('bop_expedisi'):'')+
-      '</div></details>';
-  }
   if(profile?.role==='ADMIN'){
     const adminRhppActive=['rhpp','rhpp_history','arsip_data'].includes(tab);
     html+='<details class="nav-group"'+(adminRhppActive?' open':'')+'><summary>Administrator</summary><div class="nav-sub">'+
@@ -333,6 +325,16 @@ function appNav(){
       return navButton(key);
     }).join('');
     html+='<details class="nav-group"'+open+'><summary>'+esc(section.label)+'</summary><div class="nav-sub">'+itemHtml+'</div></details>';
+    if(section.label==='Logistik'){
+      const expedisiItems=['expedisi_usaha','bop_expedisi'].filter(canViewTab);
+      if(expedisiItems.length){
+        const expedisiActive=expedisiItems.includes(tab);
+        html+='<details class="nav-group"'+(expedisiActive?' open':'')+'><summary>Expedisi</summary><div class="nav-sub">'+
+          (canViewTab('expedisi_usaha')?navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<'):'')+
+          (canViewTab('bop_expedisi')?navButton('bop_expedisi'):'')+
+          '</div></details>';
+      }
+    }
   }
   html+=navButton('profil');
   return html;
