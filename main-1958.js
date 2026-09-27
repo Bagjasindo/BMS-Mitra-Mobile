@@ -236,6 +236,7 @@ async function start(){
 }
 function login(){
   root.innerHTML='<div class="login-shell"><main class="login">'+
+    '<img class="login-logo" src="./assets/bms_login_logo.jpg" alt="Logo BMS">'+
     '<h1>BMS Mobile</h1><p>Masuk dengan akun yang diberikan Administrator.</p>'+
     '<form id="auth">'+
       '<label>Email<input name="email" type="email" required autocomplete="username"></label>'+
@@ -616,6 +617,7 @@ async function printFinanceDocument(sectionIds,heading){
   const {data:company,error}=await db.from('company_profile').select('*').eq('id',true).maybeSingle();
   if(error){w.close();return msg(error.message);}
   const cp=company||{};
+  const reportLogo=/Expedisi/i.test(heading||'')?new URL('./assets/bms_express_logo.jpg',location.href).href:(cp.logo_url||BMS_PRINT_LOGO);
   const body=sections.map(el=>{
     const clone=el.cloneNode(true);
     clone.querySelectorAll('button,form,.report-actions').forEach(x=>x.remove());
@@ -629,7 +631,7 @@ async function printFinanceDocument(sectionIds,heading){
     '.rhpp-summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.rhpp-summary-card{border:1px solid #bbb;padding:7px}.rhpp-summary-card span{display:block}.rhpp-summary-card strong{display:block;margin-top:3px}'+
     '.muted{color:#555}.print-gap{height:10px}.tablewrap{overflow:visible}.panel{border:0;padding:0;margin:0}'+
     '</style></head><body>'+
-    '<div class="print-head">'+'<img src="'+esc(cp.logo_url||BMS_PRINT_LOGO)+'" style="max-height:42px;float:right;object-fit:contain">'+
+    '<div class="print-head">'+'<img src="'+esc(reportLogo)+'" style="max-height:42px;float:right;object-fit:contain">'+
     '<h2>'+esc(cp.company_name||cp.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
     (cp.address?'<div>'+esc(cp.address)+'</div>':'')+
     (cp.phone?'<div>Tel/WA: '+esc(cp.phone)+'</div>':'')+
@@ -5162,7 +5164,7 @@ async function financeExpeditionBusinessPage(){
       '<td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>';
     }).join('');
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    const logo=company.logo_url||BMS_PRINT_LOGO;
+    const logo=new URL('./assets/bms_express_logo.jpg',location.href).href;
     const comp=company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih';
     const sign=company.signatory_name||'Bagjasindo Mandiri Sindangkasih';
     w.document.write('<html><head><meta charset="utf-8"><title>'+esc(i.invoice_number)+'</title><style>'+
