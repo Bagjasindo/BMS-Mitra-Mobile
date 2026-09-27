@@ -2,24 +2,14 @@
 -- LIVE APPLICATION DATABASE SCHEMA SNAPSHOT
 -- Source: Supabase project mqqrfhwqgcpkjeaasdsr
 -- Synced: 2026-09-27
--- Scope: public + private application schema; structure only, no production data.
--- This file is generated from the LIVE PostgreSQL catalog for audit/recovery.
+-- Structure only, no production data.
 
 create extension if not exists pgcrypto;
 create schema if not exists private;
 set search_path = public, private, extensions;
 
--- ENUM TYPES
-do $$ begin
-  create type "public"."bms_role" as enum ('ADMIN', 'LOGISTIK', 'PPL', 'MARKETING', 'KEUANGAN', 'OWNER');
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  create type "public"."cycle_state" as enum ('ACTIVE', 'READY_RHPP', 'CLOSED');
-exception when duplicate_object then null;
-end $$;
-
--- TABLES (columns first; constraints added afterward)
+do $$ begin create type "public"."bms_role" as enum ('ADMIN', 'LOGISTIK', 'PPL', 'MARKETING', 'KEUANGAN', 'OWNER'); exception when duplicate_object then null; end $$;
+do $$ begin create type "public"."cycle_state" as enum ('ACTIVE', 'READY_RHPP', 'CLOSED'); exception when duplicate_object then null; end $$;
 create table if not exists public."abk_cycle_salaries" (
   "id" uuid default gen_random_uuid() not null,
   "contract_assignment_id" uuid not null,
@@ -673,1050 +663,266 @@ create table if not exists public."visits" (
   "contract_assignment_id" uuid,
   "barn_id" uuid
 );
-
--- CONSTRAINTS
-do $$ begin
-  alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_advance_deduction_check" CHECK (advance_deduction >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_contract_assignment_id_abk_id_key" UNIQUE (contract_assignment_id, abk_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_gross_salary_check" CHECK (gross_salary >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_net_paid_check" CHECK (net_paid >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_league_settings" add constraint "abk_league_settings_id_check" CHECK (id = true);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_league_settings" add constraint "abk_league_settings_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."abk_league_settings" add constraint "abk_league_settings_updated_by_fkey" FOREIGN KEY (updated_by) REFERENCES auth.users(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."advance_payments" add constraint "advance_payments_advance_id_fkey" FOREIGN KEY (advance_id) REFERENCES advances(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."advance_payments" add constraint "advance_payments_amount_check" CHECK (amount > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."advance_payments" add constraint "advance_payments_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."advances" add constraint "advances_amount_check" CHECK (amount > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."advances" add constraint "advances_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."advances" add constraint "advances_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."advances" add constraint "advances_employee_id_fkey" FOREIGN KEY (employee_id) REFERENCES employees(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."advances" add constraint "advances_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."audit_events" add constraint "audit_events_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."barns" add constraint "barns_capacity_check" CHECK (capacity > 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."barns" add constraint "barns_code_key" UNIQUE (code);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."barns" add constraint "barns_kind_check" CHECK (kind = ANY (ARRAY['OPEN_HOUSE'::text, 'SEMI_CLOSE_HOUSE'::text, 'CLOSE_HOUSE'::text]));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."barns" add constraint "barns_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."bop" add constraint "bop_amount_check" CHECK (amount >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."bop" add constraint "bop_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."bop" add constraint "bop_category_check" CHECK (category = ANY (ARRAY['OVK'::text, 'TENAGA_KERJA'::text, 'TRANSPORTASI'::text, 'LISTRIK'::text, 'PERBAIKAN'::text, 'EKSPEDISI'::text, 'LAINNYA'::text]));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."bop" add constraint "bop_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."bop" add constraint "bop_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."bop" add constraint "bop_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."bop_outside" add constraint "bop_outside_amount_check" CHECK (amount >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."bop_outside" add constraint "bop_outside_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_check" CHECK (doa <= received);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_cycle_id_key" UNIQUE (cycle_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_doa_check" CHECK (doa >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_received_check" CHECK (received >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."chick_ins" add constraint "chick_ins_shipped_check" CHECK (shipped >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."company_profile" add constraint "company_profile_id_check" CHECK (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."company_profile" add constraint "company_profile_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_bonuses" add constraint "contract_bonuses_check" CHECK (max_value IS NULL OR min_value IS NULL OR max_value > min_value);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_bonuses" add constraint "contract_bonuses_contract_id_fkey" FOREIGN KEY (contract_id) REFERENCES contracts(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_bonuses" add constraint "contract_bonuses_metric_check" CHECK (metric = ANY (ARRAY['IP'::text, 'FCR_DIFFERENCE'::text, 'DEPLETION'::text, 'OTHER'::text]));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_bonuses" add constraint "contract_bonuses_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_live_prices" add constraint "contract_live_prices_check" CHECK (max_weight_kg > min_weight_kg);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_live_prices" add constraint "contract_live_prices_contract_id_fkey" FOREIGN KEY (contract_id) REFERENCES contracts(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_live_prices" add constraint "contract_live_prices_contract_id_min_weight_kg_key" UNIQUE (contract_id, min_weight_kg);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_live_prices" add constraint "contract_live_prices_min_weight_kg_check" CHECK (min_weight_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_live_prices" add constraint "contract_live_prices_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contract_live_prices" add constraint "contract_live_prices_price_per_kg_check" CHECK (price_per_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "contracts_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "contracts_cycle_id_key" UNIQUE (cycle_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "contracts_nonnegative_prices" CHECK (doc_price >= 0::numeric AND pre_starter_price >= 0::numeric AND starter_price >= 0::numeric AND finisher_price >= 0::numeric AND ovk_price >= 0::numeric AND harvest_price >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "contracts_number_key" UNIQUE (number);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "contracts_ovk_price_basis_check" CHECK (ovk_price_basis = ANY (ARRAY['FIXED'::text, 'DISTRIBUTOR_PLUS_VAT'::text]));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "contracts_ovk_vat_percent_check" CHECK (ovk_vat_percent >= 0::numeric AND ovk_vat_percent <= 100::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "contracts_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "contracts_source_master_contract_id_fkey" FOREIGN KEY (source_master_contract_id) REFERENCES contracts(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."contracts" add constraint "ovk_basis_valid" CHECK (ovk_price_basis <> 'DISTRIBUTOR_PLUS_VAT'::text OR ovk_vat_percent IS NOT NULL OR cycle_id IS NULL);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."cycles" add constraint "cycles_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."cycles" add constraint "cycles_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."cycles" add constraint "cycles_code_key" UNIQUE (code);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."cycles" add constraint "cycles_initial_population_check" CHECK (initial_population > 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."cycles" add constraint "cycles_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."cycles" add constraint "cycles_ppl_id_fkey" FOREIGN KEY (ppl_id) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."cycles" add constraint "state_dates" CHECK ((state <> 'READY_RHPP'::cycle_state OR ready_at IS NOT NULL) AND (state <> 'CLOSED'::cycle_state OR closed_at IS NOT NULL));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."employees" add constraint "employees_code_key" UNIQUE (code);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."employees" add constraint "employees_kind_check" CHECK (kind = ANY (ARRAY['KARYAWAN'::text, 'ABK'::text]));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."employees" add constraint "employees_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."expeditions" add constraint "expeditions_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."expeditions" add constraint "expeditions_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."expeditions" add constraint "expeditions_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."expeditions" add constraint "expeditions_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_bop" add constraint "finance_expedition_bop_amount_check" CHECK (amount >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_bop" add constraint "finance_expedition_bop_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_bop" add constraint "finance_expedition_bop_trip_id_fkey" FOREIGN KEY (trip_id) REFERENCES finance_expedition_trips(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_invoice_id_fkey" FOREIGN KEY (invoice_id) REFERENCES finance_expedition_invoices(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_invoice_id_trip_id_key" UNIQUE (invoice_id, trip_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_trip_id_fkey" FOREIGN KEY (trip_id) REFERENCES finance_expedition_trips(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_trip_id_key" UNIQUE (trip_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_invoices" add constraint "finance_expedition_invoices_invoice_number_key" UNIQUE (invoice_number);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_invoices" add constraint "finance_expedition_invoices_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_invoices" add constraint "finance_expedition_invoices_status_check" CHECK (status = ANY (ARRAY['DRAFT'::text, 'ISSUED'::text, 'PAID'::text, 'VOID'::text]));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_payments" add constraint "finance_expedition_payments_amount_check" CHECK (amount > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_payments" add constraint "finance_expedition_payments_invoice_id_fkey" FOREIGN KEY (invoice_id) REFERENCES finance_expedition_invoices(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_payments" add constraint "finance_expedition_payments_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_trips" add constraint "finance_expedition_trips_additional_check" CHECK (additional >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_trips" add constraint "finance_expedition_trips_deduction_check" CHECK (deduction >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_trips" add constraint "finance_expedition_trips_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_expedition_trips" add constraint "finance_expedition_trips_trip_price_check" CHECK (trip_price >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."finance_reference_counters" add constraint "finance_reference_counters_pkey" PRIMARY KEY (prefix, ref_date);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."harvests" add constraint "harvests_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."harvests" add constraint "harvests_birds_check" CHECK (birds > 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."harvests" add constraint "harvests_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."harvests" add constraint "harvests_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."harvests" add constraint "harvests_net_weight_kg_check" CHECK (net_weight_kg > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."harvests" add constraint "harvests_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."harvests" add constraint "harvests_price_per_kg_check" CHECK (price_per_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."harvests" add constraint "harvests_transaction_number_key" UNIQUE (transaction_number);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."items" add constraint "items_code_key" UNIQUE (code);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."items" add constraint "items_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."items" add constraint "items_supplier_id_fkey" FOREIGN KEY (supplier_id) REFERENCES suppliers(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_feed_finisher_bags_check" CHECK (feed_finisher_bags IS NULL OR feed_finisher_bags >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_feed_pre_bags_check" CHECK (feed_pre_bags IS NULL OR feed_pre_bags >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_feed_starter_bags_check" CHECK (feed_starter_bags IS NULL OR feed_starter_bags >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_initial_birds_check" CHECK (initial_birds IS NULL OR initial_birds > 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_contract_assignment_id_abk_id_key" UNIQUE (contract_assignment_id, abk_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_master_contract_id_fkey" FOREIGN KEY (master_contract_id) REFERENCES contracts(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_ppl_id_fkey" FOREIGN KEY (ppl_id) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_external_return_id_fkey" FOREIGN KEY (external_return_id) REFERENCES logistics_external_returns(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_external_shipment_item_id_fkey" FOREIGN KEY (external_shipment_item_id) REFERENCES logistics_external_shipment_items(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_quantity_check" CHECK (quantity > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_tra_source_contract_assignment_i_fkey" FOREIGN KEY (source_contract_assignment_id) REFERENCES logistics_contract_assignments(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_tra_target_contract_assignment_i_fkey" FOREIGN KEY (target_contract_assignment_id) REFERENCES logistics_contract_assignments(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfer_external_return_item_id_fkey" FOREIGN KEY (external_return_item_id) REFERENCES logistics_external_return_items(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_quantity_check" CHECK (quantity > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_source_barn_id_fkey" FOREIGN KEY (source_barn_id) REFERENCES barns(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_target_barn_id_fkey" FOREIGN KEY (target_barn_id) REFERENCES barns(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_returns" add constraint "logistics_external_returns_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_returns" add constraint "logistics_external_returns_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_returns" add constraint "logistics_external_returns_external_shipment_id_fkey" FOREIGN KEY (external_shipment_id) REFERENCES logistics_external_shipments(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_returns" add constraint "logistics_external_returns_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_returns" add constraint "logistics_external_returns_status_check" CHECK (status = ANY (ARRAY['DRAFT'::text, 'PARTIAL'::text, 'SENT'::text]));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_returns" add constraint "logistics_external_returns_supplier_id_fkey" FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE RESTRICT;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_external_shipment_id_fkey" FOREIGN KEY (external_shipment_id) REFERENCES logistics_external_shipments(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_purchase_unit_price_check" CHECK (purchase_unit_price >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_quantity_check" CHECK (quantity > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipments" add constraint "logistics_external_shipments_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipments" add constraint "logistics_external_shipments_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipments" add constraint "logistics_external_shipments_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_external_shipments" add constraint "logistics_external_shipments_supplier_id_fkey" FOREIGN KEY (supplier_id) REFERENCES suppliers(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_return_items" add constraint "logistics_return_items_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_return_items" add constraint "logistics_return_items_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_return_items" add constraint "logistics_return_items_quantity_check" CHECK (quantity > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_return_items" add constraint "logistics_return_items_return_id_fkey" FOREIGN KEY (return_id) REFERENCES logistics_returns(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_return_items" add constraint "logistics_return_items_return_id_item_id_key" UNIQUE (return_id, item_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_returns" add constraint "logistics_returns_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_returns" add constraint "logistics_returns_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_returns" add constraint "logistics_returns_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_returns" add constraint "logistics_returns_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_quantity_check" CHECK (quantity > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_shipment_id_fkey" FOREIGN KEY (shipment_id) REFERENCES logistics_shipments(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_shipment_id_item_id_key" UNIQUE (shipment_id, item_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipments" add constraint "logistics_shipments_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipments" add constraint "logistics_shipments_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipments" add constraint "logistics_shipments_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."logistics_shipments" add constraint "logistics_shipments_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_birds_check" CHECK (birds > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_net_weight_kg_check" CHECK (net_weight_kg > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_price_positive" CHECK (price_per_kg > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchase_price_positive" CHECK (purchase_price_per_kg > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_purchase_price_per_kg_check" CHECK (purchase_price_per_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_supplier_id_fkey" FOREIGN KEY (supplier_id) REFERENCES suppliers(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_weight_kg_check" CHECK (weight_kg > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."performance_standards" add constraint "performance_standards_age_days_check" CHECK (age_days >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."performance_standards" add constraint "performance_standards_contract_id_fkey" FOREIGN KEY (contract_id) REFERENCES contracts(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."performance_standards" add constraint "performance_standards_contract_template_age_key" UNIQUE (contract_id, template_name, age_days);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."performance_standards" add constraint "performance_standards_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."performance_standards" add constraint "performance_standards_std_body_weight_g_check" CHECK (std_body_weight_g > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."performance_standards" add constraint "performance_standards_std_fcr_check" CHECK (std_fcr > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."performance_standards" add constraint "performance_standards_std_feed_g_per_bird_check" CHECK (std_feed_g_per_bird >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_result_sizes" add constraint "production_abk_result_sizes_birds_check" CHECK (birds > 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_result_sizes" add constraint "production_abk_result_sizes_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_result_sizes" add constraint "production_abk_result_sizes_result_id_fkey" FOREIGN KEY (result_id) REFERENCES production_abk_results(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_result_sizes" add constraint "production_abk_result_sizes_weight_kg_check" CHECK (weight_kg > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_contract_assignment_id_abk_id_key" UNIQUE (contract_assignment_id, abk_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_feed_finisher_kg_check" CHECK (feed_finisher_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_feed_pre_kg_check" CHECK (feed_pre_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_feed_starter_kg_check" CHECK (feed_starter_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_abk_results" add constraint "production_abk_results_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimate_sizes" add constraint "production_estimate_sizes_birds_check" CHECK (birds > 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimate_sizes" add constraint "production_estimate_sizes_bw_kg_check" CHECK (bw_kg > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimate_sizes" add constraint "production_estimate_sizes_estimate_id_fkey" FOREIGN KEY (estimate_id) REFERENCES production_estimates(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimate_sizes" add constraint "production_estimate_sizes_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimates" add constraint "production_estimates_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimates" add constraint "production_estimates_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimates" add constraint "production_estimates_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimates" add constraint "production_estimates_feed_used_kg_check" CHECK (feed_used_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimates" add constraint "production_estimates_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."production_estimates" add constraint "production_estimates_remaining_birds_check" CHECK (remaining_birds >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."profiles" add constraint "profiles_pkey" PRIMARY KEY (user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."profiles" add constraint "profiles_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recording_weight_samples" add constraint "recording_weight_samples_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recording_weight_samples" add constraint "recording_weight_samples_recording_id_fkey" FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recording_weight_samples" add constraint "recording_weight_samples_weight_g_check" CHECK (weight_g > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_actual_fcr_check" CHECK (actual_fcr > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_age_days_check" CHECK (age_days >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_culling_check" CHECK (culling >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_cycle_id_recorded_on_key" UNIQUE (cycle_id, recorded_on);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_feed_bags_balance_check" CHECK (feed_bags_balance >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_feed_bags_in_check" CHECK (feed_bags_in >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_feed_bags_out_check" CHECK (feed_bags_out >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_feed_item_id_fkey" FOREIGN KEY (feed_item_id) REFERENCES items(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_feed_kg_check" CHECK (feed_kg >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_ip_check" CHECK (ip >= 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_mortality_check" CHECK (mortality >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."recordings" add constraint "recordings_sample_count_check" CHECK (sample_count >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_estimates" add constraint "rhpp_estimates_age_days_check" CHECK (age_days >= 0);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_estimates" add constraint "rhpp_estimates_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_estimates" add constraint "rhpp_estimates_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_estimates" add constraint "rhpp_estimates_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_estimates" add constraint "rhpp_estimates_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_estimates" add constraint "rhpp_estimates_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_real" add constraint "rhpp_real_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_real" add constraint "rhpp_real_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_real" add constraint "rhpp_real_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_real" add constraint "rhpp_real_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_real" add constraint "rhpp_real_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_system_final" add constraint "rhpp_system_final_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_system_final" add constraint "rhpp_system_final_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_system_final" add constraint "rhpp_system_final_contract_assignment_id_key" UNIQUE (contract_assignment_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."rhpp_system_final" add constraint "rhpp_system_final_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."suppliers" add constraint "suppliers_code_key" UNIQUE (code);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."suppliers" add constraint "suppliers_name_key" UNIQUE (name);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."suppliers" add constraint "suppliers_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."suppliers" add constraint "suppliers_supplier_type_check" CHECK (supplier_type = ANY (ARRAY['SAPRONAK'::text, 'DAGING'::text]));
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."supplies" add constraint "supplies_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."supplies" add constraint "supplies_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."supplies" add constraint "supplies_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."supplies" add constraint "supplies_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."supplies" add constraint "supplies_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."supplies" add constraint "supplies_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."supplies" add constraint "supplies_quantity_check" CHECK (quantity > 0::numeric);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."visits" add constraint "visits_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."visits" add constraint "visits_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."visits" add constraint "visits_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id);
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter table public."visits" add constraint "visits_pkey" PRIMARY KEY (id);
-exception when duplicate_object then null;
-end $$;
-
--- INDEXES
+do $$ begin alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_advance_deduction_check" CHECK (advance_deduction >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_contract_assignment_id_abk_id_key" UNIQUE (contract_assignment_id, abk_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_gross_salary_check" CHECK (gross_salary >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_net_paid_check" CHECK (net_paid >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_cycle_salaries" add constraint "abk_cycle_salaries_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_league_settings" add constraint "abk_league_settings_id_check" CHECK (id = true); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_league_settings" add constraint "abk_league_settings_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."abk_league_settings" add constraint "abk_league_settings_updated_by_fkey" FOREIGN KEY (updated_by) REFERENCES auth.users(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."advance_payments" add constraint "advance_payments_advance_id_fkey" FOREIGN KEY (advance_id) REFERENCES advances(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."advance_payments" add constraint "advance_payments_amount_check" CHECK (amount > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."advance_payments" add constraint "advance_payments_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."advances" add constraint "advances_amount_check" CHECK (amount > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."advances" add constraint "advances_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."advances" add constraint "advances_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."advances" add constraint "advances_employee_id_fkey" FOREIGN KEY (employee_id) REFERENCES employees(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."advances" add constraint "advances_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."audit_events" add constraint "audit_events_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."barns" add constraint "barns_capacity_check" CHECK (capacity > 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."barns" add constraint "barns_code_key" UNIQUE (code); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."barns" add constraint "barns_kind_check" CHECK (kind = ANY (ARRAY['OPEN_HOUSE'::text, 'SEMI_CLOSE_HOUSE'::text, 'CLOSE_HOUSE'::text])); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."barns" add constraint "barns_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."bop" add constraint "bop_amount_check" CHECK (amount >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."bop" add constraint "bop_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."bop" add constraint "bop_category_check" CHECK (category = ANY (ARRAY['OVK'::text, 'TENAGA_KERJA'::text, 'TRANSPORTASI'::text, 'LISTRIK'::text, 'PERBAIKAN'::text, 'EKSPEDISI'::text, 'LAINNYA'::text])); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."bop" add constraint "bop_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."bop" add constraint "bop_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."bop" add constraint "bop_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."bop_outside" add constraint "bop_outside_amount_check" CHECK (amount >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."bop_outside" add constraint "bop_outside_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_check" CHECK (doa <= received); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_cycle_id_key" UNIQUE (cycle_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_doa_check" CHECK (doa >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_received_check" CHECK (received >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."chick_ins" add constraint "chick_ins_shipped_check" CHECK (shipped >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."company_profile" add constraint "company_profile_id_check" CHECK (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."company_profile" add constraint "company_profile_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_bonuses" add constraint "contract_bonuses_check" CHECK (max_value IS NULL OR min_value IS NULL OR max_value > min_value); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_bonuses" add constraint "contract_bonuses_contract_id_fkey" FOREIGN KEY (contract_id) REFERENCES contracts(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_bonuses" add constraint "contract_bonuses_metric_check" CHECK (metric = ANY (ARRAY['IP'::text, 'FCR_DIFFERENCE'::text, 'DEPLETION'::text, 'OTHER'::text])); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_bonuses" add constraint "contract_bonuses_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_live_prices" add constraint "contract_live_prices_check" CHECK (max_weight_kg > min_weight_kg); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_live_prices" add constraint "contract_live_prices_contract_id_fkey" FOREIGN KEY (contract_id) REFERENCES contracts(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_live_prices" add constraint "contract_live_prices_contract_id_min_weight_kg_key" UNIQUE (contract_id, min_weight_kg); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_live_prices" add constraint "contract_live_prices_min_weight_kg_check" CHECK (min_weight_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_live_prices" add constraint "contract_live_prices_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contract_live_prices" add constraint "contract_live_prices_price_per_kg_check" CHECK (price_per_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "contracts_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "contracts_cycle_id_key" UNIQUE (cycle_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "contracts_nonnegative_prices" CHECK (doc_price >= 0::numeric AND pre_starter_price >= 0::numeric AND starter_price >= 0::numeric AND finisher_price >= 0::numeric AND ovk_price >= 0::numeric AND harvest_price >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "contracts_number_key" UNIQUE (number); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "contracts_ovk_price_basis_check" CHECK (ovk_price_basis = ANY (ARRAY['FIXED'::text, 'DISTRIBUTOR_PLUS_VAT'::text])); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "contracts_ovk_vat_percent_check" CHECK (ovk_vat_percent >= 0::numeric AND ovk_vat_percent <= 100::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "contracts_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "contracts_source_master_contract_id_fkey" FOREIGN KEY (source_master_contract_id) REFERENCES contracts(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."contracts" add constraint "ovk_basis_valid" CHECK (ovk_price_basis <> 'DISTRIBUTOR_PLUS_VAT'::text OR ovk_vat_percent IS NOT NULL OR cycle_id IS NULL); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."cycles" add constraint "cycles_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."cycles" add constraint "cycles_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."cycles" add constraint "cycles_code_key" UNIQUE (code); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."cycles" add constraint "cycles_initial_population_check" CHECK (initial_population > 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."cycles" add constraint "cycles_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."cycles" add constraint "cycles_ppl_id_fkey" FOREIGN KEY (ppl_id) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."cycles" add constraint "state_dates" CHECK ((state <> 'READY_RHPP'::cycle_state OR ready_at IS NOT NULL) AND (state <> 'CLOSED'::cycle_state OR closed_at IS NOT NULL)); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."employees" add constraint "employees_code_key" UNIQUE (code); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."employees" add constraint "employees_kind_check" CHECK (kind = ANY (ARRAY['KARYAWAN'::text, 'ABK'::text])); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."employees" add constraint "employees_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."expeditions" add constraint "expeditions_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."expeditions" add constraint "expeditions_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."expeditions" add constraint "expeditions_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."expeditions" add constraint "expeditions_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_bop" add constraint "finance_expedition_bop_amount_check" CHECK (amount >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_bop" add constraint "finance_expedition_bop_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_bop" add constraint "finance_expedition_bop_trip_id_fkey" FOREIGN KEY (trip_id) REFERENCES finance_expedition_trips(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_invoice_id_fkey" FOREIGN KEY (invoice_id) REFERENCES finance_expedition_invoices(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_invoice_id_trip_id_key" UNIQUE (invoice_id, trip_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_trip_id_fkey" FOREIGN KEY (trip_id) REFERENCES finance_expedition_trips(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_invoice_items" add constraint "finance_expedition_invoice_items_trip_id_key" UNIQUE (trip_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_invoices" add constraint "finance_expedition_invoices_invoice_number_key" UNIQUE (invoice_number); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_invoices" add constraint "finance_expedition_invoices_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_invoices" add constraint "finance_expedition_invoices_status_check" CHECK (status = ANY (ARRAY['DRAFT'::text, 'ISSUED'::text, 'PAID'::text, 'VOID'::text])); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_payments" add constraint "finance_expedition_payments_amount_check" CHECK (amount > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_payments" add constraint "finance_expedition_payments_invoice_id_fkey" FOREIGN KEY (invoice_id) REFERENCES finance_expedition_invoices(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_payments" add constraint "finance_expedition_payments_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_trips" add constraint "finance_expedition_trips_additional_check" CHECK (additional >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_trips" add constraint "finance_expedition_trips_deduction_check" CHECK (deduction >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_trips" add constraint "finance_expedition_trips_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_expedition_trips" add constraint "finance_expedition_trips_trip_price_check" CHECK (trip_price >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."finance_reference_counters" add constraint "finance_reference_counters_pkey" PRIMARY KEY (prefix, ref_date); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."harvests" add constraint "harvests_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."harvests" add constraint "harvests_birds_check" CHECK (birds > 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."harvests" add constraint "harvests_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."harvests" add constraint "harvests_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."harvests" add constraint "harvests_net_weight_kg_check" CHECK (net_weight_kg > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."harvests" add constraint "harvests_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."harvests" add constraint "harvests_price_per_kg_check" CHECK (price_per_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."harvests" add constraint "harvests_transaction_number_key" UNIQUE (transaction_number); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."items" add constraint "items_code_key" UNIQUE (code); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."items" add constraint "items_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."items" add constraint "items_supplier_id_fkey" FOREIGN KEY (supplier_id) REFERENCES suppliers(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_feed_finisher_bags_check" CHECK (feed_finisher_bags IS NULL OR feed_finisher_bags >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_feed_pre_bags_check" CHECK (feed_pre_bags IS NULL OR feed_pre_bags >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_feed_starter_bags_check" CHECK (feed_starter_bags IS NULL OR feed_starter_bags >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_initial_birds_check" CHECK (initial_birds IS NULL OR initial_birds > 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_abks_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignment_abks" add constraint "logistics_contract_assignment_contract_assignment_id_abk_id_key" UNIQUE (contract_assignment_id, abk_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_master_contract_id_fkey" FOREIGN KEY (master_contract_id) REFERENCES contracts(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_contract_assignments" add constraint "logistics_contract_assignments_ppl_id_fkey" FOREIGN KEY (ppl_id) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_external_return_id_fkey" FOREIGN KEY (external_return_id) REFERENCES logistics_external_returns(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_external_shipment_item_id_fkey" FOREIGN KEY (external_shipment_item_id) REFERENCES logistics_external_shipment_items(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_items" add constraint "logistics_external_return_items_quantity_check" CHECK (quantity > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_tra_source_contract_assignment_i_fkey" FOREIGN KEY (source_contract_assignment_id) REFERENCES logistics_contract_assignments(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_tra_target_contract_assignment_i_fkey" FOREIGN KEY (target_contract_assignment_id) REFERENCES logistics_contract_assignments(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfer_external_return_item_id_fkey" FOREIGN KEY (external_return_item_id) REFERENCES logistics_external_return_items(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_quantity_check" CHECK (quantity > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_source_barn_id_fkey" FOREIGN KEY (source_barn_id) REFERENCES barns(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_return_transfers" add constraint "logistics_external_return_transfers_target_barn_id_fkey" FOREIGN KEY (target_barn_id) REFERENCES barns(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_returns" add constraint "logistics_external_returns_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_returns" add constraint "logistics_external_returns_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_returns" add constraint "logistics_external_returns_external_shipment_id_fkey" FOREIGN KEY (external_shipment_id) REFERENCES logistics_external_shipments(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_returns" add constraint "logistics_external_returns_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_returns" add constraint "logistics_external_returns_status_check" CHECK (status = ANY (ARRAY['DRAFT'::text, 'PARTIAL'::text, 'SENT'::text])); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_returns" add constraint "logistics_external_returns_supplier_id_fkey" FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE RESTRICT; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_external_shipment_id_fkey" FOREIGN KEY (external_shipment_id) REFERENCES logistics_external_shipments(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_purchase_unit_price_check" CHECK (purchase_unit_price >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipment_items" add constraint "logistics_external_shipment_items_quantity_check" CHECK (quantity > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipments" add constraint "logistics_external_shipments_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipments" add constraint "logistics_external_shipments_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipments" add constraint "logistics_external_shipments_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_external_shipments" add constraint "logistics_external_shipments_supplier_id_fkey" FOREIGN KEY (supplier_id) REFERENCES suppliers(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_return_items" add constraint "logistics_return_items_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_return_items" add constraint "logistics_return_items_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_return_items" add constraint "logistics_return_items_quantity_check" CHECK (quantity > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_return_items" add constraint "logistics_return_items_return_id_fkey" FOREIGN KEY (return_id) REFERENCES logistics_returns(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_return_items" add constraint "logistics_return_items_return_id_item_id_key" UNIQUE (return_id, item_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_returns" add constraint "logistics_returns_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_returns" add constraint "logistics_returns_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_returns" add constraint "logistics_returns_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_returns" add constraint "logistics_returns_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_quantity_check" CHECK (quantity > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_shipment_id_fkey" FOREIGN KEY (shipment_id) REFERENCES logistics_shipments(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipment_items" add constraint "logistics_shipment_items_shipment_id_item_id_key" UNIQUE (shipment_id, item_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipments" add constraint "logistics_shipments_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipments" add constraint "logistics_shipments_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipments" add constraint "logistics_shipments_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."logistics_shipments" add constraint "logistics_shipments_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_birds_check" CHECK (birds > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_net_weight_kg_check" CHECK (net_weight_kg > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_contract_harvests" add constraint "marketing_contract_harvests_price_positive" CHECK (price_per_kg > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchase_price_positive" CHECK (purchase_price_per_kg > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_purchase_price_per_kg_check" CHECK (purchase_price_per_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_supplier_id_fkey" FOREIGN KEY (supplier_id) REFERENCES suppliers(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."marketing_external_meat_purchases" add constraint "marketing_external_meat_purchases_weight_kg_check" CHECK (weight_kg > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."performance_standards" add constraint "performance_standards_age_days_check" CHECK (age_days >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."performance_standards" add constraint "performance_standards_contract_id_fkey" FOREIGN KEY (contract_id) REFERENCES contracts(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."performance_standards" add constraint "performance_standards_contract_template_age_key" UNIQUE (contract_id, template_name, age_days); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."performance_standards" add constraint "performance_standards_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."performance_standards" add constraint "performance_standards_std_body_weight_g_check" CHECK (std_body_weight_g > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."performance_standards" add constraint "performance_standards_std_fcr_check" CHECK (std_fcr > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."performance_standards" add constraint "performance_standards_std_feed_g_per_bird_check" CHECK (std_feed_g_per_bird >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_result_sizes" add constraint "production_abk_result_sizes_birds_check" CHECK (birds > 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_result_sizes" add constraint "production_abk_result_sizes_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_result_sizes" add constraint "production_abk_result_sizes_result_id_fkey" FOREIGN KEY (result_id) REFERENCES production_abk_results(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_result_sizes" add constraint "production_abk_result_sizes_weight_kg_check" CHECK (weight_kg > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_abk_id_fkey" FOREIGN KEY (abk_id) REFERENCES employees(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_contract_assignment_id_abk_id_key" UNIQUE (contract_assignment_id, abk_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_feed_finisher_kg_check" CHECK (feed_finisher_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_feed_pre_kg_check" CHECK (feed_pre_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_feed_starter_kg_check" CHECK (feed_starter_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_abk_results" add constraint "production_abk_results_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimate_sizes" add constraint "production_estimate_sizes_birds_check" CHECK (birds > 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimate_sizes" add constraint "production_estimate_sizes_bw_kg_check" CHECK (bw_kg > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimate_sizes" add constraint "production_estimate_sizes_estimate_id_fkey" FOREIGN KEY (estimate_id) REFERENCES production_estimates(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimate_sizes" add constraint "production_estimate_sizes_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimates" add constraint "production_estimates_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimates" add constraint "production_estimates_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimates" add constraint "production_estimates_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimates" add constraint "production_estimates_feed_used_kg_check" CHECK (feed_used_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimates" add constraint "production_estimates_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."production_estimates" add constraint "production_estimates_remaining_birds_check" CHECK (remaining_birds >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."profiles" add constraint "profiles_pkey" PRIMARY KEY (user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."profiles" add constraint "profiles_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recording_weight_samples" add constraint "recording_weight_samples_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recording_weight_samples" add constraint "recording_weight_samples_recording_id_fkey" FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recording_weight_samples" add constraint "recording_weight_samples_weight_g_check" CHECK (weight_g > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_actual_fcr_check" CHECK (actual_fcr > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_age_days_check" CHECK (age_days >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_culling_check" CHECK (culling >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_cycle_id_recorded_on_key" UNIQUE (cycle_id, recorded_on); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_feed_bags_balance_check" CHECK (feed_bags_balance >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_feed_bags_in_check" CHECK (feed_bags_in >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_feed_bags_out_check" CHECK (feed_bags_out >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_feed_item_id_fkey" FOREIGN KEY (feed_item_id) REFERENCES items(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_feed_kg_check" CHECK (feed_kg >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_ip_check" CHECK (ip >= 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_mortality_check" CHECK (mortality >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."recordings" add constraint "recordings_sample_count_check" CHECK (sample_count >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_estimates" add constraint "rhpp_estimates_age_days_check" CHECK (age_days >= 0); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_estimates" add constraint "rhpp_estimates_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_estimates" add constraint "rhpp_estimates_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_estimates" add constraint "rhpp_estimates_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_estimates" add constraint "rhpp_estimates_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_estimates" add constraint "rhpp_estimates_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_real" add constraint "rhpp_real_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_real" add constraint "rhpp_real_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_real" add constraint "rhpp_real_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_real" add constraint "rhpp_real_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_real" add constraint "rhpp_real_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_system_final" add constraint "rhpp_system_final_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_system_final" add constraint "rhpp_system_final_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_system_final" add constraint "rhpp_system_final_contract_assignment_id_key" UNIQUE (contract_assignment_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."rhpp_system_final" add constraint "rhpp_system_final_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."suppliers" add constraint "suppliers_code_key" UNIQUE (code); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."suppliers" add constraint "suppliers_name_key" UNIQUE (name); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."suppliers" add constraint "suppliers_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."suppliers" add constraint "suppliers_supplier_type_check" CHECK (supplier_type = ANY (ARRAY['SAPRONAK'::text, 'DAGING'::text])); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."supplies" add constraint "supplies_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."supplies" add constraint "supplies_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."supplies" add constraint "supplies_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(user_id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."supplies" add constraint "supplies_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."supplies" add constraint "supplies_item_id_fkey" FOREIGN KEY (item_id) REFERENCES items(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."supplies" add constraint "supplies_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."supplies" add constraint "supplies_quantity_check" CHECK (quantity > 0::numeric); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."visits" add constraint "visits_barn_id_fkey" FOREIGN KEY (barn_id) REFERENCES barns(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."visits" add constraint "visits_contract_assignment_id_fkey" FOREIGN KEY (contract_assignment_id) REFERENCES logistics_contract_assignments(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."visits" add constraint "visits_cycle_id_fkey" FOREIGN KEY (cycle_id) REFERENCES cycles(id); exception when duplicate_object then null; end $$;
+do $$ begin alter table public."visits" add constraint "visits_pkey" PRIMARY KEY (id); exception when duplicate_object then null; end $$;
 CREATE INDEX IF NOT EXISTS salaries_assignment_idx ON public.abk_cycle_salaries USING btree (contract_assignment_id, abk_id);
 CREATE INDEX IF NOT EXISTS idx_abk_league_settings_updated_by ON public.abk_league_settings USING btree (updated_by);
 CREATE INDEX IF NOT EXISTS idx_advance_payments_advance_id ON public.advance_payments USING btree (advance_id);
@@ -1821,8 +1027,6 @@ CREATE INDEX IF NOT EXISTS idx_supplies_item_id ON public.supplies USING btree (
 CREATE INDEX IF NOT EXISTS idx_visits_assignment ON public.visits USING btree (contract_assignment_id);
 CREATE INDEX IF NOT EXISTS idx_visits_barn ON public.visits USING btree (barn_id);
 CREATE INDEX IF NOT EXISTS idx_visits_cycle_id ON public.visits USING btree (cycle_id);
-
--- VIEWS
 create or replace view public."abk_league" with (security_invoker=true) as
 SELECT c.abk_id,
     count(*) AS cycles,
@@ -2110,11 +1314,8 @@ SELECT c.ppl_id,
   WHERE c.ppl_id IS NOT NULL
   GROUP BY c.ppl_id;
 ;
-
--- FUNCTIONS
 set check_function_bodies = off;
 
--- private.admin_list_bms_users_impl()
 CREATE OR REPLACE FUNCTION private.admin_list_bms_users_impl()
  RETURNS TABLE(user_id uuid, email text, full_name text, role bms_role, active boolean, email_confirmed boolean)
  LANGUAGE plpgsql
@@ -2139,7 +1340,6 @@ begin
 end
 $function$;
 
--- private.admin_update_bms_user_impl(p_user_id uuid, p_name text, p_role bms_role, p_active boolean)
 CREATE OR REPLACE FUNCTION private.admin_update_bms_user_impl(p_user_id uuid, p_name text, p_role bms_role, p_active boolean)
  RETURNS void
  LANGUAGE plpgsql
@@ -2172,7 +1372,6 @@ begin
 end
 $function$;
 
--- private.assign_bms_role_impl(p_email text, p_role bms_role, p_name text)
 CREATE OR REPLACE FUNCTION private.assign_bms_role_impl(p_email text, p_role bms_role, p_name text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -2207,7 +1406,6 @@ begin
 end
 $function$;
 
--- private.bind_master_contract_to_cycle_core(p_master_contract_id uuid, p_cycle_id uuid)
 CREATE OR REPLACE FUNCTION private.bind_master_contract_to_cycle_core(p_master_contract_id uuid, p_cycle_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -2294,7 +1492,6 @@ begin
 end
 $function$;
 
--- private.can_edit_assignment(aid uuid, allowed bms_role[])
 CREATE OR REPLACE FUNCTION private.can_edit_assignment(aid uuid, allowed bms_role[])
  RETURNS boolean
  LANGUAGE sql
@@ -2317,7 +1514,6 @@ AS $function$
   )
 $function$;
 
--- private.can_edit_cycle(cid uuid, allowed bms_role[])
 CREATE OR REPLACE FUNCTION private.can_edit_cycle(cid uuid, allowed bms_role[])
  RETURNS boolean
  LANGUAGE sql
@@ -2339,7 +1535,6 @@ AS $function$
   )
 $function$;
 
--- private.can_read_assignment(aid uuid)
 CREATE OR REPLACE FUNCTION private.can_read_assignment(aid uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -2356,7 +1551,6 @@ AS $function$
   )
 $function$;
 
--- private.can_read_cycle(cid uuid)
 CREATE OR REPLACE FUNCTION private.can_read_cycle(cid uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -2374,7 +1568,6 @@ AS $function$
   )
 $function$;
 
--- private.guard_assignment_operation()
 CREATE OR REPLACE FUNCTION private.guard_assignment_operation()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2405,7 +1598,6 @@ begin
 end;
 $function$;
 
--- private.guard_chick_in_contract()
 CREATE OR REPLACE FUNCTION private.guard_chick_in_contract()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2463,7 +1655,6 @@ begin
 end;
 $function$;
 
--- private.guard_contract_assignment_state()
 CREATE OR REPLACE FUNCTION private.guard_contract_assignment_state()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2505,7 +1696,6 @@ begin
 end
 $function$;
 
--- private.guard_item_supplier_type()
 CREATE OR REPLACE FUNCTION private.guard_item_supplier_type()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2523,7 +1713,6 @@ begin
   return new;
 end $function$;
 
--- private.guard_logistics_assignment_close()
 CREATE OR REPLACE FUNCTION private.guard_logistics_assignment_close()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2544,7 +1733,6 @@ begin
 end;
 $function$;
 
--- private.guard_logistics_external_header()
 CREATE OR REPLACE FUNCTION private.guard_logistics_external_header()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2580,7 +1768,6 @@ begin
   return new;
 end $function$;
 
--- private.guard_logistics_external_item()
 CREATE OR REPLACE FUNCTION private.guard_logistics_external_item()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2613,7 +1800,6 @@ begin
   return new;
 end $function$;
 
--- private.guard_marketing_harvest()
 CREATE OR REPLACE FUNCTION private.guard_marketing_harvest()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2685,7 +1871,6 @@ begin
 end
 $function$;
 
--- private.guard_marketing_meat()
 CREATE OR REPLACE FUNCTION private.guard_marketing_meat()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2714,7 +1899,6 @@ begin
   return new;
 end $function$;
 
--- private.guard_production_abk_result()
 CREATE OR REPLACE FUNCTION private.guard_production_abk_result()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2738,7 +1922,6 @@ AS $function$
       return new;
     end $function$;
 
--- private.guard_production_estimate()
 CREATE OR REPLACE FUNCTION private.guard_production_estimate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2784,7 +1967,6 @@ begin
 end
 $function$;
 
--- private.guard_production_recording()
 CREATE OR REPLACE FUNCTION private.guard_production_recording()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2922,7 +2104,6 @@ begin
 end;
 $function$;
 
--- private.guard_production_visit()
 CREATE OR REPLACE FUNCTION private.guard_production_visit()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2991,7 +2172,6 @@ begin
 end
 $function$;
 
--- private.guard_rhpp_real_operation()
 CREATE OR REPLACE FUNCTION private.guard_rhpp_real_operation()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3038,7 +2218,6 @@ begin
 end
 $function$;
 
--- private.my_bms_role()
 CREATE OR REPLACE FUNCTION private.my_bms_role()
  RETURNS bms_role
  LANGUAGE sql
@@ -3050,7 +2229,6 @@ AS $function$
   where user_id = (select auth.uid()) and active
 $function$;
 
--- private.reject_closed_assignment_write()
 CREATE OR REPLACE FUNCTION private.reject_closed_assignment_write()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3079,7 +2257,6 @@ begin
 end
 $function$;
 
--- private.reject_closed_logistics_child_write()
 CREATE OR REPLACE FUNCTION private.reject_closed_logistics_child_write()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3131,7 +2308,6 @@ begin
 end
 $function$;
 
--- private.reject_closed_production_child_write()
 CREATE OR REPLACE FUNCTION private.reject_closed_production_child_write()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3169,7 +2345,6 @@ begin
 end
 $function$;
 
--- private.reject_closed_transfer_write()
 CREATE OR REPLACE FUNCTION private.reject_closed_transfer_write()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3199,7 +2374,6 @@ begin
 end
 $function$;
 
--- private.set_cycle_state_impl(p_cycle uuid, p_action text, p_reason text)
 CREATE OR REPLACE FUNCTION private.set_cycle_state_impl(p_cycle uuid, p_action text, p_reason text DEFAULT NULL::text)
  RETURNS cycles
  LANGUAGE plpgsql
@@ -3291,7 +2465,6 @@ begin
 end
 $function$;
 
--- private.sync_bop_assignment_barn()
 CREATE OR REPLACE FUNCTION private.sync_bop_assignment_barn()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3318,7 +2491,6 @@ begin
 end
 $function$;
 
--- private.validate_assignment_ppl()
 CREATE OR REPLACE FUNCTION private.validate_assignment_ppl()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3338,7 +2510,6 @@ begin
 end;
 $function$;
 
--- public.admin_close_production_atomic(p_contract_assignment_id uuid)
 CREATE OR REPLACE FUNCTION public.admin_close_production_atomic(p_contract_assignment_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -3435,7 +2606,6 @@ begin
 end
 $function$;
 
--- public.admin_list_bms_users()
 CREATE OR REPLACE FUNCTION public.admin_list_bms_users()
  RETURNS TABLE(user_id uuid, email text, full_name text, role bms_role, active boolean, email_confirmed boolean)
  LANGUAGE sql
@@ -3444,7 +2614,6 @@ AS $function$
   select * from private.admin_list_bms_users_impl()
 $function$;
 
--- public.admin_reopen_production_atomic(p_contract_assignment_id uuid)
 CREATE OR REPLACE FUNCTION public.admin_reopen_production_atomic(p_contract_assignment_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -3487,7 +2656,6 @@ begin
 end
 $function$;
 
--- public.admin_update_bms_user(p_user_id uuid, p_name text, p_role bms_role, p_active boolean)
 CREATE OR REPLACE FUNCTION public.admin_update_bms_user(p_user_id uuid, p_name text, p_role bms_role, p_active boolean)
  RETURNS void
  LANGUAGE sql
@@ -3496,7 +2664,6 @@ AS $function$
   select private.admin_update_bms_user_impl(p_user_id,p_name,p_role,p_active)
 $function$;
 
--- public.assign_barn_code()
 CREATE OR REPLACE FUNCTION public.assign_barn_code()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3514,7 +2681,6 @@ begin
 end
 $function$;
 
--- public.assign_bms_role(p_email text, p_role bms_role, p_name text)
 CREATE OR REPLACE FUNCTION public.assign_bms_role(p_email text, p_role bms_role, p_name text)
  RETURNS uuid
  LANGUAGE sql
@@ -3523,7 +2689,6 @@ AS $function$
   select private.assign_bms_role_impl(p_email,p_role,p_name)
 $function$;
 
--- public.assign_master_auto_code()
 CREATE OR REPLACE FUNCTION public.assign_master_auto_code()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3581,7 +2746,6 @@ begin
 end
 $function$;
 
--- public.assign_supplier_code()
 CREATE OR REPLACE FUNCTION public.assign_supplier_code()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3599,7 +2763,6 @@ begin
 end
 $function$;
 
--- public.audit_and_guard()
 CREATE OR REPLACE FUNCTION public.audit_and_guard()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3658,7 +2821,6 @@ begin
 end
 $function$;
 
--- public.audit_master_change()
 CREATE OR REPLACE FUNCTION public.audit_master_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3675,7 +2837,6 @@ begin
   return new;
 end $function$;
 
--- public.autofill_logistics_return_price()
 CREATE OR REPLACE FUNCTION public.autofill_logistics_return_price()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3725,7 +2886,6 @@ begin
 end
 $function$;
 
--- public.autofill_logistics_shipment_price()
 CREATE OR REPLACE FUNCTION public.autofill_logistics_shipment_price()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3775,7 +2935,6 @@ begin
 end
 $function$;
 
--- public.bind_master_contract_to_cycle(p_master_contract_id uuid, p_cycle_id uuid)
 CREATE OR REPLACE FUNCTION public.bind_master_contract_to_cycle(p_master_contract_id uuid, p_cycle_id uuid)
  RETURNS uuid
  LANGUAGE sql
@@ -3784,7 +2943,6 @@ AS $function$
   select private.bind_master_contract_to_cycle_core(p_master_contract_id,p_cycle_id)
 $function$;
 
--- public.bms_backup_download_payload(p_token text)
 CREATE OR REPLACE FUNCTION public.bms_backup_download_payload(p_token text)
  RETURNS TABLE(backup_date date, payload jsonb, checksum text, expires_at timestamp with time zone)
  LANGUAGE sql
@@ -3799,7 +2957,6 @@ AS $function$
   limit 1;
 $function$;
 
--- public.check_advance_payment()
 CREATE OR REPLACE FUNCTION public.check_advance_payment()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3816,7 +2973,6 @@ begin
   return new;
 end $function$;
 
--- public.compute_chickin_avg_weight()
 CREATE OR REPLACE FUNCTION public.compute_chickin_avg_weight()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3834,7 +2990,6 @@ begin
 end
 $function$;
 
--- public.compute_recording_avg_weight()
 CREATE OR REPLACE FUNCTION public.compute_recording_avg_weight()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3852,7 +3007,6 @@ begin
 end
 $function$;
 
--- public.compute_recording_feed_kg()
 CREATE OR REPLACE FUNCTION public.compute_recording_feed_kg()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3877,7 +3031,6 @@ begin
 end
 $function$;
 
--- public.compute_supply_quantity_kg()
 CREATE OR REPLACE FUNCTION public.compute_supply_quantity_kg()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3902,7 +3055,6 @@ begin
 end
 $function$;
 
--- public.delete_production_abk_harvest_atomic(p_size_id uuid)
 CREATE OR REPLACE FUNCTION public.delete_production_abk_harvest_atomic(p_size_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -3943,7 +3095,6 @@ begin
 end
 $function$;
 
--- public.fill_external_shipment_quantity_kg()
 CREATE OR REPLACE FUNCTION public.fill_external_shipment_quantity_kg()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3960,7 +3111,6 @@ begin
 end
 $function$;
 
--- public.finance_auto_reference_trigger()
 CREATE OR REPLACE FUNCTION public.finance_auto_reference_trigger()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3982,7 +3132,6 @@ begin
 end
 $function$;
 
--- public.finance_cashflow_entries_v1()
 CREATE OR REPLACE FUNCTION public.finance_cashflow_entries_v1()
  RETURNS TABLE(txn_date date, txn_type text, source text, amount numeric, barn_id uuid, contract_assignment_id uuid, detail text, reference text)
  LANGUAGE plpgsql
@@ -4064,7 +3213,6 @@ begin
 end
 $function$;
 
--- public.finance_company_profit_loss_v1()
 CREATE OR REPLACE FUNCTION public.finance_company_profit_loss_v1()
  RETURNS TABLE(kandang_profit_loss numeric, expedition_revenue numeric, expedition_bop numeric, expedition_profit_loss numeric, bop_umum numeric, company_profit_loss numeric)
  LANGUAGE sql
@@ -4091,7 +3239,6 @@ AS $function$
   from k,e,u;
 $function$;
 
--- public.finance_create_expedition_invoice_atomic(p_invoice_number text, p_invoice_date date, p_due_date date, p_customer_name text, p_customer_address text, p_trip_ids uuid[], p_notes text)
 CREATE OR REPLACE FUNCTION public.finance_create_expedition_invoice_atomic(p_invoice_number text, p_invoice_date date, p_due_date date, p_customer_name text, p_customer_address text, p_trip_ids uuid[], p_notes text DEFAULT NULL::text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -4143,7 +3290,6 @@ begin
 end
 $function$;
 
--- public.finance_cycle_profit_loss_v1()
 CREATE OR REPLACE FUNCTION public.finance_cycle_profit_loss_v1()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, start_date date, active boolean, rhpp_system numeric, rhpp_real numeric, bop_kandang numeric, gaji_abk numeric, sapronak_luar numeric, tambah_daging numeric, kasbon_abk numeric, saldo_kasbon numeric, laba_rugi_real numeric)
  LANGUAGE plpgsql
@@ -4235,7 +3381,6 @@ begin
 end
 $function$;
 
--- public.finance_expedition_profit_loss_v1()
 CREATE OR REPLACE FUNCTION public.finance_expedition_profit_loss_v1()
  RETURNS TABLE(expedition_revenue numeric, expedition_bop numeric, expedition_profit_loss numeric, expedition_cash_received numeric, expedition_receivable numeric)
  LANGUAGE sql
@@ -4267,7 +3412,6 @@ AS $function$
   where private.my_bms_role() in ('ADMIN'::public.bms_role,'KEUANGAN'::public.bms_role,'OWNER'::public.bms_role);
 $function$;
 
--- public.finance_expedition_summary_v1()
 CREATE OR REPLACE FUNCTION public.finance_expedition_summary_v1()
  RETURNS TABLE(invoice_id uuid, invoice_number text, invoice_date date, due_date date, customer_name text, status text, invoice_total numeric, paid_total numeric, receivable numeric)
  LANGUAGE sql
@@ -4302,7 +3446,6 @@ AS $function$
   order by i.invoice_date desc,i.created_at desc;
 $function$;
 
--- public.finance_next_reference(p_prefix text, p_date date)
 CREATE OR REPLACE FUNCTION public.finance_next_reference(p_prefix text, p_date date)
  RETURNS text
  LANGUAGE plpgsql
@@ -4323,7 +3466,6 @@ begin
 end
 $function$;
 
--- public.finance_rhpp_summary()
 CREATE OR REPLACE FUNCTION public.finance_rhpp_summary()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, contract_number text, active boolean, chick_in_birds numeric, total_harvest_birds numeric, total_harvest_kg numeric, avg_bw_kg numeric, weighted_age numeric, implied_depletion_birds numeric, recorded_depletion_birds numeric, depletion_variance_birds numeric, mortality_pct numeric, net_feed_kg numeric, fcr_actual numeric, fcr_standard numeric, diff_fcr numeric, ip numeric, harvest_value numeric, sapronak_cost numeric, base_profit numeric, bonus_ip_rate numeric, bonus_ip numeric, bonus_fc_rate numeric, bonus_fc numeric, bonus_mortality numeric, farmer_profit numeric, profit_per_chick_in numeric, profit_per_harvested_bird numeric, ready_financial boolean)
  LANGUAGE plpgsql
@@ -4528,7 +3670,6 @@ begin
 end
 $function$;
 
--- public.finance_rhpp_summary_v2()
 CREATE OR REPLACE FUNCTION public.finance_rhpp_summary_v2()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, contract_number text, active boolean, chick_in_birds numeric, total_harvest_birds numeric, total_harvest_kg numeric, avg_bw_kg numeric, weighted_age numeric, implied_depletion_birds numeric, recorded_depletion_birds numeric, depletion_variance_birds numeric, mortality_pct numeric, net_feed_kg numeric, fcr_actual numeric, fcr_standard numeric, diff_fcr numeric, ip numeric, harvest_value numeric, sapronak_cost numeric, external_meat_cost numeric, total_rhpp_cost numeric, base_profit numeric, bonus_ip_rate numeric, bonus_ip numeric, bonus_fc_rate numeric, bonus_fc numeric, bonus_mortality numeric, farmer_profit numeric, profit_per_chick_in numeric, profit_per_harvested_bird numeric, ready_financial boolean)
  LANGUAGE sql
@@ -4591,7 +3732,6 @@ AS $function$
   order by b.active desc,b.barn_code;
 $function$;
 
--- public.finance_rhpp_summary_v3()
 CREATE OR REPLACE FUNCTION public.finance_rhpp_summary_v3()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, contract_number text, active boolean, chick_in_birds numeric, total_harvest_birds numeric, total_harvest_kg numeric, avg_bw_kg numeric, weighted_age numeric, implied_depletion_birds numeric, recorded_depletion_birds numeric, depletion_variance_birds numeric, mortality_pct numeric, main_feed_kg numeric, external_feed_kg numeric, net_feed_kg numeric, fcr_actual numeric, fcr_standard numeric, diff_fcr numeric, ip numeric, harvest_value numeric, main_doc_cost numeric, main_feed_cost numeric, main_ovk_cost numeric, main_other_cost numeric, main_return_cost numeric, external_sapronak_cost numeric, sapronak_cost numeric, external_meat_cost numeric, total_rhpp_cost numeric, base_profit numeric, bonus_ip_rate numeric, bonus_ip numeric, bonus_fc_rate numeric, bonus_fc numeric, bonus_mortality_rate numeric, bonus_mortality numeric, farmer_profit numeric, profit_per_chick_in numeric, profit_per_harvested_bird numeric, population_balanced boolean, ready_financial boolean)
  LANGUAGE plpgsql
@@ -4803,7 +3943,6 @@ begin
 end
 $function$;
 
--- public.finance_rhpp_summary_v4()
 CREATE OR REPLACE FUNCTION public.finance_rhpp_summary_v4()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, contract_number text, active boolean, chick_in_birds numeric, total_harvest_birds numeric, total_harvest_kg numeric, avg_bw_kg numeric, weighted_age numeric, implied_depletion_birds numeric, recorded_depletion_birds numeric, depletion_variance_birds numeric, mortality_pct numeric, main_feed_kg numeric, external_feed_kg numeric, net_feed_kg numeric, fcr_actual numeric, fcr_standard numeric, diff_fcr numeric, ip numeric, harvest_value numeric, main_doc_cost numeric, main_feed_cost numeric, main_ovk_cost numeric, main_other_cost numeric, main_return_cost numeric, external_sapronak_cost numeric, sapronak_cost numeric, external_meat_cost numeric, total_rhpp_cost numeric, base_profit numeric, bonus_ip_rate numeric, bonus_ip numeric, bonus_fc_rate numeric, bonus_fc numeric, bonus_mortality_rate numeric, bonus_mortality numeric, farmer_profit numeric, profit_per_chick_in numeric, profit_per_harvested_bird numeric, population_balanced boolean, ready_financial boolean)
  LANGUAGE plpgsql
@@ -4844,7 +3983,6 @@ begin
 end
 $function$;
 
--- public.finance_rhpp_summary_v5()
 CREATE OR REPLACE FUNCTION public.finance_rhpp_summary_v5()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, contract_number text, active boolean, chick_in_birds numeric, total_harvest_birds numeric, total_harvest_kg numeric, avg_bw_kg numeric, weighted_age numeric, implied_depletion_birds numeric, recorded_depletion_birds numeric, depletion_variance_birds numeric, mortality_pct numeric, main_feed_kg numeric, external_feed_kg numeric, net_feed_kg numeric, fcr_actual numeric, fcr_standard numeric, diff_fcr numeric, ip numeric, harvest_value numeric, main_doc_cost numeric, main_feed_cost numeric, main_ovk_cost numeric, main_other_cost numeric, main_return_cost numeric, external_sapronak_cost numeric, sapronak_cost numeric, external_meat_cost numeric, total_rhpp_cost numeric, base_profit numeric, bonus_ip_rate numeric, bonus_ip numeric, bonus_fc_rate numeric, bonus_fc numeric, bonus_mortality_rate numeric, bonus_mortality numeric, farmer_profit numeric, profit_per_chick_in numeric, profit_per_harvested_bird numeric, population_balanced boolean, ready_financial boolean)
  LANGUAGE plpgsql
@@ -4961,7 +4099,6 @@ begin
 end
 $function$;
 
--- public.finance_save_abk_advance_atomic(p_contract_assignment_id uuid, p_abk_id uuid, p_advanced_on date, p_amount numeric, p_description text, p_reference text)
 CREATE OR REPLACE FUNCTION public.finance_save_abk_advance_atomic(p_contract_assignment_id uuid, p_abk_id uuid, p_advanced_on date, p_amount numeric, p_description text DEFAULT NULL::text, p_reference text DEFAULT NULL::text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -5014,7 +4151,6 @@ begin
 end
 $function$;
 
--- public.finance_save_abk_salary_atomic(p_contract_assignment_id uuid, p_abk_id uuid, p_gross_salary numeric, p_advance_deduction numeric, p_paid_on date, p_reference text, p_notes text)
 CREATE OR REPLACE FUNCTION public.finance_save_abk_salary_atomic(p_contract_assignment_id uuid, p_abk_id uuid, p_gross_salary numeric, p_advance_deduction numeric, p_paid_on date, p_reference text DEFAULT NULL::text, p_notes text DEFAULT NULL::text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -5128,7 +4264,6 @@ begin
 end
 $function$;
 
--- public.finance_save_employee_advance_atomic(p_employee_id uuid, p_advanced_on date, p_amount numeric, p_contract_assignment_id uuid, p_description text, p_reference text)
 CREATE OR REPLACE FUNCTION public.finance_save_employee_advance_atomic(p_employee_id uuid, p_advanced_on date, p_amount numeric, p_contract_assignment_id uuid DEFAULT NULL::uuid, p_description text DEFAULT NULL::text, p_reference text DEFAULT NULL::text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -5204,7 +4339,6 @@ begin
 end
 $function$;
 
--- public.finance_save_rhpp_real_atomic(p_contract_assignment_id uuid, p_amount numeric, p_received_on date, p_reference text, p_notes text)
 CREATE OR REPLACE FUNCTION public.finance_save_rhpp_real_atomic(p_contract_assignment_id uuid, p_amount numeric, p_received_on date, p_reference text DEFAULT NULL::text, p_notes text DEFAULT NULL::text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -5252,7 +4386,6 @@ begin
 end
 $function$;
 
--- public.guard_barn_update()
 CREATE OR REPLACE FUNCTION public.guard_barn_update()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5276,7 +4409,6 @@ begin
 end;
 $function$;
 
--- public.guard_contract_detail()
 CREATE OR REPLACE FUNCTION public.guard_contract_detail()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5333,7 +4465,6 @@ begin
 end
 $function$;
 
--- public.guard_logistics_contract_close_prices()
 CREATE OR REPLACE FUNCTION public.guard_logistics_contract_close_prices()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5365,7 +4496,6 @@ begin
 end
 $function$;
 
--- public.guard_logistics_return()
 CREATE OR REPLACE FUNCTION public.guard_logistics_return()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5393,7 +4523,6 @@ begin
 end
 $function$;
 
--- public.guard_logistics_return_item()
 CREATE OR REPLACE FUNCTION public.guard_logistics_return_item()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5426,7 +4555,6 @@ begin
 end
 $function$;
 
--- public.guard_logistics_shipment()
 CREATE OR REPLACE FUNCTION public.guard_logistics_shipment()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5454,7 +4582,6 @@ begin
 end
 $function$;
 
--- public.guard_logistics_shipment_item()
 CREATE OR REPLACE FUNCTION public.guard_logistics_shipment_item()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5487,7 +4614,6 @@ begin
 end
 $function$;
 
--- public.lock_production_abk_basics_atomic(p_link_id uuid, p_initial_birds integer, p_feed_pre_bags numeric, p_feed_starter_bags numeric, p_feed_finisher_bags numeric)
 CREATE OR REPLACE FUNCTION public.lock_production_abk_basics_atomic(p_link_id uuid, p_initial_birds integer, p_feed_pre_bags numeric, p_feed_starter_bags numeric, p_feed_finisher_bags numeric)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -5551,7 +4677,6 @@ begin
 end
 $function$;
 
--- public.normalize_item_unit()
 CREATE OR REPLACE FUNCTION public.normalize_item_unit()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5576,7 +4701,6 @@ begin
 end
 $function$;
 
--- public.prepare_logistics_contract_assignment()
 CREATE OR REPLACE FUNCTION public.prepare_logistics_contract_assignment()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5611,7 +4735,6 @@ begin
 end
 $function$;
 
--- public.prevent_employee_delete()
 CREATE OR REPLACE FUNCTION public.prevent_employee_delete()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5623,7 +4746,6 @@ begin
 end
 $function$;
 
--- public.prevent_locked_abk_basics_change()
 CREATE OR REPLACE FUNCTION public.prevent_locked_abk_basics_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5642,7 +4764,6 @@ begin
 end
 $function$;
 
--- public.production_feed_stock(p_contract_assignment_id uuid)
 CREATE OR REPLACE FUNCTION public.production_feed_stock(p_contract_assignment_id uuid)
  RETURNS TABLE(item_id uuid, code text, name text, unit text, kg_per_unit numeric, sent_units numeric, external_units numeric, returned_units numeric, used_units numeric, remaining_units numeric, remaining_kg numeric)
  LANGUAGE plpgsql
@@ -5720,7 +4841,6 @@ begin
 end
 $function$;
 
--- public.protect_frozen_contract()
 CREATE OR REPLACE FUNCTION public.protect_frozen_contract()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5735,7 +4855,6 @@ begin
 end
 $function$;
 
--- public.protect_frozen_contract_detail()
 CREATE OR REPLACE FUNCTION public.protect_frozen_contract_detail()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5768,7 +4887,6 @@ begin
 end
 $function$;
 
--- public.protect_master_auto_code()
 CREATE OR REPLACE FUNCTION public.protect_master_auto_code()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5783,7 +4901,6 @@ begin
 end
 $function$;
 
--- public.reassign_employee_code_on_kind_change()
 CREATE OR REPLACE FUNCTION public.reassign_employee_code_on_kind_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5816,7 +4933,6 @@ begin
 end
 $function$;
 
--- public.reset_bop_complete()
 CREATE OR REPLACE FUNCTION public.reset_bop_complete()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5828,7 +4944,6 @@ begin
   return new;
 end $function$;
 
--- public.save_external_sapronak_atomic(p_header_id uuid, p_detail_id uuid, p_assignment_id uuid, p_barn_id uuid, p_supplier_id uuid, p_shipment_date date, p_reference_number text, p_notes text, p_item_id uuid, p_quantity numeric, p_purchase_unit_price numeric)
 CREATE OR REPLACE FUNCTION public.save_external_sapronak_atomic(p_header_id uuid, p_detail_id uuid, p_assignment_id uuid, p_barn_id uuid, p_supplier_id uuid, p_shipment_date date, p_reference_number text, p_notes text, p_item_id uuid, p_quantity numeric, p_purchase_unit_price numeric)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -5886,7 +5001,6 @@ begin
   return v_header;
 end $function$;
 
--- public.save_external_sapronak_return_atomic(p_id uuid, p_external_shipment_item_id uuid, p_return_date date, p_reference text, p_notes text, p_quantity numeric)
 CREATE OR REPLACE FUNCTION public.save_external_sapronak_return_atomic(p_id uuid, p_external_shipment_item_id uuid, p_return_date date, p_reference text, p_notes text, p_quantity numeric)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -5987,7 +5101,6 @@ begin
 end
 $function$;
 
--- public.save_logistics_return_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_return_date date, p_reference text, p_notes text, p_items jsonb)
 CREATE OR REPLACE FUNCTION public.save_logistics_return_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_return_date date, p_reference text, p_notes text, p_items jsonb)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6060,7 +5173,6 @@ begin
 end
 $function$;
 
--- public.save_logistics_shipment_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_shipment_date date, p_shipping_note_number text, p_notes text, p_items jsonb)
 CREATE OR REPLACE FUNCTION public.save_logistics_shipment_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_shipment_date date, p_shipping_note_number text, p_notes text, p_items jsonb)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6106,7 +5218,6 @@ begin
   return v_id;
 end $function$;
 
--- public.save_production_abk_harvest_atomic(p_assignment_id uuid, p_barn_id uuid, p_abk_id uuid, p_harvest_date date, p_birds integer, p_weight_kg numeric, p_feed_pre_kg numeric, p_feed_starter_kg numeric, p_feed_finisher_kg numeric)
 CREATE OR REPLACE FUNCTION public.save_production_abk_harvest_atomic(p_assignment_id uuid, p_barn_id uuid, p_abk_id uuid, p_harvest_date date, p_birds integer, p_weight_kg numeric, p_feed_pre_kg numeric, p_feed_starter_kg numeric, p_feed_finisher_kg numeric)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6173,7 +5284,6 @@ begin
 end
 $function$;
 
--- public.save_production_abk_initial_population_atomic(p_link_id uuid, p_initial_birds integer)
 CREATE OR REPLACE FUNCTION public.save_production_abk_initial_population_atomic(p_link_id uuid, p_initial_birds integer)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6203,7 +5313,6 @@ begin
 end
 $function$;
 
--- public.save_production_abk_result_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_abk_id uuid, p_harvest_date date, p_feed_pre_kg numeric, p_feed_starter_kg numeric, p_feed_finisher_kg numeric, p_sizes jsonb)
 CREATE OR REPLACE FUNCTION public.save_production_abk_result_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_abk_id uuid, p_harvest_date date, p_feed_pre_kg numeric, p_feed_starter_kg numeric, p_feed_finisher_kg numeric, p_sizes jsonb)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6258,7 +5367,6 @@ begin
   return v_id;
 end $function$;
 
--- public.save_production_estimate_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_estimated_on date, p_remaining_birds integer, p_feed_used_kg numeric, p_notes text, p_estimated_revenue numeric, p_estimated_cost numeric, p_estimated_profit numeric, p_profit_per_chick_in numeric, p_sizes jsonb)
 CREATE OR REPLACE FUNCTION public.save_production_estimate_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_estimated_on date, p_remaining_birds integer, p_feed_used_kg numeric, p_notes text, p_estimated_revenue numeric, p_estimated_cost numeric, p_estimated_profit numeric, p_profit_per_chick_in numeric, p_sizes jsonb)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6372,7 +5480,6 @@ begin
 end
 $function$;
 
--- public.save_recording_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_recorded_on date, p_age_days integer, p_mortality integer, p_culling integer, p_feed_item_id uuid, p_feed_quantity_units numeric, p_sample_count integer, p_sample_weight_total_kg numeric, p_notes text, p_photo_data text, p_weights jsonb)
 CREATE OR REPLACE FUNCTION public.save_recording_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_recorded_on date, p_age_days integer, p_mortality integer, p_culling integer, p_feed_item_id uuid, p_feed_quantity_units numeric, p_sample_count integer, p_sample_weight_total_kg numeric, p_notes text, p_photo_data text, p_weights jsonb)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6424,7 +5531,6 @@ begin
   return v_id;
 end $function$;
 
--- public.save_rhpp_final_atomic(p_contract_assignment_id uuid)
 CREATE OR REPLACE FUNCTION public.save_rhpp_final_atomic(p_contract_assignment_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6487,7 +5593,6 @@ begin
 end
 $function$;
 
--- public.set_cycle_state(p_cycle uuid, p_action text, p_reason text)
 CREATE OR REPLACE FUNCTION public.set_cycle_state(p_cycle uuid, p_action text, p_reason text DEFAULT NULL::text)
  RETURNS cycles
  LANGUAGE sql
@@ -6496,7 +5601,6 @@ AS $function$
   select private.set_cycle_state_impl(p_cycle,p_action,p_reason)
 $function$;
 
--- public.transfer_external_sapronak_return_atomic(p_external_return_item_id uuid, p_target_assignment_id uuid, p_quantity numeric, p_transferred_on date, p_notes text)
 CREATE OR REPLACE FUNCTION public.transfer_external_sapronak_return_atomic(p_external_return_item_id uuid, p_target_assignment_id uuid, p_quantity numeric, p_transferred_on date, p_notes text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6585,7 +5689,6 @@ begin
 end
 $function$;
 
--- public.update_production_abk_harvest_atomic(p_size_id uuid, p_harvest_date date, p_birds integer, p_weight_kg numeric, p_feed_pre_kg numeric, p_feed_starter_kg numeric, p_feed_finisher_kg numeric)
 CREATE OR REPLACE FUNCTION public.update_production_abk_harvest_atomic(p_size_id uuid, p_harvest_date date, p_birds integer, p_weight_kg numeric, p_feed_pre_kg numeric, p_feed_starter_kg numeric, p_feed_finisher_kg numeric)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -6650,7 +5753,6 @@ begin
 end
 $function$;
 
--- public.validate_chick_in()
 CREATE OR REPLACE FUNCTION public.validate_chick_in()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -6669,7 +5771,6 @@ begin
   return new;
 end $function$;
 
--- public.validate_cycle_population()
 CREATE OR REPLACE FUNCTION public.validate_cycle_population()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -6691,10 +5792,7 @@ begin
   end if;
   return new;
 end $function$;
-
 set check_function_bodies = on;
-
--- ROW LEVEL SECURITY
 alter table public."abk_cycle_salaries" enable row level security;
 alter table public."abk_league_settings" enable row level security;
 alter table public."advance_payments" enable row level security;
@@ -6746,8 +5844,6 @@ alter table public."rhpp_system_final" enable row level security;
 alter table public."suppliers" enable row level security;
 alter table public."supplies" enable row level security;
 alter table public."visits" enable row level security;
-
--- POLICIES
 drop policy if exists "abk_cycle_salaries_admin_all" on public."abk_cycle_salaries";
 create policy "abk_cycle_salaries_admin_all" on public."abk_cycle_salaries" as permissive for all to "public" using ((private.my_bms_role() = 'ADMIN'::bms_role)) with check ((private.my_bms_role() = 'ADMIN'::bms_role));
 drop policy if exists "abk_cycle_salaries_insert" on public."abk_cycle_salaries";
@@ -7223,8 +6319,6 @@ drop policy if exists "rhpp_assignment_read" on public."rhpp_real";
 create policy "rhpp_assignment_read" on public."rhpp_real" as permissive for select to "authenticated" using ((private.can_read_assignment(contract_assignment_id) AND (private.my_bms_role() = ANY (ARRAY['ADMIN'::bms_role, 'OWNER'::bms_role, 'KEUANGAN'::bms_role]))));
 drop policy if exists "rhpp_assignment_update" on public."rhpp_real";
 create policy "rhpp_assignment_update" on public."rhpp_real" as permissive for update to "authenticated" using (private.can_edit_assignment(contract_assignment_id, ARRAY['ADMIN'::bms_role, 'KEUANGAN'::bms_role])) with check (private.can_edit_assignment(contract_assignment_id, ARRAY['ADMIN'::bms_role, 'KEUANGAN'::bms_role]));
-drop policy if exists "admin_full_access" on public."rhpp_system_final";
-create policy "admin_full_access" on public."rhpp_system_final" as permissive for all to "authenticated" using ((( SELECT private.my_bms_role() AS my_bms_role) = 'ADMIN'::bms_role)) with check ((( SELECT private.my_bms_role() AS my_bms_role) = 'ADMIN'::bms_role));
 drop policy if exists "rhpp_system_final_read" on public."rhpp_system_final";
 create policy "rhpp_system_final_read" on public."rhpp_system_final" as permissive for select to "authenticated" using ((EXISTS ( SELECT 1
    FROM profiles p
@@ -7253,8 +6347,6 @@ drop policy if exists "visit_read" on public."visits";
 create policy "visit_read" on public."visits" as permissive for select to "authenticated" using ((private.can_read_assignment(contract_assignment_id) AND (( SELECT private.my_bms_role() AS my_bms_role) = ANY (ARRAY['ADMIN'::bms_role, 'PPL'::bms_role, 'OWNER'::bms_role]))));
 drop policy if exists "visit_update" on public."visits";
 create policy "visit_update" on public."visits" as permissive for update to "authenticated" using (private.can_edit_assignment(contract_assignment_id, ARRAY['ADMIN'::bms_role, 'PPL'::bms_role])) with check (private.can_edit_assignment(contract_assignment_id, ARRAY['ADMIN'::bms_role, 'PPL'::bms_role]));
-
--- TRIGGERS
 drop trigger if exists "trg_abk_salary_auto_reference" on public."abk_cycle_salaries";
 CREATE TRIGGER trg_abk_salary_auto_reference BEFORE INSERT ON abk_cycle_salaries FOR EACH ROW EXECUTE FUNCTION finance_auto_reference_trigger('GAJI-ABK', 'paid_on');
 drop trigger if exists "guard_advance_payment" on public."advance_payments";
@@ -7443,8 +6535,6 @@ drop trigger if exists "bms_lock_closed_assignment" on public."visits";
 CREATE TRIGGER bms_lock_closed_assignment BEFORE INSERT OR DELETE OR UPDATE ON visits FOR EACH ROW EXECUTE FUNCTION private.reject_closed_assignment_write();
 drop trigger if exists "trg_guard_production_visit" on public."visits";
 CREATE TRIGGER trg_guard_production_visit BEFORE INSERT OR DELETE OR UPDATE ON visits FOR EACH ROW EXECUTE FUNCTION private.guard_production_visit();
-
--- TABLE/VIEW GRANTS
 grant delete on table "public"."abk_cycle_salaries" to "anon";
 grant insert on table "public"."abk_cycle_salaries" to "anon";
 grant references on table "public"."abk_cycle_salaries" to "anon";
@@ -8419,13 +7509,7 @@ grant select on table "public"."rhpp_real" to "service_role";
 grant trigger on table "public"."rhpp_real" to "service_role";
 grant truncate on table "public"."rhpp_real" to "service_role";
 grant update on table "public"."rhpp_real" to "service_role";
-grant delete on table "public"."rhpp_system_final" to "authenticated";
-grant insert on table "public"."rhpp_system_final" to "authenticated";
-grant references on table "public"."rhpp_system_final" to "authenticated";
 grant select on table "public"."rhpp_system_final" to "authenticated";
-grant trigger on table "public"."rhpp_system_final" to "authenticated";
-grant truncate on table "public"."rhpp_system_final" to "authenticated";
-grant update on table "public"."rhpp_system_final" to "authenticated";
 grant delete on table "public"."rhpp_system_final" to "service_role";
 grant insert on table "public"."rhpp_system_final" to "service_role";
 grant references on table "public"."rhpp_system_final" to "service_role";
@@ -8476,8 +7560,6 @@ grant select on table "public"."visits" to "service_role";
 grant trigger on table "public"."visits" to "service_role";
 grant truncate on table "public"."visits" to "service_role";
 grant update on table "public"."visits" to "service_role";
-
--- FUNCTION GRANTS
 grant execute on function "private"."admin_list_bms_users_impl"() to "authenticated";
 grant execute on function "private"."admin_update_bms_user_impl"(p_user_id uuid, p_name text, p_role bms_role, p_active boolean) to "authenticated";
 grant execute on function "private"."assign_bms_role_impl"(p_email text, p_role bms_role, p_name text) to "authenticated";
