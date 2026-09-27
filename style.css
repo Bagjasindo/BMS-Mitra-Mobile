@@ -2747,3 +2747,33 @@ form#fxTripForm.form-vertical,
   .app-confirm{padding:16px}
   .app-confirm-actions button{flex:1 1 120px}
 }
+
+/* Match searchable select results to the existing inline search pattern. */
+.mobile-select-picker{
+  border:1px solid #b7c8d0!important;
+  background:#fff!important;
+  color:#172a35!important;
+}
+.mobile-select-options button,
+.mobile-select-options button.selected{
+  min-height:38px!important;
+  margin:0!important;
+  padding:8px 10px!important;
+  border:1px solid #d7e4ea!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  color:#172a35!important;
+  font-size:14px!important;
+  font-weight:500!important;
+  line-height:1.3!important;
+  text-align:left!important;
+  box-shadow:none!important;
+}
+.mobile-select-options button + button{margin-top:3px!important}
+.mobile-select-options button.selected,
+.mobile-select-options button:hover,
+.mobile-select-options button:focus-visible{
+  border-color:#0b9dbd!important;
+  background:#e8f6f9!important;
+  color:#075369!important;
+}
