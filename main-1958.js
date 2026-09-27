@@ -425,6 +425,15 @@ function openMobileSelectPicker(select){
   draw();
   shade.appendChild(picker);
   document.body.appendChild(shade);
+  const box=select.getBoundingClientRect();
+  const width=Math.min(Math.max(box.width,220),window.innerWidth-24);
+  const left=Math.max(12,Math.min(box.left,window.innerWidth-width-12));
+  picker.style.width=width+'px';
+  picker.style.left=left+'px';
+  const height=picker.getBoundingClientRect().height;
+  const below=window.innerHeight-box.bottom-12;
+  const top=below>=Math.min(height,160)||below>=window.innerHeight-box.top?box.bottom+4:box.top-height-4;
+  picker.style.top=Math.max(12,Math.min(top,window.innerHeight-height-12))+'px';
   const close=()=>{shade.remove();document.removeEventListener('keydown',onKey)};
   const onKey=e=>{if(e.key==='Escape')close()};
   document.addEventListener('keydown',onKey);
