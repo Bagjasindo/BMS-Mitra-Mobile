@@ -5959,11 +5959,20 @@ async function financeGlobalProfitLossPage(){
   const realIds=new Set((rr.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
   const finalRows=rows.filter(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return !x.active&&(a?.cycle_type==='MANDIRI'||realIds.has(x.contract_assignment_id));});
   const sum=(arr,k)=>arr.reduce((n,x)=>n+prodNum(x[k]),0);
-  const totalRhpp=sum(finalRows,'rhpp_real');
+  const assignmentOf=x=>assignments.find(a=>a.id===x.contract_assignment_id);
+  const mitraRows=finalRows.filter(x=>assignmentOf(x)?.cycle_type!=='MANDIRI');
+  const mandiriRows=finalRows.filter(x=>assignmentOf(x)?.cycle_type==='MANDIRI');
+  const pendapatanMitra=sum(mitraRows,'rhpp_real');
+  const pendapatanMandiri=sum(mandiriRows,'rhpp_real');
+  const totalRhpp=pendapatanMitra+pendapatanMandiri;
   const totalBop=sum(finalRows,'bop_produksi');
-  const totalSapronakLuar=sum(finalRows,'sapronak_luar');
+  const sapronakMitra=sum(mitraRows,'sapronak_luar');
+  const sapronakMandiri=sum(mandiriRows,'sapronak_luar');
+  const totalSapronakLuar=sapronakMitra+sapronakMandiri;
   const totalTambahDaging=sum(finalRows,'tambah_daging');
-  const labaKandang=finalRows.reduce((n,x)=>n+(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging)),0);
+  const labaMitra=mitraRows.reduce((n,x)=>n+(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging)),0);
+  const labaMandiri=mandiriRows.reduce((n,x)=>n+(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging)),0);
+  const labaKandang=labaMitra+labaMandiri;
   const perawatanKandang=sum(finalRows,'perawatan_jangka_panjang');
   const pendapatanExp=prodNum(exp.expedition_revenue);
   const bopExp=prodNum(exp.operational_bop);
@@ -5988,7 +5997,7 @@ async function financeGlobalProfitLossPage(){
   let html='<section class="panel" id="globalProfitPrintArea">'+
     '<div class="rhpp-section-head"><div><h3>Laba/Rugi Global</h3><p class="muted">Ringkasan akhir perusahaan. Kandang dan Expedisi tetap dihitung terpisah, lalu biaya global dikurangkan di tahap ini.</p></div><div class="report-actions"><button type="button" id="globalProfitPrint">Cetak / PDF</button></div></div>'+
     '<div class="rhpp-summary-cards">'+
-      '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(labaKandang,0)+'</strong><small>'+finalRows.length+' siklus final</small></div>'+
+      '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(labaKandang,0)+'</strong><small>Mitra Rp '+prodFmt(labaMitra,0)+' · Mandiri Rp '+prodFmt(labaMandiri,0)+'</small></div>'+
       '<div class="rhpp-summary-card"><span>Laba/Rugi Expedisi</span><strong>Rp '+prodFmt(labaExp,0)+'</strong><small>Sebelum perawatan Expedisi</small></div>'+
       '<div class="rhpp-summary-card"><span>Total Biaya Global</span><strong>Rp '+prodFmt(biayaGlobal,0)+'</strong><small>Perawatan kandang + perawatan Expedisi + BOP umum</small></div>'+
       '<div class="rhpp-summary-card"><span>Laba/Rugi Global</span><strong>Rp '+prodFmt(labaGlobal,0)+'</strong><small>Hasil akhir perusahaan</small></div>'+
@@ -5996,11 +6005,17 @@ async function financeGlobalProfitLossPage(){
 
     '<h3>1. Rincian Usaha Kandang</h3>'+
     '<div class="tablewrap"><table><thead><tr><th>Komponen</th><th>Nominal</th></tr></thead><tbody>'+
-      '<tr><td>Pendapatan Kandang (RHPP Real Mitra + Penjualan Mandiri)</td><td>Rp '+prodFmt(totalRhpp,0)+'</td></tr>'+
+      '<tr><td>Pendapatan Kandang Mitra (RHPP Real)</td><td>Rp '+prodFmt(pendapatanMitra,0)+'</td></tr>'+
+      '<tr><td>Pendapatan Kandang Mandiri (Penjualan Mandiri)</td><td>Rp '+prodFmt(pendapatanMandiri,0)+'</td></tr>'+
+      '<tr><td><strong>Total Pendapatan Kandang</strong></td><td><strong>Rp '+prodFmt(totalRhpp,0)+'</strong></td></tr>'+
       '<tr><td>BOP Produksi</td><td>Rp '+prodFmt(totalBop,0)+'</td></tr>'+
-      '<tr><td>Biaya Sapronak (Mitra / Mandiri, termasuk stok retur BMS)</td><td>Rp '+prodFmt(totalSapronakLuar,0)+'</td></tr>'+
+      '<tr><td>Biaya Sapronak Mitra</td><td>Rp '+prodFmt(sapronakMitra,0)+'</td></tr>'+
+      '<tr><td>Biaya Sapronak Mandiri (termasuk stok retur BMS yang dipakai)</td><td>Rp '+prodFmt(sapronakMandiri,0)+'</td></tr>'+
+      '<tr><td><strong>Total Biaya Sapronak</strong></td><td><strong>Rp '+prodFmt(totalSapronakLuar,0)+'</strong></td></tr>'+
       '<tr><td>Tambah Daging</td><td>Rp '+prodFmt(totalTambahDaging,0)+'</td></tr>'+
-      '<tr><td><strong>Laba/Rugi Kandang</strong></td><td><strong>Rp '+prodFmt(labaKandang,0)+'</strong></td></tr>'+
+      '<tr><td>Laba/Rugi Kandang Mitra</td><td>Rp '+prodFmt(labaMitra,0)+'</td></tr>'+
+      '<tr><td>Laba/Rugi Kandang Mandiri</td><td>Rp '+prodFmt(labaMandiri,0)+'</td></tr>'+
+      '<tr><td><strong>Total Laba/Rugi Kandang</strong></td><td><strong>Rp '+prodFmt(labaKandang,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
 
     '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Jenis</th><th>Pendapatan</th><th>BOP</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Laba/Rugi</th></tr></thead><tbody>'+
