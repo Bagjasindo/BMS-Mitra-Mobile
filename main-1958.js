@@ -4677,7 +4677,7 @@ async function financeExpeditionMasterPage(){
 }
 
 async function financeExpeditionBusinessPage(){
-  const [tr,tdr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der]=await Promise.all([
+  const [tr,tdr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der,itr]=await Promise.all([
     db.from('finance_expedition_trips').select('*').order('trip_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_expedition_trip_destinations').select('*').order('line_no',{ascending:true}),
     db.from('finance_expedition_invoices').select('*').order('invoice_date',{ascending:false}).order('created_at',{ascending:false}),
@@ -4689,11 +4689,12 @@ async function financeExpeditionBusinessPage(){
     db.from('expedition_vehicles').select('*').eq('active',true).order('plate_number',{ascending:true}),
     db.from('expedition_customers').select('*').eq('active',true).order('name',{ascending:true}),
     db.from('expedition_routes').select('*').eq('active',true).order('route_name',{ascending:true}),
-    db.from('expedition_destinations').select('*').eq('active',true).order('name',{ascending:true})
+    db.from('expedition_destinations').select('*').eq('active',true).order('name',{ascending:true}),
+    db.from('items').select('id,name,category,feed_phase,unit').eq('category','PAKAN').order('name',{ascending:true})
   ]);
   const trips=tr.data||[],tripDetails=tdr.data||[],invoices=ir.data||[],links=iir.data||[],payments=pr.data||[],summaries=sr.data||[],company=cpr.data||{};
-  const drivers=dr.data||[],vehicles=vr.data||[],customers=cur.data||[],routes=rr.data||[],destinations=der.data||[];
-  const err=[tr,tdr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der].find(x=>x.error)?.error;
+  const drivers=dr.data||[],vehicles=vr.data||[],customers=cur.data||[],routes=rr.data||[],destinations=der.data||[],feedItems=itr.data||[];
+  const err=[tr,tdr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der,itr].find(x=>x.error)?.error;
   const role=profile?.role||'';
   const canOps=['ADMIN','LOGISTIK'].includes(role);
   const canFinance=['ADMIN','KEUANGAN'].includes(role);
@@ -4793,11 +4794,12 @@ async function financeExpeditionBusinessPage(){
   const destWrap=document.getElementById('fxTripDestinations');
   const addDestBtn=document.getElementById('fxAddDestination');
   const destinationOptions='<option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('');
+  const cargoOptions='<option value="">Pilih Jenis Muatan</option>'+feedItems.map(x=>'<option value="'+esc(x.name.trim())+'">'+esc(x.name.trim()+(x.feed_phase?' · '+x.feed_phase:'')+(x.unit?' · '+String(x.unit).toLowerCase():''))+'</option>').join('');
   const addDestinationRow=()=>{
     if(!destWrap)return;
     const row=document.createElement('div');row.className='fx-destination-row';row.style.cssText='display:flex;flex-direction:column;gap:8px;margin:10px 0;padding:12px;border:1px solid #d7dde5;border-radius:10px;background:#fff';
     row.innerHTML='<label>Tujuan<select class="fx-dest-id" required>'+destinationOptions+'</select></label>'+
-      '<label>Jenis Muatan<input class="fx-dest-cargo" placeholder="Contoh: BFP Premium"></label>'+
+      '<label>Jenis Muatan<select class="fx-dest-cargo" required>'+cargoOptions+'</select></label>'+
       '<label>Qty<input class="fx-dest-qty" type="text" inputmode="decimal"></label>'+
       '<label>Satuan<select class="fx-dest-unit"><option value="zak">zak</option><option value="kg">kg</option><option value="ekor">ekor</option><option value="unit">unit</option></select></label>'+
       '<button type="button" class="fx-remove-dest">Hapus Tujuan</button>';
