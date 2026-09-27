@@ -4677,8 +4677,9 @@ async function financeExpeditionMasterPage(){
 }
 
 async function financeExpeditionBusinessPage(){
-  const [tr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der]=await Promise.all([
+  const [tr,tdr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der]=await Promise.all([
     db.from('finance_expedition_trips').select('*').order('trip_date',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('finance_expedition_trip_destinations').select('*').order('line_no',{ascending:true}),
     db.from('finance_expedition_invoices').select('*').order('invoice_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_expedition_invoice_items').select('invoice_id,trip_id'),
     db.from('finance_expedition_payments').select('*').order('paid_on',{ascending:false}),
@@ -4690,9 +4691,9 @@ async function financeExpeditionBusinessPage(){
     db.from('expedition_routes').select('*').eq('active',true).order('route_name',{ascending:true}),
     db.from('expedition_destinations').select('*').eq('active',true).order('name',{ascending:true})
   ]);
-  const trips=tr.data||[],invoices=ir.data||[],links=iir.data||[],payments=pr.data||[],summaries=sr.data||[],company=cpr.data||{};
+  const trips=tr.data||[],tripDetails=tdr.data||[],invoices=ir.data||[],links=iir.data||[],payments=pr.data||[],summaries=sr.data||[],company=cpr.data||{};
   const drivers=dr.data||[],vehicles=vr.data||[],customers=cur.data||[],routes=rr.data||[],destinations=der.data||[];
-  const err=[tr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der].find(x=>x.error)?.error;
+  const err=[tr,tdr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der].find(x=>x.error)?.error;
   const role=profile?.role||'';
   const canOps=['ADMIN','LOGISTIK'].includes(role);
   const canFinance=['ADMIN','KEUANGAN'].includes(role);
@@ -4701,6 +4702,10 @@ async function financeExpeditionBusinessPage(){
   const used=new Set(links.map(x=>x.trip_id));
   const unbilled=trips.filter(x=>!used.has(x.id));
   const tripTotal=t=>prodNum(t.trip_price)+prodNum(t.additional)-prodNum(t.deduction);
+  const detailsForTrip=id=>tripDetails.filter(x=>x.trip_id===id).sort((a,b)=>prodNum(a.line_no)-prodNum(b.line_no));
+  const destinationText=t=>{const ds=detailsForTrip(t.id);return ds.length?ds.map(x=>x.destination_name).join(' • '):(t.destination||'-');};
+  const cargoText=t=>{const ds=detailsForTrip(t.id);return ds.length?ds.map(x=>[x.cargo,prodNum(x.qty)?prodFmt(x.qty,2):'',x.unit||''].filter(Boolean).join(' ')).join(' • '):(t.cargo||'-');};
+  const totalQtyFor=t=>{const ds=detailsForTrip(t.id);return ds.length?ds.reduce((n,x)=>n+prodNum(x.qty),0):prodNum(t.total_qty);};
   const invoiceTrips=id=>links.filter(x=>x.invoice_id===id).map(x=>trips.find(t=>t.id===x.trip_id)).filter(Boolean);
   const sumFor=id=>summaries.find(x=>x.invoice_id===id);
   const invoiceLabel=id=>{const i=invoices.find(x=>x.id===id),x=sumFor(id);return i?i.invoice_number+' · '+i.customer_name+' · Sisa Rp '+prodFmt(x?.receivable||0,0):'-';};
@@ -4729,15 +4734,18 @@ async function financeExpeditionBusinessPage(){
         '<label>Sopir<select name="driver" required><option value="">Pilih Sopir</option>'+drivers.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
         '<label>Truk<select name="vehicle" required><option value="">Pilih Kendaraan</option>'+vehicles.map(x=>'<option value="'+esc(x.plate_number)+'">'+esc(x.plate_number+(x.vehicle_type?' · '+x.vehicle_type:''))+'</option>').join('')+'</select></label>'+
         '<label>Zona / Rute<select id="fxRouteSelect" name="route_id" required><option value="">Pilih Rute</option>'+routes.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.route_name+' · Rp '+prodFmt(x.default_trip_price,0))+'</option>').join('')+'</select></label>'+
-        '<input type="hidden" name="zone"><label>Tujuan<select name="destination" required><option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
-        '<label>Jenis Muatan / Qty<input name="cargo"></label><label>Total Qty<input name="total_qty" type="text" inputmode="decimal" data-number="1"></label>'+
+        '<input type="hidden" name="zone">'+
+        '<fieldset><legend>Detail Tujuan / Muatan</legend><p class="muted">Satu trip boleh memiliki beberapa kandang/tujuan. Harga trip tetap dihitung satu kali.</p>'+
+          '<div id="fxTripDestinations"></div>'+
+          '<button type="button" id="fxAddDestination">+ Tambah Tujuan / Muatan</button>'+
+        '</fieldset>'+
         '<label>Harga Trip<input id="fxTripPrice" name="trip_price" type="text" inputmode="decimal" data-number="1" required readonly></label>'+
         '<label>Tambahan<input name="additional" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Catatan<textarea name="notes"></textarea></label><button type="submit">Simpan Trip</button>'+
       '</form></section>'+
       '<section class="panel"><h3>Trip Belum Ditagihkan</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th></tr></thead><tbody>'+
-        unbilled.map(t=>'<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.destination||'-')+'</td><td>'+esc(t.cargo||'-')+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('')+
+        unbilled.map(t=>'<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(destinationText(t))+'</td><td>'+esc(cargoText(t))+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('')+
       '</tbody></table></div>'+(unbilled.length?'':'<p class="muted">Tidak ada trip yang belum ditagihkan.</p>')+'</section>'+
       '<section class="panel"><h3>Buat Invoice Expedisi</h3><p class="muted"><strong>No. Invoice otomatis.</strong> Format: 001/BMS-BSI/FMC/'+today.slice(0,4)+' dan naik berurutan sesuai tahun invoice.</p><form id="fxInvoiceForm" class="form-vertical">'+
         '<label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
@@ -4745,7 +4753,7 @@ async function financeExpeditionBusinessPage(){
         '<label>Tagihan Kepada<select id="fxCustomerSelect" name="customer_id" required><option value="">Pilih Pelanggan</option>'+customers.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
         '<input type="hidden" name="customer_name"><textarea name="customer_address" style="display:none"></textarea>'+
         '<p id="fxCustomerInfo" class="muted"></p><fieldset><legend>Pilih Trip</legend>'+
-          unbilled.map(t=>'<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="trip_ids" value="'+esc(t.id)+'"><span>'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-')+' · '+t.destination+' · Rp '+prodFmt(tripTotal(t),0))+'</span></label>').join('')+
+          unbilled.map(t=>'<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="trip_ids" value="'+esc(t.id)+'"><span>'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-')+' · '+destinationText(t)+' · Rp '+prodFmt(tripTotal(t),0))+'</span></label>').join('')+
           (unbilled.length?'':'<p class="muted">Belum ada trip tersedia.</p>')+
         '</fieldset><label>Catatan<textarea name="notes"></textarea></label><button type="submit" '+(!unbilled.length?'disabled':'')+'>Buat Invoice</button>'+
       '</form></section>';
@@ -4782,16 +4790,52 @@ async function financeExpeditionBusinessPage(){
     };
     routeSel.onchange=syncRoute;
   }
+  const destWrap=document.getElementById('fxTripDestinations');
+  const addDestBtn=document.getElementById('fxAddDestination');
+  const destinationOptions='<option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('');
+  const addDestinationRow=()=>{
+    if(!destWrap)return;
+    const row=document.createElement('div');row.className='fx-destination-row';row.style.cssText='display:grid;grid-template-columns:1.25fr 1.6fr .7fr .65fr auto;gap:8px;align-items:end;margin:8px 0';
+    row.innerHTML='<label>Tujuan<select class="fx-dest-id" required>'+destinationOptions+'</select></label>'+
+      '<label>Jenis Muatan<input class="fx-dest-cargo" placeholder="Contoh: BFP Premium"></label>'+
+      '<label>Qty<input class="fx-dest-qty" type="text" inputmode="decimal"></label>'+
+      '<label>Satuan<select class="fx-dest-unit"><option value="zak">zak</option><option value="kg">kg</option><option value="ekor">ekor</option><option value="unit">unit</option></select></label>'+
+      '<button type="button" class="fx-remove-dest">Hapus</button>';
+    row.querySelector('.fx-remove-dest').onclick=()=>{if(destWrap.children.length>1)row.remove();else msg('Minimal satu tujuan wajib ada.');};
+    destWrap.appendChild(row);
+  };
+  if(addDestBtn)addDestBtn.onclick=addDestinationRow;
+  if(destWrap&&!destWrap.children.length)addDestinationRow();
+
   if(tf)tf.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(tf);
-    const tripPrice=normalizeInputID(fd.get('trip_price')),additional=normalizeInputID(fd.get('additional'))||0,deduction=normalizeInputID(fd.get('deduction'))||0,totalQty=normalizeInputID(fd.get('total_qty'));
+    const tripPrice=normalizeInputID(fd.get('trip_price')),additional=normalizeInputID(fd.get('additional'))||0,deduction=normalizeInputID(fd.get('deduction'))||0;
     if(tripPrice===null||tripPrice<0||additional<0||deduction<0)return msg('Nilai trip tidak valid.');
-    const {error}=await db.from('finance_expedition_trips').insert({
-      trip_date:fd.get('trip_date'),mts_sj:fd.get('mts_sj')||null,rr:fd.get('rr')||null,driver:fd.get('driver')||null,vehicle:fd.get('vehicle')||null,
-      zone:fd.get('zone')||null,destination:fd.get('destination'),cargo:fd.get('cargo')||null,total_qty:totalQty,trip_price:tripPrice,additional,deduction,
-      reference:null,notes:fd.get('notes')||null
+    const detailRows=[...tf.querySelectorAll('.fx-destination-row')];
+    const detailData=detailRows.map((row,idx)=>{
+      const destinationId=row.querySelector('.fx-dest-id')?.value||'';
+      const d=destinations.find(x=>x.id===destinationId);
+      const qtyRaw=row.querySelector('.fx-dest-qty')?.value||'';
+      const qty=qtyRaw===''?null:normalizeInputID(qtyRaw);
+      return {
+        destination_id:destinationId,
+        destination_name:d?.name||'',
+        cargo:String(row.querySelector('.fx-dest-cargo')?.value||'').trim(),
+        qty:qty,
+        unit:String(row.querySelector('.fx-dest-unit')?.value||'').trim(),
+        notes:null,
+        line_no:idx+1
+      };
     });
-    if(error)return msg(error.message);await financeExpeditionBusinessPage();msg('Trip Expedisi berhasil disimpan.',true);
+    if(!detailData.length||detailData.some(x=>!x.destination_id||!x.destination_name))return msg('Pilih tujuan untuk setiap baris.');
+    if(detailData.some(x=>x.qty!==null&&(x.qty<0||!Number.isFinite(x.qty))))return msg('Qty tujuan tidak valid.');
+    const {error}=await db.rpc('finance_save_expedition_trip_atomic',{
+      p_trip_date:String(fd.get('trip_date')||''),p_mts_sj:String(fd.get('mts_sj')||'')||null,p_rr:String(fd.get('rr')||'')||null,
+      p_driver:String(fd.get('driver')||''),p_vehicle:String(fd.get('vehicle')||''),p_zone:String(fd.get('zone')||''),
+      p_trip_price:tripPrice,p_additional:additional,p_deduction:deduction,p_notes:String(fd.get('notes')||'')||null,
+      p_destinations:detailData
+    });
+    if(error)return msg(error.message);await financeExpeditionBusinessPage();msg('Trip Expedisi dengan '+detailData.length+' tujuan berhasil disimpan.',true);
   };
 
   const inf=document.getElementById('fxInvoiceForm');
@@ -4832,12 +4876,17 @@ async function financeExpeditionBusinessPage(){
 
   document.querySelectorAll('[data-fx-print]').forEach(btn=>btn.onclick=()=>{
     const id=btn.dataset.fxPrint,i=invoices.find(x=>x.id===id),its=invoiceTrips(id),x=sumFor(id);if(!i)return;
-    const rows=its.map((t,idx)=>'<tr>'+
+    const rows=its.map((t,idx)=>{
+      const ds=detailsForTrip(t.id);
+      const destHtml=ds.length?ds.map(x=>esc(x.destination_name)).join('<br>'):esc(t.destination||'-');
+      const cargoHtml=ds.length?ds.map(x=>esc([x.cargo,prodNum(x.qty)?prodFmt(x.qty,2):'',x.unit||''].filter(Boolean).join(' '))).join('<br>'):esc(t.cargo||'-');
+      return '<tr>'+
       '<td>'+(idx+1)+'</td><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.rr||'-')+'</td>'+
-      '<td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td>'+esc(t.destination||'-')+'</td>'+
-      '<td>'+esc(t.cargo||'-')+'</td><td>'+prodFmt(t.total_qty||0,0)+'</td><td>Rp '+prodFmt(t.trip_price,0)+'</td>'+
+      '<td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td>'+destHtml+'</td>'+
+      '<td>'+cargoHtml+'</td><td>'+prodFmt(totalQtyFor(t),2)+'</td><td>Rp '+prodFmt(t.trip_price,0)+'</td>'+
       '<td>'+(prodNum(t.additional)?'Rp '+prodFmt(t.additional,0):'-')+'</td><td>'+(prodNum(t.deduction)?'Rp '+prodFmt(t.deduction,0):'-')+'</td>'+
-      '<td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('');
+      '<td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>';
+    }).join('');
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
     const logo=company.logo_url||BMS_PRINT_LOGO;
     const comp=company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih';
