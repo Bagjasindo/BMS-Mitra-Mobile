@@ -2511,3 +2511,50 @@ form#fxTripForm.form-vertical,
   .fx-bop-category{width:100%!important}
   .fx-bop-trip-list{max-height:280px!important}
 }
+
+/* Mobile readability and touch targets: preserve layout and business flows. */
+@media (max-width:900px){
+  #appSidebar nav button,
+  #appSidebar nav summary,
+  .mobile-topbar > span,
+  label,
+  form label,
+  .form-vertical label,
+  input,
+  select,
+  textarea,
+  button,
+  form button,
+  .form-vertical button,
+  .search-suggestion,
+  .fx-trip-text strong,
+  .fx-trip-text small,
+  .fx-bop-trip strong,
+  .fx-bop-trip small {
+    font-size:13px!important;
+    line-height:1.35!important;
+  }
+  button,
+  form button,
+  .form-vertical button,
+  #appSidebar nav button,
+  #appSidebar nav summary,
+  td button,
+  .table-actions button,
+  .search-suggestion,
+  .mobile-menu-toggle {
+    min-height:40px!important;
+  }
+  table {font-size:12.5px!important}
+  th {font-size:12px!important}
+  th,td {padding:8px!important}
+  .tablewrap {overscroll-behavior-x:contain}
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible {
+    outline:3px solid #0b90ab!important;
+    outline-offset:2px!important;
+  }
+}
