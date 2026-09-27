@@ -28,7 +28,7 @@
 ## Tambahan Mitra / Mandiri
 - Pembuatan siklus sekarang memilih **Mitra** atau **Mandiri**.
 - Mitra tetap memakai kontrak dan harga panen otomatis dari kontrak.
-- Mandiri tidak memakai kontrak; Logistik memakai **Pembelian Mandiri** dengan harga beli aktual dan pembagian langsung ke beberapa kandang.
+- Mandiri tidak memakai kontrak, tetapi tetap wajib memilih **Performa BMS / Performa Bounty** sebagai acuan Produksi/PPL; Logistik memakai **Pembelian Mandiri** dengan harga beli aktual dan pembagian langsung ke beberapa kandang.
 - Sisa jumlah pembelian yang belum dibagi tercatat sebagai sisa gudang pada transaksi pembelian.
 - Marketing memiliki **Master Pelanggan**; Panen Mandiri memilih pelanggan dan harga jual diinput manual.
 - Produksi/PPL, recording, BOP, dan struktur kandang tetap memakai alur yang sudah ada.
