@@ -1120,7 +1120,7 @@ async function logisticsContractPage(){
       const b=barns.find(x=>x.id===a.barn_id);
       const k=masters.find(x=>x.id===a.master_contract_id);
       const ls=linksFor(a.id);
-      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td><strong>'+esc(a.cycle_type||'MITRA')+'</strong></td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.cycle_type==='MANDIRI'?'-':(a.performance_template_name||'-'))+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">AKTIF</span></td><td><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Detail</button></td></tr>';
+      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td><strong>'+esc(a.cycle_type||'MITRA')+'</strong></td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">AKTIF</span></td><td><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Detail</button></td></tr>';
     }).join('')+
     '</tbody></table></div>'+(!activeAssignments.length?'<p>Belum ada kontrak kandang aktif.</p>':'')+'</section>'+
     '<section class="panel" id="contractActiveDetail" hidden><h3>Detail Kontrak Aktif</h3><div id="contractActiveDetailBody"></div></section>';
@@ -1137,10 +1137,13 @@ async function logisticsContractPage(){
   const syncCycleType=()=>{
     const mandiri=cycleTypeSelect?.value==='MANDIRI';
     if(contractWrap)contractWrap.hidden=mandiri;
-    if(performanceWrap)performanceWrap.hidden=mandiri;
+    if(performanceWrap)performanceWrap.hidden=false;
     if(contractSelect){contractSelect.required=!mandiri;contractSelect.disabled=mandiri;if(mandiri)contractSelect.value='';}
-    if(perfSelect){perfSelect.required=!mandiri;perfSelect.disabled=mandiri;if(mandiri)perfSelect.innerHTML='<option value="">Tidak dipakai untuk Mandiri</option>';}
-    if(!mandiri&&contractSelect)contractSelect.dispatchEvent(new Event('change'));
+    if(perfSelect){perfSelect.required=true;perfSelect.disabled=false;}
+    if(mandiri){
+      const names=[...new Set(perfRows.map(x=>x.template_name).filter(Boolean))];
+      perfSelect.innerHTML='<option value="">Pilih Performa</option>'+names.map(name=>'<option value="'+esc(name)+'">'+esc(name)+'</option>').join('');
+    }else if(contractSelect){contractSelect.dispatchEvent(new Event('change'));}
   };
   if(cycleTypeSelect)cycleTypeSelect.onchange=syncCycleType;
   syncCycleType();
@@ -1219,7 +1222,7 @@ async function logisticsContractPage(){
       barn_id:fd.get('barn_id'),
       cycle_type:cycleType,
       master_contract_id:cycleType==='MANDIRI'?null:fd.get('master_contract_id'),
-      performance_template_name:cycleType==='MANDIRI'?null:fd.get('performance_template_name'),
+      performance_template_name:fd.get('performance_template_name'),
       start_date:fd.get('start_date'),
       ppl_id:fd.get('ppl_id')
     };
@@ -1239,7 +1242,7 @@ async function logisticsContractPage(){
   const renderContractDetail=id=>{
     const a=activeAssignments.find(x=>x.id===id);if(!a)return;
     const b=barns.find(x=>x.id===a.barn_id),k=masters.find(x=>x.id===a.master_contract_id),ls=linksFor(a.id);
-    let detail='<div class="contract-detail-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+' · '+esc(assignmentCycleLabel(allAssignments,a))+' · '+esc(a.cycle_type||'MITRA')+'</strong><div class="muted">'+esc(a.cycle_type==='MANDIRI'?'Mandiri · harga aktual':((shortContractLabel(k?.number)||'-')+' · '+(a.performance_template_name||'-')))+'</div></div><span class="pill">AKTIF</span></div>';
+    let detail='<div class="contract-detail-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+' · '+esc(assignmentCycleLabel(allAssignments,a))+' · '+esc(a.cycle_type||'MITRA')+'</strong><div class="muted">'+esc(a.cycle_type==='MANDIRI'?('Mandiri · '+(a.performance_template_name||'-')+' · harga aktual'):((shortContractLabel(k?.number)||'-')+' · '+(a.performance_template_name||'-')))+'</div></div><span class="pill">AKTIF</span></div>';
     detail+='<div class="return-grid">'+
       '<label>Tanggal Mulai<input type="date" data-start-date="'+esc(a.id)+'" value="'+esc(a.start_date||'')+'"></label>'+ 
       '<label>PPL Penanggung Jawab<select data-ppl-id="'+esc(a.id)+'"><option value="">Pilih PPL</option>'+ppls.map(x=>'<option value="'+esc(x.user_id)+'" '+(x.user_id===a.ppl_id?'selected':'')+'>'+esc(x.full_name)+'</option>').join('')+'</select></label>'+
@@ -2919,7 +2922,7 @@ async function recordingPplPage(){
     const ip=age>0&&fcr>0?((100-depl)*bwkg*100)/(age*fcr):0;
     const adg=age>0?(bwg-prodNum(ci.avg_weight))/age:0;
     const fi=initial>0?cumFeed*1000/initial:0;
-    const st=d.standards.find(s=>s.contract_id===a.master_contract_id&&s.template_name===a.performance_template_name&&prodNum(s.age_days)===age);
+    const st=d.standards.find(s=>(a.cycle_type==='MANDIRI'||s.contract_id===a.master_contract_id)&&s.template_name===a.performance_template_name&&prodNum(s.age_days)===age);
     const stdFeedTotalKg=st?.std_feed_g_per_bird?prodNum(st.std_feed_g_per_bird)*initial/1000:null;
     metricRows.push({r,a,population,depl,bwg,cumFeed,fi,fcr,adg,ip,st,stdFeedTotalKg});
   }
@@ -3532,7 +3535,7 @@ async function leagueAbkPage(editSizeId=null){
 
     const ipBonus=kg*matchBonus('IP',ip);
     const perfRows=d.standards
-      .filter(s=>s.contract_id===a?.master_contract_id&&s.template_name===a?.performance_template_name&&s.std_fcr!=null)
+      .filter(s=>(a?.cycle_type==='MANDIRI'||s.contract_id===a?.master_contract_id)&&s.template_name===a?.performance_template_name&&s.std_fcr!=null)
       .sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
     let stdFcr=0;
     if(perfRows.length){
@@ -7283,7 +7286,7 @@ async function buildDashboardModel(){
     const ip=age>0&&fcr>0?((100-dep)*bw*100)/(age*fcr):0;
     const prevWs=prev?samples.filter(s=>s.recording_id===prev.id).map(s=>prodNum(s.weight_g)):[];
     const prevBwg=prevWs.length?prevWs.reduce((s,x)=>s+x,0)/prevWs.length:prodNum(prev?.avg_weight_kg)*1000;
-    const st=d.standards.find(s=>s.contract_id===a.master_contract_id&&s.template_name===a.performance_template_name&&prodNum(s.age_days)===age);
+    const st=d.standards.find(s=>(a.cycle_type==='MANDIRI'||s.contract_id===a.master_contract_id)&&s.template_name===a.performance_template_name&&prodNum(s.age_days)===age);
     const fc=initial>0?feed*1000/initial:0;
     const fcStd=prodNum(st?.std_feed_g_per_bird);
     const fcLow=!!(latest&&fcStd>0&&fc<fcStd);
