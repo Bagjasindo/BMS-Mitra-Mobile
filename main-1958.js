@@ -1848,13 +1848,13 @@ async function logisticsMandiriPurchasePage(editId=null){
       '<label>Supplier<select name="supplier_id" id="mandiriPurchaseSupplier" required><option value="">Pilih Supplier</option>'+
         suppliers.map(x=>'<option value="'+esc(x.id)+'" '+(selected?.supplier_id===x.id?'selected':'')+'>'+esc(x.code+' · '+x.name)+'</option>').join('')+
       '</select></label>'+
-      '<label>Barang<select name="item_id" id="mandiriPurchaseItem" required><option value="">Pilih Barang</option></select></label>'+
+      '<label>Barang (Pakan / OVK / DOC)<select name="item_id" id="mandiriPurchaseItem" required><option value="">Pilih Barang</option></select></label>'+
       '<label>Jumlah Pembelian<input type="text" name="quantity" id="mandiriPurchaseQty" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.quantity):'')+'" required></label>'+
       '<label>Harga Beli / Satuan<input type="text" name="purchase_unit_price" id="mandiriPurchasePrice" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.purchase_unit_price):'')+'" required></label>'+
       '<label>Total Pembelian<input id="mandiriPurchaseTotal" readonly tabindex="-1"></label>'+
       '<label>No. Nota / Referensi<input name="reference_number" value="'+esc(selected?.reference_number||'')+'"></label>'+
       '<label>Catatan<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
-      '<section class="panel" style="margin:0"><h4>Kirim / Bagi ke Kandang Mandiri</h4><div id="mandiriAllocationRows"></div><button type="button" id="addMandiriAllocation">+ Tambah Kandang</button><p id="mandiriAllocationSummary" class="muted"></p></section>'+
+      '<section class="panel" style="margin:0"><h4>Kirim / Bagi Pakan, OVK, atau DOC ke Kandang Mandiri</h4><div id="mandiriAllocationRows"></div><button type="button" id="addMandiriAllocation">+ Tambah Kandang</button><p id="mandiriAllocationSummary" class="muted"></p></section>'+
       '<button type="submit">'+(selected?'Simpan Perubahan':'Simpan Pembelian Mandiri')+'</button>'+
       (selected?'<button type="button" id="cancelMandiriPurchase">Batal Edit</button>':'')+
     '</form></section>';
@@ -1888,8 +1888,8 @@ async function logisticsMandiriPurchasePage(editId=null){
   const refreshItems=()=>{
     const sid=supplierEl.value;
     const current=selected?.item_id||itemEl.value;
-    const list=items.filter(x=>x.supplier_id===sid);
-    itemEl.innerHTML='<option value="">Pilih Barang</option>'+list.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===current?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+(x.unit||'-'))+'</option>').join('');
+    const list=items.filter(x=>sid&&(x.supplier_id===sid||!x.supplier_id));
+    itemEl.innerHTML='<option value="">Pilih Barang</option>'+list.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===current?'selected':'')+'>'+esc(x.category+' · '+x.code+' · '+x.name+' · '+(x.unit||'-'))+'</option>').join('');
     if(!list.some(x=>x.id===itemEl.value))itemEl.value='';
   };
   const syncDraft=()=>{
