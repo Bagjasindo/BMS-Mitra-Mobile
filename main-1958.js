@@ -4795,12 +4795,12 @@ async function financeExpeditionBusinessPage(){
   const destinationOptions='<option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('');
   const addDestinationRow=()=>{
     if(!destWrap)return;
-    const row=document.createElement('div');row.className='fx-destination-row';row.style.cssText='display:grid;grid-template-columns:1.25fr 1.6fr .7fr .65fr auto;gap:8px;align-items:end;margin:8px 0';
+    const row=document.createElement('div');row.className='fx-destination-row';row.style.cssText='display:flex;flex-direction:column;gap:8px;margin:10px 0;padding:12px;border:1px solid #d7dde5;border-radius:10px;background:#fff';
     row.innerHTML='<label>Tujuan<select class="fx-dest-id" required>'+destinationOptions+'</select></label>'+
       '<label>Jenis Muatan<input class="fx-dest-cargo" placeholder="Contoh: BFP Premium"></label>'+
       '<label>Qty<input class="fx-dest-qty" type="text" inputmode="decimal"></label>'+
       '<label>Satuan<select class="fx-dest-unit"><option value="zak">zak</option><option value="kg">kg</option><option value="ekor">ekor</option><option value="unit">unit</option></select></label>'+
-      '<button type="button" class="fx-remove-dest">Hapus</button>';
+      '<button type="button" class="fx-remove-dest">Hapus Tujuan</button>';
     row.querySelector('.fx-remove-dest').onclick=()=>{if(destWrap.children.length>1)row.remove();else msg('Minimal satu tujuan wajib ada.');};
     destWrap.appendChild(row);
   };
