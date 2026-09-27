@@ -729,7 +729,7 @@ async function contractMasterPage(){
   const fcrRows=bonuses.filter(x=>x.metric==='FCR_DIFFERENCE');
   const depletionRows=bonuses.filter(x=>x.metric==='DEPLETION');
 
-  let html='<section class="panel"><h3>Master Kontrak</h3><p class="muted">Master kontrak dipilih saat Logistik membuat Kontrak Aktif per Kandang.</p>';
+  let html='<section class="panel"><h3>Master Kontrak</h3><p class="muted">Master kontrak dipilih saat Logistik membuat Siklus Mitra per kandang.</p>';
 
   if(can){
     html+='<form id="contractInfoForm" class="form-vertical">'+
@@ -820,7 +820,7 @@ async function contractMasterPage(){
     depletionRows.map(x=>'<tr><td>'+(x.min_value==null?'-':fmtNumber(x.min_value))+'</td><td>'+(x.max_value==null?'-':fmtNumber(x.max_value))+'</td><td>Rp '+fmtNumber(x.rupiah_per_kg)+'</td><td>'+esc(x.notes||'')+'</td>'+(can?'<td><button type="button" data-edit-depletion="'+esc(x.id)+'">Edit</button></td>':'')+'</tr>').join('')+
     '</tbody></table></div></section>';
 
-  html+='<section class="panel"><h3>Template Kontrak</h3><p class="muted">Penggunaan kontrak dilakukan dari menu Logistik → Buat Kontrak.</p>';
+  html+='<section class="panel"><h3>Template Kontrak</h3><p class="muted">Penggunaan kontrak dilakukan dari menu Logistik → Buat Siklus, lalu pilih Mitra.</p>';
   html+='<div class="tablewrap"><table id="contractTemplateTable"><thead><tr><th>Nama Kontrak</th><th>Tanggal Berlaku</th><th>Performa</th><th>Harga</th><th>Bonus IP</th><th>Bonus FCR / Deplesi</th><th>Aksi</th></tr></thead><tbody>'+
     templates.map(t=>{
       const tPrices=(pr.data||[]).filter(x=>x.contract_id===t.id);
@@ -1331,7 +1331,7 @@ async function logisticsShippingPage(editId=null){
   const todayID=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
   let html='<section class="panel"><h3>Pengiriman</h3>'+
-    '<p class="muted">Buat Kontrak Logistik adalah periode kerja. Pilih kandang yang memiliki kontrak aktif, isi No. SJ, lalu tambahkan Sapronak dan jumlah kiriman.</p>'+
+    '<p class="muted">Pengiriman ini khusus Siklus Mitra. Pilih kandang dengan Siklus Mitra aktif, isi No. SJ, lalu tambahkan Sapronak dan jumlah kiriman.</p>'+
     '<form id="logisticsShippingForm" class="form-vertical">'+
       '<input type="hidden" name="shipment_id" value="'+(selected?esc(selected.id):'')+'">'+
       '<label>Cari / Pilih Kandang<input id="shippingBarnSearch" autocomplete="off" placeholder="Contoh: cicurug" value="'+(selected?esc((barns.find(b=>b.id===selected.barn_id)?.code||'')+' · '+(barns.find(b=>b.id===selected.barn_id)?.name||'')):'')+'" '+(locked?'disabled':'')+' required></label>'+
