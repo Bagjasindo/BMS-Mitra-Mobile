@@ -2859,7 +2859,7 @@ main select.app-select-native{
   color:#172a35!important;
   box-shadow:0 16px 44px rgba(18,48,63,.10)!important;
 }
-.login-shell .login h1{margin:0 0 8px;font-size:clamp(24px,5vw,30px);color:#172a35}
+.login-shell .login h1{margin:0 0 8px;font-size:clamp(24px,5vw,30px);color:#172a35;text-align:center}
 .login-shell .login-logo{display:block;width:clamp(136px,40vw,185px);height:auto;max-height:118px;object-fit:contain;margin:0 auto 12px}
 .login-shell .login p{margin:0 0 20px;color:#536a77;line-height:1.45}
 .login-shell .login form{width:100%!important;max-width:none!important;display:grid!important;gap:14px!important}
