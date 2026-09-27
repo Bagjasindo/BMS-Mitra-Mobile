@@ -610,16 +610,17 @@ async function printFinanceDocument(sectionIds,heading){
   const ids=Array.isArray(sectionIds)?sectionIds:[sectionIds];
   const sections=ids.map(id=>document.getElementById(id)).filter(Boolean);
   if(!sections.length)return msg('Bagian yang akan dicetak belum tersedia.');
+  // Open on the click itself; browsers can block windows opened after an awaited request.
+  const w=window.open('','_blank');
+  if(!w)return msg('Popup cetak diblokir browser.');
   const {data:company,error}=await db.from('company_profile').select('*').eq('id',true).maybeSingle();
-  if(error)return msg(error.message);
+  if(error){w.close();return msg(error.message);}
   const cp=company||{};
   const body=sections.map(el=>{
     const clone=el.cloneNode(true);
     clone.querySelectorAll('button,form,.report-actions').forEach(x=>x.remove());
     return clone.innerHTML;
   }).join('<div class="print-gap"></div>');
-  const w=window.open('','_blank');
-  if(!w)return msg('Popup cetak diblokir browser.');
   const generated=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'long',timeStyle:'short'}).format(new Date());
   w.document.write('<html><head><meta charset="utf-8"><title>'+esc(heading||'Laporan')+'</title><style>'+
     '@page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;color:#111;font-size:11px}'+
@@ -628,7 +629,7 @@ async function printFinanceDocument(sectionIds,heading){
     '.rhpp-summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.rhpp-summary-card{border:1px solid #bbb;padding:7px}.rhpp-summary-card span{display:block}.rhpp-summary-card strong{display:block;margin-top:3px}'+
     '.muted{color:#555}.print-gap{height:10px}.tablewrap{overflow:visible}.panel{border:0;padding:0;margin:0}'+
     '</style></head><body>'+
-    '<div class="print-head">'+'<img src="'+BMS_PRINT_LOGO+'" style="max-height:42px;float:right;object-fit:contain">'+
+    '<div class="print-head">'+'<img src="'+esc(cp.logo_url||BMS_PRINT_LOGO)+'" style="max-height:42px;float:right;object-fit:contain">'+
     '<h2>'+esc(cp.company_name||cp.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
     (cp.address?'<div>'+esc(cp.address)+'</div>':'')+
     (cp.phone?'<div>Tel/WA: '+esc(cp.phone)+'</div>':'')+
@@ -636,7 +637,11 @@ async function printFinanceDocument(sectionIds,heading){
     '</div><h2>'+esc(heading||'Laporan')+'</h2><div style="margin-bottom:10px">Dicetak: '+esc(generated)+'</div>'+body+
     '</body></html>');
   w.document.close();
-  setTimeout(()=>{w.focus();w.print();},400);
+  const logo=w.document.querySelector('.print-head img');
+  let printed=false;
+  const print=()=>{if(!printed&&!w.closed){printed=true;w.focus();w.print();}};
+  if(logo&&!logo.complete){logo.onload=print;logo.onerror=print;setTimeout(print,1500);}
+  else setTimeout(print,100);
 }
 
 async function companyProfilePage(){
@@ -5522,7 +5527,8 @@ async function financeReportPage(){
   const finalOperational=sum(finalRows,'laba_operasional_produksi');
   const finalMaint=sum(finalRows,'perawatan_jangka_panjang');
   const finalNet=sum(finalRows,'laba_bersih_akhir');
-  const companyFinal=finalNet+prodNum(companyRow.expedition_profit_loss)-prodNum(companyRow.bop_umum);
+  // The company total covers every barn, even while the detail filter shows one barn.
+  const companyFinal=prodNum(companyRow.company_profit_loss);
   const selectedRows=st.assignment?visible:[];
   const selected=selectedRows[0]||null;
   const cycleStatus=x=>x.active?'PROSES':realIds.has(x.contract_assignment_id)?'FINAL':'MENUNGGU RHPP REAL';
