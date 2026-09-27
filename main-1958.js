@@ -415,7 +415,7 @@ function openMobileSelectPicker(select){
   picker.setAttribute('aria-modal','true');
   const label=select.closest('label')?.firstChild?.textContent?.trim()||'Pilih data';
   picker.innerHTML='<div class="mobile-select-heading"><strong>'+esc(label)+'</strong><button type="button" class="mobile-select-close" aria-label="Tutup pilihan">×</button></div>'+
-    (options.length>8?'<input type="search" class="mobile-select-search" placeholder="Cari pilihan" aria-label="Cari pilihan">':'')+
+    '<input type="search" class="mobile-select-search" placeholder="Cari pilihan" aria-label="Cari pilihan">'+
     '<div class="mobile-select-options"></div>';
   const list=picker.querySelector('.mobile-select-options');
   const draw=(query='')=>{
