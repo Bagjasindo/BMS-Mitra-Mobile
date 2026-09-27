@@ -4639,16 +4639,20 @@ async function financeExpeditionMasterPage(){
 }
 
 async function financeExpeditionBusinessPage(){
-  const [tr,ir,iir,pr,sr,cpr]=await Promise.all([
+  const [tr,ir,iir,pr,sr,cpr,dr,vr,cur]=await Promise.all([
     db.from('finance_expedition_trips').select('*').order('trip_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_expedition_invoices').select('*').order('invoice_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_expedition_invoice_items').select('invoice_id,trip_id'),
     db.from('finance_expedition_payments').select('*').order('paid_on',{ascending:false}),
     db.rpc('finance_expedition_summary_v1'),
-    db.from('company_profile').select('*').eq('id',true).maybeSingle()
+    db.from('company_profile').select('*').eq('id',true).maybeSingle(),
+    db.from('expedition_drivers').select('*').eq('active',true).order('name',{ascending:true}),
+    db.from('expedition_vehicles').select('*').eq('active',true).order('plate_number',{ascending:true}),
+    db.from('expedition_customers').select('*').eq('active',true).order('name',{ascending:true})
   ]);
   const trips=tr.data||[],invoices=ir.data||[],links=iir.data||[],payments=pr.data||[],summaries=sr.data||[],company=cpr.data||{};
-  const err=[tr,ir,iir,pr,sr,cpr].find(x=>x.error)?.error;
+  const drivers=dr.data||[],vehicles=vr.data||[],customers=cur.data||[];
+  const err=[tr,ir,iir,pr,sr,cpr,dr,vr,cur].find(x=>x.error)?.error;
   const role=profile?.role||'';
   const canOps=['ADMIN','LOGISTIK'].includes(role);
   const canFinance=['ADMIN','KEUANGAN'].includes(role);
@@ -4682,7 +4686,8 @@ async function financeExpeditionBusinessPage(){
       '<form id="fxTripForm" class="form-vertical">'+
         '<label>Tanggal<input name="trip_date" type="date" value="'+today+'" required></label>'+
         '<label>MTS/SJ<input name="mts_sj"></label><label>RR<input name="rr"></label>'+
-        '<label>Sopir<input name="driver"></label><label>Truk<input name="vehicle"></label>'+
+        '<label>Sopir<select name="driver" required><option value="">Pilih Sopir</option>'+drivers.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
+        '<label>Truk<select name="vehicle" required><option value="">Pilih Kendaraan</option>'+vehicles.map(x=>'<option value="'+esc(x.plate_number)+'">'+esc(x.plate_number+(x.vehicle_type?' · '+x.vehicle_type:''))+'</option>').join('')+'</select></label>'+
         '<label>Zona / Rute<input name="zone"></label><label>Tujuan<input name="destination" required></label>'+
         '<label>Jenis Muatan / Qty<input name="cargo"></label><label>Total Qty<input name="total_qty" type="text" inputmode="decimal" data-number="1"></label>'+
         '<label>Harga Trip<input name="trip_price" type="text" inputmode="decimal" data-number="1" required></label>'+
@@ -4695,8 +4700,10 @@ async function financeExpeditionBusinessPage(){
       '</tbody></table></div>'+(unbilled.length?'':'<p class="muted">Tidak ada trip yang belum ditagihkan.</p>')+'</section>'+
       '<section class="panel"><h3>Buat Invoice Expedisi</h3><form id="fxInvoiceForm" class="form-vertical">'+
         '<label>No Invoice<input name="invoice_number" required></label><label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
-        '<label>Jatuh Tempo<input name="due_date" type="date"></label><label>Tagihan Kepada<input name="customer_name" required></label>'+
-        '<label>Alamat Pelanggan<textarea name="customer_address"></textarea></label><fieldset><legend>Pilih Trip</legend>'+
+        '<label>Jatuh Tempo<input name="due_date" type="date"></label>'+
+        '<label>Tagihan Kepada<select id="fxCustomerSelect" name="customer_id" required><option value="">Pilih Pelanggan</option>'+customers.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
+        '<input type="hidden" name="customer_name"><textarea name="customer_address" style="display:none"></textarea>'+
+        '<p id="fxCustomerInfo" class="muted"></p><fieldset><legend>Pilih Trip</legend>'+
           unbilled.map(t=>'<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="trip_ids" value="'+esc(t.id)+'"><span>'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-')+' · '+t.destination+' · Rp '+prodFmt(tripTotal(t),0))+'</span></label>').join('')+
           (unbilled.length?'':'<p class="muted">Belum ada trip tersedia.</p>')+
         '</fieldset><label>Catatan<textarea name="notes"></textarea></label><button type="submit" '+(!unbilled.length?'disabled':'')+'>Buat Invoice</button>'+
@@ -4737,6 +4744,17 @@ async function financeExpeditionBusinessPage(){
   };
 
   const inf=document.getElementById('fxInvoiceForm');
+  const customerSel=document.getElementById('fxCustomerSelect');
+  if(inf&&customerSel){
+    const syncCustomer=()=>{
+      const c=customers.find(x=>x.id===customerSel.value);
+      inf.elements.customer_name.value=c?.name||'';
+      inf.elements.customer_address.value=c?.address||'';
+      const info=document.getElementById('fxCustomerInfo');
+      if(info)info.textContent=c?((c.address||'-')+(c.phone?' · '+c.phone:'')):'';
+    };
+    customerSel.onchange=syncCustomer;
+  }
   if(inf)inf.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(inf),ids=fd.getAll('trip_ids').map(String);
     if(!ids.length)return msg('Pilih minimal satu trip.');
@@ -4763,13 +4781,32 @@ async function financeExpeditionBusinessPage(){
 
   document.querySelectorAll('[data-fx-print]').forEach(btn=>btn.onclick=()=>{
     const id=btn.dataset.fxPrint,i=invoices.find(x=>x.id===id),its=invoiceTrips(id),x=sumFor(id);if(!i)return;
-    const rows=its.map((t,idx)=>'<tr><td>'+(idx+1)+'</td><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.destination||'-')+'</td><td>'+esc(t.cargo||'-')+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('');
+    const rows=its.map((t,idx)=>'<tr>'+
+      '<td>'+(idx+1)+'</td><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.rr||'-')+'</td>'+
+      '<td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td>'+esc(t.destination||'-')+'</td>'+
+      '<td>'+esc(t.cargo||'-')+'</td><td>'+prodFmt(t.total_qty||0,0)+'</td><td>Rp '+prodFmt(t.trip_price,0)+'</td>'+
+      '<td>'+(prodNum(t.additional)?'Rp '+prodFmt(t.additional,0):'-')+'</td><td>'+(prodNum(t.deduction)?'Rp '+prodFmt(t.deduction,0):'-')+'</td>'+
+      '<td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('');
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write('<html><head><meta charset="utf-8"><title>'+esc(i.invoice_number)+'</title><style>body{font-family:Arial,sans-serif;padding:24px;font-size:12px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #ccc;padding:6px}th{background:#eee}.head{display:flex;justify-content:space-between}.total{text-align:right;font-size:18px;font-weight:bold;margin-top:14px}</style></head><body>'+
-      '<div class="head"><div><h2>'+esc(company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2><div>'+esc(company.address||'')+'</div></div><div><h1>INVOICE</h1><div>No: '+esc(i.invoice_number)+'</div><div>Tanggal: '+prodDateId(i.invoice_date)+'</div></div></div>'+
-      '<hr><h3>Tagihan Kepada</h3><strong>'+esc(i.customer_name)+'</strong><div>'+esc(i.customer_address||'')+'</div>'+
-      '<table><thead><tr><th>No</th><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div class="total">TOTAL INVOICE Rp '+prodFmt(x?.invoice_total||0,0)+'</div></body></html>');
+    const logo=company.logo_url||BMS_PRINT_LOGO;
+    const comp=company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih';
+    const sign=company.signatory_name||'Bagjasindo Mandiri Sindangkasih';
+    w.document.write('<html><head><meta charset="utf-8"><title>'+esc(i.invoice_number)+'</title><style>'+
+      '@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;color:#222;font-size:9px}'+
+      '.top{display:grid;grid-template-columns:1fr 1fr;align-items:start;border-bottom:1px solid #aaa;padding-bottom:12px;margin-bottom:12px}.brand{display:flex;gap:12px;align-items:flex-start}.brand img{width:78px;height:78px;object-fit:contain}.brand h2{font-size:18px;margin:8px 0 5px}.invoice{text-align:right}.invoice h1{font-size:28px;margin:4px 0 10px}.invoice div{margin:3px 0;font-size:11px}'+
+      '.bill{margin:8px 0 12px;font-size:11px}.bill strong{display:block;margin-bottom:7px}.bill .name{font-weight:700;margin-bottom:5px}'+
+      'table{width:100%;border-collapse:collapse;table-layout:auto}th{background:#2f86bd;color:white;padding:5px 4px;font-size:8px;white-space:nowrap}td{padding:4px;border-bottom:1px solid #ddd;font-size:8px;vertical-align:top}tbody tr:nth-child(even){background:#f7f7f7}'+
+      '.total{display:flex;justify-content:flex-end;gap:45px;font-weight:700;font-size:15px;padding:15px 8px 18px;border-bottom:1px solid #aaa}.foot{display:grid;grid-template-columns:1fr 260px;gap:30px;margin-top:14px;font-size:11px}.pay h3,.sign h3{margin:0 0 10px;font-size:12px}.pay div{margin:8px 0}.sign{text-align:left}.sign-space{height:62px;border-bottom:1px solid #777;margin-bottom:8px}.pagefoot{display:flex;justify-content:space-between;margin-top:25px;font-size:8px;color:#555}'+
+      '</style></head><body>'+
+      '<div class="top"><div class="brand"><img src="'+esc(logo)+'"><div><h2>'+esc(comp)+'</h2><div>'+esc(company.address||'').replaceAll('\n','<br>')+'</div></div></div>'+
+      '<div class="invoice"><h1>INVOICE</h1><div>No: '+esc(i.invoice_number)+'</div><div>Tanggal: '+prodDateId(i.invoice_date)+'</div><div>Jatuh Tempo: '+(i.due_date?prodDateId(i.due_date):'-')+'</div></div></div>'+
+      '<div class="bill"><strong>Tagihan Kepada:</strong><div class="name">'+esc(i.customer_name)+'</div><div>'+esc(i.customer_address||'')+'</div></div>'+
+      '<table><thead><tr><th>No</th><th>Tanggal</th><th>MTS/SJ</th><th>RR</th><th>Sopir</th><th>Truk</th><th>Zona</th><th>Tujuan</th><th>Jenis Pakan / Qty</th><th>Total Qty</th><th>Harga Trip</th><th>Tambahan</th><th>Potongan</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="total"><span>TOTAL INVOICE</span><span>Rp '+prodFmt(x?.invoice_total||0,0)+'</span></div>'+
+      '<div class="foot"><div class="pay"><h3>PEMBAYARAN</h3><div>Bank '+esc(company.bank_name||'-')+'</div><div>No. Rekening : '+esc(company.bank_account_number||'-')+'</div><div>a.n. '+esc(company.bank_account_name||comp)+'</div></div>'+
+      '<div class="sign"><h3>Hormat Kami,</h3><div class="sign-space"></div><strong>'+esc(sign)+'</strong></div></div>'+
+      '<div class="pagefoot"><span>BMS Invoice System</span><span>Halaman 1</span></div>'+
+      '</body></html>');
     w.document.close();setTimeout(()=>{w.focus();w.print();},400);
   });
 }
