@@ -5789,7 +5789,9 @@ async function financeBarnProfitLossPage(){
   window.__financeBarnProfitState=window.__financeBarnProfitState||{barn:'',assignment:'',shown:false};
   const st=window.__financeBarnProfitState;
   const cycleOptions=assignments.filter(a=>!st.barn||a.barn_id===st.barn);
-  const statusOf=x=>x.active?'PROSES':realIds.has(x.contract_assignment_id)?'FINAL':'MENUNGGU RHPP REAL';
+  const assignmentOf=x=>assignments.find(a=>a.id===x.contract_assignment_id);
+  const isMandiri=x=>assignmentOf(x)?.cycle_type==='MANDIRI';
+  const statusOf=x=>x.active?'PROSES':(isMandiri(x)||realIds.has(x.contract_assignment_id))?'FINAL':'MENUNGGU RHPP REAL';
   const filtered=st.shown?rows.filter(x=>
     statusOf(x)==='FINAL'&&
     (!st.barn||x.barn_id===st.barn)&&
@@ -5815,13 +5817,13 @@ async function financeBarnProfitLossPage(){
     html+='<section class="panel" id="barnProfitPrintArea">'+
       '<div class="rhpp-section-head"><div><h3>Ringkasan Laba/Rugi Kandang</h3></div><div class="report-actions"><button type="button" id="barnProfitPrint">Cetak / PDF</button></div></div>'+
       '<div class="rhpp-summary-cards">'+
-        '<div class="rhpp-summary-card"><span>RHPP Real</span><strong>Rp '+prodFmt(totalRhpp,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Pendapatan Kandang</span><strong>Rp '+prodFmt(totalRhpp,0)+'</strong><small>RHPP Real Mitra + Penjualan Mandiri</small></div>'+
         '<div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(totalBop,0)+'</strong></div>'+
-        '<div class="rhpp-summary-card"><span>Biaya Tambahan</span><strong>Rp '+prodFmt(totalSapronakLuar+totalTambahDaging,0)+'</strong><small>Sapronak luar + tambah daging</small></div>'+
+        '<div class="rhpp-summary-card"><span>Biaya Sapronak / Tambahan</span><strong>Rp '+prodFmt(totalSapronakLuar+totalTambahDaging,0)+'</strong><small>Sapronak Mitra/Mandiri + tambah daging</small></div>'+
         '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(totalNet,0)+'</strong><small>'+finalRows.length+' siklus · perawatan terpisah</small></div>'+
       '</div>'+
       '<div class="tablewrap"><table><thead><tr>'+
-        '<th>Kandang / Siklus</th><th>RHPP Real</th><th>BOP Produksi</th><th>Sapronak Luar</th><th>Tambah Daging</th><th>Laba/Rugi Kandang</th>'+
+        '<th>Kandang / Siklus</th><th>Jenis</th><th>Pendapatan</th><th>BOP Produksi</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Laba/Rugi Kandang</th>'+
       '</tr></thead><tbody>'+
       filtered.map(x=>{
         const a=assignments.find(v=>v.id===x.contract_assignment_id);
@@ -5829,6 +5831,7 @@ async function financeBarnProfitLossPage(){
         const ident=a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name);
         return '<tr>'+
           '<td>'+esc(ident)+'</td>'+
+          '<td><strong>'+esc(a?.cycle_type||'MITRA')+'</strong></td>'+
           '<td>Rp '+prodFmt(x.rhpp_real,0)+'</td>'+
           '<td>Rp '+prodFmt(x.bop_produksi,0)+'</td>'+
           '<td>Rp '+prodFmt(x.sapronak_luar,0)+'</td>'+
@@ -5880,7 +5883,7 @@ async function financeGlobalProfitLossPage(){
   const expMaint=mr.data||[],bopUmumRows=gr.data||[];
   const err=[xr,rr,ar,br,cr,er,mr,gr].find(x=>x.error)?.error;
   const realIds=new Set((rr.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
-  const finalRows=rows.filter(x=>!x.active&&realIds.has(x.contract_assignment_id));
+  const finalRows=rows.filter(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return !x.active&&(a?.cycle_type==='MANDIRI'||realIds.has(x.contract_assignment_id));});
   const sum=(arr,k)=>arr.reduce((n,x)=>n+prodNum(x[k]),0);
   const totalRhpp=sum(finalRows,'rhpp_real');
   const totalBop=sum(finalRows,'bop_produksi');
@@ -5919,15 +5922,15 @@ async function financeGlobalProfitLossPage(){
 
     '<h3>1. Rincian Usaha Kandang</h3>'+
     '<div class="tablewrap"><table><thead><tr><th>Komponen</th><th>Nominal</th></tr></thead><tbody>'+
-      '<tr><td>RHPP Real</td><td>Rp '+prodFmt(totalRhpp,0)+'</td></tr>'+
+      '<tr><td>Pendapatan Kandang (RHPP Real Mitra + Penjualan Mandiri)</td><td>Rp '+prodFmt(totalRhpp,0)+'</td></tr>'+
       '<tr><td>BOP Produksi</td><td>Rp '+prodFmt(totalBop,0)+'</td></tr>'+
-      '<tr><td>Sapronak Luar</td><td>Rp '+prodFmt(totalSapronakLuar,0)+'</td></tr>'+
+      '<tr><td>Biaya Sapronak (Mitra / Mandiri)</td><td>Rp '+prodFmt(totalSapronakLuar,0)+'</td></tr>'+
       '<tr><td>Tambah Daging</td><td>Rp '+prodFmt(totalTambahDaging,0)+'</td></tr>'+
       '<tr><td><strong>Laba/Rugi Kandang</strong></td><td><strong>Rp '+prodFmt(labaKandang,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
 
-    '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>RHPP Real</th><th>BOP</th><th>Sapronak Luar</th><th>Tambah Daging</th><th>Laba/Rugi</th></tr></thead><tbody>'+
-      finalRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);const ident=a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name);const net=prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging);return '<tr><td>'+esc(ident)+'</td><td>Rp '+prodFmt(x.rhpp_real,0)+'</td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td><td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td><td><strong>Rp '+prodFmt(net,0)+'</strong></td></tr>';}).join('')+
+    '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Jenis</th><th>Pendapatan</th><th>BOP</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Laba/Rugi</th></tr></thead><tbody>'+
+      finalRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);const ident=a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name);const net=prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging);return '<tr><td>'+esc(ident)+'</td><td><strong>'+esc(a?.cycle_type||'MITRA')+'</strong></td><td>Rp '+prodFmt(x.rhpp_real,0)+'</td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td><td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td><td><strong>Rp '+prodFmt(net,0)+'</strong></td></tr>';}).join('')+
     '</tbody></table></div>'+
 
     '<h3>2. Rincian Usaha Expedisi</h3>'+
@@ -5978,8 +5981,10 @@ async function financeReportPage(){
   const st=window.__financeReportState;
   const visible=st.shown?rows.filter(x=>(!st.barn||x.barn_id===st.barn)&&(!st.assignment||x.contract_assignment_id===st.assignment)):[];
   const processRows=visible.filter(x=>x.active);
-  const waitingRows=visible.filter(x=>!x.active&&!realIds.has(x.contract_assignment_id));
-  const finalRows=visible.filter(x=>!x.active&&realIds.has(x.contract_assignment_id));
+  const assignmentOf=x=>assignments.find(a=>a.id===x.contract_assignment_id);
+  const isMandiri=x=>assignmentOf(x)?.cycle_type==='MANDIRI';
+  const waitingRows=visible.filter(x=>!x.active&&!isMandiri(x)&&!realIds.has(x.contract_assignment_id));
+  const finalRows=visible.filter(x=>!x.active&&(isMandiri(x)||realIds.has(x.contract_assignment_id)));
   const sum=(arr,k)=>arr.reduce((n,x)=>n+prodNum(x[k]),0);
   const processCost=sum(processRows,'bop_produksi')+sum(processRows,'sapronak_luar')+sum(processRows,'tambah_daging');
   const processMaint=sum(processRows,'perawatan_jangka_panjang');
@@ -5988,16 +5993,16 @@ async function financeReportPage(){
   const finalNet=sum(finalRows,'laba_bersih_akhir');
   const selectedRows=st.assignment?visible:[];
   const selected=selectedRows[0]||null;
-  const cycleStatus=x=>x.active?'PROSES':realIds.has(x.contract_assignment_id)?'FINAL':'MENUNGGU RHPP REAL';
+  const cycleStatus=x=>x.active?'PROSES':(isMandiri(x)||realIds.has(x.contract_assignment_id))?'FINAL':'MENUNGGU RHPP REAL';
 
-  let html='<section class="panel"><h3>Laporan Keuangan</h3><p class="muted"><strong>Lebih sederhana:</strong> siklus yang masih PROSES hanya ditampilkan sebagai biaya berjalan. Laba/rugi baru dihitung setelah siklus CLOSED dan RHPP Real sudah masuk.</p>'+
+  let html='<section class="panel"><h3>Laporan Keuangan</h3><p class="muted">Siklus PROSES hanya menampilkan biaya berjalan. Siklus Mitra menjadi final setelah RHPP Real masuk; siklus Mandiri menjadi final saat CLOSED dan menggunakan penjualan aktual.</p>'+
     '<form id="financeReportFilter" class="form-vertical"><label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
     '<label>Siklus<select name="assignment" '+(!st.barn?'disabled':'')+'><option value="">Semua Siklus</option>'+assignments.filter(a=>a.barn_id===st.barn).map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label><button type="submit">Tampilkan</button></form></section>';
   if(st.shown){
     html+='<section class="panel" id="companyProfitPrintArea"><div class="rhpp-section-head"><div><h3>Ringkasan Keuangan</h3><p class="muted">Angka final tidak mencampur siklus yang masih berjalan.</p></div><div class="report-actions"><button type="button" id="financeReportPrint">Cetak / PDF</button></div></div>'+
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>Biaya Produksi Berjalan</span><strong>Rp '+prodFmt(processCost,0)+'</strong><small>'+processRows.length+' siklus PROSES</small></div>'+
-        '<div class="rhpp-summary-card"><span>Menunggu RHPP Real</span><strong>'+waitingRows.length+' Siklus</strong><small>Belum dihitung laba/rugi final</small></div>'+
+        '<div class="rhpp-summary-card"><span>Mitra Menunggu RHPP Real</span><strong>'+waitingRows.length+' Siklus</strong><small>Mandiri tidak memerlukan RHPP Real</small></div>'+
         '<div class="rhpp-summary-card"><span>Laba Bersih Siklus Final</span><strong>Rp '+prodFmt(finalNet,0)+'</strong><small>'+finalRows.length+' siklus FINAL</small></div>'+
       '</div>'+
       (processMaint?'<p class="muted">Perawatan Jangka Panjang pada siklus berjalan: Rp '+prodFmt(processMaint,0)+' · tidak dimasukkan ke Biaya Produksi Berjalan.</p>':'')+
@@ -6005,13 +6010,16 @@ async function financeReportPage(){
 
     if(selected){
       const status=cycleStatus(selected);
+      const selectedAssignment=assignmentOf(selected);
+      const selectedMandiri=selectedAssignment?.cycle_type==='MANDIRI';
       html+='<section class="panel" id="cycleSummaryPrintArea"><h3>Detail Siklus Dipilih</h3>'+
         '<div class="rhpp-summary-cards">'+
           '<div class="rhpp-summary-card"><span>Status</span><strong>'+esc(status)+'</strong></div>'+
-          '<div class="rhpp-summary-card"><span>RHPP Sistem</span><strong>Rp '+prodFmt(selected.rhpp_system,0)+'</strong></div>'+
-          '<div class="rhpp-summary-card"><span>RHPP Real</span><strong>'+(status==='FINAL'?'Rp '+prodFmt(selected.rhpp_real,0):'Belum Final')+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Jenis Siklus</span><strong>'+esc(selectedMandiri?'MANDIRI':'MITRA')+'</strong></div>'+
+          (!selectedMandiri?'<div class="rhpp-summary-card"><span>RHPP Sistem</span><strong>Rp '+prodFmt(selected.rhpp_system,0)+'</strong></div>':'')+
+          '<div class="rhpp-summary-card"><span>'+(selectedMandiri?'Penjualan Mandiri':'RHPP Real')+'</span><strong>'+(status==='FINAL'?'Rp '+prodFmt(selected.rhpp_real,0):'Belum Final')+'</strong></div>'+
           '<div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(selected.bop_produksi,0)+'</strong></div>'+
-          '<div class="rhpp-summary-card"><span>Sapronak Luar</span><strong>Rp '+prodFmt(selected.sapronak_luar,0)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>'+(selectedMandiri?'Pembelian Mandiri':'Sapronak Luar')+'</span><strong>Rp '+prodFmt(selected.sapronak_luar,0)+'</strong></div>'+
           '<div class="rhpp-summary-card"><span>Tambah Daging</span><strong>Rp '+prodFmt(selected.tambah_daging,0)+'</strong></div>'+
           '<div class="rhpp-summary-card"><span>Perawatan Jangka Panjang</span><strong>Rp '+prodFmt(selected.perawatan_jangka_panjang,0)+'</strong></div>'+
           '<div class="rhpp-summary-card"><span>Hasil</span><strong>'+(status==='FINAL'?'Rp '+prodFmt(selected.laba_bersih_akhir,0):'Belum dihitung')+'</strong></div>'+
@@ -6020,8 +6028,8 @@ async function financeReportPage(){
 
     html+='<section class="panel" id="cycleProcessPrintArea"><h3>Sedang Berjalan</h3>'+
       '<p class="muted">Siklus aktif. Angka di bawah hanya biaya berjalan, belum dihitung sebagai laba/rugi.</p>'+
-      '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>BOP Produksi</th><th>Sapronak Luar</th><th>Tambah Daging</th><th>Perawatan</th><th>Total Biaya Berjalan</th></tr></thead><tbody>'+
-      processRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);const running=prodNum(x.bop_produksi)+prodNum(x.sapronak_luar)+prodNum(x.tambah_daging);return '<tr><td>'+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name))+'</td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td><td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td><td>Rp '+prodFmt(x.perawatan_jangka_panjang,0)+'</td><td><strong>Rp '+prodFmt(running,0)+'</strong></td></tr>';}).join('')+
+      '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Jenis</th><th>BOP Produksi</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Perawatan</th><th>Total Biaya Berjalan</th></tr></thead><tbody>'+
+      processRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);const running=prodNum(x.bop_produksi)+prodNum(x.sapronak_luar)+prodNum(x.tambah_daging);return '<tr><td>'+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name))+'</td><td><strong>'+esc(a?.cycle_type||'MITRA')+'</strong></td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td><td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td><td>Rp '+prodFmt(x.perawatan_jangka_panjang,0)+'</td><td><strong>Rp '+prodFmt(running,0)+'</strong></td></tr>';}).join('')+
       '</tbody></table></div>'+(processRows.length?'':'<p class="muted">Tidak ada siklus yang sedang berjalan.</p>')+'</section>'+
       '<section class="panel" id="cycleWaitingPrintArea"><h3>Menunggu RHPP Real</h3>'+
       '<p class="muted">Produksi sudah CLOSED. Keuangan hanya perlu melengkapi RHPP Real sebelum laba/rugi final dihitung.</p>'+
@@ -6030,8 +6038,8 @@ async function financeReportPage(){
       '</tbody></table></div>'+(waitingRows.length?'':'<p class="muted">Tidak ada siklus yang menunggu RHPP Real.</p>')+'</section>'+
       '<section class="panel" id="cycleFinalPrintArea"><h3>Selesai / Final</h3>'+
       '<p class="muted">Hanya siklus pada bagian ini yang sudah dihitung sebagai laba/rugi final.</p>'+
-      '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>RHPP Sistem</th><th>RHPP Real</th><th>BOP Produksi</th><th>Sapronak Luar</th><th>Tambah Daging</th><th>Perawatan</th><th>Laba Bersih Akhir</th></tr></thead><tbody>'+
-      finalRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name))+'</td><td>Rp '+prodFmt(x.rhpp_system,0)+'</td><td><strong>Rp '+prodFmt(x.rhpp_real,0)+'</strong></td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td><td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td><td>Rp '+prodFmt(x.perawatan_jangka_panjang,0)+'</td><td><strong>Rp '+prodFmt(x.laba_bersih_akhir,0)+'</strong></td></tr>';}).join('')+
+      '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Jenis</th><th>Pendapatan</th><th>BOP Produksi</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Perawatan</th><th>Laba Bersih Akhir</th></tr></thead><tbody>'+
+      finalRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name))+'</td><td><strong>'+esc(a?.cycle_type||'MITRA')+'</strong></td><td><strong>Rp '+prodFmt(x.rhpp_real,0)+'</strong></td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td><td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td><td>Rp '+prodFmt(x.perawatan_jangka_panjang,0)+'</td><td><strong>Rp '+prodFmt(x.laba_bersih_akhir,0)+'</strong></td></tr>';}).join('')+
       '</tbody></table></div>'+(finalRows.length?'':'<p class="muted">Belum ada siklus final.</p>')+'</section>';
   }
   layout(html);if(err)msg(err.message);
