@@ -6,7 +6,7 @@
 -- IMPORTANT: This file mirrors production definitions for audit/recovery. Do not edit formulas here without a reviewed database migration.
 
 -- ============================================================================
--- finance_rhpp_summary_v3
+-- finance_rhpp_summary_v3()
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.finance_rhpp_summary_v3()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, contract_number text, active boolean, chick_in_birds numeric, total_harvest_birds numeric, total_harvest_kg numeric, avg_bw_kg numeric, weighted_age numeric, implied_depletion_birds numeric, recorded_depletion_birds numeric, depletion_variance_birds numeric, mortality_pct numeric, main_feed_kg numeric, external_feed_kg numeric, net_feed_kg numeric, fcr_actual numeric, fcr_standard numeric, diff_fcr numeric, ip numeric, harvest_value numeric, main_doc_cost numeric, main_feed_cost numeric, main_ovk_cost numeric, main_other_cost numeric, main_return_cost numeric, external_sapronak_cost numeric, sapronak_cost numeric, external_meat_cost numeric, total_rhpp_cost numeric, base_profit numeric, bonus_ip_rate numeric, bonus_ip numeric, bonus_fc_rate numeric, bonus_fc numeric, bonus_mortality_rate numeric, bonus_mortality numeric, farmer_profit numeric, profit_per_chick_in numeric, profit_per_harvested_bird numeric, population_balanced boolean, ready_financial boolean)
@@ -220,7 +220,7 @@ end
 $function$;
 
 -- ============================================================================
--- finance_rhpp_summary_v4
+-- finance_rhpp_summary_v4()
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.finance_rhpp_summary_v4()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, contract_number text, active boolean, chick_in_birds numeric, total_harvest_birds numeric, total_harvest_kg numeric, avg_bw_kg numeric, weighted_age numeric, implied_depletion_birds numeric, recorded_depletion_birds numeric, depletion_variance_birds numeric, mortality_pct numeric, main_feed_kg numeric, external_feed_kg numeric, net_feed_kg numeric, fcr_actual numeric, fcr_standard numeric, diff_fcr numeric, ip numeric, harvest_value numeric, main_doc_cost numeric, main_feed_cost numeric, main_ovk_cost numeric, main_other_cost numeric, main_return_cost numeric, external_sapronak_cost numeric, sapronak_cost numeric, external_meat_cost numeric, total_rhpp_cost numeric, base_profit numeric, bonus_ip_rate numeric, bonus_ip numeric, bonus_fc_rate numeric, bonus_fc numeric, bonus_mortality_rate numeric, bonus_mortality numeric, farmer_profit numeric, profit_per_chick_in numeric, profit_per_harvested_bird numeric, population_balanced boolean, ready_financial boolean)
@@ -263,7 +263,7 @@ end
 $function$;
 
 -- ============================================================================
--- finance_rhpp_summary_v5
+-- finance_rhpp_summary_v5()
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.finance_rhpp_summary_v5()
  RETURNS TABLE(contract_assignment_id uuid, barn_id uuid, barn_code text, barn_name text, contract_number text, active boolean, chick_in_birds numeric, total_harvest_birds numeric, total_harvest_kg numeric, avg_bw_kg numeric, weighted_age numeric, implied_depletion_birds numeric, recorded_depletion_birds numeric, depletion_variance_birds numeric, mortality_pct numeric, main_feed_kg numeric, external_feed_kg numeric, net_feed_kg numeric, fcr_actual numeric, fcr_standard numeric, diff_fcr numeric, ip numeric, harvest_value numeric, main_doc_cost numeric, main_feed_cost numeric, main_ovk_cost numeric, main_other_cost numeric, main_return_cost numeric, external_sapronak_cost numeric, sapronak_cost numeric, external_meat_cost numeric, total_rhpp_cost numeric, base_profit numeric, bonus_ip_rate numeric, bonus_ip numeric, bonus_fc_rate numeric, bonus_fc numeric, bonus_mortality_rate numeric, bonus_mortality numeric, farmer_profit numeric, profit_per_chick_in numeric, profit_per_harvested_bird numeric, population_balanced boolean, ready_financial boolean)
@@ -382,7 +382,7 @@ end
 $function$;
 
 -- ============================================================================
--- admin_close_production_atomic
+-- admin_close_production_atomic(p_contract_assignment_id uuid)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.admin_close_production_atomic(p_contract_assignment_id uuid)
  RETURNS uuid
@@ -481,7 +481,7 @@ end
 $function$;
 
 -- ============================================================================
--- finance_save_rhpp_real_atomic
+-- finance_save_rhpp_real_atomic(p_contract_assignment_id uuid, p_amount numeric, p_received_on date, p_reference text, p_notes text)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.finance_save_rhpp_real_atomic(p_contract_assignment_id uuid, p_amount numeric, p_received_on date, p_reference text DEFAULT NULL::text, p_notes text DEFAULT NULL::text)
  RETURNS uuid
@@ -531,7 +531,7 @@ end
 $function$;
 
 -- ============================================================================
--- production_feed_stock
+-- production_feed_stock(p_contract_assignment_id uuid)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.production_feed_stock(p_contract_assignment_id uuid)
  RETURNS TABLE(item_id uuid, code text, name text, unit text, kg_per_unit numeric, sent_units numeric, external_units numeric, returned_units numeric, used_units numeric, remaining_units numeric, remaining_kg numeric)
@@ -611,7 +611,7 @@ end
 $function$;
 
 -- ============================================================================
--- save_recording_atomic
+-- save_recording_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_recorded_on date, p_age_days integer, p_mortality integer, p_culling integer, p_feed_item_id uuid, p_feed_quantity_units numeric, p_sample_count integer, p_sample_weight_total_kg numeric, p_notes text, p_photo_data text, p_weights jsonb)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.save_recording_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_recorded_on date, p_age_days integer, p_mortality integer, p_culling integer, p_feed_item_id uuid, p_feed_quantity_units numeric, p_sample_count integer, p_sample_weight_total_kg numeric, p_notes text, p_photo_data text, p_weights jsonb)
  RETURNS uuid
@@ -665,7 +665,7 @@ begin
 end $function$;
 
 -- ============================================================================
--- save_logistics_shipment_atomic
+-- save_logistics_shipment_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_shipment_date date, p_shipping_note_number text, p_notes text, p_items jsonb)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.save_logistics_shipment_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_shipment_date date, p_shipping_note_number text, p_notes text, p_items jsonb)
  RETURNS uuid
@@ -713,7 +713,7 @@ begin
 end $function$;
 
 -- ============================================================================
--- save_logistics_return_atomic
+-- save_logistics_return_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_return_date date, p_reference text, p_notes text, p_items jsonb)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.save_logistics_return_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_return_date date, p_reference text, p_notes text, p_items jsonb)
  RETURNS uuid
@@ -788,7 +788,7 @@ end
 $function$;
 
 -- ============================================================================
--- save_external_sapronak_atomic
+-- save_external_sapronak_atomic(p_header_id uuid, p_detail_id uuid, p_assignment_id uuid, p_barn_id uuid, p_supplier_id uuid, p_shipment_date date, p_reference_number text, p_notes text, p_item_id uuid, p_quantity numeric, p_purchase_unit_price numeric)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.save_external_sapronak_atomic(p_header_id uuid, p_detail_id uuid, p_assignment_id uuid, p_barn_id uuid, p_supplier_id uuid, p_shipment_date date, p_reference_number text, p_notes text, p_item_id uuid, p_quantity numeric, p_purchase_unit_price numeric)
  RETURNS uuid
@@ -848,7 +848,7 @@ begin
 end $function$;
 
 -- ============================================================================
--- save_external_sapronak_return_atomic
+-- save_external_sapronak_return_atomic(p_id uuid, p_external_shipment_item_id uuid, p_return_date date, p_reference text, p_notes text, p_quantity numeric)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.save_external_sapronak_return_atomic(p_id uuid, p_external_shipment_item_id uuid, p_return_date date, p_reference text, p_notes text, p_quantity numeric)
  RETURNS uuid
@@ -951,7 +951,7 @@ end
 $function$;
 
 -- ============================================================================
--- transfer_external_sapronak_return_atomic
+-- transfer_external_sapronak_return_atomic(p_external_return_item_id uuid, p_target_assignment_id uuid, p_quantity numeric, p_transferred_on date, p_notes text)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.transfer_external_sapronak_return_atomic(p_external_return_item_id uuid, p_target_assignment_id uuid, p_quantity numeric, p_transferred_on date, p_notes text)
  RETURNS uuid
@@ -1042,15 +1042,15 @@ end
 $function$;
 
 -- API execution grants used by the application.
-grant execute on function public.finance_rhpp_summary_v3 to authenticated;
-grant execute on function public.finance_rhpp_summary_v4 to authenticated;
-grant execute on function public.finance_rhpp_summary_v5 to authenticated;
-grant execute on function public.admin_close_production_atomic to authenticated;
-grant execute on function public.finance_save_rhpp_real_atomic to authenticated;
-grant execute on function public.production_feed_stock to authenticated;
-grant execute on function public.save_recording_atomic to authenticated;
-grant execute on function public.save_logistics_shipment_atomic to authenticated;
-grant execute on function public.save_logistics_return_atomic to authenticated;
-grant execute on function public.save_external_sapronak_atomic to authenticated;
-grant execute on function public.save_external_sapronak_return_atomic to authenticated;
-grant execute on function public.transfer_external_sapronak_return_atomic to authenticated;
+grant execute on function public.finance_rhpp_summary_v3() to authenticated;
+grant execute on function public.finance_rhpp_summary_v4() to authenticated;
+grant execute on function public.finance_rhpp_summary_v5() to authenticated;
+grant execute on function public.admin_close_production_atomic(p_contract_assignment_id uuid) to authenticated;
+grant execute on function public.finance_save_rhpp_real_atomic(p_contract_assignment_id uuid, p_amount numeric, p_received_on date, p_reference text, p_notes text) to authenticated;
+grant execute on function public.production_feed_stock(p_contract_assignment_id uuid) to authenticated;
+grant execute on function public.save_recording_atomic(p_id uuid, p_assignment_id uuid, p_barn_id uuid, p_recorded_on date, p_age_days integer, p_mortality integer, p_culling integer, p_feed_item_id uuid, p_feed_quantity_units numeric, p_sample_count integer, p_sample_weight_total_kg numeric, p_notes text, p_photo_data text, p_weights jsonb) to authenticated;
+grant execute on function public.save_logistics_shipment_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_shipment_date date, p_shipping_note_number text, p_notes text, p_items jsonb) to authenticated;
+grant execute on function public.save_logistics_return_atomic(p_id uuid, p_barn_id uuid, p_assignment_id uuid, p_return_date date, p_reference text, p_notes text, p_items jsonb) to authenticated;
+grant execute on function public.save_external_sapronak_atomic(p_header_id uuid, p_detail_id uuid, p_assignment_id uuid, p_barn_id uuid, p_supplier_id uuid, p_shipment_date date, p_reference_number text, p_notes text, p_item_id uuid, p_quantity numeric, p_purchase_unit_price numeric) to authenticated;
+grant execute on function public.save_external_sapronak_return_atomic(p_id uuid, p_external_shipment_item_id uuid, p_return_date date, p_reference text, p_notes text, p_quantity numeric) to authenticated;
+grant execute on function public.transfer_external_sapronak_return_atomic(p_external_return_item_id uuid, p_target_assignment_id uuid, p_quantity numeric, p_transferred_on date, p_notes text) to authenticated;
