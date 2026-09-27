@@ -7622,7 +7622,7 @@ async function marketingReports(){
 }
 
 async function logisticsReports(){
-  const [br,ir,sr,sir,rr,rir,er,eir,exr,erir,etr,supr,ar,kr,cpr]=await Promise.all([
+  const [br,ir,sr,sir,rr,rir,er,eir,exr,erir,etr,supr,ar,kr,mpr,mar,cpr]=await Promise.all([
     db.from('barns').select('id,code,name,location,kind').order('code',{ascending:true}),
     db.from('items').select('id,code,name,category,unit,kg_per_unit').order('code',{ascending:true}),
     db.from('logistics_shipments').select('id,contract_assignment_id,barn_id,shipment_date,shipping_note_number,notes').order('shipment_date',{ascending:false}),
@@ -7637,10 +7637,12 @@ async function logisticsReports(){
     db.from('suppliers').select('id,code,name,supplier_type').eq('supplier_type','SAPRONAK').order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null),
+    db.from('logistics_mandiri_purchases').select('*').order('purchase_date',{ascending:false}),
+    db.from('logistics_mandiri_purchase_allocations').select('*').order('created_at',{ascending:true}),
     db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email,website').eq('id',true).maybeSingle()
   ]);
 
-  const barns=br.data||[], itemsAll=ir.data||[], shipments=sr.data||[], shipmentItems=sir.data||[], returns=rr.data||[], returnItems=rir.data||[], externalHeaders=er.data||[], externalItems=eir.data||[], externalReturns=exr.data||[], externalReturnItems=erir.data||[], externalTransfers=etr.data||[], supplierRows=supr.data||[], assignments=ar.data||[], contractsRows=kr.data||[], company=cpr.data||{};
+  const barns=br.data||[], itemsAll=ir.data||[], shipments=sr.data||[], shipmentItems=sir.data||[], returns=rr.data||[], returnItems=rir.data||[], externalHeaders=er.data||[], externalItems=eir.data||[], externalReturns=exr.data||[], externalReturnItems=erir.data||[], externalTransfers=etr.data||[], supplierRows=supr.data||[], assignments=ar.data||[], contractsRows=kr.data||[], mandiriPurchases=mpr.data||[], mandiriAllocations=mar.data||[], company=cpr.data||{};
   const shipmentRows=shipmentItems.map(x=>{
     const head=shipments.find(s=>s.id===x.shipment_id);
     const item=itemsAll.find(i=>i.id===x.item_id);
@@ -7744,7 +7746,37 @@ async function logisticsReports(){
     }:null;
   }).filter(Boolean);
 
-  const allRows=[...shipmentRows,...returnRows,...externalRows,...externalReturnRows,...externalTransferRows].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const mandiriRows=mandiriAllocations.map(x=>{
+    const p=mandiriPurchases.find(v=>v.id===x.purchase_id);
+    const assignment=assignments.find(v=>v.id===x.contract_assignment_id);
+    const item=itemsAll.find(v=>v.id===p?.item_id);
+    const supplier=supplierRows.find(v=>v.id===p?.supplier_id);
+    if(!p||!assignment||!item)return null;
+    const kgPerUnit=Number(item.kg_per_unit||0);
+    return {
+      type:'Pembelian Mandiri',
+      date:p.purchase_date,
+      barn_id:assignment.barn_id,
+      assignment_id:assignment.id,
+      target_barn_id:'',
+      shipping_note_number:'',
+      reference:p.reference_number||'',
+      item_id:item.id,
+      item_code:item.code,
+      item_name:item.name,
+      category:item.category,
+      quantity:x.quantity,
+      quantity_kg:kgPerUnit>0?Number(x.quantity||0)*kgPerUnit:null,
+      unit_price:p.purchase_unit_price,
+      total_value:Number(x.quantity||0)*Number(p.purchase_unit_price||0),
+      unit:item.unit,
+      notes:p.notes||'',
+      supplier_name:supplier?.name||'',
+      status:assignment.active?'TERDISTRIBUSI':'TERKUNCI'
+    };
+  }).filter(Boolean);
+
+  const allRows=[...shipmentRows,...returnRows,...externalRows,...externalReturnRows,...externalTransferRows,...mandiriRows].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
   let html='<section class="panel"><h3>Laporan Logistik</h3>'+
     '<form id="logisticsReportFilter" class="form-vertical">'+
@@ -7756,7 +7788,7 @@ async function logisticsReports(){
       '<button type="button" id="reportAllBarns">Semua Kandang</button>'+
       '<label>Siklus<select name="assignment_id" id="logisticsReportCycle" disabled><option value="">Semua Siklus</option></select></label>'+
       '<label>Jenis Transaksi<select name="txn_type">'+
-        '<option value="">Semua</option><option value="PENGIRIMAN">Pengiriman</option><option value="SAPRONAK_LUAR">Sapronak Luar</option><option value="RETUR_RHPP">Retur RHPP</option><option value="RETUR_LUAR">Retur Sapronak Luar</option><option value="TRANSFER_RETUR">Transfer Retur</option>'+
+        '<option value="">Semua</option><option value="PENGIRIMAN">Pengiriman</option><option value="PEMBELIAN_MANDIRI">Pembelian Mandiri</option><option value="SAPRONAK_LUAR">Sapronak Luar</option><option value="RETUR_RHPP">Retur RHPP</option><option value="RETUR_LUAR">Retur Sapronak Luar</option><option value="TRANSFER_RETUR">Transfer Retur</option>'+
       '</select></label>'+
       '<label>Kategori Sapronak<select name="category">'+
         '<option value="">Semua</option><option value="DOC">DOC</option><option value="PAKAN">Pakan</option><option value="OVK">OVK</option><option value="LAINNYA">Lainnya</option>'+
@@ -7786,7 +7818,7 @@ async function logisticsReports(){
     const rows=bid?assignments.filter(a=>a.barn_id===bid):[];
     if(logisticsReportCycle){
       logisticsReportCycle.disabled=!bid;
-      logisticsReportCycle.innerHTML='<option value="">Semua Siklus</option>'+rows.map(a=>'<option value="'+esc(a.id)+'">'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'AKTIF':'CLOSED'))+'</option>').join('');
+      logisticsReportCycle.innerHTML='<option value="">Semua Siklus</option>'+rows.map(a=>'<option value="'+esc(a.id)+'">'+esc(assignmentCycleLabel(assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · '+(a.active?'AKTIF':'CLOSED'))+'</option>').join('');
     }
   };
   const renderReportBarnSuggestions=()=>{
@@ -7817,7 +7849,7 @@ async function logisticsReports(){
     syncLogisticsReportCycles();
   };
 
-  const err=br.error||ir.error||sr.error||sir.error||rr.error||rir.error||er.error||eir.error||exr.error||erir.error||etr.error||supr.error||ar.error||kr.error||cpr.error;
+  const err=br.error||ir.error||sr.error||sir.error||rr.error||rir.error||er.error||eir.error||exr.error||erir.error||etr.error||supr.error||ar.error||kr.error||mpr.error||mar.error||cpr.error;
   if(err)msg(err.message);
 
   let filtered=[];
@@ -7836,6 +7868,7 @@ async function logisticsReports(){
 
     const txnMatch=x=>!txnType||
       (txnType==='PENGIRIMAN'&&x.type==='Pengiriman')||
+      (txnType==='PEMBELIAN_MANDIRI'&&x.type==='Pembelian Mandiri')||
       (txnType==='SAPRONAK_LUAR'&&x.type==='Sapronak Luar')||
       (txnType==='RETUR_RHPP'&&x.type==='Retur')||
       (txnType==='RETUR_LUAR'&&x.type==='Retur Sapronak Luar')||
@@ -7889,12 +7922,13 @@ async function logisticsReports(){
 
     const sections=document.getElementById('logisticsReportSections');
     if(txnType||category){
-      const txLabel={PENGIRIMAN:'PENGIRIMAN',SAPRONAK_LUAR:'SAPRONAK LUAR',RETUR_RHPP:'RETUR RHPP',RETUR_LUAR:'RETUR SAPRONAK LUAR',TRANSFER_RETUR:'TRANSFER RETUR'}[txnType]||'';
+      const txLabel={PENGIRIMAN:'PENGIRIMAN',PEMBELIAN_MANDIRI:'PEMBELIAN MANDIRI',SAPRONAK_LUAR:'SAPRONAK LUAR',RETUR_RHPP:'RETUR RHPP',RETUR_LUAR:'RETUR SAPRONAK LUAR',TRANSFER_RETUR:'TRANSFER RETUR'}[txnType]||'';
       const titleParts=[txLabel,category].filter(Boolean);
       sections.innerHTML=renderTable(titleParts.join(' · ')||'HASIL',filtered);
     }else{
       sections.innerHTML=
         renderTable('PENGIRIMAN',filtered.filter(x=>x.type==='Pengiriman'))+
+        renderTable('PEMBELIAN MANDIRI',filtered.filter(x=>x.type==='Pembelian Mandiri'))+
         renderTable('SAPRONAK LUAR',filtered.filter(x=>x.type==='Sapronak Luar'))+
         renderTable('RETUR RHPP',filtered.filter(x=>x.type==='Retur'))+
         renderTable('RETUR SAPRONAK LUAR',filtered.filter(x=>x.type==='Retur Sapronak Luar'))+
@@ -7903,6 +7937,7 @@ async function logisticsReports(){
 
     document.getElementById('logisticsReportEmpty').textContent=filtered.length?'':'Tidak ada data sesuai filter.';
     const shipRows=filtered.filter(x=>x.type==='Pengiriman');
+    const mandiriReportRows=filtered.filter(x=>x.type==='Pembelian Mandiri');
     const extRows=filtered.filter(x=>x.type==='Sapronak Luar');
     const extRetRows=filtered.filter(x=>x.type==='Retur Sapronak Luar');
     const transferRows=filtered.filter(x=>x.type==='Transfer Retur');
@@ -7931,7 +7966,7 @@ async function logisticsReports(){
     const netKg=shipKg-returnKg;
 
     document.getElementById('logisticsReportSummary').innerHTML=
-      '<p><strong>'+filtered.length+'</strong> baris · Pengiriman: <strong>'+totalShipRows+'</strong> · Sapronak Luar: <strong>'+extRows.length+'</strong> · Retur RHPP: <strong>'+totalReturnRows+'</strong> · Retur Sapronak Luar: <strong>'+extRetRows.length+'</strong> · Transfer Retur: <strong>'+transferRows.length+'</strong></p>';
+      '<p><strong>'+filtered.length+'</strong> baris · Pengiriman: <strong>'+totalShipRows+'</strong> · Pembelian Mandiri: <strong>'+mandiriReportRows.length+'</strong> · Sapronak Luar: <strong>'+extRows.length+'</strong> · Retur RHPP: <strong>'+totalReturnRows+'</strong> · Retur Sapronak Luar: <strong>'+extRetRows.length+'</strong> · Transfer Retur: <strong>'+transferRows.length+'</strong></p>';
 
 
   };
