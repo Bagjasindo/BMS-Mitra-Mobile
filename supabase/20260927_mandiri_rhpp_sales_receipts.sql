@@ -15,7 +15,7 @@ alter table public.finance_mandiri_sales_receipts enable row level security;
 drop policy if exists finance_mandiri_sales_receipts_read on public.finance_mandiri_sales_receipts;
 create policy finance_mandiri_sales_receipts_read on public.finance_mandiri_sales_receipts
   for select to authenticated using (
-    exists(select 1 from public.profiles p where p.user_id=auth.uid() and p.active and p.role in ('ADMIN','KEUANGAN','OWNER'))
+    exists(select 1 from public.profiles p where p.user_id=(select auth.uid()) and p.active and p.role in ('ADMIN','KEUANGAN','OWNER'))
   );
 revoke all on public.finance_mandiri_sales_receipts from public,anon,authenticated;
 grant select on public.finance_mandiri_sales_receipts to authenticated;
