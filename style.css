@@ -2317,3 +2317,71 @@ form button,
     min-height:34px!important;
   }
 }
+
+
+/* expedisi-trip-strict-vertical-2086
+   Form trip harus satu kolom di desktop maupun mobile. */
+.panel form#fxTripForm.form-vertical,
+form#fxTripForm.form-vertical,
+#fxTripForm{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  width:100%!important;
+  max-width:760px!important;
+  gap:9px!important;
+  align-items:start!important;
+}
+#fxTripForm > label,
+#fxTripForm > fieldset,
+#fxTripForm > input,
+#fxTripForm > button,
+#fxTripForm > p{
+  grid-column:1/-1!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  align-self:start!important;
+}
+#fxTripForm > label{
+  height:auto!important;
+  min-height:0!important;
+}
+#fxTripForm > label > select,
+#fxTripForm > label > input,
+#fxTripForm > label > textarea{
+  height:auto!important;
+  min-height:39px!important;
+}
+#fxTripForm fieldset{
+  display:block!important;
+  margin:2px 0!important;
+  padding:10px!important;
+  border:1px solid var(--bms-border-strong)!important;
+  border-radius:8px!important;
+}
+#fxTripForm .fx-destination-row{
+  display:flex!important;
+  flex-direction:column!important;
+  width:100%!important;
+  max-width:100%!important;
+  gap:8px!important;
+  margin:9px 0!important;
+  padding:10px!important;
+}
+#fxTripForm #fxAddDestination{
+  width:auto!important;
+  justify-self:start!important;
+}
+@media(max-width:900px){
+  .panel form#fxTripForm.form-vertical,
+  form#fxTripForm.form-vertical,
+  #fxTripForm{
+    max-width:none!important;
+    width:100%!important;
+  }
+  #fxTripForm > label > select,
+  #fxTripForm > label > input,
+  #fxTripForm > label > textarea{
+    min-height:36px!important;
+  }
+}
