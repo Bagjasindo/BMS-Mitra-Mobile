@@ -221,7 +221,10 @@ begin
   ) then raise exception 'Akses ditolak.'; end if;
 
   return query
-  select * from public.finance_cashflow_entries_v1()
+  select v.txn_date,v.txn_type,
+         case when v.source='BOP KANDANG' then 'BOP PRODUKSI' else v.source end,
+         v.amount,v.barn_id,v.contract_assignment_id,v.detail,v.reference
+  from public.finance_cashflow_entries_v1() v
   union all
   select m.incurred_on,'KELUAR'::text,'PERAWATAN KANDANG'::text,m.amount,m.barn_id,m.contract_assignment_id,
          replace(m.category,'_',' ')::text,coalesce(m.reference,'')
