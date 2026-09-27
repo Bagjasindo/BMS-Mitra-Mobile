@@ -4753,8 +4753,10 @@ async function financeExpeditionBusinessPage(){
         '<label>Jatuh Tempo<input name="due_date" type="date"></label>'+
         '<label>Tagihan Kepada<select id="fxCustomerSelect" name="customer_id" required><option value="">Pilih Pelanggan</option>'+customers.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
         '<input type="hidden" name="customer_name"><textarea name="customer_address" style="display:none"></textarea>'+
-        '<p id="fxCustomerInfo" class="muted"></p><fieldset><legend>Pilih Trip</legend>'+
-          unbilled.map(t=>'<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="trip_ids" value="'+esc(t.id)+'"><span>'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-')+' · '+destinationText(t)+' · Rp '+prodFmt(tripTotal(t),0))+'</span></label>').join('')+
+        '<p id="fxCustomerInfo" class="muted"></p><fieldset class="fx-trip-picker"><legend>Pilih Trip</legend>'+
+          '<div class="fx-trip-list">'+
+          unbilled.map(t=>'<label class="fx-trip-option"><input type="checkbox" name="trip_ids" value="'+esc(t.id)+'"><span class="fx-trip-checkmark"></span><span class="fx-trip-text"><strong>'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-'))+'</strong><small>'+esc(destinationText(t)+' · Rp '+prodFmt(tripTotal(t),0))+'</small></span></label>').join('')+
+          '</div>'+
           (unbilled.length?'':'<p class="muted">Belum ada trip tersedia.</p>')+
         '</fieldset><label>Catatan<textarea name="notes"></textarea></label><button type="submit" '+(!unbilled.length?'disabled':'')+'>Buat Invoice</button>'+
       '</form></section>';
