@@ -404,6 +404,50 @@ function decorateNavigation(rootEl){
     summary.textContent='';summary.append(icon,label);
   });
 }
+function openMobileSelectPicker(select){
+  document.querySelector('.mobile-select-shade')?.remove();
+  const options=Array.from(select.options).filter(o=>!o.disabled);
+  const shade=document.createElement('div');
+  shade.className='mobile-select-shade';
+  const picker=document.createElement('div');
+  picker.className='mobile-select-picker';
+  picker.setAttribute('role','dialog');
+  picker.setAttribute('aria-modal','true');
+  const label=select.closest('label')?.firstChild?.textContent?.trim()||'Pilih data';
+  picker.innerHTML='<div class="mobile-select-heading"><strong>'+esc(label)+'</strong><button type="button" class="mobile-select-close" aria-label="Tutup pilihan">×</button></div>'+
+    (options.length>8?'<input type="search" class="mobile-select-search" placeholder="Cari pilihan" aria-label="Cari pilihan">':'')+
+    '<div class="mobile-select-options"></div>';
+  const list=picker.querySelector('.mobile-select-options');
+  const draw=(query='')=>{
+    const matches=options.map((o,i)=>({o,i})).filter(({o})=>o.textContent.toLocaleLowerCase('id').includes(query.toLocaleLowerCase('id')));
+    list.innerHTML=matches.length?matches.map(({o,i})=>'<button type="button" data-option-index="'+i+'" class="'+(o.selected?'selected':'')+'">'+esc(o.textContent)+'</button>').join(''):'<p class="muted">Pilihan tidak ditemukan.</p>';
+  };
+  draw();
+  shade.appendChild(picker);
+  document.body.appendChild(shade);
+  const close=()=>{shade.remove();document.removeEventListener('keydown',onKey)};
+  const onKey=e=>{if(e.key==='Escape')close()};
+  document.addEventListener('keydown',onKey);
+  shade.onclick=e=>{if(e.target===shade||e.target.closest('.mobile-select-close'))close()};
+  picker.querySelector('.mobile-select-search')?.addEventListener('input',e=>draw(e.target.value));
+  list.onclick=e=>{
+    const choice=e.target.closest('[data-option-index]');
+    if(!choice)return;
+    select.value=options[Number(choice.dataset.optionIndex)].value;
+    close();
+    select.dispatchEvent(new Event('input',{bubbles:true}));
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  };
+  picker.querySelector('.mobile-select-close').focus();
+}
+for(const eventType of ['pointerdown','click'])root.addEventListener(eventType,e=>{
+  const select=e.target.closest('main select');
+  if(!select||select.multiple||select.disabled||!window.matchMedia('(max-width:900px)').matches)return;
+  e.preventDefault();
+  e.stopPropagation();
+  if(!document.querySelector('.mobile-select-shade'))openMobileSelectPicker(select);
+},true);
+
 function layout(content){
   const navHtml=appNav();
   root.innerHTML=
