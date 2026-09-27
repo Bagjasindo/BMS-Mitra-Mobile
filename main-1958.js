@@ -4705,7 +4705,7 @@ async function financeExpeditionBusinessPage(){
   const tripTotal=t=>prodNum(t.trip_price)+prodNum(t.additional)-prodNum(t.deduction);
   const detailsForTrip=id=>tripDetails.filter(x=>x.trip_id===id).sort((a,b)=>prodNum(a.line_no)-prodNum(b.line_no));
   const destinationText=t=>{const ds=detailsForTrip(t.id);return ds.length?ds.map(x=>x.destination_name).join(' • '):(t.destination||'-');};
-  const cargoText=t=>{const ds=detailsForTrip(t.id);return ds.length?ds.map(x=>[x.cargo,prodNum(x.qty)?prodFmt(x.qty,2):'',x.unit||''].filter(Boolean).join(' ')).join(' • '):(t.cargo||'-');};
+  const cargoText=t=>{const ds=detailsForTrip(t.id);return ds.length?ds.map(x=>[x.cargo,prodNum(x.qty)?prodFmt(x.qty,Number.isInteger(prodNum(x.qty))?0:2):'',x.unit||''].filter(Boolean).join(' ')).join(' • '):(t.cargo||'-');};
   const totalQtyFor=t=>{const ds=detailsForTrip(t.id);return ds.length?ds.reduce((n,x)=>n+prodNum(x.qty),0):prodNum(t.total_qty);};
   const invoiceTrips=id=>links.filter(x=>x.invoice_id===id).map(x=>trips.find(t=>t.id===x.trip_id)).filter(Boolean);
   const sumFor=id=>summaries.find(x=>x.invoice_id===id);
@@ -4915,11 +4915,11 @@ async function financeExpeditionBusinessPage(){
     const rows=its.map((t,idx)=>{
       const ds=detailsForTrip(t.id);
       const destHtml=ds.length?ds.map(x=>esc(x.destination_name)).join('<br>'):esc(t.destination||'-');
-      const cargoHtml=ds.length?ds.map(x=>esc([x.cargo,prodNum(x.qty)?prodFmt(x.qty,2):'',x.unit||''].filter(Boolean).join(' '))).join('<br>'):esc(t.cargo||'-');
+      const cargoHtml=ds.length?ds.map(x=>esc([x.cargo,prodNum(x.qty)?prodFmt(x.qty,Number.isInteger(prodNum(x.qty))?0:2):'',x.unit||''].filter(Boolean).join(' '))).join('<br>'):esc(t.cargo||'-');
       return '<tr>'+
       '<td>'+(idx+1)+'</td><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.rr||'-')+'</td>'+
       '<td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td>'+destHtml+'</td>'+
-      '<td>'+cargoHtml+'</td><td>'+prodFmt(totalQtyFor(t),2)+'</td><td>Rp '+prodFmt(t.trip_price,0)+'</td>'+
+      '<td>'+cargoHtml+'</td><td>'+prodFmt(totalQtyFor(t),Number.isInteger(totalQtyFor(t))?0:2)+'</td><td>Rp '+prodFmt(t.trip_price,0)+'</td>'+
       '<td>'+(prodNum(t.additional)?'Rp '+prodFmt(t.additional,0):'-')+'</td><td>'+(prodNum(t.deduction)?'Rp '+prodFmt(t.deduction,0):'-')+'</td>'+
       '<td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>';
     }).join('');
