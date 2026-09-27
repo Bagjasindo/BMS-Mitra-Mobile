@@ -461,6 +461,35 @@ for(const eventType of ['pointerdown','click'])root.addEventListener(eventType,e
   if(!document.querySelector('.mobile-select-shade'))openMobileSelectPicker(select);
 },true);
 
+function appConfirm(message){
+  return new Promise(resolve=>{
+    const shade=document.createElement('div');
+    shade.className='app-confirm-shade';
+    shade.innerHTML='<div class="app-confirm" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle">'+
+      '<h3 id="appConfirmTitle">Konfirmasi</h3><p></p>'+
+      '<div class="app-confirm-actions"><button type="button" data-cancel>Batal</button><button type="button" data-accept>Ya, lanjutkan</button></div></div>';
+    shade.querySelector('p').textContent=message;
+    document.body.appendChild(shade);
+    const prior=document.activeElement;
+    const finish=ok=>{document.removeEventListener('keydown',onKey);shade.remove();prior?.focus?.();resolve(ok)};
+    const onKey=e=>{if(e.key==='Escape')finish(false)};
+    document.addEventListener('keydown',onKey);
+    shade.querySelector('[data-cancel]').onclick=()=>finish(false);
+    shade.querySelector('[data-accept]').onclick=()=>finish(true);
+    shade.onclick=e=>{if(e.target===shade)finish(false)};
+    shade.querySelector('[data-cancel]').focus();
+  });
+}
+function updateTableScrollHints(){
+  root.querySelectorAll('.tablewrap').forEach(el=>{
+    const overflow=el.scrollWidth>el.clientWidth+2;
+    el.classList.toggle('has-overflow',overflow);
+    if(overflow)el.setAttribute('aria-label','Tabel dapat digeser ke samping');
+    else el.removeAttribute('aria-label');
+  });
+}
+window.addEventListener('resize',()=>requestAnimationFrame(updateTableScrollHints));
+
 function layout(content){
   const navHtml=appNav();
   root.innerHTML=
@@ -478,6 +507,7 @@ function layout(content){
       '<main><header><div><h2>'+title[tab]+'</h2><small>'+esc(profile.full_name)+' · '+esc(profile.role)+'</small></div></header><p id="message"></p>'+content+'</main>'+
     '</div>';
   decorateNavigation(root);
+  requestAnimationFrame(updateTableScrollHints);
   if(navInitialCollapsePending){root.querySelectorAll('details.nav-group').forEach(d=>d.open=false);navInitialCollapsePending=false;}
   const sidebar=document.getElementById('appSidebar');
   const backdrop=document.getElementById('mobileNavBackdrop');
@@ -1448,7 +1478,7 @@ async function logisticsShippingPage(editId=null){
 
   root.querySelectorAll('[data-view-shipment]').forEach(btn=>btn.onclick=()=>logisticsShippingPage(btn.dataset.viewShipment));
   root.querySelectorAll('[data-delete-shipment]').forEach(btn=>btn.onclick=async()=>{
-    if(!confirm('Hapus draft pengiriman ini?'))return;
+    if(!await appConfirm('Hapus draft pengiriman ini?'))return;
     const {error}=await db.from('logistics_shipments').delete().eq('id',btn.dataset.deleteShipment);
     if(error)return msg(error.message);
     await logisticsShippingPage();
@@ -1667,7 +1697,7 @@ async function logisticsExternalShippingPage(editId=null){
 
   document.querySelectorAll('[data-edit-external]').forEach(btn=>btn.onclick=()=>logisticsExternalShippingPage(btn.dataset.editExternal));
   document.querySelectorAll('[data-delete-external]').forEach(btn=>btn.onclick=async()=>{
-    if(!confirm('Hapus data Tambah Sapronak ini?'))return;
+    if(!await appConfirm('Hapus data Tambah Sapronak ini?'))return;
     const {error}=await db.from('logistics_external_shipments').delete().eq('id',btn.dataset.deleteExternal);
     if(error)return msg(error.message);
     await logisticsExternalShippingPage();
@@ -1775,7 +1805,7 @@ async function marketingContractHarvestPage(editId=null){
 
   document.querySelectorAll('[data-edit-harvest]').forEach(btn=>btn.onclick=()=>marketingContractHarvestPage(btn.dataset.editHarvest));
   document.querySelectorAll('[data-delete-harvest]').forEach(btn=>btn.onclick=async()=>{
-    if(!confirm('Hapus data Panen Kontrak ini?'))return;
+    if(!await appConfirm('Hapus data Panen Kontrak ini?'))return;
     const {error}=await db.from('marketing_contract_harvests').delete().eq('id',btn.dataset.deleteHarvest);
     if(error)return msg(error.message);
     await marketingContractHarvestPage();
@@ -1881,7 +1911,7 @@ async function marketingExternalMeatPage(editId=null){
 
   document.querySelectorAll('[data-edit-bl]').forEach(btn=>btn.onclick=()=>marketingExternalMeatPage(btn.dataset.editBl));
   document.querySelectorAll('[data-delete-bl]').forEach(btn=>btn.onclick=async()=>{
-    if(!confirm('Hapus data Tambah Daging ini?'))return;
+    if(!await appConfirm('Hapus data Tambah Daging ini?'))return;
     const {error}=await db.from('marketing_external_meat_purchases').delete().eq('id',btn.dataset.deleteBl);
     if(error)return msg(error.message);
     await marketingExternalMeatPage();
@@ -2110,7 +2140,7 @@ async function logisticsExternalReturnPage(editId=null){
   };
 
   root.querySelectorAll('[data-edit-ext-return]').forEach(btn=>btn.onclick=()=>logisticsExternalReturnPage(btn.dataset.editExtReturn));
-  root.querySelectorAll('[data-delete-ext-return]').forEach(btn=>btn.onclick=async()=>{if(!confirm('Hapus Draft Retur ini?'))return;const {error}=await db.from('logistics_external_returns').delete().eq('id',btn.dataset.deleteExtReturn);if(error)return msg(error.message);await logisticsExternalReturnPage();msg('Draft retur dihapus.',true)});
+  root.querySelectorAll('[data-delete-ext-return]').forEach(btn=>btn.onclick=async()=>{if(!await appConfirm('Hapus Draft Retur ini?'))return;const {error}=await db.from('logistics_external_returns').delete().eq('id',btn.dataset.deleteExtReturn);if(error)return msg(error.message);await logisticsExternalReturnPage();msg('Draft retur dihapus.',true)});
   const cancel=document.getElementById('cancelExtReturn');if(cancel)cancel.onclick=()=>logisticsExternalReturnPage();
 }
 
@@ -2330,7 +2360,7 @@ async function logisticsReturnPage(editId=null){
 
   root.querySelectorAll('[data-view-return]').forEach(btn=>btn.onclick=()=>logisticsReturnPage(btn.dataset.viewReturn));
   root.querySelectorAll('[data-delete-return]').forEach(btn=>btn.onclick=async()=>{
-    if(!confirm('Hapus draft retur ini?'))return;
+    if(!await appConfirm('Hapus draft retur ini?'))return;
     const {error}=await db.from('logistics_returns').delete().eq('id',btn.dataset.deleteReturn);
     if(error)return msg(error.message);
     await logisticsReturnPage();
@@ -3484,7 +3514,7 @@ async function leagueAbkPage(editSizeId=null){
 
   document.querySelectorAll('[data-edit-abk-harvest]').forEach(btn=>btn.onclick=()=>leagueAbkPage(btn.dataset.editAbkHarvest));
   document.querySelectorAll('[data-delete-abk-harvest]').forEach(btn=>btn.onclick=async()=>{
-    if(!confirm('Hapus transaksi Panen ABK ini?'))return;
+    if(!await appConfirm('Hapus transaksi Panen ABK ini?'))return;
     const {error}=await db.rpc('delete_production_abk_harvest_atomic',{p_size_id:btn.dataset.deleteAbkHarvest});
     if(error)return msg(error.message);
     await leagueAbkPage();
@@ -4568,7 +4598,7 @@ async function financeSupplierPayablesPage(){
     const fd=new FormData(form),amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<=0)return msg('Nominal pembayaran tidak valid.');
     if(amount>prodNum(selected.balance)+0.0001)return msg('Nominal pembayaran melebihi sisa hutang.');
-    if(!confirm('Bayar '+selected.supplier_name+' sebesar Rp '+prodFmt(amount,0)+'?'))return;
+    if(!await appConfirm('Bayar '+selected.supplier_name+' sebesar Rp '+prodFmt(amount,0)+'?'))return;
     const {error}=await db.rpc('finance_save_supplier_payment_atomic',{
       p_source_type:selected.source_type,p_source_id:selected.source_id,
       p_paid_on:String(fd.get('paid_on')||''),p_amount:amount,p_method:String(fd.get('method')||'TRANSFER'),
@@ -5963,7 +5993,7 @@ async function financeRhppRealPage(){
     const fd=new FormData(form);
     const amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<0)return msg('Nominal RHPP Real tidak valid.');
-    if(!confirm('Simpan RHPP Real sebesar Rp '+prodFmt(amount,0)+'? Setelah tersimpan, nominal ini tidak diedit dari layar Keuangan.'))return;
+    if(!await appConfirm('Simpan RHPP Real sebesar Rp '+prodFmt(amount,0)+'? Setelah tersimpan, nominal ini tidak diedit dari layar Keuangan.'))return;
     const {error}=await db.rpc('finance_save_rhpp_real_atomic',{
       p_contract_assignment_id:form.dataset.rhppRealForm,
       p_amount:amount,
@@ -6421,7 +6451,7 @@ async function financeRhppPage(){
   root.querySelectorAll('[data-close-rhpp]').forEach(btn=>btn.onclick=async()=>{
     const x=rows.find(v=>v.contract_assignment_id===btn.dataset.closeRhpp);
     if(!x)return;
-    if(!confirm('RHPP Sistem sudah diperiksa dan DEAL? Close Produksi akan mengunci seluruh transaksi operasional periode ini.'))return;
+    if(!await appConfirm('RHPP Sistem sudah diperiksa dan DEAL? Close Produksi akan mengunci seluruh transaksi operasional periode ini.'))return;
     const {error}=await db.rpc('admin_close_production_atomic',{p_contract_assignment_id:x.contract_assignment_id});
     if(error)return msg(error.message);
     await financeRhppPage();
