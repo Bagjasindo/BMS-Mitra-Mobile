@@ -4697,8 +4697,8 @@ async function financeExpeditionBusinessPage(){
       '<section class="panel"><h3>Trip Belum Ditagihkan</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th></tr></thead><tbody>'+
         unbilled.map(t=>'<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.destination||'-')+'</td><td>'+esc(t.cargo||'-')+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('')+
       '</tbody></table></div>'+(unbilled.length?'':'<p class="muted">Tidak ada trip yang belum ditagihkan.</p>')+'</section>'+
-      '<section class="panel"><h3>Buat Invoice Expedisi</h3><form id="fxInvoiceForm" class="form-vertical">'+
-        '<label>No Invoice<input name="invoice_number" required></label><label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
+      '<section class="panel"><h3>Buat Invoice Expedisi</h3><p class="muted"><strong>No. Invoice otomatis.</strong> Format: 001/BMS-BSI/FMC/'+today.slice(0,4)+' dan naik berurutan sesuai tahun invoice.</p><form id="fxInvoiceForm" class="form-vertical">'+
+        '<label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
         '<label>Jatuh Tempo<input name="due_date" type="date"></label>'+
         '<label>Tagihan Kepada<select id="fxCustomerSelect" name="customer_id" required><option value="">Pilih Pelanggan</option>'+customers.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
         '<input type="hidden" name="customer_name"><textarea name="customer_address" style="display:none"></textarea>'+
@@ -4758,7 +4758,7 @@ async function financeExpeditionBusinessPage(){
     ev.preventDefault();const fd=new FormData(inf),ids=fd.getAll('trip_ids').map(String);
     if(!ids.length)return msg('Pilih minimal satu trip.');
     const {error}=await db.rpc('finance_create_expedition_invoice_atomic',{
-      p_invoice_number:String(fd.get('invoice_number')||''),p_invoice_date:String(fd.get('invoice_date')||''),p_due_date:String(fd.get('due_date')||'')||null,
+      p_invoice_number:null,p_invoice_date:String(fd.get('invoice_date')||''),p_due_date:String(fd.get('due_date')||'')||null,
       p_customer_name:String(fd.get('customer_name')||''),p_customer_address:String(fd.get('customer_address')||'')||null,p_trip_ids:ids,p_notes:String(fd.get('notes')||'')||null
     });
     if(error)return msg(error.message);await financeExpeditionBusinessPage();msg('Invoice Expedisi berhasil dibuat.',true);
