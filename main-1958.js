@@ -5381,7 +5381,7 @@ async function financeAdvancePaymentPage(){
   const [vr,pr,er,ar,br,cr]=await Promise.all([
     db.from('advances').select('id,employee_id,contract_assignment_id,barn_id,advanced_on,amount,description,reference,created_at').order('advanced_on',{ascending:true}),
     db.from('advance_payments').select('id,advance_id,paid_on,amount,method,reference,notes,created_at').order('paid_on',{ascending:false}),
-    db.from('employees').select('id,code,name'),
+    db.from('employees').select('id,code,name,kind,active').eq('active',true).order('name',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null)
@@ -5394,24 +5394,40 @@ async function financeAdvancePaymentPage(){
   const emp=id=>{const e=employees.find(x=>x.id===id);return e?e.code+' · '+e.name:'-'};
   const ident=id=>{const a=assignments.find(x=>x.id===id);return a?assignmentIdentity(assignments,barns,contractsRows,a):'KARYAWAN UMUM';};
 
-  let html='<section class="panel"><h3>Cicilan Kasbon</h3><p class="muted">Pembayaran kasbon berlaku untuk ABK maupun karyawan umum. Potongan otomatis dari menu Gaji ABK hanya berlaku untuk ABK.</p>'+
+  window.__financeAdvancePaymentState=window.__financeAdvancePaymentState||{employee:''};
+  const st=window.__financeAdvancePaymentState;
+  const employeeOpen=st.employee?open.filter(a=>a.employee_id===st.employee):[];
+
+  let html='<section class="panel"><h3>Cicilan Kasbon</h3><p class="muted">Pilih nama karyawan terlebih dahulu, lalu pilih kasbon aktif yang akan dibayar.</p>'+
     '<form id="advancePaymentForm" class="form-vertical">'+
-      '<label>Kasbon<select name="advance_id" required><option value="">Pilih Kasbon</option>'+open.map(a=>'<option value="'+esc(a.id)+'">'+esc(emp(a.employee_id)+' · '+ident(a.contract_assignment_id)+' · Sisa Rp '+prodFmt(a.balance,0))+'</option>').join('')+'</select></label>'+
+      '<label>Karyawan<select id="advancePaymentEmployee" required><option value="">Pilih Karyawan</option>'+
+        employees.map(e=>'<option value="'+esc(e.id)+'" '+(st.employee===e.id?'selected':'')+'>'+esc(e.code+' · '+e.name+' · '+(e.kind==='ABK'?'ABK':'KARYAWAN'))+'</option>').join('')+
+      '</select></label>'+
+      '<label>Kasbon<select name="advance_id" required '+(!st.employee?'disabled':'')+'><option value="">Pilih Kasbon</option>'+employeeOpen.map(a=>'<option value="'+esc(a.id)+'">'+esc(prodDateId(a.advanced_on)+' · '+ident(a.contract_assignment_id)+' · Sisa Rp '+prodFmt(a.balance,0))+'</option>').join('')+'</select></label>'+
+      (st.employee&&!employeeOpen.length?'<p class="muted">Belum ada kasbon aktif untuk karyawan ini.</p>':'')+
       '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
       '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
       '<label>Metode<select name="method" required><option value="TUNAI">Tunai</option><option value="TRANSFER">Transfer</option></select></label>'+
       '<label>Catatan<input name="notes"></label>'+
-      '<button type="submit">Simpan Cicilan</button>'+
+      '<button type="submit" '+(!employeeOpen.length?'disabled':'')+'>Simpan Cicilan</button>'+
     '</form></section>'+
     '<section class="panel" id="advancePaymentPrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Cicilan / Potongan</h3></div><div class="report-actions"><button type="button" id="advancePaymentPrint">Cetak / PDF</button></div></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Karyawan</th><th>Kandang / Siklus</th><th>Metode</th><th>Nominal</th></tr></thead><tbody>'+
     payments.map(p=>{const a=advances.find(x=>x.id===p.advance_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(emp(a?.employee_id))+'</td><td>'+esc(ident(a?.contract_assignment_id))+'</td><td>'+esc(p.method)+'</td><td>Rp '+prodFmt(p.amount,0)+'</td></tr>';}).join('')+
     '</tbody></table></div>'+(payments.length?'':'<p class="muted">Belum ada cicilan.</p>')+'</section>';
   layout(html);bindNumberInputs();if(err)msg(err.message);
-  const advancePaymentPrint=document.getElementById('advancePaymentPrint');if(advancePaymentPrint)advancePaymentPrint.onclick=()=>printFinanceDocument('advancePaymentPrintArea','Riwayat Cicilan dan Potongan Kasbon');
+
+  const advancePaymentPrint=document.getElementById('advancePaymentPrint');if(advancePaymentPrint)advancePaymentPrint.onclick=()=>printFinanceDocument('advancePaymentPrintArea','Riwayat Cicilan Kasbon');
+  const employeeSel=document.getElementById('advancePaymentEmployee');
+  if(employeeSel)employeeSel.onchange=async()=>{
+    st.employee=employeeSel.value||'';
+    await financeAdvancePaymentPage();
+  };
+
   const form=document.getElementById('advancePaymentForm');
   if(form)form.onsubmit=async ev=>{
-    ev.preventDefault();const fd=new FormData(form),id=String(fd.get('advance_id')||''),a=open.find(x=>x.id===id),amount=normalizeInputID(fd.get('amount'));
-    if(!a)return msg('Pilih kasbon.');
+    ev.preventDefault();const fd=new FormData(form),id=String(fd.get('advance_id')||''),a=employeeOpen.find(x=>x.id===id),amount=normalizeInputID(fd.get('amount'));
+    if(!st.employee)return msg('Pilih karyawan.');
+    if(!a)return msg('Pilih kasbon aktif.');
     if(amount===null||amount<=0||amount>a.balance)return msg('Nominal cicilan tidak valid atau melebihi saldo.');
     const {error}=await db.from('advance_payments').insert({
       advance_id:id,paid_on:fd.get('paid_on'),amount,method:fd.get('method'),
