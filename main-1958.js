@@ -5996,7 +5996,7 @@ async function financeRhppRealPage(){
     return true;
   });
   const rhppBarns=[...new Map(systems.map(s=>{const b=barns.find(x=>x.id===s.barn_id);return b?[b.id,b]:null}).filter(Boolean)).values()];
-  const rhppCycles=st.barn?assignments.filter(a=>a.barn_id===st.barn&&systems.some(s=>s.contract_assignment_id===a.id)):[];
+  const rhppCycles=assignments.filter(a=>(!st.barn||a.barn_id===st.barn)&&systems.some(s=>s.contract_assignment_id===a.id));
 
   if(st.selected&&!systems.some(x=>x.contract_assignment_id===st.selected)){
     st.selected='';
@@ -6004,8 +6004,8 @@ async function financeRhppRealPage(){
 
   let html='<section class="panel"><h3>RHPP Real Keuangan</h3><p class="muted">Data CLOSED wajib dipilih berdasarkan Kandang dan Siklus agar periode tidak tertukar.</p>'+
     '<form id="rhppRealFilter" class="form-vertical">'+
-      '<label>Kandang<select name="barn" id="rhppRealBarn" required><option value="">Pilih Kandang</option>'+rhppBarns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Siklus<select name="assignment" id="rhppRealCycle" required '+(!st.barn?'disabled':'')+'><option value="">Pilih Siklus</option>'+rhppCycles.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date))+'</option>').join('')+'</select></label>'+
+      '<label>Kandang<select name="barn" id="rhppRealBarn"><option value="">Semua Kandang</option>'+rhppBarns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Siklus<select name="assignment" id="rhppRealCycle"><option value="">Semua Siklus</option>'+rhppCycles.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date))+'</option>').join('')+'</select></label>'+
       '<label>Status<select name="status"><option value="" '+(!st.status?'selected':'')+'>Semua</option><option value="WAITING" '+(st.status==='WAITING'?'selected':'')+'>Menunggu Input</option><option value="DONE" '+(st.status==='DONE'?'selected':'')+'>Sudah Input</option></select></label>'+
       '<button type="submit">Tampilkan</button>'+
     '</form></section>';
@@ -6071,8 +6071,6 @@ async function financeRhppRealPage(){
     st.barn=String(fd.get('barn')||'');
     st.assignment=String(fd.get('assignment')||'');
     st.status=String(fd.get('status')||'');
-    if(!st.barn)return msg('Pilih kandang.');
-    if(!st.assignment)return msg('Pilih siklus.');
     st.selected='';
     st.shown=true;
     await financeRhppRealPage();
