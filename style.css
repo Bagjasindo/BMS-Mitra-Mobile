@@ -2459,3 +2459,55 @@ form#fxTripForm.form-vertical,
   .fx-trip-text strong{font-size:10.8px!important}
   .fx-trip-text small{font-size:9.8px!important}
 }
+
+
+/* expedisi-bop-click-ui-2092 */
+.fx-bop-clicks{
+  width:100%!important;
+  max-width:760px!important;
+  padding:9px!important;
+}
+.fx-bop-category-list{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:6px!important;
+}
+.fx-bop-category{
+  min-width:auto!important;
+  width:auto!important;
+}
+.fx-bop-category.active,
+.fx-bop-trip.active{
+  background:var(--bms-accent)!important;
+  border-color:var(--bms-accent)!important;
+  color:#073642!important;
+}
+.fx-bop-trip-list{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:6px!important;
+  margin-top:7px!important;
+  max-height:330px!important;
+  overflow-y:auto!important;
+}
+.fx-bop-trip{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:2px!important;
+  width:100%!important;
+  text-align:left!important;
+}
+.fx-bop-trip strong{font-size:11px!important}
+.fx-bop-trip small{
+  font-size:9.8px!important;
+  color:inherit!important;
+  opacity:.8!important;
+}
+@media(max-width:900px){
+  .fx-bop-category-list{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .fx-bop-category{width:100%!important}
+  .fx-bop-trip-list{max-height:280px!important}
+}
