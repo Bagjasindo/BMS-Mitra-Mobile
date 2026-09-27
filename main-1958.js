@@ -1816,6 +1816,146 @@ async function logisticsExternalShippingPage(editId=null){
   const cancel=document.getElementById('cancelExternalEdit');
   if(cancel)cancel.onclick=()=>logisticsExternalShippingPage();
 }
+
+async function logisticsMandiriPurchasePage(editId=null){
+  const [sr,ir,ar,br,pr,alr]=await Promise.all([
+    db.from('suppliers').select('id,code,name,active,supplier_type').eq('active',true).eq('supplier_type','SAPRONAK').order('code',{ascending:true}),
+    db.from('items').select('id,code,name,category,unit,kg_per_unit,supplier_id,active').eq('active',true).order('code',{ascending:true}),
+    db.from('logistics_contract_assignments').select('id,barn_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
+    db.from('barns').select('id,code,name,active').eq('active',true).order('code',{ascending:true}),
+    db.from('logistics_mandiri_purchases').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('logistics_mandiri_purchase_allocations').select('*').order('created_at',{ascending:true})
+  ]);
+  const suppliers=sr.data||[],items=ir.data||[],assignments=ar.data||[],barns=br.data||[],purchases=pr.data||[],allocations=alr.data||[];
+  const activeMandiri=assignments.filter(a=>a.active&&a.cycle_type==='MANDIRI');
+  const selected=editId?purchases.find(x=>x.id===editId):null;
+  const selectedAlloc=selected?allocations.filter(x=>x.purchase_id===selected.id):[];
+  const today=prodToday();
+  const assignmentText=a=>{
+    const b=barns.find(x=>x.id===a.barn_id);
+    return (b?shortBarnLabel(b):'-')+' · '+assignmentCycleLabel(assignments,a)+' · MANDIRI';
+  };
+  const lockedPurchase=p=>allocations.filter(x=>x.purchase_id===p.id).some(x=>!assignments.find(a=>a.id===x.contract_assignment_id)?.active);
+
+  let html='<section class="panel"><h3>'+(selected?'Edit Pembelian Mandiri':'Pembelian Mandiri')+'</h3>'+
+    '<p class="muted">Input pembelian sekali, lalu bagi langsung ke satu atau beberapa kandang Mandiri. Sisa yang belum dibagi tercatat sebagai stok gudang pembelian.</p>'+
+    '<form id="mandiriPurchaseForm" class="form-vertical">'+
+      '<input type="hidden" name="purchase_id" value="'+esc(selected?.id||'')+'">'+
+      '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+esc(selected?.purchase_date||today)+'" required></label>'+
+      '<label>Supplier<select name="supplier_id" id="mandiriPurchaseSupplier" required><option value="">Pilih Supplier</option>'+
+        suppliers.map(x=>'<option value="'+esc(x.id)+'" '+(selected?.supplier_id===x.id?'selected':'')+'>'+esc(x.code+' · '+x.name)+'</option>').join('')+
+      '</select></label>'+
+      '<label>Barang<select name="item_id" id="mandiriPurchaseItem" required><option value="">Pilih Barang</option></select></label>'+
+      '<label>Jumlah Pembelian<input type="text" name="quantity" id="mandiriPurchaseQty" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.quantity):'')+'" required></label>'+
+      '<label>Harga Beli / Satuan<input type="text" name="purchase_unit_price" id="mandiriPurchasePrice" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.purchase_unit_price):'')+'" required></label>'+
+      '<label>Total Pembelian<input id="mandiriPurchaseTotal" readonly tabindex="-1"></label>'+
+      '<label>No. Nota / Referensi<input name="reference_number" value="'+esc(selected?.reference_number||'')+'"></label>'+
+      '<label>Catatan<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
+      '<section class="panel" style="margin:0"><h4>Kirim / Bagi ke Kandang Mandiri</h4><div id="mandiriAllocationRows"></div><button type="button" id="addMandiriAllocation">+ Tambah Kandang</button><p id="mandiriAllocationSummary" class="muted"></p></section>'+
+      '<button type="submit">'+(selected?'Simpan Perubahan':'Simpan Pembelian Mandiri')+'</button>'+
+      (selected?'<button type="button" id="cancelMandiriPurchase">Batal Edit</button>':'')+
+    '</form></section>';
+
+  html+='<section class="panel"><h3>Riwayat Pembelian Mandiri</h3><div class="tablewrap"><table><thead><tr>'+
+    '<th>Tanggal</th><th>Supplier</th><th>Barang</th><th>Jumlah</th><th>Harga/Satuan</th><th>Total</th><th>Terdistribusi</th><th>Sisa Gudang</th><th>Tujuan</th><th>Aksi</th>'+
+    '</tr></thead><tbody>'+
+    purchases.map(p=>{
+      const sup=suppliers.find(x=>x.id===p.supplier_id),it=items.find(x=>x.id===p.item_id);
+      const aa=allocations.filter(x=>x.purchase_id===p.id);
+      const allocated=aa.reduce((n,x)=>n+prodNum(x.quantity),0);
+      const targets=aa.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return (a?assignmentText(a):'-')+' ('+fmtNumber(x.quantity)+' '+(it?.unit||'')+')';}).join('<br>');
+      const locked=lockedPurchase(p);
+      return '<tr><td>'+esc(p.purchase_date||'')+'</td><td>'+esc(sup?.name||'-')+'</td><td>'+esc((it?.code?it.code+' · ':'')+(it?.name||'-'))+'</td><td>'+fmtNumber(p.quantity)+' '+esc(it?.unit||'')+'</td><td>Rp '+fmtNumber(p.purchase_unit_price)+'</td><td>Rp '+fmtNumber(prodNum(p.quantity)*prodNum(p.purchase_unit_price))+'</td><td>'+fmtNumber(allocated)+'</td><td><strong>'+fmtNumber(Math.max(0,prodNum(p.quantity)-allocated))+'</strong></td><td>'+targets+'</td><td>'+(locked?'<strong>Terkunci</strong>':'<button type="button" data-edit-mandiri-purchase="'+esc(p.id)+'">Edit</button> <button type="button" data-delete-mandiri-purchase="'+esc(p.id)+'">Hapus</button>')+'</td></tr>';
+    }).join('')+
+    '</tbody></table></div>'+(!purchases.length?'<p>Belum ada Pembelian Mandiri.</p>':'')+'</section>';
+
+  layout(html);bindNumberInputs();
+  const err=[sr,ir,ar,br,pr,alr].find(x=>x.error)?.error;if(err)msg(err.message);
+  const form=document.getElementById('mandiriPurchaseForm');
+  const supplierEl=document.getElementById('mandiriPurchaseSupplier');
+  const itemEl=document.getElementById('mandiriPurchaseItem');
+  const qtyEl=document.getElementById('mandiriPurchaseQty');
+  const priceEl=document.getElementById('mandiriPurchasePrice');
+  const totalEl=document.getElementById('mandiriPurchaseTotal');
+  const rowsEl=document.getElementById('mandiriAllocationRows');
+  const summaryEl=document.getElementById('mandiriAllocationSummary');
+
+  const draft=selectedAlloc.length?selectedAlloc.map(x=>({assignment_id:x.contract_assignment_id,quantity:prodNum(x.quantity)})):[{assignment_id:'',quantity:0}];
+
+  const refreshItems=()=>{
+    const sid=supplierEl.value;
+    const current=selected?.item_id||itemEl.value;
+    const list=items.filter(x=>x.supplier_id===sid);
+    itemEl.innerHTML='<option value="">Pilih Barang</option>'+list.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===current?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+(x.unit||'-'))+'</option>').join('');
+    if(!list.some(x=>x.id===itemEl.value))itemEl.value='';
+  };
+  const syncDraft=()=>{
+    rowsEl.querySelectorAll('[data-mandiri-alloc-assignment]').forEach(el=>{const i=Number(el.dataset.mandiriAllocAssignment);if(draft[i])draft[i].assignment_id=el.value;});
+    rowsEl.querySelectorAll('[data-mandiri-alloc-qty]').forEach(el=>{const i=Number(el.dataset.mandiriAllocQty);if(draft[i])draft[i].quantity=normalizeInputID(el.value)||0;});
+  };
+  const updateTotals=()=>{
+    const q=normalizeInputID(qtyEl.value)||0,p=normalizeInputID(priceEl.value)||0;
+    totalEl.value=q&&p?'Rp '+fmtNumber(q*p):'';
+    syncDraft();
+    const used=draft.reduce((n,x)=>n+prodNum(x.quantity),0);
+    const rem=q-used;
+    summaryEl.textContent='Terdistribusi: '+fmtNumber(used)+' · Sisa Gudang: '+fmtNumber(Math.max(0,rem))+(rem<0?' · MELEBIHI PEMBELIAN':'');
+  };
+  const renderAllocations=()=>{
+    rowsEl.innerHTML=draft.map((r,i)=>{
+      const used=new Set(draft.filter((x,j)=>j!==i&&x.assignment_id).map(x=>x.assignment_id));
+      return '<div class="return-grid" style="margin-bottom:8px"><label>Kandang / Siklus<select data-mandiri-alloc-assignment="'+i+'" required><option value="">Pilih Kandang Mandiri</option>'+
+        activeMandiri.filter(a=>!used.has(a.id)||a.id===r.assignment_id).map(a=>'<option value="'+esc(a.id)+'" '+(a.id===r.assignment_id?'selected':'')+'>'+esc(assignmentText(a))+'</option>').join('')+
+        '</select></label><label>Jumlah<input type="text" data-number="1" inputmode="decimal" data-mandiri-alloc-qty="'+i+'" value="'+(r.quantity?fmtNumber(r.quantity):'')+'" required></label>'+
+        (draft.length>1?'<button type="button" data-remove-mandiri-alloc="'+i+'">Hapus</button>':'')+'</div>';
+    }).join('');
+    bindNumberInputs();
+    rowsEl.querySelectorAll('[data-mandiri-alloc-assignment]').forEach(el=>el.onchange=()=>{syncDraft();renderAllocations();});
+    rowsEl.querySelectorAll('[data-mandiri-alloc-qty]').forEach(el=>el.oninput=updateTotals);
+    rowsEl.querySelectorAll('[data-remove-mandiri-alloc]').forEach(btn=>btn.onclick=()=>{syncDraft();draft.splice(Number(btn.dataset.removeMandiriAlloc),1);renderAllocations();});
+    updateTotals();
+  };
+  supplierEl.onchange=()=>{selected&&(selected.item_id=null);refreshItems();};
+  qtyEl.oninput=updateTotals;priceEl.oninput=updateTotals;
+  refreshItems();if(selected)itemEl.value=selected.item_id;
+  renderAllocations();
+  document.getElementById('addMandiriAllocation').onclick=()=>{syncDraft();draft.push({assignment_id:'',quantity:0});renderAllocations();};
+
+  form.onsubmit=async ev=>{
+    ev.preventDefault();syncDraft();
+    const fd=new FormData(form);
+    const quantity=normalizeInputID(fd.get('quantity')),price=normalizeInputID(fd.get('purchase_unit_price'));
+    const valid=draft.filter(x=>x.assignment_id&&prodNum(x.quantity)>0);
+    if(!(quantity>0))return msg('Jumlah pembelian harus lebih dari 0.');
+    if(price===null||price<0)return msg('Harga beli tidak valid.');
+    if(!valid.length)return msg('Pilih minimal satu kandang Mandiri untuk distribusi.');
+    if(new Set(valid.map(x=>x.assignment_id)).size!==valid.length)return msg('Kandang tujuan tidak boleh duplikat.');
+    const allocated=valid.reduce((n,x)=>n+prodNum(x.quantity),0);
+    if(allocated>quantity)return msg('Total distribusi melebihi jumlah pembelian.');
+    const {error}=await db.rpc('save_mandiri_purchase_atomic',{
+      p_purchase_id:fd.get('purchase_id')||null,
+      p_supplier_id:fd.get('supplier_id'),
+      p_item_id:fd.get('item_id'),
+      p_purchase_date:fd.get('purchase_date'),
+      p_quantity:quantity,
+      p_purchase_unit_price:price,
+      p_reference_number:String(fd.get('reference_number')||'')||null,
+      p_notes:String(fd.get('notes')||'')||null,
+      p_allocations:valid
+    });
+    if(error)return msg(error.message);
+    await logisticsMandiriPurchasePage();msg('Pembelian Mandiri dan distribusi kandang tersimpan.',true);
+  };
+  root.querySelectorAll('[data-edit-mandiri-purchase]').forEach(btn=>btn.onclick=()=>logisticsMandiriPurchasePage(btn.dataset.editMandiriPurchase));
+  root.querySelectorAll('[data-delete-mandiri-purchase]').forEach(btn=>btn.onclick=async()=>{
+    if(!await appConfirm('Hapus Pembelian Mandiri ini beserta distribusinya?'))return;
+    const {error}=await db.rpc('delete_mandiri_purchase_atomic',{p_purchase_id:btn.dataset.deleteMandiriPurchase});
+    if(error)return msg(error.message);
+    await logisticsMandiriPurchasePage();msg('Pembelian Mandiri dihapus.',true);
+  });
+  const cancel=document.getElementById('cancelMandiriPurchase');if(cancel)cancel.onclick=()=>logisticsMandiriPurchasePage();
+}
+
 async function marketingContractHarvestPage(editId=null){
   const [br,ar,cr,hr,lpr]=await Promise.all([
     db.from('barns').select('id,code,name,active').eq('active',true).order('code',{ascending:true}),
