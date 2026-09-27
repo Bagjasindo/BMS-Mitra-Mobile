@@ -2113,3 +2113,207 @@ form button,
     font-size:10.8px;
   }
 }
+
+
+/* universal-mobile-density-2085
+   Satu standar tampilan HP untuk seluruh aplikasi (portrait + landscape/tablet kecil). */
+@media(max-width:900px){
+  body{
+    font-size:12px!important;
+    line-height:1.34!important;
+  }
+  main{
+    width:100%!important;
+    max-width:none!important;
+    padding:10px!important;
+    overflow-x:hidden!important;
+  }
+  header{
+    min-height:auto!important;
+    gap:6px!important;
+    padding:0 0 8px!important;
+    margin:0 0 8px!important;
+  }
+  header h2{
+    font-size:18px!important;
+    line-height:1.15!important;
+    margin:0!important;
+  }
+  header small{font-size:10px!important}
+
+  .panel{
+    width:100%!important;
+    max-width:none!important;
+    padding:10px!important;
+    margin:8px 0!important;
+    border-radius:9px!important;
+  }
+  .panel h3{
+    font-size:14px!important;
+    line-height:1.2!important;
+    margin:0 0 7px!important;
+  }
+  .panel h4{font-size:12.5px!important}
+  .panel p,.muted{
+    font-size:10.8px!important;
+    line-height:1.35!important;
+  }
+
+  form,
+  .form-vertical,
+  .compact-form,
+  .panel form,
+  .panel .form-vertical{
+    width:100%!important;
+    max-width:none!important;
+    grid-template-columns:1fr!important;
+    gap:7px!important;
+  }
+  fieldset{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    margin:3px 0!important;
+    padding:9px!important;
+  }
+  legend{
+    font-size:11px!important;
+    padding:0 4px!important;
+  }
+  label,
+  form label,
+  .form-vertical label{
+    min-width:0!important;
+    font-size:10.8px!important;
+    line-height:1.2!important;
+    gap:4px!important;
+  }
+
+  input,
+  select,
+  textarea{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:36px!important;
+    height:auto!important;
+    padding:6px 8px!important;
+    border-radius:7px!important;
+    font-size:12px!important;
+    line-height:1.2!important;
+  }
+  select{
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+  }
+  select option{
+    font-size:12px!important;
+    line-height:1.2!important;
+  }
+  textarea{min-height:62px!important}
+  input::placeholder,textarea::placeholder{font-size:10.5px!important}
+
+  button,
+  form button,
+  .form-vertical button{
+    min-height:32px!important;
+    padding:5px 9px!important;
+    border-radius:7px!important;
+    font-size:11px!important;
+    line-height:1.1!important;
+  }
+
+  .search-suggestions{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  .search-suggestion{
+    min-height:27px!important;
+    padding:5px 7px!important;
+    font-size:10.8px!important;
+    line-height:1.2!important;
+  }
+  .search-suggestion strong{font-size:10.8px!important}
+  .search-suggestion small{font-size:9.2px!important}
+
+  .cards{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:7px!important;
+  }
+  .card{
+    min-width:0!important;
+    min-height:70px!important;
+    padding:9px!important;
+  }
+  .card strong{font-size:18px!important}
+
+  .tablewrap{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  table{font-size:10.5px!important}
+  th{font-size:10px!important}
+  th,td{
+    padding:5px 6px!important;
+    min-width:78px!important;
+    white-space:nowrap!important;
+  }
+  td button,.table-actions button{
+    min-height:26px!important;
+    padding:3px 6px!important;
+    font-size:10px!important;
+  }
+
+  .inline-actions,
+  .report-actions,
+  .rhpp-report-actions{
+    gap:5px!important;
+    max-width:100%!important;
+  }
+
+  .contract-abk-row,
+  .contract-abk-add,
+  .return-grid,
+  .return-item-row,
+  .fx-destination-row{
+    grid-template-columns:1fr!important;
+    width:100%!important;
+    max-width:100%!important;
+  }
+
+  #appSidebar nav button,
+  #appSidebar nav summary{
+    min-height:34px!important;
+    padding:6px 8px!important;
+    font-size:11.5px!important;
+  }
+  #appSidebar .nav-icon,
+  #appSidebar .nav-icon svg{
+    width:17px!important;
+    height:17px!important;
+  }
+  #appSidebar .nav-icon{flex-basis:17px!important}
+  .mobile-topbar{
+    min-height:46px!important;
+    padding:5px 8px!important;
+  }
+  .mobile-topbar strong{font-size:14px!important}
+  .mobile-topbar>span{font-size:9px!important}
+}
+
+@media(max-width:480px){
+  main{padding:8px!important}
+  .panel{padding:9px!important}
+  .cards{grid-template-columns:1fr!important}
+  .rhpp-summary-cards{grid-template-columns:1fr!important}
+  .mobile-topbar{
+    grid-template-columns:36px minmax(0,1fr) auto!important;
+  }
+  .mobile-menu-toggle{
+    width:34px!important;
+    min-width:34px!important;
+    min-height:34px!important;
+  }
+}
