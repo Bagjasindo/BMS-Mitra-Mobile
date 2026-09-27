@@ -5542,14 +5542,14 @@ async function financeBarnProfitLossPage(){
   const err=[xr,ar,br,cr,rr].find(x=>x.error)?.error;
   const realIds=new Set((rr.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
 
-  window.__financeBarnProfitState=window.__financeBarnProfitState||{barn:'',assignment:'',status:'FINAL',shown:false};
+  window.__financeBarnProfitState=window.__financeBarnProfitState||{barn:'',assignment:'',shown:false};
   const st=window.__financeBarnProfitState;
   const cycleOptions=assignments.filter(a=>!st.barn||a.barn_id===st.barn);
   const statusOf=x=>x.active?'PROSES':realIds.has(x.contract_assignment_id)?'FINAL':'MENUNGGU RHPP REAL';
   const filtered=st.shown?rows.filter(x=>
+    statusOf(x)==='FINAL'&&
     (!st.barn||x.barn_id===st.barn)&&
-    (!st.assignment||x.contract_assignment_id===st.assignment)&&
-    (!st.status||statusOf(x)===st.status)
+    (!st.assignment||x.contract_assignment_id===st.assignment)
   ):[];
   const finalRows=filtered.filter(x=>statusOf(x)==='FINAL');
   const sum=(arr,k)=>arr.reduce((n,x)=>n+prodNum(x[k]),0);
@@ -5564,7 +5564,6 @@ async function financeBarnProfitLossPage(){
     '<form id="barnProfitFilter" class="form-vertical">'+
       '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Siklus<select name="assignment"><option value="">Semua Siklus</option>'+cycleOptions.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
-      '<label>Status<select name="status"><option value="" '+(!st.status?'selected':'')+'>Semua</option><option value="FINAL" '+(st.status==='FINAL'?'selected':'')+'>Final</option><option value="MENUNGGU RHPP REAL" '+(st.status==='MENUNGGU RHPP REAL'?'selected':'')+'>Menunggu RHPP Real</option><option value="PROSES" '+(st.status==='PROSES'?'selected':'')+'>Proses</option></select></label>'+
       '<button type="submit">Tampilkan</button>'+
     '</form></section>';
 
@@ -5575,10 +5574,10 @@ async function financeBarnProfitLossPage(){
         '<div class="rhpp-summary-card"><span>RHPP Real</span><strong>Rp '+prodFmt(totalRhpp,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(totalBop,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Biaya Tambahan</span><strong>Rp '+prodFmt(totalSapronakLuar+totalTambahDaging,0)+'</strong><small>Sapronak luar + tambah daging</small></div>'+
-        '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(totalNet,0)+'</strong><small>'+finalRows.length+' siklus final · perawatan terpisah</small></div>'+
+        '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(totalNet,0)+'</strong><small>'+finalRows.length+' siklus · perawatan terpisah</small></div>'+
       '</div>'+
       '<div class="tablewrap"><table><thead><tr>'+
-        '<th>Kandang / Siklus</th><th>Status</th><th>RHPP Real</th><th>BOP Produksi</th><th>Sapronak Luar</th><th>Tambah Daging</th><th>Laba/Rugi Kandang</th>'+
+        '<th>Kandang / Siklus</th><th>RHPP Real</th><th>BOP Produksi</th><th>Sapronak Luar</th><th>Tambah Daging</th><th>Laba/Rugi Kandang</th>'+
       '</tr></thead><tbody>'+
       filtered.map(x=>{
         const a=assignments.find(v=>v.id===x.contract_assignment_id);
@@ -5586,12 +5585,11 @@ async function financeBarnProfitLossPage(){
         const ident=a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name);
         return '<tr>'+
           '<td>'+esc(ident)+'</td>'+
-          '<td>'+esc(status)+'</td>'+
-          '<td>'+(status==='FINAL'?'Rp '+prodFmt(x.rhpp_real,0):'-')+'</td>'+
+          '<td>Rp '+prodFmt(x.rhpp_real,0)+'</td>'+
           '<td>Rp '+prodFmt(x.bop_produksi,0)+'</td>'+
           '<td>Rp '+prodFmt(x.sapronak_luar,0)+'</td>'+
           '<td>Rp '+prodFmt(x.tambah_daging,0)+'</td>'+
-          '<td><strong>'+(status==='FINAL'?'Rp '+prodFmt(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging),0):'Belum Final')+'</strong></td>'+
+          '<td><strong>Rp '+prodFmt(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging),0)+'</strong></td>'+
         '</tr>';
       }).join('')+
       '</tbody></table></div>'+
@@ -5613,7 +5611,6 @@ async function financeBarnProfitLossPage(){
       const fd=new FormData(form);
       st.barn=String(fd.get('barn')||'');
       st.assignment=String(fd.get('assignment')||'');
-      st.status=String(fd.get('status')||'');
       st.shown=true;
       await financeBarnProfitLossPage();
     };
