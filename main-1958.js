@@ -5627,7 +5627,7 @@ async function financeGlobalProfitLossPage(){
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null),
-    db.rpc('finance_expedition_profit_loss_v1'),
+    db.rpc('finance_expedition_profit_loss_v2'),
     db.from('finance_expedition_maintenance').select('incurred_on,category,vehicle,amount,notes'),
     db.from('bop_outside').select('incurred_on,category,amount,notes')
   ]);
@@ -5645,9 +5645,9 @@ async function financeGlobalProfitLossPage(){
   const labaKandang=finalRows.reduce((n,x)=>n+(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging)),0);
   const perawatanKandang=sum(finalRows,'perawatan_jangka_panjang');
   const pendapatanExp=prodNum(exp.expedition_revenue);
-  const bopExp=prodNum(exp.expedition_bop);
-  const labaExp=prodNum(exp.expedition_profit_loss);
-  const perawatanExp=expMaint.reduce((n,x)=>n+prodNum(x.amount),0);
+  const bopExp=prodNum(exp.operational_bop);
+  const labaExp=prodNum(exp.operational_profit);
+  const perawatanExp=prodNum(exp.maintenance_bop);
   const bopUmum=bopUmumRows.reduce((n,x)=>n+prodNum(x.amount),0);
   const labaUsaha=labaKandang+labaExp;
   const biayaGlobal=perawatanKandang+perawatanExp+bopUmum;
