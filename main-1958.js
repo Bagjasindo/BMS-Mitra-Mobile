@@ -4993,8 +4993,15 @@ async function financeExpeditionBopPage(){
   let html='<section class="panel"><h3>Tambah BOP Expedisi</h3><p class="muted">Biaya usaha Expedisi terpisah dari BOP Kandang dan BOP Umum.</p>'+
     '<form id="fxBopForm" class="form-vertical">'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+today+'" required></label>'+
-      '<label>Kategori<select name="category" required><option value="">Pilih Kategori</option><option value="BBM">BBM</option><option value="TOL">Tol</option><option value="PARKIR">Parkir</option><option value="UANG_JALAN">Uang Jalan</option><option value="MAKAN_SOPIR">Makan Sopir</option><option value="SERVIS">Servis</option><option value="BAN">Ban</option><option value="PAJAK_KENDARAAN">Pajak Kendaraan</option><option value="BONGKAR_MUAT">Bongkar / Muat</option><option value="LAINNYA">Lainnya</option></select></label>'+
-      '<label>Trip Terkait (opsional)<select id="fxBopTrip" name="trip_id"><option value="">Tidak terkait trip tertentu</option>'+trips.map(t=>'<option value="'+esc(t.id)+'">'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-')+' · '+t.destination)+'</option>').join('')+'</select></label>'+
+      '<input type="hidden" name="category" id="fxBopCategory">'+
+      '<fieldset class="fx-bop-clicks"><legend>Kategori</legend><div class="fx-bop-category-list">'+
+        ['BBM','TOL','PARKIR','UANG_JALAN','MAKAN_SOPIR','SERVIS','BAN','PAJAK_KENDARAAN','BONGKAR_MUAT','LAINNYA'].map(k=>'<button type="button" class="btn-secondary fx-bop-category" data-category="'+k+'">'+esc(k.replaceAll('_',' '))+'</button>').join('')+
+      '</div></fieldset>'+
+      '<input type="hidden" name="trip_id" id="fxBopTrip">'+
+      '<fieldset class="fx-bop-clicks"><legend>Trip Terkait <small>(opsional)</small></legend>'+
+        '<button type="button" class="btn-secondary fx-bop-trip active" data-trip-id="">Tidak terkait trip tertentu</button>'+
+        '<div class="fx-bop-trip-list">'+trips.slice(0,30).map(t=>'<button type="button" class="btn-secondary fx-bop-trip" data-trip-id="'+esc(t.id)+'"><strong>'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-'))+'</strong><small>'+esc((t.destination||'-')+' · '+(t.vehicle||'-'))+'</small></button>').join('')+'</div>'+
+      '</fieldset>'+
       '<p id="fxBopTripInfo" class="muted"></p>'+
       '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
       '<label>Catatan<textarea name="notes"></textarea></label>'+
@@ -5005,17 +5012,24 @@ async function financeExpeditionBopPage(){
   layout(html);bindNumberInputs();if(err)msg(err.message);
   const fxBopPrint=document.getElementById('fxBopPrint');if(fxBopPrint)fxBopPrint.onclick=()=>printFinanceDocument('fxBopPrintArea','Laporan BOP Expedisi');
   const form=document.getElementById('fxBopForm');
-  const tripSel=document.getElementById('fxBopTrip');
-  if(form&&tripSel){
-    const syncTripInfo=()=>{
-      const t=trips.find(x=>x.id===tripSel.value);
-      const info=document.getElementById('fxBopTripInfo');
-      if(info)info.textContent=t?('Sopir: '+(t.driver||'-')+' · Truk: '+(t.vehicle||'-')+' · Rute: '+(t.zone||'-')):'';
-    };
-    tripSel.onchange=syncTripInfo;
-  }
+  const categoryInput=document.getElementById('fxBopCategory');
+  const tripInput=document.getElementById('fxBopTrip');
+  document.querySelectorAll('.fx-bop-category').forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll('.fx-bop-category').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+    if(categoryInput)categoryInput.value=btn.dataset.category||'';
+  });
+  document.querySelectorAll('.fx-bop-trip').forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll('.fx-bop-trip').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+    if(tripInput)tripInput.value=btn.dataset.tripId||'';
+    const t=trips.find(x=>x.id===btn.dataset.tripId);
+    const info=document.getElementById('fxBopTripInfo');
+    if(info)info.textContent=t?('Sopir: '+(t.driver||'-')+' · Truk: '+(t.vehicle||'-')+' · Rute: '+(t.zone||'-')):'Tidak terkait trip tertentu.';
+  });
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(form),amount=normalizeInputID(fd.get('amount'));
+    if(!String(fd.get('category')||''))return msg('Klik salah satu kategori BOP Expedisi.');
     if(amount===null||amount<0)return msg('Nominal BOP Expedisi tidak valid.');
     const t=trips.find(x=>x.id===String(fd.get('trip_id')||''));
     const {error}=await db.from('finance_expedition_bop').insert({
