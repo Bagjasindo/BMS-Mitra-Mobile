@@ -625,11 +625,14 @@ async function printFinanceDocument(sectionIds,heading){
   }).join('<div class="print-gap"></div>');
   const generated=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'long',timeStyle:'short'}).format(new Date());
   w.document.write('<html><head><meta charset="utf-8"><title>'+esc(heading||'Laporan')+'</title><style>'+
-    '@page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;color:#111;font-size:11px}'+
-    '.print-head{border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:14px}.print-head h2{margin:0 0 4px}.print-head div{margin:2px 0}'+
-    'h3{margin:12px 0 7px}table{width:100%;border-collapse:collapse;margin:8px 0}th,td{border:1px solid #aaa;padding:5px;text-align:left;vertical-align:top}th{background:#eee}'+
-    '.rhpp-summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.rhpp-summary-card{border:1px solid #bbb;padding:7px}.rhpp-summary-card span{display:block}.rhpp-summary-card strong{display:block;margin-top:3px}'+
-    '.muted{color:#555}.print-gap{height:10px}.tablewrap{overflow:visible}.panel{border:0;padding:0;margin:0}'+
+    '@page{size:A4 landscape;margin:6mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;font-size:8.5px;line-height:1.25;margin:0}'+
+    '.print-head{border-bottom:1px solid #222;padding-bottom:4px;margin-bottom:6px;min-height:38px}.print-head h2{margin:0 0 2px;font-size:14px}.print-head div{margin:1px 0;font-size:8px}.print-head img{max-height:34px!important}'+
+    'h2{font-size:13px;margin:5px 0}h3{font-size:10px;margin:7px 0 4px}h4{font-size:9px;margin:6px 0 3px}p{margin:3px 0}'+
+    'table{width:100%;border-collapse:collapse;margin:4px 0;table-layout:auto}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}th,td{border:1px solid #bbb;padding:2.5px 3px;text-align:left;vertical-align:top;white-space:normal;overflow-wrap:anywhere}th{background:#f3f3f3;font-size:8px}td{font-size:8px}'+
+    '.rhpp-summary-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin:3px 0}.rhpp-summary-card{border:0!important;border-bottom:1px solid #ccc!important;padding:3px 2px!important;min-width:0}.rhpp-summary-card span{display:block;font-size:7.5px}.rhpp-summary-card strong{display:block;margin-top:1px;font-size:9px}.rhpp-summary-card small{font-size:7px}'+
+    '.muted{color:#444;font-size:7.5px}.print-gap{height:4px}.tablewrap{overflow:visible!important;width:100%}.panel{border:0!important;box-shadow:none!important;padding:0!important;margin:0!important;background:#fff!important}'+
+    '.total{margin:4px 0!important}.report-actions,.inline-actions,button,form{display:none!important}'+
+    '@media print{html,body{width:100%;height:auto}.page-break{break-before:page}.avoid-break{break-inside:avoid;page-break-inside:avoid}}'+
     '</style></head><body>'+
     '<div class="print-head">'+'<img src="'+esc(reportLogo)+'" style="max-height:42px;float:right;object-fit:contain">'+
     '<h2>'+esc(cp.company_name||cp.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
