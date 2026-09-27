@@ -437,7 +437,11 @@ function openMobileSelectPicker(select){
   const close=()=>{shade.remove();document.removeEventListener('keydown',onKey)};
   const onKey=e=>{if(e.key==='Escape')close()};
   document.addEventListener('keydown',onKey);
-  shade.onclick=e=>{if(e.target===shade||e.target.closest('.mobile-select-close'))close()};
+  const openedAt=Date.now();
+  shade.onclick=e=>{
+    if(e.target===shade&&Date.now()-openedAt<500)return;
+    if(e.target===shade||e.target.closest('.mobile-select-close'))close();
+  };
   picker.querySelector('.mobile-select-search')?.addEventListener('input',e=>draw(e.target.value));
   list.onclick=e=>{
     const choice=e.target.closest('[data-option-index]');
