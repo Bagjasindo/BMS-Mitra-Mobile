@@ -5541,11 +5541,10 @@ async function financeBarnProfitLossPage(){
   const totalBop=sum(finalRows,'bop_produksi');
   const totalSapronakLuar=sum(finalRows,'sapronak_luar');
   const totalTambahDaging=sum(finalRows,'tambah_daging');
-  const totalMaint=sum(finalRows,'perawatan_jangka_panjang');
-  const totalNet=sum(finalRows,'laba_bersih_akhir');
+  const totalNet=finalRows.reduce((n,x)=>n+(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging)),0);
 
   let html='<section class="panel"><h3>Laba/Rugi Kandang</h3>'+
-    '<p class="muted">Khusus usaha kandang. Expedisi tidak masuk ke perhitungan ini. Laba/rugi final dihitung setelah siklus CLOSED dan RHPP Real tersedia.</p>'+
+    '<p class="muted">Khusus usaha kandang. Expedisi dan Perawatan Kandang tidak masuk ke perhitungan ini. Perawatan tetap terpisah dan baru digabung pada laba/rugi global.</p>'+
     '<form id="barnProfitFilter" class="form-vertical">'+
       '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Siklus<select name="assignment"><option value="">Semua Siklus</option>'+cycleOptions.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
@@ -5559,11 +5558,11 @@ async function financeBarnProfitLossPage(){
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>RHPP Real</span><strong>Rp '+prodFmt(totalRhpp,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(totalBop,0)+'</strong></div>'+
-        '<div class="rhpp-summary-card"><span>Biaya Tambahan</span><strong>Rp '+prodFmt(totalSapronakLuar+totalTambahDaging+totalMaint,0)+'</strong><small>Sapronak luar + tambah daging + perawatan</small></div>'+
-        '<div class="rhpp-summary-card"><span>Laba/Rugi Bersih</span><strong>Rp '+prodFmt(totalNet,0)+'</strong><small>'+finalRows.length+' siklus final</small></div>'+
+        '<div class="rhpp-summary-card"><span>Biaya Tambahan</span><strong>Rp '+prodFmt(totalSapronakLuar+totalTambahDaging,0)+'</strong><small>Sapronak luar + tambah daging</small></div>'+
+        '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(totalNet,0)+'</strong><small>'+finalRows.length+' siklus final · perawatan terpisah</small></div>'+
       '</div>'+
       '<div class="tablewrap"><table><thead><tr>'+
-        '<th>Kandang / Siklus</th><th>Status</th><th>RHPP Real</th><th>BOP Produksi</th><th>Sapronak Luar</th><th>Tambah Daging</th><th>Perawatan</th><th>Laba/Rugi Bersih</th>'+
+        '<th>Kandang / Siklus</th><th>Status</th><th>RHPP Real</th><th>BOP Produksi</th><th>Sapronak Luar</th><th>Tambah Daging</th><th>Laba/Rugi Kandang</th>'+
       '</tr></thead><tbody>'+
       filtered.map(x=>{
         const a=assignments.find(v=>v.id===x.contract_assignment_id);
@@ -5576,8 +5575,7 @@ async function financeBarnProfitLossPage(){
           '<td>Rp '+prodFmt(x.bop_produksi,0)+'</td>'+
           '<td>Rp '+prodFmt(x.sapronak_luar,0)+'</td>'+
           '<td>Rp '+prodFmt(x.tambah_daging,0)+'</td>'+
-          '<td>Rp '+prodFmt(x.perawatan_jangka_panjang,0)+'</td>'+
-          '<td><strong>'+(status==='FINAL'?'Rp '+prodFmt(x.laba_bersih_akhir,0):'Belum Final')+'</strong></td>'+
+          '<td><strong>'+(status==='FINAL'?'Rp '+prodFmt(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging),0):'Belum Final')+'</strong></td>'+
         '</tr>';
       }).join('')+
       '</tbody></table></div>'+
