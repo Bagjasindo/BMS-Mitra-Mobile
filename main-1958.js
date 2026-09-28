@@ -6071,7 +6071,7 @@ async function financeAdvancePaymentPage(){
       (st.employee&&!employeeOpen.length?'<p class="muted">Tidak ada kasbon yang masih memiliki sisa.</p>':'')+
       '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
       '<label>Nominal Bayar<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Metode<select name="method" required><option value="TUNAI">Tunai</option><option value="TRANSFER">Transfer</option><option value="POTONG_GAJI">Potong Gaji</option></select></label>'+
+      '<label>Metode<select name="method" required><option value="TUNAI">Tunai</option><option value="TRANSFER">Transfer</option></select></label>'+
       '<label>Catatan<input name="notes"></label>'+
       '<button type="submit" '+(!employeeOpen.length?'disabled':'')+'>Simpan Pembayaran</button>'+
     '</form></section>'+
