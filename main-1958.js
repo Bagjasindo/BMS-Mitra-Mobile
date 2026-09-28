@@ -4250,7 +4250,7 @@ async function productionRecapPage(){
   const [cpr,pr,fr,rr,sr,...feedResponses]=await Promise.all([
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('production_ppl_directory'),
-    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type'),
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,mortality_pct,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type'),
     db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
     db.from('recording_weight_samples').select('recording_id,weight_g'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
@@ -4322,8 +4322,8 @@ async function productionRecapPage(){
     if(final){
       const chickIn=prodNum(final.chick_in_birds);
       const chickOut=prodNum(final.total_harvest_birds);
-      const mortBirds=Math.max(0,prodNum(final.depletion_birds));
-      const mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
+      const mortPct=Math.max(0,Math.min(100,prodNum(final.mortality_pct)));
+      const mortBirds=chickIn*mortPct/100;
       const kg=prodNum(final.total_harvest_kg);
       const avg=prodNum(final.avg_bw_kg);
       const age=prodNum(final.weighted_age);
