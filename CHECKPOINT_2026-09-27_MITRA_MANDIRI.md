@@ -506,3 +506,67 @@ Belum boleh diberi label 100% PASS sebelum minimal:
 3. Scope `finance_rhpp_summary_v5()` untuk PPL ke assignment sendiri.
 4. Tutup akses Marketing ke Estimasi Produksi jika mengikuti role matrix ketat.
 5. Review warning login security (leaked-password protection dan anon execute) untuk target security 100%.
+
+
+---
+
+## PERBAIKAN BLOCKER AUDIT TOTAL 2026-09-28
+
+Status: **SUDAH DIKERJAKAN — akses Marketing ke Estimasi tetap dipertahankan sesuai keputusan Bos.**
+
+### 1. Recording diputus dari RHPP Final
+Keputusan kerja:
+- Recording hanya pembanding/monitoring Produksi.
+- Estimasi dan Recording tidak menjadi sumber nilai RHPP final.
+
+Implementasi:
+- `finance_rhpp_summary_v5()` tidak lagi memakai `recorded_depletion_birds` sebagai effective depletion untuk RHPP.
+- Untuk siklus PROSES, RHPP tidak memakai Recording untuk mortality/IP final.
+- Untuk siklus CLOSED, basis deplesi RHPP = Chick-In - total Panen.
+- `recorded_depletion_birds` tetap dikembalikan RPC sebagai pembanding.
+- `depletion_variance_birds` tetap menunjukkan selisih implied vs Recording.
+- `admin_close_production_atomic()` sekarang menyimpan `depletion_birds = greatest(chick_in_birds-total_harvest_birds,0)`.
+- Snapshot CLOSED historis lama tidak diubah/ditulis ulang.
+
+Verifikasi live PROSES:
+- implied depletion 8.038
+- recorded comparator 2.278
+- variance 5.760
+- Recording tetap terlihat tetapi tidak menjadi effective depletion final.
+
+### 2. Panen PPL di-scope ke assignment sendiri
+Policy `marketing_contract_harvest_read` diperbaiki.
+- ADMIN / MARKETING / KEUANGAN / OWNER tetap bisa membaca sesuai kebutuhan.
+- PPL hanya bisa SELECT Panen jika `private.can_read_assignment(contract_assignment_id)`.
+
+Tes akun PPL asli:
+- visible assignments: 5
+- visible harvest assignments: 5
+Sebelum perbaikan PPL dapat membaca Panen dari 8 assignment.
+
+### 3. RPC RHPP PPL di-scope ke assignment sendiri
+`finance_rhpp_summary_v5()` ditambah filter PPL:
+- role selain PPL tetap sesuai akses sebelumnya;
+- PPL hanya mendapat row dengan `logistics_contract_assignments.ppl_id = auth.uid()`.
+
+Tes akun PPL asli:
+- visible assignments: 5
+- RPC RHPP assignments: 5
+Sebelum perbaikan RPC mengembalikan 8 assignment.
+
+### 4. Marketing baca Estimasi — DIPERTAHANKAN
+Sesuai keputusan Bos, Marketing tetap boleh membaca Estimasi Produksi untuk gambaran panen.
+Tes live Marketing:
+- production_estimates terlihat: 13
+- harvests terlihat: 119
+Tidak dilakukan perubahan policy Estimasi Marketing.
+
+### Regresi Keuangan / Global
+Setelah perubahan:
+- cycle profit/loss identity mismatch: 0
+- expedition identity mismatch: 0
+- company/global identity mismatch: 0
+Jadi koreksi security/RHPP tidak mengubah rumus PASS pada Laba/Rugi dan Laporan Global.
+
+### Catatan
+- Warning Supabase Auth seperti Leaked Password Protection dan anon execute `production_ppl_directory()` masih merupakan hardening terpisah, bukan bagian dari tiga blocker bisnis ini.
