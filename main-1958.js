@@ -3047,7 +3047,8 @@ const prodDateId=v=>{if(!v)return '-';const m=String(v).slice(0,10).match(/^(\d{
 const prodToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const prodAge=(a,b)=>Math.max(1,Math.floor((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000)+1);
 const prodDateAdd=(iso,days)=>{const d=new Date(String(iso).slice(0,10)+'T00:00:00');d.setDate(d.getDate()+Number(days||0));return d.toISOString().slice(0,10)};
-async function productionBase(){
+async function productionBase(options={}){
+  const includeRhppCosts=options.includeRhppCosts!==false;
   const [ar,br,cr,cir,abr,er,ir,psr,mhr,lpr,costr]=await Promise.all([
     db.from('logistics_contract_assignments').select('id,barn_id,ppl_id,master_contract_id,performance_template_name,start_date,active,created_at,cycle_type').order('created_at',{ascending:false}),
     db.from('barns').select('id,code,name,active').order('code'),
@@ -3059,7 +3060,9 @@ async function productionBase(){
     db.from('performance_standards').select('*'),
     db.from('marketing_contract_harvests').select('id,contract_assignment_id,harvested_on,birds,net_weight_kg,avg_weight_kg,total_amount'),
     db.from('contract_live_prices').select('contract_id,min_weight_kg,max_weight_kg,price_per_kg').order('min_weight_kg'),
-    db.from('logistics_rhpp_cost_summary').select('contract_assignment_id,doc_cost,feed_cost,ovk_cost,net_sapronak_cost')
+    includeRhppCosts
+      ? db.from('logistics_rhpp_cost_summary').select('contract_assignment_id,doc_cost,feed_cost,ovk_cost,net_sapronak_cost')
+      : Promise.resolve({data:[],error:null})
   ]);
   const err=[ar,br,cr,cir,abr,er,ir,psr,mhr,lpr,costr].find(x=>x.error)?.error;
   const allAssignments=ar.data||[];
@@ -3509,7 +3512,7 @@ async function productionVisitPage(){
   };
 }
 async function productionEstimatePage(){
-  const d=await productionBase();
+  const d=await productionBase({includeRhppCosts:false});
   const [er,sr]=await Promise.all([
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
     db.from('production_estimate_sizes').select('*')
@@ -3808,7 +3811,7 @@ async function resetKlasemenAbkPage(){
 async function leagueAbkPage(editSizeId=null){
   window.__leagueAbkState=window.__leagueAbkState||{assignment:'',abk:''};
   window.__leagueAbkHistoryFilter=window.__leagueAbkHistoryFilter||{barn:'',assignment:'',abk:'',status:'',from:'',to:'',shown:false};
-  const d=await productionBase();
+  const d=await productionBase({includeRhppCosts:false});
   const leagueSetting=await loadAbkLeagueSetting();
   const [rr,sr,cr,br]=await Promise.all([
     db.from('production_abk_results').select('*'),
