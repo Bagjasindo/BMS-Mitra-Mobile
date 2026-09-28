@@ -570,3 +570,20 @@ Jadi koreksi security/RHPP tidak mengubah rumus PASS pada Laba/Rugi dan Laporan 
 
 ### Catatan
 - Warning Supabase Auth seperti Leaked Password Protection dan anon execute `production_ppl_directory()` masih merupakan hardening terpisah, bukan bagian dari tiga blocker bisnis ini.
+
+
+---
+
+## BASELINE ALUR & HAK AKSES TERKUNCI
+
+Dokumen acuan resmi:
+`LOCKED_ALUR_HAK_AKSES_2026-09-28.md`
+
+Commit pembuatan baseline:
+`425c49b91c0607db0cf04ab2b50ed349f3761104`
+
+Aturan:
+- Alur bisnis, role, scope PPL, pemisahan Mitra/Mandiri, hubungan Recording/Estimasi terhadap RHPP, alur Keuangan, Retur, Expedisi, dan Laporan Global mengikuti dokumen tersebut.
+- Modul yang sudah PASS tidak boleh diubah tanpa keputusan eksplisit Bos.
+- Pending hardening security tidak boleh mengubah alur bisnis/hak akses yang sudah terkunci.
+- Perubahan masa depan wajib dibandingkan dengan baseline sebelum implementasi.
