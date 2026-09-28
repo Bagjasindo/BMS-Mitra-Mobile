@@ -15,4 +15,5 @@
 - **Modul operasional utama sebelum Keuangan/Owner dianggap terkunci sesuai audit terakhir.**
 - **Pekerjaan berikutnya difokuskan hanya pada Keuangan dan Owner.**
 - **Ruang audit/fix berikutnya meliputi laporan Keuangan, BOP, arus kas, laba/rugi, hutang/piutang, penerimaan/pembayaran, serta laporan Owner yang membaca hasil akhir terkait.**
-- **Jangan membuka kembali Logistik, Marketing, Produksi/PPL, Estimasi, Liga ABK, atau RHPP kecuali ada perintah eksplisit Administrator atau ditemukan bukti error yang langsung memengaruhi Keuangan/Owner.**
+- **Audit boleh dilakukan untuk membaca, membandingkan, dan menemukan masalah, tetapi tidak boleh mengubah kode, SQL, view, RPC, data, konfigurasi, maupun alur aplikasi tanpa izin eksplisit Administrator.**
+- **Jangan membuka kembali atau mengubah Logistik, Marketing, Produksi/PPL, Estimasi, Liga ABK, RHPP, Keuangan, maupun Owner tanpa persetujuan Administrator.**
