@@ -142,3 +142,74 @@ Fokus berikutnya **bukan audit ulang**, tetapi:
 3. Sambungkan pembayaran supplier Mandiri ke Kas Keluar tanpa double count.
 4. Tambahkan VOID/koreksi transaksi keuangan dengan audit trail.
 5. End-to-end test menggunakan data real.
+
+
+---
+
+## AUDIT PERHITUNGAN WEB 2026-09-28
+
+Status: **AUDIT SAJA — temuan di bawah belum diperbaiki kecuali perbaikan kumulatif CLOSED yang sudah dilakukan sebelumnya.**
+
+### Temuan Kritis
+1. **Produksi PROSES salah menghitung deplesi/IP pada Laporan Produksi dan Rekap Produksi PPL.**
+   - Cabang PROSES masih memakai `mortBirds = Chick-In - Chick-Out`.
+   - `Chick-Out` pada siklus berjalan hanya jumlah panen, sehingga ayam yang masih hidup di kandang ikut dianggap deplesi.
+   - Data live saat audit: Chick-In 14.800, deplesi recording 2.278, panen 6.762.
+   - Rumus web lama akan membaca deplesi 8.038, sehingga survival/IP siklus berjalan salah.
+   - Perbaikan yang benar: untuk PROSES gunakan mortality+culling dari recording dan metrik performa berjalan berbasis populasi/BW recording, bukan hanya hasil panen.
+
+2. **Arus Kas Sapronak Luar bukan cash basis.**
+   - `finance_cashflow_entries_v1` memasukkan seluruh nilai SAPRONAK LUAR sebagai KELUAR pada tanggal pengiriman.
+   - Pembayaran supplier aktual di `supplier_payments` tidak menjadi sumber kas keluar.
+   - Data live saat audit: invoice Sapronak Luar Rp 14.700.000; pembayaran supplier tercatat Rp 0.
+   - Artinya Arus Kas web saat ini tetap mencatat Rp 14.700.000 kas keluar walaupun menurut ledger pembayaran aplikasi belum ada kas keluar.
+   - Tambah Daging memakai pola yang sama.
+
+3. **Close Mandiri tidak membuat snapshot produksi final.**
+   - Web aktif memanggil `admin_close_mandiri_cycle_atomic`.
+   - RPC itu hanya mengubah assignment menjadi `active=false`; tidak menulis `rhpp_system_final`.
+   - Laporan Produksi/Rekap CLOSED mengandalkan snapshot `rhpp_system_final` agar angka final terkunci.
+   - Saat Mandiri nanti benar-benar dipakai dan di-Close, laporan CLOSED berisiko jatuh ke rumus data berjalan dan tidak konsisten.
+   - Belum berdampak sekarang karena audit terakhir tidak ada siklus Mandiri live.
+
+### Temuan Tinggi
+4. **Estimasi setelah panen sebagian mempunyai rumus preview yang berbeda dengan rumus tersimpan/riwayat.**
+   - Preview FCR memakai pakan / biomassa sisa estimasi saja.
+   - Riwayat memakai pakan / (panen sebelumnya + biomassa sisa).
+   - Preview keuangan juga hanya menghitung proyeksi sisa, sedangkan saat Simpan pendapatan memasukkan panen aktual sebelumnya.
+   - Data live: ada 10 estimasi yang dibuat setelah panen sebagian.
+   - Jadi preview sebelum Simpan dapat berbeda dari hasil yang kemudian tampil di riwayat.
+
+5. **Retur Sapronak Luar belum mengurangi hutang supplier / biaya secara konsisten.**
+   - `finance_supplier_payables_v1` menghitung tagihan dari nilai pengiriman awal tanpa mengurangi retur.
+   - `finance_cycle_profit_loss_v2` juga tidak langsung mengurangi `logistics_external_returns`; hanya membaca transfer retur antar assignment.
+   - Saat audit tidak ada retur external live, jadi belum berdampak pada angka sekarang, tetapi akan salah saat retur supplier dipakai.
+
+### Temuan Sedang / Definisi
+6. **Label Dashboard IP CLOSED tidak sesuai rumus.**
+   - Nilai Dashboard menghitung ulang IP gabungan seluruh CLOSED.
+   - Subtitle masih mengatakan “rata-rata tertimbang RHPP closed”.
+   - Dengan data audit: IP gabungan ≈ 398,89 sedangkan rata-rata tertimbang IP per siklus ≈ 399,66.
+   - Nilai 398,89 valid sebagai “IP Gabungan Produksi Closed”; label perlu disesuaikan.
+
+7. **Laporan Keuangan Mandiri menampilkan laba operasional sebelum perawatan.**
+   - Perhitungan `Penjualan - BOP - Sapronak - Tambah Daging` benar sebagai laba operasional.
+   - Di baris tabel label hanya “Laba/Rugi”, sehingga bisa disangka laba bersih setelah perawatan.
+   - Bukan kesalahan aritmetika, tetapi istilah perlu diperjelas.
+
+### Area yang saat audit tidak menunjukkan kesalahan aritmetika utama
+- Panen Marketing: total = Kg × Harga/Kg; Mitra mengambil harga kontrak berdasarkan BW, Mandiri manual.
+- Pembelian Mandiri: total = jumlah × harga satuan; distribusi tidak boleh melebihi pembelian.
+- Expedisi: nilai trip = harga trip + tambahan − potongan; invoice/piutang/pembayaran konsisten.
+- Laba/Rugi Expedisi: pendapatan − BOP operasional − perawatan.
+- Laba/Rugi Global: laba kandang + laba operasional Expedisi − perawatan kandang − perawatan Expedisi − BOP umum; tidak ditemukan double-count utama.
+- RHPP Mitra web aktif memakai `finance_rhpp_summary_v5` dan Close Mitra memakai `admin_close_production_atomic` berbasis v5.
+- Fungsi legacy `save_rhpp_final_atomic` masih ada di database tetapi tidak ditemukan dipanggil oleh JS aktif.
+
+### Urutan koreksi yang direkomendasikan
+1. Rumus Produksi PROSES.
+2. Close Mandiri + snapshot final.
+3. Arus Kas Supplier berdasarkan pembayaran aktual.
+4. Estimasi setelah panen sebagian.
+5. Retur Sapronak Luar terhadap hutang dan biaya.
+6. Koreksi label/istilah Dashboard dan laporan.
