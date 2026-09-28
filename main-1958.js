@@ -3036,8 +3036,8 @@ async function chickInPage(){
     '<label>Nomor DO<input name="delivery_number"></label>'+
     '<p id="prodChickNet" class="muted">Populasi awal bersih: 0 ekor</p>'+
     '<button>Simpan Chick-In</button></form></section>';
-  html+='<section class="panel"><h3>Data Chick-In</h3><div class="tablewrap"><table><thead><tr><th>Kandang / Kontrak</th><th>DOC In</th><th>DOC Mati Box</th><th>Bobot Rata2</th><th>Nomor DO</th></tr></thead><tbody>'+
-    d.chicks.filter(x=>x.contract_assignment_id).map(x=>{const a=d.assignments.find(a=>a.id===x.contract_assignment_id);return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodFmt(x.received,0)+'</td><td>'+prodFmt(x.doa,0)+'</td><td>'+prodFmt(x.avg_weight,2)+' g</td><td>'+esc(x.delivery_number||'-')+'</td></tr>'}).join('')+
+  html+='<section class="panel"><h3>Data Chick-In</h3><div class="tablewrap"><table><thead><tr><th>Kandang / Kontrak</th><th>DOC In</th><th>DOC Mati Box</th><th>Bobot Rata2</th><th>Nomor DO</th><th>Aksi</th></tr></thead><tbody>'+
+    d.chicks.filter(x=>x.contract_assignment_id).map(x=>{const a=d.assignments.find(a=>a.id===x.contract_assignment_id);return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodFmt(x.received,0)+'</td><td>'+prodFmt(x.doa,0)+'</td><td>'+prodFmt(x.avg_weight,2)+' g</td><td>'+esc(x.delivery_number||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-chick="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('chick_ins',x.id)+'</div></td></tr>'}).join('')+
     '</tbody></table></div></section>';
   layout(html); bindNumberInputs(); if(d.err)msg(d.err.message);
   const f=document.getElementById('prodChick'),net=document.getElementById('prodChickNet');
@@ -3048,6 +3048,8 @@ async function chickInPage(){
     net.textContent='Populasi awal bersih: '+Math.max(0,(normalizeInputID(f.received.value)||0)-(normalizeInputID(f.doa.value)||0)).toLocaleString('id-ID')+' ekor';
   };
   f.received.oninput=calc;f.doa.oninput=calc;f.avg_weight.oninput=calc;
+  root.querySelectorAll('[data-edit-chick]').forEach(btn=>btn.onclick=()=>{const x=d.chicks.find(v=>v.id===btn.dataset.editChick);if(!x)return;f.assignment.value=x.contract_assignment_id||'';f.received.value=fmtNumber(x.received);f.doa.value=fmtNumber(x.doa);f.avg_weight.value=x.avg_weight==null?'':fmtNumber(x.avg_weight);f.delivery_number.value=x.delivery_number||'';calc();document.getElementById('prodChick')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  bindAdminTransactionDeletes(()=>chickInPage());
   bindAdminTransactionDeletes(()=>productionVisitPage());
 
   f.onsubmit=async e=>{e.preventDefault();const a=d.assignments.find(x=>x.id===f.assignment.value);if(!a)return msg('Pilih kontrak aktif dari Logistik.');
@@ -3128,12 +3130,13 @@ async function recordingPplPage(){
       '<td>'+prodFmt(x.bwg,0)+' / '+(x.st?.std_body_weight_g?prodFmt(x.st.std_body_weight_g,0):'-')+' g</td>'+
       '<td>'+prodFmt(x.cumFeed,2)+' / '+(x.stdFeedTotalKg!=null?prodFmt(x.stdFeedTotalKg,2):'-')+' Kg</td>'+
       '<td>'+prodFmt(x.fi,1)+' g/ekor</td><td>'+prodFmt(x.fcr,3)+'</td><td>'+prodFmt(x.adg,1)+' g</td><td>'+prodFmt(x.ip,1)+'</td>'+
-      '<td><button type="button" data-edit-recording="'+esc(x.r.id)+'">Edit</button></td></tr>'
+      '<td><div class="inline-actions"><button type="button" data-edit-recording="'+esc(x.r.id)+'">Edit</button>'+adminDeleteTxnButton('recordings',x.r.id)+'</div></td></tr>'
     ).join('');
     document.getElementById('prodPerfPage').textContent='Halaman '+(txnRecording.st.page+1)+' / '+txnRecording.pages+' · '+txnRecording.total+' data';
     document.getElementById('prodPerfPrev').disabled=txnRecording.st.page<=0;
     document.getElementById('prodPerfNext').disabled=txnRecording.st.page>=txnRecording.pages-1;
     document.querySelectorAll('[data-edit-recording]').forEach(b=>b.onclick=()=>startEdit(b.dataset.editRecording));
+    bindAdminTransactionDeletes(()=>recordingPplPage());
   };
   document.getElementById('prodPerfPrev').onclick=()=>{txnRecording.st.page=Math.max(0,txnRecording.st.page-1);recordingPplPage()};
   document.getElementById('prodPerfNext').onclick=()=>{txnRecording.st.page=Math.min(txnRecording.pages-1,txnRecording.st.page+1);recordingPplPage()};
@@ -5415,6 +5418,8 @@ async function financeExpeditionPaymentPage(){
   const totalInvoice=summaries.reduce((n,x)=>n+prodNum(x.invoice_total),0);
   const totalPaid=summaries.reduce((n,x)=>n+prodNum(x.paid_total),0);
   const totalReceivable=summaries.reduce((n,x)=>n+prodNum(x.receivable),0);
+  window.__fxPaymentEdit=window.__fxPaymentEdit||'';
+  const editPayment=payments.find(x=>x.id===window.__fxPaymentEdit)||null;
 
   let html='<section class="panel"><h3>Penerimaan Expedisi</h3><p class="muted">Khusus Keuangan / Administrator. Pembayaran otomatis mengurangi piutang invoice Expedisi.</p>'+
     '<div class="rhpp-summary-cards">'+
@@ -5422,35 +5427,49 @@ async function financeExpeditionPaymentPage(){
       '<div class="rhpp-summary-card"><span>Sudah Dibayar</span><strong>Rp '+prodFmt(totalPaid,0)+'</strong></div>'+
       '<div class="rhpp-summary-card"><span>Sisa Piutang</span><strong>Rp '+prodFmt(totalReceivable,0)+'</strong></div>'+
     '</div></section>'+
-    '<section class="panel"><h3>Catat Pembayaran</h3><form id="fxPaymentForm" class="form-vertical">'+
+    '<section class="panel"><h3>'+(editPayment?'Edit Penerimaan Expedisi':'Catat Pembayaran')+'</h3><form id="fxPaymentForm" class="form-vertical">'+
       '<label>Invoice<select name="invoice_id" required><option value="">Pilih Invoice</option>'+
-        summaries.filter(x=>prodNum(x.receivable)>0&&x.status!=="VOID").map(x=>'<option value="'+esc(x.invoice_id)+'">'+esc(invoiceLabel(x.invoice_id))+'</option>').join('')+
+        summaries.filter(x=>(prodNum(x.receivable)>0||x.invoice_id===editPayment?.invoice_id)&&x.status!=="VOID").map(x=>'<option value="'+esc(x.invoice_id)+'" '+(editPayment?.invoice_id===x.invoice_id?'selected':'')+'>'+esc(invoiceLabel(x.invoice_id))+'</option>').join('')+
       '</select></label>'+
-      '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
-      '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Metode<select name="method"><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option></select></label>'+
-      '<label>Referensi<input name="reference" placeholder="Opsional"></label>'+
-      '<label>Catatan<textarea name="notes"></textarea></label>'+
-      '<button type="submit">Simpan Pembayaran</button>'+
+      '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+esc(editPayment?.paid_on||today)+'" required></label>'+
+      '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editPayment?fmtNumber(editPayment.amount):'')+'" required></label>'+
+      '<label>Metode<select name="method"><option value="TRANSFER" '+((editPayment?.method||'TRANSFER')==='TRANSFER'?'selected':'')+'>Transfer</option><option value="TUNAI" '+(editPayment?.method==='TUNAI'?'selected':'')+'>Tunai</option></select></label>'+
+      '<label>Referensi<input name="reference" value="'+esc(editPayment?.reference||'')+'" placeholder="Opsional"></label>'+
+      '<label>Catatan<textarea name="notes">'+esc(editPayment?.notes||'')+'</textarea></label>'+
+      '<div class="report-actions"><button type="submit">'+(editPayment?'Simpan Perubahan':'Simpan Pembayaran')+'</button>'+(editPayment?'<button type="button" id="fxPaymentCancelEdit">Batal Edit</button>'+adminDeleteTxnButton('finance_expedition_payments',editPayment.id):'')+'</div>'+
     '</form></section>'+
     '<section class="panel"><h3>Piutang Invoice Expedisi</h3><div class="tablewrap"><table><thead><tr><th>No Invoice</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Sisa</th><th>Status</th></tr></thead><tbody>'+
       summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td></tr>').join('')+
-    '</tbody></table></div></section>';
+    '</tbody></table></div></section>'+    '<section class="panel"><h3>Riwayat Penerimaan Expedisi</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Invoice</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+payments.map(p=>{const i=invoices.find(x=>x.id===p.invoice_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(i?.invoice_number||'-')+'</td><td>'+esc(p.method||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-exp-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_expedition_payments',p.id)+'</div></td></tr>';}).join('')+'</tbody></table></div>'+(payments.length?'':'<p class="muted">Belum ada penerimaan.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
+  root.querySelectorAll('[data-edit-exp-payment]').forEach(btn=>btn.onclick=async()=>{window.__fxPaymentEdit=btn.dataset.editExpPayment||'';await financeExpeditionPaymentPage();document.getElementById('fxPaymentForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const cancelEdit=document.getElementById('fxPaymentCancelEdit');if(cancelEdit)cancelEdit.onclick=async()=>{window.__fxPaymentEdit='';await financeExpeditionPaymentPage();};
+  bindAdminTransactionDeletes(()=>{window.__fxPaymentEdit='';return financeExpeditionPaymentPage();});
   const pf=document.getElementById('fxPaymentForm');
   if(pf)pf.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(pf),id=String(fd.get('invoice_id')||''),amount=normalizeInputID(fd.get('amount'));
     const x=summaries.find(v=>v.invoice_id===id);
     if(!x)return msg('Pilih invoice.');
-    if(amount===null||amount<=0||amount>prodNum(x.receivable))return msg('Nominal pembayaran tidak valid atau melebihi piutang.');
-    const {error}=await db.rpc('finance_save_expedition_payment_atomic',{
-      p_invoice_id:id,p_paid_on:String(fd.get('paid_on')||''),p_amount:amount,
-      p_method:String(fd.get('method')||'TRANSFER'),p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null
-    });
+    const maxAmount=prodNum(x.receivable)+prodNum(editPayment?.amount);
+    if(amount===null||amount<=0||amount>maxAmount)return msg('Nominal pembayaran tidak valid atau melebihi piutang Rp '+prodFmt(maxAmount,0)+'.');
+    let result;
+    if(editPayment){
+      result=await db.from('finance_expedition_payments').update({
+        invoice_id:id,paid_on:String(fd.get('paid_on')||''),amount,
+        method:String(fd.get('method')||'TRANSFER'),reference:String(fd.get('reference')||'')||null,notes:String(fd.get('notes')||'')||null
+      }).eq('id',editPayment.id);
+    }else{
+      result=await db.rpc('finance_save_expedition_payment_atomic',{
+        p_invoice_id:id,p_paid_on:String(fd.get('paid_on')||''),p_amount:amount,
+        p_method:String(fd.get('method')||'TRANSFER'),p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null
+      });
+    }
+    const {error}=result;
     if(error)return msg(error.message);
-    await financeExpeditionPaymentPage();msg('Penerimaan Expedisi tersimpan dan piutang diperbarui.',true);
+    window.__fxPaymentEdit='';
+    await financeExpeditionPaymentPage();msg(editPayment?'Penerimaan Expedisi berhasil diperbarui.':'Penerimaan Expedisi tersimpan dan piutang diperbarui.',true);
   };
 }
 
