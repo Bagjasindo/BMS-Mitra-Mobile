@@ -3012,6 +3012,8 @@ async function chickInPage(){
     net.textContent='Populasi awal bersih: '+Math.max(0,(normalizeInputID(f.received.value)||0)-(normalizeInputID(f.doa.value)||0)).toLocaleString('id-ID')+' ekor';
   };
   f.received.oninput=calc;f.doa.oninput=calc;f.avg_weight.oninput=calc;
+  bindAdminTransactionDeletes(()=>productionVisitPage());
+
   f.onsubmit=async e=>{e.preventDefault();const a=d.assignments.find(x=>x.id===f.assignment.value);if(!a)return msg('Pilih kontrak aktif dari Logistik.');
     const received=normalizeInputID(f.received.value);
     const doa=normalizeInputID(f.doa.value);
@@ -3237,7 +3239,7 @@ async function productionVisitPage(){
     '<div class="inline-actions"><button id="prodVisitSave">Simpan Kunjungan</button><button type="button" id="prodVisitCancel" style="display:none">Batal Edit</button></div>'+
     '</form></section>';
   html+='<section class="panel"><h3>Riwayat Kunjungan</h3>'+txnVisit.controls+'<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>Temuan</th><th>Rekomendasi</th><th>Tindak Lanjut</th><th>Status</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-    shownVisits.map(x=>{const a=d.assignments.find(a=>a.id===x.contract_assignment_id);return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodDateId(x.visited_on)+'</td><td>'+esc(x.findings||'-')+'</td><td>'+esc(x.recommendation||'-')+'</td><td>'+esc(x.follow_up||'-')+'</td><td>'+esc(x.follow_up_status||'-')+'</td><td>'+esc(x.notes||'-')+'</td><td><button type="button" data-edit-visit="'+esc(x.id)+'">Edit</button></td></tr>'}).join('')+
+    shownVisits.map(x=>{const a=d.assignments.find(a=>a.id===x.contract_assignment_id);return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodDateId(x.visited_on)+'</td><td>'+esc(x.findings||'-')+'</td><td>'+esc(x.recommendation||'-')+'</td><td>'+esc(x.follow_up||'-')+'</td><td>'+esc(x.follow_up_status||'-')+'</td><td>'+esc(x.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-visit="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('visits',x.id)+'</div></td></tr>'}).join('')+
     '</tbody></table></div>'+(!txnVisit.total?'<p>Data Kunjungan tidak ditemukan.</p>':'')+txnVisit.pager+'</section>';
   layout(html);
   bindTxnList(txnVisit,()=>productionVisitPage());
@@ -3391,7 +3393,7 @@ async function productionEstimatePage(){
       const perChick=x.profit_per_chick_in==null?dyn.perChick:prodNum(x.profit_per_chick_in);
       return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodDateId(x.estimated_on)+'</td><td>'+age+'</td><td>'+prodFmt(x.remaining_birds,0)+'</td><td>'+prodFmt(bw,3)+'</td><td>'+prodFmt(prodNum(x.feed_used_kg)/50,0)+' zak</td><td>'+prodFmt(fcr,3)+'</td><td>'+prodFmt(ip,1)+'</td>'+
         '<td>Rp '+prodFmt(revenue,0)+'</td><td>Rp '+prodFmt(cost,0)+'</td><td>Rp '+prodFmt(profit,0)+'</td><td>Rp '+prodFmt(perChick,0)+'</td>'+
-        '<td><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button></td></tr>';
+        '<td><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></td></tr>';
     }).join('')+
     '</tbody></table></div>'+
     txnEstimate.pager+
@@ -3399,6 +3401,8 @@ async function productionEstimatePage(){
 
   layout(html);
   if(d.err||er.error||sr.error||rr.error)msg((d.err||er.error||sr.error||rr.error).message);
+
+  bindAdminTransactionDeletes(()=>productionEstimatePage());
 
   const f=document.getElementById('prodEst');
   const holder=document.getElementById('estSizes');
@@ -4928,7 +4932,7 @@ async function financeBopPage(){
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total BOP</span><strong>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</strong></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td><td><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button></td></tr>';}).join('')+
+          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop',x.id)+'</div></td></tr>';}).join('')+
         '</tbody><tfoot><tr><th colspan="3">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
@@ -4974,6 +4978,7 @@ async function financeBopPage(){
 
   root.querySelectorAll('[data-edit-bop]').forEach(btn=>btn.onclick=async()=>{st.editId=btn.dataset.editBop||'';const row=rows.find(x=>x.id===st.editId);if(row){st.barn=row.barn_id||'';st.assignment=row.contract_assignment_id||'';}await financeBopPage();document.getElementById('bopKandangForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
   const cancelEdit=document.getElementById('bopEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{st.editId='';await financeBopPage();};
+  bindAdminTransactionDeletes(()=>financeBopPage());
   const filter=document.getElementById('bopKandangFilter');
   if(filter){
     filter.elements.barn.onchange=async()=>{
@@ -5689,7 +5694,7 @@ async function financeExpeditionMaintenancePage(){
       '<label>Kendaraan<select name="vehicle"><option value="">Tidak terkait kendaraan tertentu</option>'+vehicles.map(v=>'<option value="'+esc(v.plate_number)+'" '+(selected?.vehicle===v.plate_number?'selected':'')+'>'+esc(v.plate_number+(v.vehicle_type?' · '+v.vehicle_type:''))+'</option>').join('')+'</select></label>'+
       '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(selected?esc(fmtNumber(selected.amount)):'')+'" required></label>'+
       '<label>Catatan<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
-      '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Simpan Perawatan')+'</button>'+(selected?'<button type="button" id="fxMaintenanceCancel" class="btn-secondary">Batal Koreksi</button>':'')+'</div>'+
+      '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Simpan Perawatan')+'</button>'+(selected?'<button type="button" id="fxMaintenanceCancel" class="btn-secondary">Batal Koreksi</button>'+adminDeleteTxnButton('finance_expedition_maintenance',selected.id):'')+'</div>'+
     '</form></section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
@@ -5705,6 +5710,8 @@ async function financeExpeditionMaintenancePage(){
     window.__fxMaintenanceEdit='';
     await financeExpeditionMaintenancePage();
   };
+
+  bindAdminTransactionDeletes(()=>{window.__fxMaintenanceEdit='';return financeExpeditionMaintenancePage();});
 
   const form=document.getElementById('fxMaintenanceForm');
   if(form)form.onsubmit=async ev=>{
