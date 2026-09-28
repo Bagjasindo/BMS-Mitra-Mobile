@@ -3011,7 +3011,10 @@ async function recordingPplPage(){
     const cumDead=prev.reduce((s,x)=>s+prodNum(x.mortality)+prodNum(x.culling),0);
     const cumFeed=prev.reduce((s,x)=>s+prodNum(x.feed_kg),0);
     const initial=prodNum(ci.received)-prodNum(ci.doa);
-    const population=Math.max(0,initial-cumDead);
+    const harvestedToDate=d.harvests
+      .filter(h=>h.contract_assignment_id===r.contract_assignment_id&&h.harvested_on<=r.recorded_on)
+      .reduce((s,h)=>s+prodNum(h.birds),0);
+    const population=Math.max(0,initial-cumDead-harvestedToDate);
     const ws=samples.filter(s=>s.recording_id===r.id).map(s=>prodNum(s.weight_g));
     const bwg=ws.length?ws.reduce((s,x)=>s+x,0)/ws.length:prodNum(r.avg_weight_kg)*1000;
     const bwkg=bwg/1000,biomass=population*bwkg;
@@ -3467,7 +3470,7 @@ async function productionEstimatePage(){
     const a=d.assignments.find(x=>x.id===f.assignment.value),ci=a&&d.chicks.find(c=>c.contract_assignment_id===a.id);
     if(a&&ci&&f.date.value){
       const death=recs.filter(r=>r.contract_assignment_id===a.id&&r.recorded_on<=f.date.value).reduce((s,r)=>s+prodNum(r.mortality)+prodNum(r.culling),0);
-      const harv=d.harvests.filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<=f.date.value).reduce((s,h)=>s+prodNum(h.birds),0);
+      const harv=d.harvests.filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<f.date.value).reduce((s,h)=>s+prodNum(h.birds),0);
       f.remaining.value=Math.max(0,prodNum(ci.received)-prodNum(ci.doa)-death-harv);
     }else f.remaining.value='';
     draft=[{birds:0,bw:0}];renderSizes();updateUnallocated();syncExistingState();preview();
@@ -7602,7 +7605,11 @@ async function buildDashboardModel(){
     const initial=Math.max(0,prodNum(ci?.received)-prodNum(ci?.doa));
     const dead=rows.reduce((s,x)=>s+prodNum(x.mortality)+prodNum(x.culling),0);
     const feed=rows.reduce((s,x)=>s+prodNum(x.feed_kg),0);
-    const population=Math.max(0,initial-dead);
+    const latestDate=latest?.recorded_on||prodToday();
+    const harvested=d.harvests
+      .filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<=latestDate)
+      .reduce((s,h)=>s+prodNum(h.birds),0);
+    const population=Math.max(0,initial-dead-harvested);
     const ws=latest?samples.filter(s=>s.recording_id===latest.id).map(s=>prodNum(s.weight_g)):[];
     const bwg=ws.length?ws.reduce((s,x)=>s+x,0)/ws.length:prodNum(latest?.avg_weight_kg)*1000;
     const bw=bwg/1000,biomass=population*bw;
