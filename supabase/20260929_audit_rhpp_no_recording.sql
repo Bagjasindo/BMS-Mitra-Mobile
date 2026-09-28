@@ -1,0 +1,30 @@
+-- RHPP SOURCE AUDIT LOCK - 2026-09-29
+-- RULE:
+--   LOGISTIK  -> Chick-In + sapronak real
+--   MARKETING -> panen real
+--   RECORDING PPL -> monitoring only; NEVER source RHPP
+--
+-- Live DB verification after patch:
+-- finance_rhpp_summary                uses public.recordings = false
+-- finance_rhpp_summary_v2             uses public.recordings = false
+-- finance_rhpp_summary_v3             uses public.recordings = false
+-- finance_rhpp_summary_v4             uses public.recordings = false
+-- finance_rhpp_summary_v5             uses public.recordings = false
+-- production_mandiri_rhpp_summary     uses public.recordings = false
+-- finance_save_rhpp_real_atomic       uses public.recordings = false
+-- finance_correct_rhpp_real_v1        uses public.recordings = false
+-- save_rhpp_final_atomic              uses public.recordings = false
+--
+-- RHPP views:
+-- logistics_rhpp_cost_summary         uses recordings = false
+--
+-- Frontend RHPP pages:
+-- financeRhppPage                     direct recording reference = none
+-- pplRhppViewPage                     direct recording reference = none
+-- financeRhppRealPage                 direct recording reference = none
+--
+-- Legacy RPC cleanup applied on live DB:
+-- 1. finance_rhpp_summary: removed rec_dep/public.recordings source.
+-- 2. production_mandiri_rhpp_summary: mortality/depletion now derives from
+--    real Chick-In minus real Marketing harvest birds.
+-- 3. save_rhpp_final_atomic: removed "Deplesi PPL" wording.
