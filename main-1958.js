@@ -4820,10 +4820,12 @@ async function financeBopPage(){
   const err=[br,ar,cr,bopr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
-  window.__financeBopState=window.__financeBopState||{barn:'',assignment:'',filterBarn:'',filterAssignment:'',from:'',to:'',shown:false};
+  window.__financeBopState=window.__financeBopState||{barn:'',assignment:'',filterBarn:'',filterAssignment:'',from:'',to:'',shown:false,editId:''};
   const st=window.__financeBopState;
-  const selectedBarn=st.barn||'';
+  const editRow=rows.find(x=>x.id===st.editId)||null;
+  const selectedBarn=editRow?.barn_id||st.barn||'';
   const cycleOptions=selectedBarn?assignments.filter(a=>a.barn_id===selectedBarn):[];
+  const selectedAssignment=editRow?.contract_assignment_id||st.assignment||'';
 
   const filterRows=st.shown?rows.filter(x=>
     (!st.filterBarn||x.barn_id===st.filterBarn)&&
@@ -4840,34 +4842,34 @@ async function financeBopPage(){
     return (b?shortBarnLabel(b):'-')+' · '+assignmentCycleLabel(assignments,a)+' · '+(k?.number||'-')+' · '+(a.active?'PROSES':'CLOSED');
   };
 
-  let html='<section class="panel"><h3>Tambah BOP Produksi</h3>'+
+  let html='<section class="panel"><h3>'+(editRow?'Edit BOP Produksi':'Tambah BOP Produksi')+'</h3>'+
     '<p class="muted">Khusus biaya operasional satu siklus. Gaji ABK, listrik, gas, air, sekam, sanitasi, transportasi dan kebutuhan produksi dicatat di sini. Perawatan jangka panjang gunakan menu Perawatan Kandang.</p>'+
     '<form id="bopKandangForm" class="form-vertical">'+
       '<label>Kandang<select id="bopBarn" name="barn_id" required><option value="">Pilih Kandang</option>'+
         barns.map(b=>'<option value="'+esc(b.id)+'" '+(selectedBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
       '</select></label>'+
       '<label>Siklus / Periode<select id="bopAssignment" name="contract_assignment_id" required '+(!selectedBarn?'disabled':'')+'><option value="">Pilih Siklus / Periode</option>'+
-        cycleOptions.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+
+        cycleOptions.map(a=>'<option value="'+esc(a.id)+'" '+(selectedAssignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+
       '</select></label>'+
-      '<label>Tanggal<input name="incurred_on" type="date" value="'+today+'" required></label>'+
+      '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(editRow?.incurred_on||today)+'" required></label>'+
       '<label>Kategori<select name="category" required>'+
         '<option value="">Pilih Kategori</option>'+
-        '<option value="OVK">OVK</option>'+
-        '<option value="TENAGA_KERJA">Tenaga Kerja</option>'+
-        '<option value="TRANSPORTASI">Transportasi</option>'+
-        '<option value="LISTRIK">Listrik</option>'+
-        '<option value="GAS">Gas</option>'+
-        '<option value="AIR">Air</option>'+
-        '<option value="SEKAM">Sekam</option>'+
-        '<option value="SANITASI">Sanitasi</option>'+
-        '<option value="OPERASIONAL">Operasional Produksi Lain</option>'+
-        '<option value="EKSPEDISI">Ekspedisi</option>'+
-        '<option value="LAINNYA">Lainnya</option>'+
+        '<option value="OVK" '+(editRow?.category==='OVK'?'selected':'')+'>OVK</option>'+
+        '<option value="TENAGA_KERJA" '+(editRow?.category==='TENAGA_KERJA'?'selected':'')+'>Tenaga Kerja</option>'+
+        '<option value="TRANSPORTASI" '+(editRow?.category==='TRANSPORTASI'?'selected':'')+'>Transportasi</option>'+
+        '<option value="LISTRIK" '+(editRow?.category==='LISTRIK'?'selected':'')+'>Listrik</option>'+
+        '<option value="GAS" '+(editRow?.category==='GAS'?'selected':'')+'>Gas</option>'+
+        '<option value="AIR" '+(editRow?.category==='AIR'?'selected':'')+'>Air</option>'+
+        '<option value="SEKAM" '+(editRow?.category==='SEKAM'?'selected':'')+'>Sekam</option>'+
+        '<option value="SANITASI" '+(editRow?.category==='SANITASI'?'selected':'')+'>Sanitasi</option>'+
+        '<option value="OPERASIONAL" '+(editRow?.category==='OPERASIONAL'?'selected':'')+'>Operasional Produksi Lain</option>'+
+        '<option value="EKSPEDISI" '+(editRow?.category==='EKSPEDISI'?'selected':'')+'>Ekspedisi</option>'+
+        '<option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Lainnya</option>'+
       '</select></label>'+
-      '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
+      '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
       ''+
-      '<label>Catatan<textarea name="notes" placeholder="Opsional"></textarea></label>'+
-      '<button type="submit">Simpan</button>'+
+      '<label>Catatan<textarea name="notes" placeholder="Opsional">'+esc(editRow?.notes||'')+'</textarea></label>'+
+      '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan')+'</button>'+(editRow?'<button type="button" id="bopEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="bopKandangPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Produksi</h3></div><div class="report-actions"><button type="button" id="bopKandangPrint">Cetak / PDF</button></div></div>'+
       '<form id="bopKandangFilter" class="form-vertical">'+
@@ -4881,9 +4883,9 @@ async function financeBopPage(){
       '</form>'+
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total BOP</span><strong>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</strong></div>'+
-        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+
-          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td></tr>';}).join('')+
-        '</tbody><tfoot><tr><th colspan="3">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
+        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
+          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td><td><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button></td></tr>';}).join('')+
+        '</tbody><tfoot><tr><th colspan="3">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
 
@@ -4916,15 +4918,18 @@ async function financeBopPage(){
       reference:null,
       notes:fd.get('notes')||null
     };
-    const {error}=await db.from('bop').insert(payload);
+    const {error}=editRow?await db.from('bop').update(payload).eq('id',editRow.id):await db.from('bop').insert(payload);
     if(error)return msg(error.message);
+    st.editId='';
     const keepBarn=st.barn,keepAssignment=st.assignment;
     await financeBopPage();
     window.__financeBopState.barn=keepBarn;
     window.__financeBopState.assignment=keepAssignment;
-    msg('BOP Produksi berhasil disimpan ke '+assignmentText(assignmentId)+'.',true);
+    msg(editRow?'BOP Produksi berhasil diperbarui.':'BOP Produksi berhasil disimpan ke '+assignmentText(assignmentId)+'.',true);
   };
 
+  root.querySelectorAll('[data-edit-bop]').forEach(btn=>btn.onclick=async()=>{st.editId=btn.dataset.editBop||'';const row=rows.find(x=>x.id===st.editId);if(row){st.barn=row.barn_id||'';st.assignment=row.contract_assignment_id||'';}await financeBopPage();document.getElementById('bopKandangForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const cancelEdit=document.getElementById('bopEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{st.editId='';await financeBopPage();};
   const filter=document.getElementById('bopKandangFilter');
   if(filter){
     filter.elements.barn.onchange=async()=>{
