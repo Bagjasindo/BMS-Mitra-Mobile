@@ -8032,7 +8032,7 @@ async function financeRhppPage(){
       '</tbody></table></div></section>'+
 
       '<section class="panel rhpp-panel"><h3>Perhitungan RHPP</h3><div class="tablewrap"><table><tbody>'+
-        '<tr><td>Deplesi / Mortalitas PPL</td><td>'+prodFmt(x.recorded_depletion_birds,0)+' ekor · '+prodFmt(x.mortality_pct,2)+'%</td></tr>'+
+        '<tr><td>Mortalitas</td><td>'+prodFmt(x.mortality_pct,2)+'%</td></tr>'+
         '<tr><td>Nilai Panen</td><td>Rp '+prodFmt(x.harvest_value,0)+'</td></tr>'+
         '<tr><td>DOC Utama</td><td>Rp '+prodFmt(x.main_doc_cost,0)+'</td></tr>'+
         '<tr><td>Pakan Utama</td><td>Rp '+prodFmt(x.main_feed_cost,0)+'</td></tr>'+
