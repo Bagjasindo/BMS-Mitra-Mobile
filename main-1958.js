@@ -8408,16 +8408,19 @@ async function logisticsReports(){
       '<label>Kategori Sapronak<select name="category">'+
         '<option value="">Semua</option><option value="DOC">DOC</option><option value="PAKAN">Pakan</option><option value="OVK">OVK</option><option value="LAINNYA">Lainnya</option>'+
       '</select></label>'+
+      '<label>Supplier<select name="supplier_name"><option value="">Semua Supplier</option>'+supplierRows.map(s=>'<option value="'+esc(s.name)+'">'+esc(s.code+' · '+s.name)+'</option>').join('')+'</select></label>'+
+      '<label>Item Sapronak<select name="item_id"><option value="">Semua Item</option>'+itemsAll.map(i=>'<option value="'+esc(i.id)+'">'+esc(i.code+' · '+i.name)+'</option>').join('')+'</select></label>'+
+      '<label>Status<select name="status"><option value="">Semua Status</option><option value="DRAFT">DRAFT</option><option value="TERDISTRIBUSI">TERDISTRIBUSI</option><option value="TERKIRIM">TERKIRIM</option><option value="TERKUNCI">TERKUNCI</option></select></label>'+
       '<button type="submit">Tampilkan</button>'+
     '</form></section>'+
-    '<section class="panel" id="logisticsReportOutput" style="display:none"><div id="logisticsReportSummary"></div>'+
+    '<section class="panel" id="logisticsReportOutput" style="display:none">'+
       '<div class="report-actions">'+
         '<button type="button" id="logisticsPrint">Cetak</button> '+
         '<button type="button" id="logisticsPdf">PDF</button> '+
         '<button type="button" id="logisticsExcel">Excel</button>'+
       '</div>'+
       '<div id="logisticsReportSections"></div>'+
-
+      '<div id="logisticsReportSummary"></div>'+
       '<p id="logisticsReportEmpty" class="muted">Atur filter lalu tekan Tampilkan.</p>'+
     '</section>';
 
@@ -8480,6 +8483,9 @@ async function logisticsReports(){
     const assignmentId=String(fd.get('assignment_id')||'');
     const txnType=String(fd.get('txn_type')||'');
     const category=String(fd.get('category')||'');
+    const supplierName=String(fd.get('supplier_name')||'');
+    const itemId=String(fd.get('item_id')||'');
+    const status=String(fd.get('status')||'');
 
     const txnMatch=x=>!txnType||
       (txnType==='PENGIRIMAN'&&x.type==='Pengiriman')||
@@ -8495,7 +8501,10 @@ async function logisticsReports(){
       (!to||x.date<=to)&&
       (!barnId||(x.barn_id===barnId||x.target_barn_id===barnId))&&
       (!assignmentId||x.assignment_id===assignmentId)&&
-      txnMatch(x)&&categoryMatch(x)
+      txnMatch(x)&&categoryMatch(x)&&
+      (!supplierName||x.supplier_name===supplierName)&&
+      (!itemId||x.item_id===itemId)&&
+      (!status||x.status===status)
     );
 
     const renderTable=(titleText,rows)=>{
@@ -8532,6 +8541,12 @@ async function logisticsReports(){
           '<thead><tr><th>Tanggal</th><th>Kandang Asal</th><th>Kandang Tujuan</th><th>Jenis</th><th>Kategori</th><th>Kode</th><th>Sapronak</th><th>Supplier</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>No. SJ Kiriman</th><th>Referensi</th><th>Status</th></tr></thead>'+
           '<tbody>'+rowHtml+'</tbody>'+
         '</table></div>'+
+        '<div class="rhpp-summary-cards" style="margin-top:10px">'+
+          '<div class="rhpp-summary-card"><span>Jumlah Baris</span><strong>'+rows.length+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Total Qty'+(unit?' · '+esc(unit):'')+'</span><strong>'+fmtNumber(qty)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Total Kg</span><strong>'+fmtNumber(kg)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Total Nilai</span><strong>Rp '+prodFmt(value,0)+'</strong></div>'+
+        '</div>'+
       '</section>';
     };
 
@@ -8580,8 +8595,29 @@ async function logisticsReports(){
     const shipKg=shipRows.reduce((n,x)=>n+Number(x.quantity_kg||0),0);
     const netKg=shipKg-returnKg;
 
+    const otherRows=shipRows.filter(x=>!['DOC','PAKAN','OVK'].includes(x.category));
+    const otherQty=otherRows.reduce((n,x)=>n+Number(x.quantity||0),0);
+    const otherKg=otherRows.reduce((n,x)=>n+Number(x.quantity_kg||0),0);
+    const otherValue=otherRows.reduce((n,x)=>n+Number(x.total_value||0),0);
     document.getElementById('logisticsReportSummary').innerHTML=
-      '<p><strong>'+filtered.length+'</strong> baris · Pengiriman: <strong>'+totalShipRows+'</strong> · Pembelian Mandiri: <strong>'+mandiriReportRows.length+'</strong> · Sapronak Luar: <strong>'+extRows.length+'</strong> · Retur RHPP: <strong>'+totalReturnRows+'</strong> · Retur Sapronak Luar: <strong>'+extRetRows.length+'</strong> · Transfer Retur: <strong>'+transferRows.length+'</strong></p>';
+      '<section class="report-section-block" style="margin-top:16px"><h3>REKAP AKHIR LOGISTIK</h3>'+
+      '<div class="rhpp-summary-cards">'+
+        '<div class="rhpp-summary-card"><span>Total Baris</span><strong>'+filtered.length+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Pengiriman</span><strong>'+totalShipRows+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Retur RHPP</span><strong>'+totalReturnRows+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Saldo Bersih Kg</span><strong>'+fmtNumber(netKg)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Nilai Pengiriman</span><strong>Rp '+prodFmt(totalShipValue,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Nilai Retur</span><strong>Rp '+prodFmt(totalReturnValue,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card rhpp-summary-value"><span>Nilai Bersih Pengiriman − Retur</span><strong>Rp '+prodFmt(grandTotal,0)+'</strong></div>'+
+      '</div>'+
+      '<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Kategori</th><th>Qty Pengiriman</th><th>Kg</th><th>Nilai</th></tr></thead><tbody>'+
+        '<tr><td>DOC</td><td>'+fmtNumber(docQty)+'</td><td>-</td><td>Rp '+prodFmt(docValue,0)+'</td></tr>'+
+        '<tr><td>PAKAN</td><td>'+fmtNumber(feedQty)+'</td><td>'+fmtNumber(feedKg)+'</td><td>Rp '+prodFmt(feedValue,0)+'</td></tr>'+
+        '<tr><td>OVK</td><td>'+fmtNumber(ovkQty)+'</td><td>'+fmtNumber(ovkKg)+'</td><td>Rp '+prodFmt(ovkValue,0)+'</td></tr>'+
+        '<tr><td>LAINNYA</td><td>'+fmtNumber(otherQty)+'</td><td>'+fmtNumber(otherKg)+'</td><td>Rp '+prodFmt(otherValue,0)+'</td></tr>'+
+      '</tbody></table></div>'+
+      '<p class="muted">Pembelian Mandiri: <strong>'+mandiriReportRows.length+'</strong> · Sapronak Luar: <strong>'+extRows.length+'</strong> · Retur Sapronak Luar: <strong>'+extRetRows.length+'</strong> · Transfer Retur: <strong>'+transferRows.length+'</strong></p>'+
+      '</section>';
 
 
   };
@@ -8589,13 +8625,16 @@ async function logisticsReports(){
   document.getElementById('logisticsReportFilter').onsubmit=e=>{e.preventDefault();renderRows();};
 
   const reportHtml=()=>{
-    const rows=document.getElementById('logisticsReportSections')?.innerHTML||'';
+    const rows=(document.getElementById('logisticsReportSections')?.innerHTML||'')+(document.getElementById('logisticsReportSummary')?.innerHTML||'');
     const fd=new FormData(document.getElementById('logisticsReportFilter'));
     const from=fd.get('date_from')||'-', to=fd.get('date_to')||'-';
     const barnId=fd.get('barn_id')||'';
     const barn=barns.find(b=>b.id===barnId);
     const txnType=fd.get('txn_type')||'Semua';
     const category=fd.get('category')||'Semua';
+    const supplier=fd.get('supplier_name')||'Semua';
+    const item=itemsAll.find(i=>i.id===String(fd.get('item_id')||''))?.name||'Semua';
+    const status=fd.get('status')||'Semua';
     return '<!doctype html><html><head><meta charset="utf-8"><title>Laporan Logistik</title>'+
       '<style>@page{size:A4 landscape;margin:5mm}html,body{margin:0;padding:0;font-family:Arial,sans-serif;font-size:9px;line-height:1.15}h2{margin:0 0 3px;font-size:13px}h3{margin:4px 0 2px;font-size:10px}p{margin:2px 0 4px}table{width:100%;border-collapse:collapse;font-size:8.5px;table-layout:auto}th,td{border:1px solid #999;padding:2px 3px;text-align:left;white-space:nowrap}th{font-weight:700}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}.report-section-block{margin-bottom:3px}.report-section-block h3{margin:2px 0 1px}.print-letterhead{display:flex;align-items:center;gap:8px;border-bottom:1.5px solid #222;padding-bottom:3px;margin-bottom:3px}.print-letterhead img{width:50px!important;height:50px!important}.print-letterhead h2{font-size:12px!important}.print-letterhead div{line-height:1.08}@media print{button{display:none}}</style>'+
       '</head><body>'+
@@ -8607,7 +8646,7 @@ async function logisticsReports(){
         (company.email?'<div>'+esc(company.email)+'</div>':'')+
         '</div></div>'+
       '<h2 style="margin:0 0 4px">Laporan Logistik</h2>'+
-      '<p>Periode: '+esc(String(from))+' s/d '+esc(String(to))+' · Kandang: '+esc(barn?shortBarnLabel(barn):'Semua Kandang')+' · Transaksi: '+esc(String(txnType))+' · Kategori: '+esc(String(category))+'</p>'+
+      '<p>Periode: '+esc(String(from))+' s/d '+esc(String(to))+' · Kandang: '+esc(barn?shortBarnLabel(barn):'Semua Kandang')+' · Transaksi: '+esc(String(txnType))+' · Kategori: '+esc(String(category))+' · Supplier: '+esc(String(supplier))+' · Item: '+esc(String(item))+' · Status: '+esc(String(status))+'</p>'+
       rows+'</body></html>';
   };
 
@@ -8644,7 +8683,7 @@ async function logisticsReports(){
 
   document.getElementById('logisticsExcel').onclick=()=>{
     renderRows();
-    const tables=document.getElementById('logisticsReportSections')?.innerHTML||'';
+    const tables=(document.getElementById('logisticsReportSections')?.innerHTML||'')+(document.getElementById('logisticsReportSummary')?.innerHTML||'');
     const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body>'+tables+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
