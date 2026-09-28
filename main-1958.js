@@ -7171,7 +7171,7 @@ async function financeRhppRealPage(){
     st.selected='';
   }
 
-  let html='<section class="panel"><h3>RHPP Real Keuangan</h3><p class="muted">Data CLOSED wajib dipilih berdasarkan Kandang dan Siklus agar periode tidak tertukar.</p>'+
+  let html='<section class="panel"><h3>RHPP Real Keuangan</h3><p class="muted">Data CLOSED wajib dipilih berdasarkan Kandang dan Siklus agar periode tidak tertukar. Input nominal sesuai PDF RHPP Real; tanggal pencatatan otomatis memakai tanggal saat Keuangan menyimpan dan nominal langsung masuk Arus Kas.</p>'+
     '<form id="rhppRealFilter" class="form-vertical">'+
       '<label>Kandang<select name="barn" id="rhppRealBarn"><option value="">Semua Kandang</option>'+rhppBarns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Siklus<select name="assignment" id="rhppRealCycle"><option value="">Semua Siklus</option>'+rhppCycles.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date))+'</option>').join('')+'</select></label>'+
@@ -7221,7 +7221,8 @@ async function financeRhppRealPage(){
         '<p class="muted">RHPP Real tersimpan '+prodDateId(real.received_on)+'. Data tidak dapat diedit dari layar ini.</p>':
         canInput?
           '<form class="form-vertical" data-rhpp-real-form="'+esc(selected.contract_assignment_id)+'">'+
-            '<label>Nominal RHPP Real Diterima<input name="amount" type="text" inputmode="decimal" data-number="1" required placeholder="Rp"></label>'+
+            '<label>Nominal RHPP Real sesuai PDF<input name="amount" type="text" inputmode="decimal" data-number="1" required placeholder="Rp"></label>'+
+            '<p class="muted">Tanggal pencatatan otomatis hari ini. Setelah disimpan, nominal otomatis masuk Arus Kas sebagai RHPP REAL.</p>'+
             '<button type="submit">Simpan RHPP Real</button>'+
           '</form>':
           '<p class="muted">Menunggu Keuangan menginput RHPP Real.</p>'
@@ -7267,7 +7268,7 @@ async function financeRhppRealPage(){
     if(error)return msg(error.message);
     st.selected='';
     await financeRhppRealPage();
-    msg('RHPP Real berhasil disimpan. Selisih Sistem vs Real sudah dihitung.',true);
+    msg('RHPP Real berhasil disimpan dan otomatis masuk Arus Kas pada tanggal pencatatan hari ini.',true);
   });
 }
 
