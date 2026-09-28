@@ -5889,7 +5889,7 @@ async function financeExpeditionBopPage(){
           '<td>'+(done?'<span class="pill">SUDAH MASUK</span>':'<span class="finance-status finance-status-wait">BELUM</span>')+'</td>'+
           '<td><button type="button" data-select-exp-bop="'+esc(t.id)+'">'+(done?'Koreksi':'Isi BOP')+'</button></td></tr>';
       }).join('')+
-    '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">'+(bopFilter==='BELUM'&&countPending===0?'Semua trip sudah masuk BOP. Tidak ada trip yang menunggu input.':'Tidak ada trip pada filter ini.')+'</p>')+'</section>'+;
+    '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">'+(bopFilter==='BELUM'&&countPending===0?'Semua trip sudah masuk BOP. Tidak ada trip yang menunggu input.':'Tidak ada trip pada filter ini.')+'</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
