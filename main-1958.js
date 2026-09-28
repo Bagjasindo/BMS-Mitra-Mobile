@@ -6213,6 +6213,20 @@ async function financeMandiriReceiptsPage(){
     '<label>Status<select id="mandiriReceiptStatus"><option value="">Semua</option><option value="BELUM DITERIMA" '+(st.status==='BELUM DITERIMA'?'selected':'')+'>Belum Diterima</option><option value="SEBAGIAN" '+(st.status==='SEBAGIAN'?'selected':'')+'>Sebagian</option><option value="LUNAS" '+(st.status==='LUNAS'?'selected':'')+'>Lunas</option></select></label>'+
   '</section>';
 
+  if(selected&&selected.remaining>0.005){
+    const a=assignmentMap.get(selected.contract_assignment_id);
+    html+='<section class="panel"><h3>Konfirmasi Penerimaan</h3>'+
+      '<p class="muted">'+esc(selected.buyer_name||'Pelanggan')+' · '+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):'')+' · Sisa piutang Rp '+prodFmt(selected.remaining,0)+'</p>'+
+      '<form id="mandiriReceiptForm" class="form-vertical">'+
+        '<label>Tanggal Diterima<input type="date" name="received_on" value="'+prodToday()+'" required></label>'+
+        '<label>Nominal Diterima<input type="text" name="amount" inputmode="decimal" data-number="1" value="'+fmtNumber(selected.remaining)+'" required></label>'+
+        '<label>Metode<select name="method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option><option value="LAINNYA">Lainnya</option></select></label>'+
+        '<label>Referensi / No Transfer<input name="reference"></label>'+
+        '<label>Catatan<textarea name="notes"></textarea></label>'+
+        '<div class="report-actions"><button type="submit">Simpan Penerimaan</button><button type="button" id="cancelMandiriReceipt">Batal</button></div>'+
+      '</form></section>';
+  }
+
   html+='<section class="panel"><h3>Daftar Penjualan Mandiri</h3><div class="tablewrap"><table><thead><tr>'+
     '<th>Tanggal Panen</th><th>Kandang / Siklus</th><th>Pelanggan</th><th>Nilai Penjualan</th><th>Diterima</th><th>Sisa</th><th>Status</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
@@ -6227,20 +6241,6 @@ async function financeMandiriReceiptsPage(){
       '<td>'+(x.remaining>0.005?'<button type="button" data-receive-mandiri="'+esc(x.id)+'">Konfirmasi Penerimaan</button>':'Lunas')+'</td>'+
     '</tr>';}).join('')+
     '</tbody></table></div>'+(shown.length?'':'<p class="muted">Tidak ada data sesuai filter.</p>')+'</section>';
-
-  if(selected&&selected.remaining>0.005){
-    const a=assignmentMap.get(selected.contract_assignment_id);
-    html+='<section class="panel"><h3>Konfirmasi Penerimaan</h3>'+
-      '<p class="muted">'+esc(selected.buyer_name||'Pelanggan')+' · '+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):'')+' · Sisa piutang Rp '+prodFmt(selected.remaining,0)+'</p>'+
-      '<form id="mandiriReceiptForm" class="form-vertical">'+
-        '<label>Tanggal Diterima<input type="date" name="received_on" value="'+prodToday()+'" required></label>'+
-        '<label>Nominal Diterima<input type="text" name="amount" inputmode="decimal" data-number="1" value="'+fmtNumber(selected.remaining)+'" required></label>'+
-        '<label>Metode<select name="method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option><option value="LAINNYA">Lainnya</option></select></label>'+
-        '<label>Referensi / No Transfer<input name="reference"></label>'+
-        '<label>Catatan<textarea name="notes"></textarea></label>'+
-        '<div class="report-actions"><button type="submit">Simpan Penerimaan</button><button type="button" id="cancelMandiriReceipt">Batal</button></div>'+
-      '</form></section>';
-  }
 
   const selectedReceiptRows=selected?receipts.filter(r=>r.harvest_id===selected.id):receipts;
   if(selectedReceiptRows.length){
