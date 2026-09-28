@@ -1,9 +1,11 @@
 # BMS Mitra Online
 
 ## Garis Ketat RHPP Real
-- **Recording PPL hanya untuk monitoring operasional/produksi dan bukan sumber data RHPP Real.**
-- **Data Recording PPL dilarang dipakai untuk menghitung atau mengoreksi Mortalitas/Deplesi, Chick-In, Chick-Out, FCR, IP, nilai panen, biaya, bonus, laba, atau komponen RHPP Real lainnya.**
-- **RHPP Real harus bersumber dari data transaksi/final yang memang ditetapkan untuk RHPP, bukan dari data monitoring PPL.**
+- **Sumber RHPP Real hanya Logistik dan Marketing.**
+- **Logistik menjadi sumber Chick-In dan seluruh sapronak real: pengiriman, retur, tambah sapronak, transfer/alih barang, dan nilai biayanya.**
+- **Marketing menjadi sumber panen real: Chick-Out/ekor panen, berat, harga, nilai panen, serta tambah daging bila ada.**
+- **Mortalitas/Deplesi RHPP dihitung dari data real Chick-In Logistik dibanding Chick-Out/Panen Marketing.**
+- **Recording PPL hanya monitoring operasional/produksi dan tidak boleh masuk, mengubah, mengoreksi, atau menjadi pembanding RHPP Real.**
 - Perubahan kode, SQL, view, RPC, laporan, atau rekonsiliasi yang membuat Recording PPL memengaruhi RHPP Real dianggap melanggar aturan ini dan tidak boleh diterapkan tanpa instruksi eksplisit Administrator.
 
 ## Checkpoint 27 September 2026
