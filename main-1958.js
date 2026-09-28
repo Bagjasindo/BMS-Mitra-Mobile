@@ -5135,17 +5135,20 @@ async function financeMaintenancePage(){
 }
 
 async function financeSupplierPayablesPage(){
-  const [pr,ar,br,cr]=await Promise.all([
+  const [pr,ar,br,cr,pyr]=await Promise.all([
     db.rpc('finance_supplier_payables_v1'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('barns').select('id,code,name'),
-    db.from('contracts').select('id,number').is('cycle_id',null)
+    db.from('contracts').select('id,number').is('cycle_id',null),
+    db.from('supplier_payments').select('*').order('paid_on',{ascending:false}).order('created_at',{ascending:false})
   ]);
-  const rows=pr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[];
-  const err=[pr,ar,br,cr].find(x=>x.error)?.error;
+  const rows=pr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[],payments=pyr.data||[];
+  const err=[pr,ar,br,cr,pyr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  window.__supplierPayableState=window.__supplierPayableState||{status:'OPEN',supplier:'',selected:''};
+  window.__supplierPayableState=window.__supplierPayableState||{status:'OPEN',supplier:'',selected:'',editPaymentId:''};
   const st=window.__supplierPayableState;
+  const editPayment=payments.find(x=>x.id===st.editPaymentId)||null;
+  if(editPayment)st.selected=editPayment.source_type+':'+editPayment.source_id;
   const suppliers=[...new Map(rows.map(x=>[x.supplier_id,{id:x.supplier_id,name:x.supplier_name,code:x.supplier_code}])).values()];
   const visible=rows.filter(x=>
     (!st.supplier||x.supplier_id===st.supplier)&&
@@ -5169,26 +5172,34 @@ async function financeSupplierPayablesPage(){
       visible.map(x=>'<tr><td>'+prodDateId(x.transaction_date)+'</td><td>'+esc((x.supplier_code||'')+' · '+x.supplier_name)+'</td><td>'+(x.source_type==='SAPRONAK_LUAR'?'Sapronak Tambahan':'Tambah Daging')+'</td><td>'+esc(identity(x.contract_assignment_id))+'</td><td>'+esc(x.reference||'-')+'</td><td>Rp '+prodFmt(x.total_amount,0)+'</td><td>Rp '+prodFmt(x.paid_amount,0)+'</td><td><strong>Rp '+prodFmt(x.balance,0)+'</strong></td><td><strong>'+esc(String(x.status||'').replaceAll('_',' '))+'</strong></td><td>'+(x.status!=='LUNAS'?'<button type="button" data-pay-supplier="'+esc(x.source_type+':'+x.source_id)+'">Bayar</button>':'-')+'</td></tr>').join('')+
       '</tbody></table></div>'+(visible.length?'':'<p class="muted">Tidak ada hutang supplier sesuai filter.</p>')+'</section>';
 
-  if(selected&&selected.status!=='LUNAS'){
+  if(selected&&(selected.status!=='LUNAS'||editPayment)){
     const bank=[selected.supplier_bank_name,selected.supplier_bank_account_number,selected.supplier_bank_account_name].filter(Boolean).join(' · ');
-    html+='<section class="panel"><h3>Bayar Hutang Supplier</h3>'+
+    html+='<section class="panel"><h3>'+(editPayment?'Edit Pembayaran Supplier':'Bayar Hutang Supplier')+'</h3>'+
       '<p><strong>'+esc(selected.supplier_name)+'</strong> · '+(selected.source_type==='SAPRONAK_LUAR'?'Sapronak Tambahan':'Tambah Daging')+'</p>'+
       '<p class="muted">Sisa hutang: <strong>Rp '+prodFmt(selected.balance,0)+'</strong>'+(bank?' · Rekening: '+esc(bank):'')+'</p>'+
       '<form id="supplierPaymentForm" class="form-vertical">'+
-        '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
-        '<label>Nominal Bayar<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+fmtNumber(selected.balance)+'" required></label>'+
-        '<label>Metode<select name="method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option></select></label>'+
-        '<label>Referensi / No. Transfer<input name="reference" placeholder="Opsional"></label>'+
-        '<label>Catatan<input name="notes" placeholder="Opsional"></label>'+
-        '<div class="report-actions"><button type="submit">Simpan Pembayaran</button><button type="button" id="supplierPaymentCancel">Batal</button></div>'+
+        '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+esc(editPayment?.paid_on||today)+'" required></label>'+
+        '<label>Nominal Bayar<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+fmtNumber(editPayment?editPayment.amount:selected.balance)+'" required></label>'+
+        '<label>Metode<select name="method" required><option value="TRANSFER" '+((editPayment?.method||'TRANSFER')==='TRANSFER'?'selected':'')+'>Transfer</option><option value="TUNAI" '+(editPayment?.method==='TUNAI'?'selected':'')+'>Tunai</option></select></label>'+
+        '<label>Referensi / No. Transfer<input name="reference" value="'+esc(editPayment?.reference||'')+'" placeholder="Opsional"></label>'+
+        '<label>Catatan<input name="notes" value="'+esc(editPayment?.notes||'')+'" placeholder="Opsional"></label>'+
+        '<div class="report-actions"><button type="submit">'+(editPayment?'Simpan Perubahan':'Simpan Pembayaran')+'</button><button type="button" id="supplierPaymentCancel">Batal</button>'+(editPayment?adminDeleteTxnButton('supplier_payments',editPayment.id):'')+'</div>'+
       '</form></section>';
+  }
+
+  if(payments.length){
+    html+='<section class="panel"><h3>Riwayat Pembayaran Supplier</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Sumber</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
+      payments.map(p=>{const row=rows.find(x=>x.source_type===p.source_type&&x.source_id===p.source_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(row?.supplier_name||'-')+'</td><td>'+esc(p.source_type==='SAPRONAK_LUAR'?'Sapronak Tambahan':'Tambah Daging')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method||'-')+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('supplier_payments',p.id)+'</div></td></tr>';}).join('')+
+      '</tbody></table></div></section>';
   }
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
   const filter=document.getElementById('supplierPayableFilter');
   if(filter)filter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(filter);st.supplier=String(fd.get('supplier')||'');st.status=String(fd.get('status')||'OPEN');st.selected='';await financeSupplierPayablesPage();};
-  root.querySelectorAll('[data-pay-supplier]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.paySupplier||'';await financeSupplierPayablesPage();});
-  const cancel=document.getElementById('supplierPaymentCancel');if(cancel)cancel.onclick=async()=>{st.selected='';await financeSupplierPayablesPage();};
+  root.querySelectorAll('[data-pay-supplier]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.paySupplier||'';st.editPaymentId='';await financeSupplierPayablesPage();});
+  root.querySelectorAll('[data-edit-supplier-payment]').forEach(btn=>btn.onclick=async()=>{st.editPaymentId=btn.dataset.editSupplierPayment||'';const p=payments.find(x=>x.id===st.editPaymentId);if(p)st.selected=p.source_type+':'+p.source_id;await financeSupplierPayablesPage();document.getElementById('supplierPaymentForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const cancel=document.getElementById('supplierPaymentCancel');if(cancel)cancel.onclick=async()=>{st.selected='';st.editPaymentId='';await financeSupplierPayablesPage();};
+  bindAdminTransactionDeletes(()=>{st.editPaymentId='';return financeSupplierPayablesPage();});
   const print=document.getElementById('supplierPayablePrint');if(print)print.onclick=()=>printFinanceDocument('supplierPayablePrintArea','Laporan Hutang Supplier');
   const form=document.getElementById('supplierPaymentForm');
   if(form)form.onsubmit=async ev=>{
@@ -5196,17 +5207,28 @@ async function financeSupplierPayablesPage(){
     if(!selected)return msg('Pilih tagihan supplier.');
     const fd=new FormData(form),amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<=0)return msg('Nominal pembayaran tidak valid.');
-    if(amount>prodNum(selected.balance)+0.0001)return msg('Nominal pembayaran melebihi sisa hutang.');
+    const maxAmount=prodNum(selected.balance)+prodNum(editPayment?.amount);
+    if(amount>maxAmount+0.0001)return msg('Nominal pembayaran melebihi sisa hutang Rp '+prodFmt(maxAmount,0)+'.');
     if(!await appConfirm('Bayar '+selected.supplier_name+' sebesar Rp '+prodFmt(amount,0)+'?'))return;
-    const {error}=await db.rpc('finance_save_supplier_payment_atomic',{
-      p_source_type:selected.source_type,p_source_id:selected.source_id,
-      p_paid_on:String(fd.get('paid_on')||''),p_amount:amount,p_method:String(fd.get('method')||'TRANSFER'),
-      p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null
-    });
+    let result;
+    if(editPayment){
+      result=await db.rpc('finance_correct_supplier_payment_v1',{
+        p_id:editPayment.id,p_paid_on:String(fd.get('paid_on')||''),p_amount:amount,
+        p_method:String(fd.get('method')||'TRANSFER'),p_reference:String(fd.get('reference')||'')||null,
+        p_notes:String(fd.get('notes')||'')||null
+      });
+    }else{
+      result=await db.rpc('finance_save_supplier_payment_atomic',{
+        p_source_type:selected.source_type,p_source_id:selected.source_id,
+        p_paid_on:String(fd.get('paid_on')||''),p_amount:amount,p_method:String(fd.get('method')||'TRANSFER'),
+        p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null
+      });
+    }
+    const {error}=result;
     if(error)return msg(error.message);
-    st.selected='';
+    st.selected='';st.editPaymentId='';
     await financeSupplierPayablesPage();
-    msg('Pembayaran supplier tersimpan. Sisa hutang dan Arus Kas sudah diperbarui otomatis.',true);
+    msg(editPayment?'Pembayaran supplier berhasil diperbarui.':'Pembayaran supplier tersimpan. Sisa hutang dan Arus Kas sudah diperbarui otomatis.',true);
   };
 }
 
