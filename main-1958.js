@@ -3607,11 +3607,18 @@ async function leagueAbkPage(editSizeId=null){
   ]);
   const rows=rr.data||[],sizes=sr.data||[],leagueContracts=cr.data||[],leagueBonuses=br.data||[];
   const seasonStart=leagueSetting.data?.season_start||'0000-00-00';
+  const abkReferenceContractId=a=>{
+    if(a?.master_contract_id)return a.master_contract_id;
+    if(a?.cycle_type!=='MANDIRI')return '';
+    const ids=[...new Set((d.livePrices||[]).map(p=>p.contract_id).filter(Boolean))];
+    return ids.length===1?ids[0]:'';
+  };
 
   const calcResult=x=>{
     const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
     const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
     const link=d.links.find(l=>l.contract_assignment_id===x.contract_assignment_id&&l.abk_id===x.abk_id);
+    const refContractId=abkReferenceContractId(a);
     const sz=sizes.filter(s=>s.result_id===x.id);
     const birds=sz.reduce((s,v)=>s+prodNum(v.birds),0);
     const kg=sz.reduce((s,v)=>s+prodNum(v.weight_kg),0);
@@ -3625,11 +3632,11 @@ async function leagueAbkPage(editSizeId=null){
     let revenue=0;
     for(const s of sz){
       const av=prodNum(s.birds)?prodNum(s.weight_kg)/prodNum(s.birds):0;
-      const p=d.livePrices.find(p=>p.contract_id===a?.master_contract_id&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
+      const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
       revenue+=prodNum(s.weight_kg)*prodNum(p?.price_per_kg);
     }
 
-    const contract=leagueContracts.find(c=>c.id===a?.master_contract_id);
+    const contract=leagueContracts.find(c=>c.id===refContractId);
     const sapronakCost=
       initialShare*prodNum(contract?.doc_price)+
       prodNum(link?.feed_pre_bags)*50*prodNum(contract?.pre_starter_price)+
@@ -3638,7 +3645,7 @@ async function leagueAbkPage(editSizeId=null){
 
     const matchBonus=(metric,value)=>{
       const row=leagueBonuses.find(b=>
-        b.contract_id===a?.master_contract_id&&
+        b.contract_id===refContractId&&
         b.metric===metric&&
         (b.min_value==null||value>=prodNum(b.min_value))&&
         (b.max_value==null||value<prodNum(b.max_value))
@@ -3693,7 +3700,8 @@ async function leagueAbkPage(editSizeId=null){
     const r=rows.find(x=>x.id===s.result_id),a=r&&d.assignments.find(x=>x.id===r.contract_assignment_id),e=r&&d.abks.find(x=>x.id===r.abk_id);
     const ci=a&&d.chicks.find(c=>c.contract_assignment_id===a.id);
     const bw=prodNum(s.birds)?prodNum(s.weight_kg)/prodNum(s.birds):0;
-    const price=d.livePrices.find(p=>p.contract_id===a?.master_contract_id&&bw>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||bw<prodNum(p.max_weight_kg)));
+    const refContractId=abkReferenceContractId(a);
+    const price=d.livePrices.find(p=>p.contract_id===refContractId&&bw>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||bw<prodNum(p.max_weight_kg)));
     const pricePerKg=prodNum(price?.price_per_kg);
     const amount=prodNum(s.weight_kg)*pricePerKg;
     const age=ci&&s.harvest_date?prodAge(ci.arrived_on,s.harvest_date):0;
@@ -3716,7 +3724,7 @@ async function leagueAbkPage(editSizeId=null){
   ):[]);
 
   let html='<section class="panel"><h3>'+(selected?'Edit Panen ABK':'Liga ABK')+'</h3>'+
-    '<p class="muted">Pilih kandang dan ABK, isi Populasi Awal, kunci Pakan, lalu input Panen.</p>'+
+    '<p class="muted">Pilih kandang dan ABK, isi Populasi Awal, kunci Pakan, lalu input Panen. Liga bersifat kumulatif MITRA + MANDIRI; ABK MANDIRI tetap dinilai dengan harga acuan kontrak.</p>'+
     '<form id="abkForm" class="form-vertical">'+
       '<label>Kandang Aktif<select name="assignment" required '+(selected?'disabled':'')+'><option value="">Pilih</option>'+
         d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'" '+(selected?.r.contract_assignment_id===a.id?'selected':'')+'>'+esc(leagueAssignmentLabel(d,a))+'</option>').join('')+
@@ -3997,18 +4005,17 @@ function productionProcessSnapshot(d,a,recs,samples){
 
 async function productionRecapPage(){
   const d=await productionBase();
-  const [cpr,pr,fr,mfr,rr,sr,...feedResponses]=await Promise.all([
+  const [cpr,pr,fr,rr,sr,...feedResponses]=await Promise.all([
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('production_ppl_directory'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
-    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type'),
     db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
     db.from('recording_weight_samples').select('recording_id,weight_g'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
   const company=cpr.data||{};
   const pplRows=pr.data||[];
-  const finals=[...(fr.data||[]),...(mfr.data||[])];
+  const finals=fr.data||[];
   const recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
   const feedByAssignment=new Map();
   d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
@@ -4173,7 +4180,7 @@ async function productionRecapPage(){
 
   layout(html);
   const feedErr=feedResponses.find(x=>x?.error)?.error;
-  if(d.err||cpr.error||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr)msg((d.err||cpr.error||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr).message);
+  if(d.err||cpr.error||pr.error||fr.error||rr.error||sr.error||feedErr)msg((d.err||cpr.error||pr.error||fr.error||rr.error||sr.error||feedErr).message);
 
   const form=document.getElementById('productionRecapFilter');
   if(form){
@@ -4245,7 +4252,7 @@ async function productionRecapPage(){
 async function pplRhppViewPage(){
   const d=await productionBase();
   const [fr,cpr,sr]=await Promise.all([
-    db.from('rhpp_system_final').select('*').order('created_at',{ascending:false}),
+    db.from('production_cycle_final_unified').select('*').order('created_at',{ascending:false}),
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('finance_rhpp_summary_v5')
   ]);
@@ -4263,14 +4270,14 @@ async function pplRhppViewPage(){
     window.__pplRhppViewState.assignment='';
   }
 
-  let html='<section class="panel"><h3>Lihat RHPP</h3><p class="muted">Pilih kandang, lalu pilih siklus. Data CLOSED ditampilkan sebagai ringkasan RHPP Sistem.</p>'+
+  let html='<section class="panel"><h3>Lihat RHPP</h3><p class="muted">Pilih kandang, lalu pilih siklus. Data CLOSED membaca snapshot final MITRA maupun MANDIRI.</p>'+
     '<form id="pplRhppViewForm" class="form-vertical">'+
       '<label>Kandang<select id="pplRhppBarn" required><option value="">Pilih Kandang</option>'+
         barnsForAssignments.map(b=>'<option value="'+esc(b.id)+'" '+(selectedBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
       '</select></label>'+
       '<label>Siklus<select id="pplRhppCycle" required '+(!selectedBarn?'disabled':'')+'><option value="">Pilih Siklus</option>'+
         barnAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(selectedAssignment===a.id?'selected':'')+'>'+
-          esc(assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+
+          esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+
         '</option>').join('')+
       '</select></label>'+
       '<button type="submit">Tampilkan</button>'+
@@ -4327,7 +4334,7 @@ async function pplRhppViewPage(){
     html+='<div id="pplRhppExportArea">'+
       '<section class="panel rhpp-mini-sheet">'+
         '<div class="rhpp-section-head"><div><h3>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,a))+'</h3>'+
-          '<p class="muted">'+assignmentCycleLabel(d.assignments,a)+' · '+(closed?'CLOSED / FINAL':'PROSES')+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</p></div>'+
+          '<p class="muted">'+assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+(closed?'CLOSED / FINAL':'PROSES')+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</p></div>'+
           '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
         '</div>'+
         '<div class="rhpp-mini-grid">'+
@@ -4436,7 +4443,7 @@ async function pplRhppViewPage(){
 async function adminRhppHistoryPage(){
   const d=await productionBase();
   const [fr,cpr,sr,hdr,shr,shir,rrr,rir,itr,ctr]=await Promise.all([
-    db.from('rhpp_system_final').select('*').order('created_at',{ascending:false}),
+    db.from('production_cycle_final_unified').select('*').order('created_at',{ascending:false}),
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('finance_rhpp_summary_v5'),
     db.from('marketing_contract_harvests').select('id,contract_assignment_id,harvested_on,birds,net_weight_kg,avg_weight_kg,price_per_kg,total_amount,buyer_name,vehicle_number').order('harvested_on',{ascending:true}),
@@ -4465,14 +4472,14 @@ async function adminRhppHistoryPage(){
     window.__adminRhppHistoryState.assignment='';
   }
 
-  let html='<section class="panel"><h3>'+(historyOnly?'Riwayat RHPP':'Lihat RHPP')+'</h3><p class="muted">'+(historyOnly?'Pilih kandang dan siklus CLOSED. Riwayat memakai snapshot RHPP Sistem Final saat produksi ditutup dan hanya untuk dilihat/cetak.':'Pilih kandang, lalu pilih siklus. Data CLOSED ditampilkan sebagai ringkasan RHPP Sistem.')+'</p>'+
+  let html='<section class="panel"><h3>'+(historyOnly?'Riwayat RHPP':'Lihat RHPP')+'</h3><p class="muted">'+(historyOnly?'Pilih kandang dan siklus CLOSED. Riwayat memakai snapshot final MITRA maupun MANDIRI saat produksi ditutup dan hanya untuk dilihat/cetak.':'Pilih kandang, lalu pilih siklus. Data CLOSED ditampilkan sebagai ringkasan RHPP Sistem.')+'</p>'+
     '<form id="pplRhppViewForm" class="form-vertical">'+
       '<label>Kandang<select id="pplRhppBarn" required><option value="">Pilih Kandang</option>'+
         barnsForAssignments.map(b=>'<option value="'+esc(b.id)+'" '+(selectedBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
       '</select></label>'+
       '<label>Siklus<select id="pplRhppCycle" required '+(!selectedBarn?'disabled':'')+'><option value="">Pilih Siklus</option>'+
         barnAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(selectedAssignment===a.id?'selected':'')+'>'+
-          esc(assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+
+          esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+
         '</option>').join('')+
       '</select></label>'+
       '<button type="submit">Tampilkan</button>'+
@@ -4529,7 +4536,7 @@ async function adminRhppHistoryPage(){
     html+='<div id="pplRhppExportArea">'+
       '<section class="panel rhpp-mini-sheet">'+
         '<div class="rhpp-section-head"><div><h3>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,a))+'</h3>'+
-          '<p class="muted">'+assignmentCycleLabel(d.assignments,a)+' · '+(closed?'CLOSED / FINAL':'PROSES')+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</p></div>'+
+          '<p class="muted">'+assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+(closed?'CLOSED / FINAL':'PROSES')+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</p></div>'+
           '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
         '</div>'+
         '<div class="rhpp-mini-grid">'+
@@ -6194,23 +6201,11 @@ async function financeGlobalProfitLossPage(){
   const finalRows=rows.filter(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return !x.active&&(a?.cycle_type==='MANDIRI'||realIds.has(x.contract_assignment_id));});
   const sum=(arr,k)=>arr.reduce((n,x)=>n+prodNum(x[k]),0);
   const assignmentOf=x=>assignments.find(a=>a.id===x.contract_assignment_id);
-  const mitraRows=finalRows.filter(x=>assignmentOf(x)?.cycle_type!=='MANDIRI');
-  const mandiriRows=finalRows.filter(x=>assignmentOf(x)?.cycle_type==='MANDIRI');
-  const pendapatanMitra=sum(mitraRows,'rhpp_real');
-  const pendapatanMandiri=sum(mandiriRows,'rhpp_real');
-  const totalRhpp=pendapatanMitra+pendapatanMandiri;
-  const bopMitra=sum(mitraRows,'bop_produksi');
-  const bopMandiri=sum(mandiriRows,'bop_produksi');
-  const totalBop=bopMitra+bopMandiri;
-  const sapronakMitra=sum(mitraRows,'sapronak_luar');
-  const sapronakMandiri=sum(mandiriRows,'sapronak_luar');
-  const totalSapronakLuar=sapronakMitra+sapronakMandiri;
-  const tambahDagingMitra=sum(mitraRows,'tambah_daging');
-  const tambahDagingMandiri=sum(mandiriRows,'tambah_daging');
-  const totalTambahDaging=tambahDagingMitra+tambahDagingMandiri;
-  const labaMitra=mitraRows.reduce((n,x)=>n+(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging)),0);
-  const labaMandiri=mandiriRows.reduce((n,x)=>n+(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging)),0);
-  const labaKandang=labaMitra+labaMandiri;
+  const totalRhpp=sum(finalRows,'rhpp_real');
+  const totalBop=sum(finalRows,'bop_produksi');
+  const totalSapronakLuar=sum(finalRows,'sapronak_luar');
+  const totalTambahDaging=sum(finalRows,'tambah_daging');
+  const labaKandang=finalRows.reduce((n,x)=>n+(prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging)),0);
   const perawatanKandang=sum(finalRows,'perawatan_jangka_panjang');
   const pendapatanExp=prodNum(exp.expedition_revenue);
   const bopExp=prodNum(exp.operational_bop);
@@ -6235,7 +6230,7 @@ async function financeGlobalProfitLossPage(){
   let html='<section class="panel" id="globalProfitPrintArea">'+
     '<div class="rhpp-section-head"><div><h3>Laba/Rugi Global</h3><p class="muted">Ringkasan akhir perusahaan. Kandang dan Expedisi tetap dihitung terpisah, lalu biaya global dikurangkan di tahap ini.</p></div><div class="report-actions"><button type="button" id="globalProfitPrint">Cetak / PDF</button></div></div>'+
     '<div class="rhpp-summary-cards">'+
-      '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(labaKandang,0)+'</strong><small>Mitra Rp '+prodFmt(labaMitra,0)+' · Mandiri Rp '+prodFmt(labaMandiri,0)+'</small></div>'+
+      '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(labaKandang,0)+'</strong><small>Kumulatif MITRA + MANDIRI</small></div>'+
       '<div class="rhpp-summary-card"><span>Laba/Rugi Expedisi</span><strong>Rp '+prodFmt(labaExp,0)+'</strong><small>Sebelum perawatan Expedisi</small></div>'+
       '<div class="rhpp-summary-card"><span>Total Biaya Global</span><strong>Rp '+prodFmt(biayaGlobal,0)+'</strong><small>Perawatan kandang + perawatan Expedisi + BOP umum</small></div>'+
       '<div class="rhpp-summary-card"><span>Laba/Rugi Global</span><strong>Rp '+prodFmt(labaGlobal,0)+'</strong><small>Hasil akhir perusahaan</small></div>'+
@@ -6243,20 +6238,10 @@ async function financeGlobalProfitLossPage(){
 
     '<h3>1. Rincian Usaha Kandang</h3>'+
     '<div class="tablewrap"><table><thead><tr><th>Komponen</th><th>Nominal</th></tr></thead><tbody>'+
-      '<tr><td>Pendapatan Kandang Mitra (RHPP Real)</td><td>Rp '+prodFmt(pendapatanMitra,0)+'</td></tr>'+
-      '<tr><td>Pendapatan Kandang Mandiri (Penjualan Mandiri)</td><td>Rp '+prodFmt(pendapatanMandiri,0)+'</td></tr>'+
-      '<tr><td><strong>Total Pendapatan Kandang</strong></td><td><strong>Rp '+prodFmt(totalRhpp,0)+'</strong></td></tr>'+
-      '<tr><td>BOP Produksi Mitra</td><td>Rp '+prodFmt(bopMitra,0)+'</td></tr>'+
-      '<tr><td>BOP Produksi Mandiri</td><td>Rp '+prodFmt(bopMandiri,0)+'</td></tr>'+
+      '<tr><td><strong>Total Pendapatan Kandang (MITRA + MANDIRI)</strong></td><td><strong>Rp '+prodFmt(totalRhpp,0)+'</strong></td></tr>'+
       '<tr><td><strong>Total BOP Produksi</strong></td><td><strong>Rp '+prodFmt(totalBop,0)+'</strong></td></tr>'+
-      '<tr><td>Biaya Sapronak Mitra</td><td>Rp '+prodFmt(sapronakMitra,0)+'</td></tr>'+
-      '<tr><td>Biaya Sapronak Mandiri (termasuk stok retur BMS yang dipakai)</td><td>Rp '+prodFmt(sapronakMandiri,0)+'</td></tr>'+
       '<tr><td><strong>Total Biaya Sapronak</strong></td><td><strong>Rp '+prodFmt(totalSapronakLuar,0)+'</strong></td></tr>'+
-      '<tr><td>Tambah Daging Mitra</td><td>Rp '+prodFmt(tambahDagingMitra,0)+'</td></tr>'+
-      '<tr><td>Tambah Daging Mandiri</td><td>Rp '+prodFmt(tambahDagingMandiri,0)+'</td></tr>'+
       '<tr><td><strong>Total Tambah Daging</strong></td><td><strong>Rp '+prodFmt(totalTambahDaging,0)+'</strong></td></tr>'+
-      '<tr><td>Laba/Rugi Kandang Mitra</td><td>Rp '+prodFmt(labaMitra,0)+'</td></tr>'+
-      '<tr><td>Laba/Rugi Kandang Mandiri</td><td>Rp '+prodFmt(labaMandiri,0)+'</td></tr>'+
       '<tr><td><strong>Total Laba/Rugi Kandang</strong></td><td><strong>Rp '+prodFmt(labaKandang,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
 
@@ -6654,7 +6639,7 @@ async function adminDataArchivePage(){
     'logistics_returns','logistics_return_items','suppliers','logistics_external_shipments','logistics_external_shipment_items',
     'marketing_external_meat_purchases','marketing_contract_harvests','logistics_contract_assignment_abks','recording_weight_samples',
     'production_estimates','production_estimate_sizes','production_abk_results','production_abk_result_sizes','logistics_external_returns',
-    'logistics_external_return_items','logistics_external_return_transfers','rhpp_system_final','bop_outside','abk_league_settings',
+    'logistics_external_return_items','logistics_external_return_transfers','rhpp_system_final','production_mandiri_final','bop_outside','abk_league_settings',
     'abk_cycle_salaries','finance_expedition_trips','finance_expedition_invoices','finance_expedition_invoice_items',
     'finance_expedition_payments','finance_expedition_bop','finance_reference_counters'
   ];
@@ -6886,7 +6871,7 @@ async function financeRhppRealPage(){
 
 async function ownerProfitLossPage(){
   const [sr,rr,br,ar,cr,bopr,mr]=await Promise.all([
-    db.from('rhpp_system_final').select('*').order('created_at',{ascending:false}),
+    db.from('production_cycle_final_unified').select('*').order('created_at',{ascending:false}),
     db.from('rhpp_real').select('*').order('created_at',{ascending:false}),
     db.from('barns').select('id,code,name'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
@@ -6908,10 +6893,13 @@ async function ownerProfitLossPage(){
     const b=barns.find(x=>x.id===s.barn_id);
     const k=contractsRows.find(x=>x.id===a?.master_contract_id);
     const real=reals.find(x=>x.contract_assignment_id===s.contract_assignment_id);
+    const mandiri=a?.cycle_type==='MANDIRI';
     const bop=bops.filter(x=>x.contract_assignment_id===s.contract_assignment_id).reduce((n,x)=>n+prodNum(x.amount),0);
-    const variance=real?prodNum(real.amount)-prodNum(s.system_amount):null;
+    const revenue=mandiri?prodNum(s.harvest_value):(real?prodNum(real.amount):null);
+    const sapronak=mandiri?prodNum(s.sapronak_cost):0;
+    const variance=!mandiri&&real?prodNum(real.amount)-prodNum(s.system_amount):null;
     const maint=maintenance.filter(x=>x.contract_assignment_id===s.contract_assignment_id).reduce((n,x)=>n+prodNum(x.amount),0);
-    const operational=real?prodNum(real.amount)-bop:null;
+    const operational=revenue===null?null:revenue-sapronak-bop;
     const profit=operational===null?null:operational-maint;
     const resultLabel=profit===null?'MENUNGGU RHPP REAL':profit>0?'LABA':profit<0?'RUGI':'IMPAS';
 
@@ -6919,16 +6907,17 @@ async function ownerProfitLossPage(){
       '<h3>'+esc(assignmentIdentity(assignments,barns,contractsRows,a))+'</h3>'+
       '<p class="muted">Close '+prodDateId(s.closed_on)+'</p>'+
       '<div class="tablewrap"><table><tbody>'+
-        '<tr><td>RHPP Sistem Final</td><td><strong>Rp '+prodFmt(s.system_amount,0)+'</strong></td></tr>'+
-        '<tr><td>RHPP Real</td><td><strong>'+(real?'Rp '+prodFmt(real.amount,0):'MENUNGGU KEUANGAN')+'</strong></td></tr>'+
-        '<tr><td>Selisih Real − Sistem</td><td><strong>'+(real?'Rp '+prodFmt(variance,0):'-')+'</strong></td></tr>'+
+        '<tr><td>Jenis Siklus</td><td><strong>'+esc(mandiri?'MANDIRI':'MITRA')+'</strong></td></tr>'+
+        (!mandiri?'<tr><td>RHPP Sistem Final</td><td><strong>Rp '+prodFmt(s.system_amount,0)+'</strong></td></tr>':'')+
+        (!mandiri?'<tr><td>RHPP Real</td><td><strong>'+(real?'Rp '+prodFmt(real.amount,0):'MENUNGGU KEUANGAN')+'</strong></td></tr>':'<tr><td>Penjualan Aktual Mandiri</td><td><strong>Rp '+prodFmt(revenue,0)+'</strong></td></tr>')+
+        (!mandiri?'<tr><td>Selisih Real − Sistem</td><td><strong>'+(real?'Rp '+prodFmt(variance,0):'-')+'</strong></td></tr>':'<tr><td>Biaya Sapronak Aktual</td><td><strong>Rp '+prodFmt(sapronak,0)+'</strong></td></tr>')+
         '<tr><td>BOP Produksi</td><td><strong>Rp '+prodFmt(bop,0)+'</strong></td></tr>'+
-        '<tr><td>Laba Operasional Produksi</td><td><strong>'+(real?'Rp '+prodFmt(operational,0):'-')+'</strong></td></tr>'+
+        '<tr><td>Laba Operasional Produksi</td><td><strong>'+(operational!==null?'Rp '+prodFmt(operational,0):'-')+'</strong></td></tr>'+
         '<tr><td>Perawatan Jangka Panjang</td><td><strong>Rp '+prodFmt(maint,0)+'</strong></td></tr>'+
-        '<tr><td>Laba Bersih Akhir</td><td><strong>'+(real?'Rp '+prodFmt(profit,0):'-')+'</strong></td></tr>'+
+        '<tr><td>Laba Bersih Akhir</td><td><strong>'+(profit!==null?'Rp '+prodFmt(profit,0):'-')+'</strong></td></tr>'+
         '<tr><td>Hasil</td><td><strong>'+resultLabel+'</strong></td></tr>'+
       '</tbody></table></div>'+
-      (real?'<p class="muted">RHPP Real diterima '+prodDateId(real.received_on)+'.</p>':'<p class="muted">Perhitungan laba/rugi aktif setelah Keuangan menyimpan RHPP Real.</p>')+
+      (mandiri?'<p class="muted">Mandiri dihitung dari penjualan aktual − sapronak aktual − BOP.</p>':(real?'<p class="muted">RHPP Real diterima '+prodDateId(real.received_on)+'.</p>':'<p class="muted">Perhitungan laba/rugi aktif setelah Keuangan menyimpan RHPP Real.</p>'))+
     '</section>';
   });
 
@@ -7552,7 +7541,7 @@ function renderDashboardTemplate(cfg){
 async function buildDashboardModel(){
   const d=await productionBase();
   const leagueSetting=await loadAbkLeagueSetting();
-  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,mandiriFinalR]=await Promise.all([
+  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR]=await Promise.all([
     db.from('recordings').select('*').not('contract_assignment_id','is',null).order('recorded_on',{ascending:true}),
     db.from('recording_weight_samples').select('*'),
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
@@ -7561,11 +7550,16 @@ async function buildDashboardModel(){
     db.from('production_abk_result_sizes').select('*'),
     db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
     db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on'),
-    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on')
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on,cycle_type')
   ]);
-  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,mandiriFinalR].find(x=>x?.error)?.error;
-  const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=[...(rhppFinalR.data||[]),...(mandiriFinalR.data||[])];
+  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR].find(x=>x?.error)?.error;
+  const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=rhppFinalR.data||[];
+  const abkReferenceContractId=a=>{
+    if(a?.master_contract_id)return a.master_contract_id;
+    if(a?.cycle_type!=='MANDIRI')return '';
+    const ids=[...new Set((d.livePrices||[]).map(p=>p.contract_id).filter(Boolean))];
+    return ids.length===1?ids[0]:'';
+  };
   const active=d.assignments.filter(a=>a.active&&d.chicks.some(ci=>ci.contract_assignment_id===a.id));
   const ownerParityIssue=profile.role==='OWNER'&&(
     (!d.assignments.length&&(recs.length||estimates.length||abkResults.length))||
@@ -7708,15 +7702,16 @@ async function buildDashboardModel(){
     const age=birds&&ci?sz.reduce((s,v)=>s+prodAge(ci.arrived_on,v.harvest_date)*prodNum(v.birds),0)/birds:0;
     const initial=prodNum(link?.initial_birds),surv=initial?Math.min(100,birds/initial*100):0;
     const ip=initial&&age&&fcr?(surv*bw*100)/(age*fcr):0;
+    const refContractId=abkReferenceContractId(a);
     let revenue=0;
     for(const s of sz){
       const av=prodNum(s.birds)?prodNum(s.weight_kg)/prodNum(s.birds):0;
-      const p=d.livePrices.find(p=>p.contract_id===a?.master_contract_id&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
+      const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
       revenue+=prodNum(s.weight_kg)*prodNum(p?.price_per_kg);
     }
-    const cc=costContracts.find(v=>v.id===a?.master_contract_id);
+    const cc=costContracts.find(v=>v.id===refContractId);
     const cost=initial*prodNum(cc?.doc_price)+prodNum(link?.feed_pre_bags)*50*prodNum(cc?.pre_starter_price)+prodNum(link?.feed_starter_bags)*50*prodNum(cc?.starter_price)+prodNum(link?.feed_finisher_bags)*50*prodNum(cc?.finisher_price);
-    const match=(metric,value)=>prodNum(bonusRows.find(v=>v.contract_id===a?.master_contract_id&&v.metric===metric&&(v.min_value==null||value>=prodNum(v.min_value))&&(v.max_value==null||value<prodNum(v.max_value)))?.rupiah_per_kg);
+    const match=(metric,value)=>prodNum(bonusRows.find(v=>v.contract_id===refContractId&&v.metric===metric&&(v.min_value==null||value>=prodNum(v.min_value))&&(v.max_value==null||value<prodNum(v.max_value)))?.rupiah_per_kg);
     const ipBonus=kg*match('IP',ip);
     const profit=revenue-cost+ipBonus;
     const perBird=birds?profit/birds:0;
@@ -8380,15 +8375,14 @@ async function logisticsReports(){
 
 async function reports(){
   const d=await productionBase();
-  const [pr,fr,mfr,rr,sr,...feedResponses]=await Promise.all([
+  const [pr,fr,rr,sr,...feedResponses]=await Promise.all([
     db.rpc('production_ppl_directory'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
-    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type'),
     db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
     db.from('recording_weight_samples').select('recording_id,weight_g'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
-  const pplRows=pr.data||[],finals=[...(fr.data||[]),...(mfr.data||[])],recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
+  const pplRows=pr.data||[],finals=fr.data||[],recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
   const feedByAssignment=new Map();
   d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
 
@@ -8511,7 +8505,7 @@ async function reports(){
 
   layout(html);
   const feedErr=feedResponses.find(x=>x?.error)?.error;
-  if(d.err||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr)msg((d.err||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr).message);
+  if(d.err||pr.error||fr.error||rr.error||sr.error||feedErr)msg((d.err||pr.error||fr.error||rr.error||sr.error||feedErr).message);
 
   const form=document.getElementById('productionReportFilter');
   if(form){
