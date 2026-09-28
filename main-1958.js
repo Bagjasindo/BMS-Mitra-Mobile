@@ -3167,10 +3167,15 @@ async function recordingPplPage(){
     db.from('recording_weight_samples').select('*')
   ]);
   const recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
-  const txnRecording=txnListState(recs,'pplRecording','recorded_on',5,d.barns,'barn_id',{assignmentKey:'contract_assignment_id',assignments:d.assignments.map(a=>({id:a.id,barn_id:a.barn_id,label:assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'AKTIF':'CLOSED')}))});
+  const recordingAssignmentId=window.__pplRecordingAssignment||'';
+  const historyRecs=recordingAssignmentId?recs.filter(r=>r.contract_assignment_id===recordingAssignmentId):[];
+  window.__bmsTxnList=window.__bmsTxnList||{};
+  const oldRecordingPage=window.__bmsTxnList.pplRecording?.page||0;
+  window.__bmsTxnList.pplRecording={from:'',to:'',barn:'',assignment:'',status:'',page:oldRecordingPage};
+  const txnRecording=txnListState(historyRecs,'pplRecording','recorded_on',5,null,'barn_id',{});
   let html='<section class="panel"><h3>Recording Harian PPL</h3><p class="muted">Isi data lapangan saja. FCR, ADG, IP dan perbandingan standar dihitung otomatis oleh sistem.</p><form id="prodRec" class="form-vertical">'+
     '<div class="panel" style="padding:14px"><h4>1. Pilih Kandang</h4>'+
-      '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih Kandang</option>'+d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'">'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
+      '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih Kandang</option>'+d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'" '+(recordingAssignmentId===a.id?'selected':'')+'>'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
       '<div id="prodRecAge" class="rhpp-summary-card" style="margin-top:10px"><span>Umur Saat Ini</span><strong>1 Hari</strong></div>'+
     '</div>'+
     '<div class="panel" style="padding:14px"><h4 id="prodRecDayTitle">2. Isi Data Hari ke-1</h4>'+
@@ -3214,7 +3219,9 @@ async function recordingPplPage(){
     metricRows.push({r,a,population,depl,bwg,cumFeed,fi,fcr,adg,ip,st,stdFeedTotalKg});
   }
 
-  html+='<section class="panel"><h3>Riwayat Recording</h3><p class="muted">Tabel utama dibuat sederhana untuk PPL. Detail teknis tetap tersedia bila diperlukan.</p>'+txnRecording.controls+
+  const selectedHistoryAssignment=d.assignments.find(a=>a.id===recordingAssignmentId);
+  html+='<section class="panel"><h3>Riwayat Recording</h3>'+
+    '<p class="muted">'+(selectedHistoryAssignment?'Menampilkan riwayat kandang yang sedang dipilih. Pilih kandang lain di form atas untuk mengganti riwayat.':'Pilih kandang pada form di atas untuk menampilkan riwayat recording.')+'</p>'+
     '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Populasi</th><th>Mati + Afkir</th><th>Bobot Rata2</th><th>Pakan Kumulatif</th><th>FCR</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
     '<div class="inline-actions" style="margin-top:10px"><button type="button" id="prodPerfPrev">Sebelumnya</button><span id="prodPerfPage" class="muted"></span><button type="button" id="prodPerfNext">Berikutnya</button></div>'+
     '<details style="margin-top:14px"><summary><strong>Lihat Detail Teknis (opsional)</strong></summary>'+
@@ -3356,7 +3363,12 @@ async function recordingPplPage(){
     window.scrollTo({top:0,behavior:'smooth'});
   }
 
-  f.assignment.onchange=async()=>{calc();await refreshFeedStock()};
+  f.assignment.onchange=async()=>{
+    window.__pplRecordingAssignment=f.assignment.value||'';
+    window.__bmsTxnList=window.__bmsTxnList||{};
+    window.__bmsTxnList.pplRecording={from:'',to:'',barn:'',assignment:'',status:'',page:0};
+    await recordingPplPage();
+  };
   f.feed_item.onchange=calc;f.feed_units.oninput=calc;calc();renderPerf();
   if(f.assignment.value)await refreshFeedStock();
   else {
