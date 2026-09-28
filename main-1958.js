@@ -6253,7 +6253,7 @@ async function financeMandiriReceiptsPage(){
   layout(html);bindNumberInputs();if(err)msg(err.message);
   const status=document.getElementById('mandiriReceiptStatus');
   if(status)status.onchange=async()=>{st.status=status.value||'';st.selected='';await financeMandiriReceiptsPage();};
-  root.querySelectorAll('[data-receive-mandiri]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.receiveMandiri;await financeMandiriReceiptsPage();});
+  root.querySelectorAll('[data-receive-mandiri]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.receiveMandiri;await financeMandiriReceiptsPage();const receiptForm=document.getElementById('mandiriReceiptForm');if(receiptForm)receiptForm.scrollIntoView({behavior:'smooth',block:'start'});});
   const cancel=document.getElementById('cancelMandiriReceipt');if(cancel)cancel.onclick=async()=>{st.selected='';await financeMandiriReceiptsPage();};
   const form=document.getElementById('mandiriReceiptForm');
   if(form)form.onsubmit=async ev=>{
