@@ -587,3 +587,41 @@ Aturan:
 - Modul yang sudah PASS tidak boleh diubah tanpa keputusan eksplisit Bos.
 - Pending hardening security tidak boleh mengubah alur bisnis/hak akses yang sudah terkunci.
 - Perubahan masa depan wajib dibandingkan dengan baseline sebelum implementasi.
+
+
+---
+
+# CHECKPOINT RESMI 2026-09-28 — RHPP / TAMBAH DAGING / PEMBAYARAN / CICURUG / LABA-RUGI GLOBAL
+
+Status: **BASELINE RESMI UNTUK PENGEMBANGAN BERIKUTNYA. JANGAN KEMBALI KE LOGIKA/VERSI LAMA.**
+
+## Titik yang dikunci
+- RHPP pada kondisi saat ini menjadi acuan resmi.
+- Tambah Daging tetap terpisah dari BOP dan diperlakukan sesuai alur yang sudah disepakati.
+- Diskon/koreksi Tambah Daging mengikuti logika aktif saat checkpoint ini; jangan dikembalikan ke alur BOP lama.
+- Pembayaran pemasok/supplier dan penerimaan pelanggan mengikuti ledger/penerimaan aktual yang sudah berjalan.
+- Penerimaan Cicurug yang sudah dikonfirmasi menjadi bagian baseline aktif.
+- Laba-rugi global memakai logika aktif pada main saat checkpoint ini dan tidak boleh dikembalikan ke rumus lama.
+- Modul/menu yang sudah PASS tidak diubah kecuali ada keputusan baru yang eksplisit.
+
+## Data Cicurug yang dikunci
+- Berat: 174,5 kg.
+- Harga RHPP: Rp19.000/kg.
+- Nilai panen: Rp3.315.500.
+- Digabung dengan transaksi tanggal yang sama: Rp30.274.250.
+- Tanggal pembayaran: 15 Juli 2026.
+- Status: LUNAS.
+- Bank: BCA.
+- Bukti pembayaran tetap dikelola/tersedia melalui Keuangan/Kantor sesuai alur aktif.
+
+## Aturan maju
+1. Semua pengembangan berikutnya mulai dari checkpoint ini.
+2. Jangan rollback ke versi, formula, atau pemisahan menu sebelum checkpoint ini.
+3. Jangan menghidupkan kembali Tambah Daging sebagai BOP.
+4. Jangan mengubah penerimaan/pembayaran yang sudah tervalidasi tanpa instruksi eksplisit.
+5. Jika ada perubahan baru, bandingkan lebih dulu terhadap baseline ini dan dokumentasikan perubahan tersebut.
+
+## Referensi source saat checkpoint
+- Branch utama: `main`.
+- Commit source sebelum catatan checkpoint: `b0adfea1fce6b3d560cf77ff9a306eb649dcd180`.
+- Commit tersebut mengunci mapping Cicurug Juni sebagai Mandiri dari PDF mapping.
