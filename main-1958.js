@@ -5372,26 +5372,28 @@ async function financeBopGeneralPage(){
   const txn=txnListState(rows,'bop_outside','incurred_on',5);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
+  const bopUmumLabels={TENAGA_KERJA:'Gaji & Insentif',TRANSPORTASI:'BBM & Pajak Kendaraan',LISTRIK:'Listrik Kantor',PERBAIKAN:'Servis & Perbaikan',ADMINISTRASI:'Kebutuhan Kantor & Langganan',LAINNYA:'Sumbangan, Seragam & Lainnya'};
   let html='<section class="panel"><h3>'+(editRow?'Edit BOP Umum':'Tambah BOP Umum')+'</h3>'+
+    '<p class="muted">Biaya operasional perusahaan. Gaji dan insentif: Tenaga Kerja; BBM dan pajak kendaraan: Transportasi; oli, ban, servis: Perbaikan; rapat, konsumsi kantor, langganan: Administrasi; sumbangan dan seragam: Lainnya. Biaya khusus kandang dicatat di BOP Kandang, biaya trip di Expedisi. Jelaskan transaksi pada Rincian transaksi.</p>'+
     '<form id="bopOutsideForm" class="form-vertical">'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(editRow?.incurred_on||today)+'" required></label>'+
       '<label>Kategori<select name="category" required>'+
         '<option value="">Pilih Kategori</option>'+
-        '<option value="TENAGA_KERJA" '+(editRow?.category==='TENAGA_KERJA'?'selected':'')+'>Tenaga Kerja</option>'+
-        '<option value="TRANSPORTASI" '+(editRow?.category==='TRANSPORTASI'?'selected':'')+'>Transportasi</option>'+
-        '<option value="LISTRIK" '+(editRow?.category==='LISTRIK'?'selected':'')+'>Listrik</option>'+
-        '<option value="PERBAIKAN" '+(editRow?.category==='PERBAIKAN'?'selected':'')+'>Perbaikan</option>'+
-        '<option value="ADMINISTRASI" '+(editRow?.category==='ADMINISTRASI'?'selected':'')+'>Administrasi</option>'+
-        '<option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Lainnya</option>'+
+        '<option value="TENAGA_KERJA" '+(editRow?.category==='TENAGA_KERJA'?'selected':'')+'>Gaji &amp; Insentif</option>'+
+        '<option value="TRANSPORTASI" '+(editRow?.category==='TRANSPORTASI'?'selected':'')+'>BBM &amp; Pajak Kendaraan</option>'+
+        '<option value="LISTRIK" '+(editRow?.category==='LISTRIK'?'selected':'')+'>Listrik Kantor</option>'+
+        '<option value="PERBAIKAN" '+(editRow?.category==='PERBAIKAN'?'selected':'')+'>Servis &amp; Perbaikan</option>'+
+        '<option value="ADMINISTRASI" '+(editRow?.category==='ADMINISTRASI'?'selected':'')+'>Kebutuhan Kantor &amp; Langganan</option>'+
+        '<option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Sumbangan, Seragam &amp; Lainnya</option>'+
       '</select></label>'+
       '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
       ''+
-      '<label>Catatan<textarea name="notes" placeholder="Opsional">'+esc(editRow?.notes||'')+'</textarea></label>'+
+      '<label>Rincian transaksi<textarea name="notes" placeholder="Contoh: gaji Juli 2026 / bensin Om Burhan / kopi kantor" required>'+esc(editRow?.notes||'')+'</textarea></label>'+
       '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan')+'</button>'+(editRow?'<button type="button" id="bopOutsideEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="bopUmumPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Umum</h3></div><div class="report-actions"><button type="button" id="bopUmumPrint">Cetak / PDF</button></div></div>'+txn.controls+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
+      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(bopUmumLabels[x.category]||String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
       '</tbody></table></div>'+
       (!txn.total?'<p>Belum ada data.</p>':'')+txn.pager+
     '</section>';
@@ -5414,8 +5416,8 @@ async function financeBopGeneralPage(){
       incurred_on:fd.get('incurred_on'),
       category:fd.get('category'),
       amount,
-      reference:null,
-      notes:fd.get('notes')||null
+      reference:editRow?.reference||null,
+      notes:String(fd.get('notes')||'').trim()||null
     };
     const {error}=editRow?await db.from('bop_outside').update(payload).eq('id',editRow.id):await db.from('bop_outside').insert(payload);
     if(error)return msg(error.message);
