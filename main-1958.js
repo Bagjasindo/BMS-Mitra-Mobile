@@ -2817,7 +2817,7 @@ async function logisticsPartialReturnPage(){
     db.from('barns').select('id,code,name').order('code'),
     db.from('items').select('id,code,name,category,unit,kg_per_unit').eq('category','PAKAN').eq('active',true).order('code'),
     db.from('logistics_contract_assignments').select('id,barn_id,start_date,cycle_type,active').order('start_date',{ascending:false}),
-    db.from('logistics_returns').select('id,return_date,reference,contract_assignment_id').order('created_at',{ascending:false}),
+    db.from('logistics_returns').select('id,return_date,reference,notes,contract_assignment_id').order('created_at',{ascending:false}),
     db.from('logistics_return_items').select('id,return_id,item_id,quantity'),
     db.from('logistics_mitra_retained_feed').select('*').order('created_at',{ascending:false}),
     db.from('logistics_company_feed_movements').select('*').order('created_at',{ascending:false})
@@ -2829,53 +2829,106 @@ async function logisticsPartialReturnPage(){
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const balance=l=>Number(l.quantity)+moves.filter(m=>m.retained_feed_id===l.id).reduce((n,m)=>n+(m.direction==='OUT'?Number(m.quantity):-Number(m.quantity)),0);
   const lotLabel=l=>{const a=assignments.find(x=>x.id===l.source_assignment_id),i=items.find(x=>x.id===l.item_id);return (i?.name||'-')+' · asal '+label(a);};
-  let html='<section class="panel"><h3>Retur Mitra Diterima Sebagian</h3>'+
+
+  window.__partialReturnEdit=window.__partialReturnEdit||'';
+  window.__companyFeedMoveEdit=window.__companyFeedMoveEdit||'';
+  const editLot=lots.find(x=>x.id===window.__partialReturnEdit)||null;
+  const editMove=moves.find(x=>x.id===window.__companyFeedMoveEdit)||null;
+  const editReturn=editLot?returns.find(x=>x.id===editLot.return_id):null;
+  const editReturnItem=editLot?returnItems.find(x=>x.id===editLot.return_item_id):null;
+
+  let html='<section class="panel"><h3>'+(editLot?'Edit Retur Mitra Diterima Sebagian':'Retur Mitra Diterima Sebagian')+'</h3>'+
     '<p class="muted">Gunakan menu ini hanya saat jumlah fisik yang kembali lebih besar daripada yang diterima inti. Jika diterima seluruhnya, gunakan menu Retur biasa.</p>'+
     '<form id="partialReturnForm" class="form-vertical">'+
-      '<label>Kandang Mitra asal<select name="assignment" required><option value="">Pilih kandang</option>'+mitra.map(a=>'<option value="'+esc(a.id)+'">'+esc(label(a))+'</option>').join('')+'</select></label>'+
-      '<label>Pakan<select name="item" required><option value="">Pilih pakan</option>'+items.map(i=>'<option value="'+esc(i.id)+'">'+esc(i.code+' · '+i.name+' ('+i.unit+')')+'</option>').join('')+'</select></label>'+
-      '<label>Sisa fisik di kandang<input name="physical" data-number="1" inputmode="decimal" required></label>'+
-      '<label>Diterima oleh inti<input name="accepted" data-number="1" inputmode="decimal" value="0" required></label>'+
+      '<label>Kandang Mitra asal<select name="assignment" required '+(editLot?'disabled':'')+'><option value="">Pilih kandang</option>'+mitra.map(a=>'<option value="'+esc(a.id)+'" '+(editLot?.source_assignment_id===a.id?'selected':'')+'>'+esc(label(a))+'</option>').join('')+'</select></label>'+
+      '<label>Pakan<select name="item" required '+(editLot?'disabled':'')+'><option value="">Pilih pakan</option>'+items.map(i=>'<option value="'+esc(i.id)+'" '+(editLot?.item_id===i.id?'selected':'')+'>'+esc(i.code+' · '+i.name+' ('+i.unit+')')+'</option>').join('')+'</select></label>'+
+      '<label>Sisa fisik di kandang<input name="physical" data-number="1" inputmode="decimal" value="'+(editLot?fmtNumber(Number(editReturnItem?.quantity||0)+Number(editLot.quantity)):'')+'" required></label>'+
+      '<label>Diterima oleh inti<input name="accepted" data-number="1" inputmode="decimal" value="'+(editLot?fmtNumber(editReturnItem?.quantity||0):'0')+'" required></label>'+
       '<p class="muted">Selisih otomatis menjadi stok BMS. Contoh: fisik 20, diterima inti 10, stok BMS 10.</p>'+
-      '<label>Tanggal Retur<input name="date" type="date" value="'+esc(today)+'" required></label>'+
-      '<label>Referensi<input name="reference"></label><label>Catatan<input name="notes"></label>'+
-      '<button type="submit">Simpan Retur Sebagian</button></form></section>'+
+      '<label>Tanggal Retur<input name="date" type="date" value="'+esc(editReturn?.return_date||today)+'" required></label>'+
+      '<label>Referensi<input name="reference" value="'+esc(editReturn?.reference||'')+'"></label>'+
+      '<label>Catatan<input name="notes" value="'+esc(editReturn?.notes||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">'+(editLot?'Simpan Perubahan':'Simpan Retur Sebagian')+'</button>'+(editLot?'<button type="button" id="partialReturnEditCancel">Batal Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" id="partialReturnDelete" class="btn-danger">Hapus</button>':''):'')+'</div>'+
+    '</form></section>'+
     '<section class="panel"><h3>Stok BMS dari Retur Mitra</h3><div class="tablewrap"><table><thead><tr><th>Asal</th><th>Pakan</th><th>Jumlah Awal</th><th>Sisa Gudang</th><th>Harga Kontrak/Zak</th></tr></thead><tbody>'+
       lots.map(l=>'<tr><td>'+esc(label(assignments.find(a=>a.id===l.source_assignment_id)))+'</td><td>'+esc(items.find(i=>i.id===l.item_id)?.name||'-')+'</td><td>'+fmtNumber(l.quantity)+'</td><td>'+fmtNumber(balance(l))+'</td><td>Rp '+fmtNumber(l.unit_price)+'</td></tr>').join('')+
       '</tbody></table></div>'+(lots.length?'':'<p>Belum ada stok BMS dari retur sebagian.</p>')+
     '<form id="companyFeedMoveForm" class="form-vertical">'+
-      '<label>Stok asal<select name="lot" required><option value="">Pilih stok</option>'+lots.map(l=>'<option value="'+esc(l.id)+'">'+esc(lotLabel(l)+' · sisa '+fmtNumber(balance(l)))+'</option>').join('')+'</select></label>'+
-      '<label>Arah<select name="direction"><option value="IN">Kirim ke kandang</option><option value="OUT">Kembali ke stok BMS dari kandang</option></select></label>'+
-      '<label>Kandang<select name="assignment" required><option value="">Pilih kandang</option>'+targets.map(a=>'<option value="'+esc(a.id)+'">'+esc(label(a))+'</option>').join('')+'</select></label>'+
-      '<label>Jumlah zak<input name="quantity" data-number="1" inputmode="decimal" required></label>'+
-      '<label>Tanggal<input name="date" type="date" value="'+esc(today)+'" required></label>'+
-      '<label>Referensi<input name="reference"></label><button type="submit">Catat Pemindahan</button></form></section>'+
-    '<section class="panel"><h3>Riwayat Retur Sebagian</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal</th><th>Pakan</th><th>Fisik</th><th>Diterima Inti</th><th>Stok BMS</th><th>Harga/Zak</th><th>Referensi</th></tr></thead><tbody>'+
-      lots.map(l=>{const r=returns.find(x=>x.id===l.return_id),ri=returnItems.find(x=>x.id===l.return_item_id);
-        return '<tr><td>'+esc(r?.return_date||'-')+'</td><td>'+esc(label(assignments.find(a=>a.id===l.source_assignment_id)))+'</td><td>'+esc(items.find(i=>i.id===l.item_id)?.name||'-')+'</td><td>'+fmtNumber(Number(ri?.quantity||0)+Number(l.quantity))+'</td><td>'+fmtNumber(ri?.quantity||0)+'</td><td>'+fmtNumber(l.quantity)+'</td><td>Rp '+fmtNumber(l.unit_price)+'</td><td>'+esc(r?.reference||'-')+'</td></tr>';}).join('')+
+      '<label>Stok asal<select name="lot" required '+(editMove?'disabled':'')+'><option value="">Pilih stok</option>'+lots.map(l=>'<option value="'+esc(l.id)+'" '+(editMove?.retained_feed_id===l.id?'selected':'')+'>'+esc(lotLabel(l)+' · sisa '+fmtNumber(balance(l)))+'</option>').join('')+'</select></label>'+
+      '<label>Arah<select name="direction"><option value="IN" '+((editMove?.direction||'IN')==='IN'?'selected':'')+'>Kirim ke kandang</option><option value="OUT" '+(editMove?.direction==='OUT'?'selected':'')+'>Kembali ke stok BMS dari kandang</option></select></label>'+
+      '<label>Kandang<select name="assignment" required><option value="">Pilih kandang</option>'+targets.map(a=>'<option value="'+esc(a.id)+'" '+(editMove?.contract_assignment_id===a.id?'selected':'')+'>'+esc(label(a))+'</option>').join('')+'</select></label>'+
+      '<label>Jumlah zak<input name="quantity" data-number="1" inputmode="decimal" value="'+(editMove?fmtNumber(editMove.quantity):'')+'" required></label>'+
+      '<label>Tanggal<input name="date" type="date" value="'+esc(editMove?.transferred_on||today)+'" required></label>'+
+      '<label>Referensi<input name="reference" value="'+esc(editMove?.reference||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">'+(editMove?'Simpan Perubahan':'Catat Pemindahan')+'</button>'+(editMove?'<button type="button" id="companyFeedMoveEditCancel">Batal Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" id="companyFeedMoveDelete" class="btn-danger">Hapus</button>':''):'')+'</div>'+
+    '</form></section>'+
+    '<section class="panel"><h3>Riwayat Retur Sebagian</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal</th><th>Pakan</th><th>Fisik</th><th>Diterima Inti</th><th>Stok BMS</th><th>Harga/Zak</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
+      lots.map(l=>{const r=returns.find(x=>x.id===l.return_id),ri=returnItems.find(x=>x.id===l.return_item_id);return '<tr><td>'+esc(r?.return_date||'-')+'</td><td>'+esc(label(assignments.find(a=>a.id===l.source_assignment_id)))+'</td><td>'+esc(items.find(i=>i.id===l.item_id)?.name||'-')+'</td><td>'+fmtNumber(Number(ri?.quantity||0)+Number(l.quantity))+'</td><td>'+fmtNumber(ri?.quantity||0)+'</td><td>'+fmtNumber(l.quantity)+'</td><td>Rp '+fmtNumber(l.unit_price)+'</td><td>'+esc(r?.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-partial-return="'+esc(l.id)+'">Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-partial-return="'+esc(l.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
       '</tbody></table></div></section>'+
-    '<section class="panel"><h3>Riwayat Pemindahan Stok BMS</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal Pakan</th><th>Kandang</th><th>Arah</th><th>Zak</th><th>Nilai</th><th>Referensi</th></tr></thead><tbody>'+
-      moves.map(m=>{const l=lots.find(x=>x.id===m.retained_feed_id);
-        return '<tr><td>'+esc(m.transferred_on)+'</td><td>'+esc(l?lotLabel(l):'-')+'</td><td>'+esc(label(assignments.find(a=>a.id===m.contract_assignment_id)))+'</td><td>'+esc(m.direction==='IN'?'Ke kandang':'Kembali ke BMS')+'</td><td>'+fmtNumber(m.quantity)+'</td><td>Rp '+fmtNumber(Number(m.quantity)*Number(l?.unit_price||0))+'</td><td>'+esc(m.reference||'-')+'</td></tr>';}).join('')+
+    '<section class="panel"><h3>Riwayat Pemindahan Stok BMS</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal Pakan</th><th>Kandang</th><th>Arah</th><th>Zak</th><th>Nilai</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
+      moves.map(m=>{const l=lots.find(x=>x.id===m.retained_feed_id);return '<tr><td>'+esc(m.transferred_on)+'</td><td>'+esc(l?lotLabel(l):'-')+'</td><td>'+esc(label(assignments.find(a=>a.id===m.contract_assignment_id)))+'</td><td>'+esc(m.direction==='IN'?'Ke kandang':'Kembali ke BMS')+'</td><td>'+fmtNumber(m.quantity)+'</td><td>Rp '+fmtNumber(Number(m.quantity)*Number(l?.unit_price||0))+'</td><td>'+esc(m.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-company-feed-move="'+esc(m.id)+'">Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-company-feed-move="'+esc(m.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
       '</tbody></table></div></section>';
+
   layout(html);bindNumberInputs();
   const error=[br,ir,ar,rr,rir,lr,mr].find(x=>x.error)?.error;if(error)msg(error.message);
+
+  root.querySelectorAll('[data-edit-partial-return]').forEach(btn=>btn.onclick=async()=>{window.__partialReturnEdit=btn.dataset.editPartialReturn||'';window.__companyFeedMoveEdit='';await logisticsPartialReturnPage();document.getElementById('partialReturnForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const partialCancel=document.getElementById('partialReturnEditCancel');if(partialCancel)partialCancel.onclick=async()=>{window.__partialReturnEdit='';await logisticsPartialReturnPage();};
+  const deletePartial=async id=>{
+    if(profile?.role!=='ADMIN')return msg('Hanya ADMIN yang boleh menghapus retur sebagian.');
+    if(!await appConfirm('PERINGATAN HAPUS RETUR SEBAGIAN\n\nStok BMS hasil retur akan ikut dihapus. Jika stok sudah pernah dipindahkan, sistem akan menolak penghapusan.\n\nLanjutkan hapus?'))return;
+    const {error}=await db.rpc('admin_delete_mitra_split_return_v1',{p_retained_feed_id:id});
+    if(error)return msg(error.message);
+    window.__partialReturnEdit='';await logisticsPartialReturnPage();msg('Retur sebagian berhasil dihapus oleh ADMIN.',true);
+  };
+  root.querySelectorAll('[data-delete-partial-return]').forEach(btn=>btn.onclick=()=>deletePartial(btn.dataset.deletePartialReturn));
+  const partialDelete=document.getElementById('partialReturnDelete');if(partialDelete&&editLot)partialDelete.onclick=()=>deletePartial(editLot.id);
+
+  root.querySelectorAll('[data-edit-company-feed-move]').forEach(btn=>btn.onclick=async()=>{window.__companyFeedMoveEdit=btn.dataset.editCompanyFeedMove||'';window.__partialReturnEdit='';await logisticsPartialReturnPage();document.getElementById('companyFeedMoveForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const moveCancel=document.getElementById('companyFeedMoveEditCancel');if(moveCancel)moveCancel.onclick=async()=>{window.__companyFeedMoveEdit='';await logisticsPartialReturnPage();};
+  const deleteMove=async id=>{
+    if(profile?.role!=='ADMIN')return msg('Hanya ADMIN yang boleh menghapus pemindahan stok.');
+    if(!await appConfirm('PERINGATAN HAPUS PEMINDAHAN STOK BMS\n\nSaldo stok BMS dan alokasi kandang akan berubah. Sistem akan menolak jika penghapusan membuat saldo stok negatif.\n\nLanjutkan hapus?'))return;
+    const {error}=await db.rpc('admin_delete_company_feed_movement_v1',{p_id:id});
+    if(error)return msg(error.message);
+    window.__companyFeedMoveEdit='';await logisticsPartialReturnPage();msg('Pemindahan stok berhasil dihapus oleh ADMIN.',true);
+  };
+  root.querySelectorAll('[data-delete-company-feed-move]').forEach(btn=>btn.onclick=()=>deleteMove(btn.dataset.deleteCompanyFeedMove));
+  const moveDelete=document.getElementById('companyFeedMoveDelete');if(moveDelete&&editMove)moveDelete.onclick=()=>deleteMove(editMove.id);
+
   document.getElementById('partialReturnForm').onsubmit=async ev=>{
-    ev.preventDefault();const f=new FormData(ev.target),physical=normalizeInputID(f.get('physical')),accepted=normalizeInputID(f.get('accepted'));
+    ev.preventDefault();const fd=new FormData(ev.target),physical=normalizeInputID(fd.get('physical')),accepted=normalizeInputID(fd.get('accepted'));
     if(physical==null||physical<=0||accepted==null||accepted<0||accepted>=physical)return msg('Jumlah fisik harus lebih besar dari jumlah yang diterima inti. Angka diterima inti boleh nol.');
-    const a=mitra.find(x=>x.id===f.get('assignment'));if(!a)return msg('Pilih siklus Mitra aktif.');
+    if(editLot){
+      const {error}=await db.rpc('logistics_correct_mitra_split_return_v1',{
+        p_retained_feed_id:editLot.id,p_return_date:fd.get('date'),p_physical_quantity:physical,p_accepted_quantity:accepted,
+        p_reference:fd.get('reference')||null,p_notes:fd.get('notes')||null
+      });
+      if(error)return msg(error.message);
+      window.__partialReturnEdit='';await logisticsPartialReturnPage();msg('Retur sebagian berhasil diperbarui.',true);return;
+    }
+    const a=mitra.find(x=>x.id===fd.get('assignment'));if(!a)return msg('Pilih siklus Mitra aktif.');
     const {error}=await db.rpc('save_mitra_split_return_atomic',{
-      p_barn_id:a.barn_id,p_assignment_id:a.id,p_return_date:f.get('date'),p_reference:f.get('reference')||null,p_notes:f.get('notes')||null,
-      p_items:[{item_id:f.get('item'),physical_quantity:physical,accepted_quantity:accepted}]
+      p_barn_id:a.barn_id,p_assignment_id:a.id,p_return_date:fd.get('date'),p_reference:fd.get('reference')||null,p_notes:fd.get('notes')||null,
+      p_items:[{item_id:fd.get('item'),physical_quantity:physical,accepted_quantity:accepted}]
     });
     if(error)return msg(error.message);await logisticsPartialReturnPage();msg('Retur sebagian dan stok BMS tercatat.',true);
   };
+
   document.getElementById('companyFeedMoveForm').onsubmit=async ev=>{
-    ev.preventDefault();const f=new FormData(ev.target),qty=normalizeInputID(f.get('quantity'));
+    ev.preventDefault();const fd=new FormData(ev.target),qty=normalizeInputID(fd.get('quantity'));
     if(qty==null||qty<=0)return msg('Jumlah perpindahan harus lebih dari nol.');
+    if(editMove){
+      const {error}=await db.rpc('logistics_correct_company_feed_movement_v1',{
+        p_id:editMove.id,p_contract_assignment_id:fd.get('assignment'),p_direction:fd.get('direction'),
+        p_quantity:qty,p_transferred_on:fd.get('date'),p_reference:fd.get('reference')||null
+      });
+      if(error)return msg(error.message);
+      window.__companyFeedMoveEdit='';await logisticsPartialReturnPage();msg('Pemindahan stok BMS berhasil diperbarui.',true);return;
+    }
     const {error}=await db.rpc('move_company_feed_atomic',{
-      p_retained_feed_id:f.get('lot'),p_contract_assignment_id:f.get('assignment'),p_direction:f.get('direction'),
-      p_quantity:qty,p_transferred_on:f.get('date'),p_reference:f.get('reference')||null
+      p_retained_feed_id:fd.get('lot'),p_contract_assignment_id:fd.get('assignment'),p_direction:fd.get('direction'),
+      p_quantity:qty,p_transferred_on:fd.get('date'),p_reference:fd.get('reference')||null
     });
     if(error)return msg(error.message);await logisticsPartialReturnPage();msg('Pemindahan stok BMS tercatat.',true);
   };
