@@ -212,6 +212,50 @@ const modules={
 };
 const title={finance_mandiri_piutang:'Piutang Penjualan',finance_mandiri_penerimaan:'Penerimaan Penjualan',finance_mandiri_hutang:'Hutang Supplier',finance_mandiri_pembayaran:'Pembayaran Supplier',finance_mandiri_laporan:'Laporan Mandiri',dashboard:'Dashboard',reset_klasemen:'Reset Klasemen ABK',owner_logistics_report:'Laporan Logistik',owner_marketing_report:'Laporan Marketing',owner_finance_report:'Laporan Keuangan',owner_production_report:'Laporan Produksi',owner_ppl_report:'Laporan PPL',supplier_sapronak:'Master Supplier Sapronak',supplier_daging:'Master Supplier Daging',logistik_kontrak:'Buat Siklus',logistik_pembelian_mandiri:'Pembelian Mandiri',logistik_pengiriman:'Pengiriman',logistik_kiriman_luar:'Sapronak Luar',logistik_retur:'Retur RHPP',logistik_retur_sebagian:'Retur Bermasalah',logistik_retur_luar:'Retur Tambah Sapronak',logistik_laporan:'Laporan Logistik',marketing_pelanggan:'Master Pelanggan',marketing_panen_kontrak:'Panen Mitra',marketing_panen_mandiri:'Panen Mandiri',marketing_tambah_daging:'Tambah Daging',marketing_laporan:'Laporan Marketing',kandang:'Master Kandang',item:'Master Sapronak',supplier:'Master Supplier',kontrak:'Master Kontrak',harga_hidup:'Harga Ayam Hidup',bonus_kontrak:'Bonus Kontrak',standar_performa:'Master Performa',chick_in:'Chick-In / DOC Masuk',sapronak:'Sapronak',recording:'Recording PPL',kunjungan:'Kunjungan PPL',panen:'Panen',ekspedisi:'Ekspedisi',estimasi:'Estimasi',liga_abk:'Liga ABK',rekap_produksi:'Rekap Produksi PPL',ppl_rhpp_view:'Lihat RHPP',rhpp:'CEK RHPP',rhpp_history:'Cetak RHPP',finance_rhpp_real:'RHPP Real',bop:'BOP Produksi',laba_rugi_kandang:'Laba/Rugi Kandang',laba_rugi_global:'Laba/Rugi Global',perawatan_kandang:'Perawatan Kandang',hutang_supplier:'Hutang Supplier',bop_umum:'BOP Umum',expedisi_master:'Master Data Expedisi',expedisi_usaha:'Expedisi',expedisi_pembayaran:'Penerimaan Expedisi',bop_expedisi:'BOP Expedisi',perawatan_expedisi:'Perawatan Expedisi',laporan_expedisi:'Laporan Expedisi',arus_kas:'Arus Kas',laporan_keuangan:'Laporan Keuangan',perusahaan:'Data Perusahaan',karyawan:'Master Karyawan',kasbon:'Kasbon',cicilan:'Bayar Kasbon',laporan:'Laporan',pengguna:'Master Pengguna',arsip_data:'Arsip Data',profil:'Profil'};
 const msg=(s,ok=false)=>{let e=document.getElementById('message');if(e){e.textContent=s;e.className=ok?'success':'error'}};
+const transactionDeleteImpact=(table)=>{
+  const impacts={
+    logistics_shipments:'pengiriman dan rincian stok/logistik yang terkait dapat berubah',
+    logistics_external_shipments:'pengiriman sapronak luar dan rincian terkait dapat berubah',
+    logistics_returns:'retur Mitra dan stok/rekap terkait dapat berubah',
+    logistics_external_returns:'retur sapronak luar dan stok/rekap terkait dapat berubah',
+    logistics_mandiri_purchases:'pembelian Mandiri, hutang supplier, alokasi kandang, dan laporan terkait dapat berubah',
+    marketing_contract_harvests:'panen, penjualan/piutang, RHPP/laba-rugi, dan laporan terkait dapat berubah',
+    marketing_external_meat_purchases:'transaksi tambah daging dan laporan terkait dapat berubah',
+    chick_ins:'populasi awal, recording, estimasi, dan laporan produksi dapat berubah',
+    recordings:'rekaman produksi, FCR/IP, estimasi, dan laporan produksi dapat berubah',
+    visits:'riwayat kunjungan PPL akan berubah',
+    production_estimates:'estimasi produksi dan rincian ukuran terkait dapat berubah',
+    bop:'BOP Produksi, Arus Kas, dan laba/rugi siklus dapat berubah',
+    barn_maintenance_costs:'Perawatan Kandang, Arus Kas, dan laporan perusahaan dapat berubah',
+    bop_outside:'BOP Umum, Arus Kas, dan laporan global dapat berubah',
+    finance_expedition_trips:'trip, invoice/BOP/riwayat Expedisi yang terkait dapat berubah',
+    finance_expedition_invoices:'invoice, piutang, penerimaan, dan laporan Expedisi dapat berubah',
+    finance_expedition_payments:'penerimaan kas, piutang, dan laporan Expedisi dapat berubah',
+    finance_expedition_bop:'BOP Expedisi dan laba/rugi Expedisi dapat berubah',
+    finance_expedition_maintenance:'perawatan dan laba/rugi Expedisi dapat berubah',
+    advances:'kasbon, sisa kasbon, Arus Kas, dan pembayaran terkait dapat berubah',
+    advance_payments:'sisa kasbon dan Arus Kas dapat berubah',
+    finance_mandiri_sales_receipts:'penerimaan Mandiri, sisa piutang, dan Arus Kas dapat berubah',
+    finance_mandiri_supplier_payments:'pembayaran supplier Mandiri, sisa hutang, dan Arus Kas dapat berubah',
+    rhpp_real:'status final Mitra, Arus Kas, dan laba/rugi dapat berubah',
+    abk_cycle_salaries:'gaji ABK, potongan kasbon, dan Arus Kas dapat berubah'
+  };
+  return impacts[table]||'laporan dan saldo yang memakai transaksi ini dapat berubah';
+};
+const adminDeleteTxnButton=(table,id,label='Hapus')=>profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-admin-delete-table="'+esc(table)+'" data-admin-delete-id="'+esc(id)+'">'+esc(label)+'</button>':'';
+const bindAdminTransactionDeletes=(rerender)=>{
+  root.querySelectorAll('[data-admin-delete-table]').forEach(btn=>btn.onclick=async()=>{
+    if(profile?.role!=='ADMIN')return msg('Hanya ADMIN yang boleh menghapus transaksi.');
+    const table=btn.dataset.adminDeleteTable||'',id=btn.dataset.adminDeleteId||'';
+    const impact=transactionDeleteImpact(table);
+    const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nJika transaksi ini dihapus, '+impact+'.\n\nPenghapusan tidak boleh dilakukan hanya untuk merapikan tampilan. Pastikan data memang salah dan tidak lagi diperlukan.\n\nLanjutkan hapus?');
+    if(!ok)return;
+    const {error}=await db.rpc('admin_delete_transaction_v1',{p_table:table,p_id:String(id)});
+    if(error)return msg(error.message);
+    if(typeof rerender==='function')await rerender();
+    msg('Transaksi berhasil dihapus oleh ADMIN. Laporan terkait akan mengikuti data terbaru.',true);
+  });
+};
 async function start(){
   login();
   try{
