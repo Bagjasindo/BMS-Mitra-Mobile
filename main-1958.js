@@ -6445,8 +6445,10 @@ async function financeMandiriSupplierPaymentPage(){
     return {...p,total,paid,balance,status:balance<=0.005?'LUNAS':paid>0?'SEBAGIAN':'BELUM BAYAR'};
   });
 
-  window.__financeMandiriSupplierPaymentState=window.__financeMandiriSupplierPaymentState||{selected:'',status:''};
+  window.__financeMandiriSupplierPaymentState=window.__financeMandiriSupplierPaymentState||{selected:'',status:'',editPaymentId:''};
   const st=window.__financeMandiriSupplierPaymentState;
+  const editPayment=payments.find(x=>x.id===st.editPaymentId)||null;
+  if(editPayment)st.selected=editPayment.purchase_id||st.selected;
   if(st.selected&&!rows.some(x=>x.id===st.selected))st.selected='';
   const shown=rows.filter(x=>!st.status||x.status===st.status);
   const selected=rows.find(x=>x.id===st.selected);
@@ -6464,17 +6466,17 @@ async function financeMandiriSupplierPaymentPage(){
     '<label>Status<select id="mandiriSupplierPaymentStatus"><option value="">Semua</option><option value="BELUM BAYAR" '+(st.status==='BELUM BAYAR'?'selected':'')+'>Belum Bayar</option><option value="SEBAGIAN" '+(st.status==='SEBAGIAN'?'selected':'')+'>Sebagian</option><option value="LUNAS" '+(st.status==='LUNAS'?'selected':'')+'>Lunas</option></select></label>'+
     '</section>';
 
-  if(selected&&selected.balance>0.005){
+  if(selected&&(selected.balance>0.005||editPayment)){
     const s=suppliers.find(x=>x.id===selected.supplier_id),i=items.find(x=>x.id===selected.item_id);
-    html+='<section class="panel"><h3>Konfirmasi Pembayaran Supplier</h3>'+
+    html+='<section class="panel"><h3>'+(editPayment?'Edit Pembayaran Supplier':'Konfirmasi Pembayaran Supplier')+'</h3>'+
       '<p class="muted">'+esc(s?.name||'Supplier')+' · '+esc(i?.name||'-')+' · Sisa hutang Rp '+prodFmt(selected.balance,0)+'</p>'+
       '<form id="mandiriSupplierPaymentForm" class="form-vertical">'+
-        '<label>Tanggal Bayar<input type="date" name="paid_on" value="'+prodToday()+'" required></label>'+
-        '<label>Nominal Bayar<input type="text" name="amount" inputmode="decimal" data-number="1" value="'+fmtNumber(selected.balance)+'" required></label>'+
-        '<label>Metode<select name="method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option><option value="LAINNYA">Lainnya</option></select></label>'+
-        '<label>Referensi / No Transfer<input name="reference"></label>'+
-        '<label>Catatan<textarea name="notes"></textarea></label>'+
-        '<div class="report-actions"><button type="submit">Simpan Pembayaran</button><button type="button" id="cancelMandiriSupplierPayment">Batal</button></div>'+
+        '<label>Tanggal Bayar<input type="date" name="paid_on" value="'+esc(editPayment?.paid_on||prodToday())+'" required></label>'+
+        '<label>Nominal Bayar<input type="text" name="amount" inputmode="decimal" data-number="1" value="'+fmtNumber(editPayment?editPayment.amount:selected.balance)+'" required></label>'+
+        '<label>Metode<select name="method" required><option value="TRANSFER" '+((editPayment?.method||'TRANSFER')==='TRANSFER'?'selected':'')+'>Transfer</option><option value="TUNAI" '+(editPayment?.method==='TUNAI'?'selected':'')+'>Tunai</option><option value="LAINNYA" '+(editPayment?.method==='LAINNYA'?'selected':'')+'>Lainnya</option></select></label>'+
+        '<label>Referensi / No Transfer<input name="reference" value="'+esc(editPayment?.reference||'')+'"></label>'+
+        '<label>Catatan<textarea name="notes">'+esc(editPayment?.notes||'')+'</textarea></label>'+
+        '<div class="report-actions"><button type="submit">'+(editPayment?'Simpan Perubahan':'Simpan Pembayaran')+'</button><button type="button" id="cancelMandiriSupplierPayment">Batal</button>'+(editPayment?adminDeleteTxnButton('finance_mandiri_supplier_payments',editPayment.id):'')+'</div>'+
       '</form></section>';
   }
 
@@ -6493,8 +6495,8 @@ async function financeMandiriSupplierPaymentPage(){
 
   const history=selected?payments.filter(p=>p.purchase_id===selected.id):payments;
   if(history.length){
-    html+='<section class="panel"><h3>Riwayat Pembayaran'+(selected?' Hutang Dipilih':'')+'</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Catatan</th></tr></thead><tbody>'+
-      history.map(p=>{const pur=purchases.find(x=>x.id===p.purchase_id),s=suppliers.find(x=>x.id===pur?.supplier_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(s?.name||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method)+'</td><td>'+esc(p.reference||'-')+'</td><td>'+esc(p.notes||'-')+'</td></tr>';}).join('')+
+    html+='<section class="panel"><h3>Riwayat Pembayaran'+(selected?' Hutang Dipilih':'')+'</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
+      history.map(p=>{const pur=purchases.find(x=>x.id===p.purchase_id),s=suppliers.find(x=>x.id===pur?.supplier_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(s?.name||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method)+'</td><td>'+esc(p.reference||'-')+'</td><td>'+esc(p.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_supplier_payments',p.id)+'</div></td></tr>';}).join('')+
       '</tbody></table></div></section>';
   }
 
@@ -6504,28 +6506,37 @@ async function financeMandiriSupplierPaymentPage(){
   const status=document.getElementById('mandiriSupplierPaymentStatus');
   if(status)status.onchange=async()=>{st.status=status.value||'';st.selected='';await financeMandiriSupplierPaymentPage();};
   root.querySelectorAll('[data-pay-mandiri-supplier]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.payMandiriSupplier;await financeMandiriSupplierPaymentPage();const paymentForm=document.getElementById('mandiriSupplierPaymentForm');if(paymentForm)paymentForm.scrollIntoView({behavior:'smooth',block:'start'});});
+  root.querySelectorAll('[data-edit-mandiri-supplier-payment]').forEach(btn=>btn.onclick=async()=>{st.editPaymentId=btn.dataset.editMandiriSupplierPayment||'';const p=payments.find(x=>x.id===st.editPaymentId);if(p)st.selected=p.purchase_id||'';await financeMandiriSupplierPaymentPage();document.getElementById('mandiriSupplierPaymentForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
   const cancel=document.getElementById('cancelMandiriSupplierPayment');
-  if(cancel)cancel.onclick=async()=>{st.selected='';await financeMandiriSupplierPaymentPage();};
+  if(cancel)cancel.onclick=async()=>{st.selected='';st.editPaymentId='';await financeMandiriSupplierPaymentPage();};
+  bindAdminTransactionDeletes(()=>{st.editPaymentId='';return financeMandiriSupplierPaymentPage();});
   const form=document.getElementById('mandiriSupplierPaymentForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
     const current=rows.find(x=>x.id===st.selected);if(!current)return msg('Hutang supplier Mandiri tidak ditemukan.');
     const fd=new FormData(form),amount=normalizeInputID(fd.get('amount'));
     if(!(amount>0))return msg('Nominal pembayaran harus lebih dari nol.');
-    if(amount-current.balance>0.005)return msg('Nominal melebihi sisa hutang.');
+    const maxAmount=current.balance+prodNum(editPayment?.amount);
+    if(amount-maxAmount>0.005)return msg('Nominal melebihi batas pembayaran Rp '+prodFmt(maxAmount,0)+'.');
     if(!await appConfirm('Konfirmasi pembayaran supplier Rp '+prodFmt(amount,0)+'?'))return;
-    const {error}=await db.rpc('finance_pay_mandiri_supplier_atomic',{
-      p_purchase_id:current.id,
-      p_paid_on:fd.get('paid_on'),
-      p_amount:amount,
-      p_method:fd.get('method'),
-      p_reference:String(fd.get('reference')||'').trim()||null,
-      p_notes:String(fd.get('notes')||'').trim()||null
-    });
+    let result;
+    if(editPayment){
+      result=await db.from('finance_mandiri_supplier_payments').update({
+        paid_on:fd.get('paid_on'),amount,method:fd.get('method'),
+        reference:String(fd.get('reference')||'').trim()||null,
+        notes:String(fd.get('notes')||'').trim()||null
+      }).eq('id',editPayment.id);
+    }else{
+      result=await db.rpc('finance_pay_mandiri_supplier_atomic',{
+        p_purchase_id:current.id,p_paid_on:fd.get('paid_on'),p_amount:amount,p_method:fd.get('method'),
+        p_reference:String(fd.get('reference')||'').trim()||null,p_notes:String(fd.get('notes')||'').trim()||null
+      });
+    }
+    const {error}=result;
     if(error)return msg(error.message);
-    st.selected='';
+    st.selected='';st.editPaymentId='';
     await financeMandiriSupplierPaymentPage();
-    msg('Pembayaran supplier Mandiri tersimpan, hutang berkurang, dan Arus Kas diperbarui.',true);
+    msg(editPayment?'Pembayaran supplier Mandiri berhasil diperbarui.':'Pembayaran supplier Mandiri tersimpan, hutang berkurang, dan Arus Kas diperbarui.',true);
   };
 }
 async function financeMandiriReportPage(){
