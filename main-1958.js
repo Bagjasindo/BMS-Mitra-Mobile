@@ -3173,7 +3173,7 @@ async function recordingPplPage(){
       '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih Kandang</option>'+d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'">'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
       '<div id="prodRecAge" class="rhpp-summary-card" style="margin-top:10px"><span>Umur Saat Ini</span><strong>1 Hari</strong></div>'+
     '</div>'+
-    '<div class="panel" style="padding:14px"><h4>2. Isi Data Hari Ini</h4>'+
+    '<div class="panel" style="padding:14px"><h4 id="prodRecDayTitle">2. Isi Data Hari ke-1</h4>'+
       '<label>Pakan yang Dipakai<select name="feed_item" required><option value="">Pilih kandang dulu</option></select></label>'+
       '<p id="prodRecStock" class="muted">Sisa stok: -</p>'+
       '<label>Jumlah Pakan Dipakai (Zak/Satuan)<input type="number" name="feed_units" min="0" step="0.01" required placeholder="Contoh: 10"></label>'+
@@ -3291,6 +3291,8 @@ async function recordingPplPage(){
     const actualAge=f.assignment.value?realAgeFor(f.assignment.value):1;
     currentDay=editingId?editingDay:(f.assignment.value?targetDayFor(f.assignment.value):1);
     const ageBox=document.getElementById('prodRecAge');
+    const dayTitle=document.getElementById('prodRecDayTitle');
+    if(dayTitle)dayTitle.textContent='2. Isi Data Hari ke-'+currentDay;
     if(ageBox){
       if(editingId){
         ageBox.innerHTML='<span>Hari Recording</span><strong>'+currentDay+' Hari · Mode Edit</strong>';
