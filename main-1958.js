@@ -6125,27 +6125,29 @@ async function financeAdvancePaymentPage(){
   const open=advances.map(a=>({...a,balance:Math.max(0,prodNum(a.amount)-paid(a.id))})).filter(a=>a.balance>0.0001);
   const emp=id=>{const e=employees.find(x=>x.id===id);return e?e.code+' · '+e.name:'-'};
 
-  window.__financeAdvancePaymentState=window.__financeAdvancePaymentState||{employee:''};
+  window.__financeAdvancePaymentState=window.__financeAdvancePaymentState||{employee:'',editId:''};
   const st=window.__financeAdvancePaymentState;
+  const editPayment=payments.find(x=>x.id===st.editId)||null;
+  if(editPayment){const ea=advances.find(x=>x.id===editPayment.advance_id);if(ea)st.employee=ea.employee_id;}
   const employeeOpen=st.employee?open.filter(a=>a.employee_id===st.employee):[];
 
-  let html='<section class="panel"><h3>Bayar Kasbon</h3><p class="muted">Pilih karyawan/ABK, pilih kasbon yang masih memiliki sisa, lalu catat pembayaran.</p>'+
+  let html='<section class="panel"><h3>'+(editPayment?'Edit Bayar Kasbon':'Bayar Kasbon')+'</h3><p class="muted">Pilih karyawan/ABK, pilih kasbon yang masih memiliki sisa, lalu catat pembayaran.</p>'+
     '<form id="advancePaymentForm" class="form-vertical">'+
       '<label>Karyawan / ABK<select id="advancePaymentEmployee" required><option value="">Pilih</option>'+
         employees.map(e=>'<option value="'+esc(e.id)+'" '+(st.employee===e.id?'selected':'')+'>'+esc(e.code+' · '+e.name+' · '+(e.kind==='ABK'?'ABK':'KARYAWAN'))+'</option>').join('')+
       '</select></label>'+
-      '<label>Kasbon Aktif<select name="advance_id" required '+(!st.employee?'disabled':'')+'><option value="">Pilih Kasbon</option>'+employeeOpen.map(a=>'<option value="'+esc(a.id)+'">'+esc(prodDateId(a.advanced_on)+' · '+(a.description||'Kasbon')+' · Sisa Rp '+prodFmt(a.balance,0))+'</option>').join('')+'</select></label>'+
+      '<label>Kasbon Aktif<select name="advance_id" required '+(!st.employee?'disabled':'')+'><option value="">Pilih Kasbon</option>'+advances.filter(a=>a.employee_id===st.employee&&(a.id===editPayment?.advance_id||open.some(o=>o.id===a.id))).map(a=>'<option value="'+esc(a.id)+'" '+(editPayment?.advance_id===a.id?'selected':'')+'>'+esc(prodDateId(a.advanced_on)+' · '+(a.description||'Kasbon'))+'</option>').join('')+'</select></label>'+
       (st.employee&&!employeeOpen.length?'<p class="muted">Tidak ada kasbon yang masih memiliki sisa.</p>':'')+
-      '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
-      '<label>Nominal Bayar<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Metode<select name="method" required><option value="TUNAI">Tunai</option><option value="TRANSFER">Transfer</option></select></label>'+
-      '<label>Catatan<input name="notes"></label>'+
-      '<button type="submit" '+(!employeeOpen.length?'disabled':'')+'>Simpan Pembayaran</button>'+
+      '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+esc(editPayment?.paid_on||today)+'" required></label>'+
+      '<label>Nominal Bayar<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editPayment?fmtNumber(editPayment.amount):'')+'" required></label>'+
+      '<label>Metode<select name="method" required><option value="TUNAI" '+(editPayment?.method==='TUNAI'?'selected':'')+'>Tunai</option><option value="TRANSFER" '+(editPayment?.method==='TRANSFER'?'selected':'')+'>Transfer</option></select></label>'+
+      '<label>Catatan<input name="notes" value="'+esc(editPayment?.notes||'')+'"></label>'+
+      '<div class="report-actions"><button type="submit" '+(!editPayment&&!employeeOpen.length?'disabled':'')+'>'+(editPayment?'Simpan Perubahan':'Simpan Pembayaran')+'</button>'+(editPayment?'<button type="button" id="advancePaymentEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="advancePaymentPrintArea">'+
       '<div class="rhpp-section-head"><div><h3>Rincian Bayar Kasbon</h3></div><div class="report-actions"><button type="button" id="advancePaymentPrint">Cetak / PDF</button></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal Bayar</th><th>Karyawan / ABK</th><th>Tanggal Kasbon</th><th>Keterangan Kasbon</th><th>Metode</th><th>Nominal Bayar</th><th>Sisa Setelah Bayar</th></tr></thead><tbody>'+
-      payments.map(p=>{const a=advances.find(x=>x.id===p.advance_id),allFor=payments.filter(x=>x.advance_id===p.advance_id).filter(x=>String(x.paid_on||'')<=String(p.paid_on||'')).reduce((n,x)=>n+prodNum(x.amount),0),bal=Math.max(0,prodNum(a?.amount)-allFor);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(emp(a?.employee_id))+'</td><td>'+prodDateId(a?.advanced_on)+'</td><td>'+esc(a?.description||'-')+'</td><td>'+esc(String(p.method||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td></tr>';}).join('')+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal Bayar</th><th>Karyawan / ABK</th><th>Tanggal Kasbon</th><th>Keterangan Kasbon</th><th>Metode</th><th>Nominal Bayar</th><th>Sisa Setelah Bayar</th><th>Aksi</th></tr></thead><tbody>'+
+      payments.map(p=>{const a=advances.find(x=>x.id===p.advance_id),allFor=payments.filter(x=>x.advance_id===p.advance_id).filter(x=>String(x.paid_on||'')<=String(p.paid_on||'')).reduce((n,x)=>n+prodNum(x.amount),0),bal=Math.max(0,prodNum(a?.amount)-allFor);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(emp(a?.employee_id))+'</td><td>'+prodDateId(a?.advanced_on)+'</td><td>'+esc(a?.description||'-')+'</td><td>'+esc(String(p.method||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td><div class="inline-actions"><button type="button" data-edit-advance-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('advance_payments',p.id)+'</div></td></tr>';}).join('')+
       '</tbody></table></div>'+(payments.length?'':'<p class="muted">Belum ada pembayaran kasbon.</p>')+
     '</section>';
   layout(html);bindNumberInputs();if(err)msg(err.message);
@@ -6158,24 +6160,23 @@ async function financeAdvancePaymentPage(){
     await financeAdvancePaymentPage();
   };
 
+  root.querySelectorAll('[data-edit-advance-payment]').forEach(btn=>btn.onclick=async()=>{st.editId=btn.dataset.editAdvancePayment||'';await financeAdvancePaymentPage();document.getElementById('advancePaymentForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const cancelEdit=document.getElementById('advancePaymentEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{st.editId='';await financeAdvancePaymentPage();};
+  bindAdminTransactionDeletes(()=>{st.editId='';return financeAdvancePaymentPage();});
   const form=document.getElementById('advancePaymentForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
-    const fd=new FormData(form),id=String(fd.get('advance_id')||''),a=employeeOpen.find(x=>x.id===id),amount=normalizeInputID(fd.get('amount'));
+    const fd=new FormData(form),id=String(fd.get('advance_id')||''),a=advances.find(x=>x.id===id),amount=normalizeInputID(fd.get('amount'));
     if(!st.employee)return msg('Pilih karyawan / ABK.');
     if(!a)return msg('Pilih kasbon aktif.');
-    if(amount===null||amount<=0||amount>a.balance)return msg('Nominal bayar tidak valid atau melebihi sisa kasbon.');
-    const {error}=await db.from('advance_payments').insert({
-      advance_id:id,
-      paid_on:fd.get('paid_on'),
-      amount,
-      method:fd.get('method'),
-      reference:null,
-      notes:fd.get('notes')||null
-    });
+    const otherPaid=payments.filter(x=>x.advance_id===id&&x.id!==editPayment?.id).reduce((n,x)=>n+prodNum(x.amount),0),maxPay=Math.max(0,prodNum(a.amount)-otherPaid);
+    if(amount===null||amount<=0||amount>maxPay)return msg('Nominal bayar tidak valid atau melebihi sisa kasbon Rp '+prodFmt(maxPay,0)+'.');
+    const payload={advance_id:id,paid_on:fd.get('paid_on'),amount,method:fd.get('method'),reference:null,notes:fd.get('notes')||null};
+    const {error}=editPayment?await db.from('advance_payments').update(payload).eq('id',editPayment.id):await db.from('advance_payments').insert(payload);
     if(error)return msg(error.message);
+    st.editId='';
     await financeAdvancePaymentPage();
-    msg('Pembayaran kasbon berhasil disimpan.',true);
+    msg(editPayment?'Pembayaran kasbon berhasil diperbarui.':'Pembayaran kasbon berhasil disimpan.',true);
   };
 }
 
