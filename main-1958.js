@@ -3958,7 +3958,7 @@ async function productionRecapPage(){
   const [cpr,pr,fr,...feedResponses]=await Promise.all([
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('production_ppl_directory'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
   const company=cpr.data||{};
@@ -4027,7 +4027,7 @@ async function productionRecapPage(){
     if(final){
       const chickIn=prodNum(final.chick_in_birds);
       const chickOut=prodNum(final.total_harvest_birds);
-      const mortBirds=Math.max(0,chickIn-chickOut);
+      const mortBirds=Math.max(0,prodNum(final.depletion_birds));
       const mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
       const kg=prodNum(final.total_harvest_kg);
       const avg=prodNum(final.avg_bw_kg);
@@ -4071,7 +4071,7 @@ async function productionRecapPage(){
   const totalAvg=totals.chickOut?totals.kg/totals.chickOut:0;
   const totalMortPct=totals.chickIn?Math.min(100,totals.mortBirds/totals.chickIn*100):0;
   const totalFcr=totals.kg?totals.feed/totals.kg:0;
-  const totalSurvival=totals.chickIn?Math.min(100,totals.chickOut/totals.chickIn*100):0;
+  const totalSurvival=totals.chickIn?Math.min(100,(totals.chickIn-totals.mortBirds)/totals.chickIn*100):0;
   const totalIp=totalAge&&totalFcr&&totalAvg?(totalSurvival*totalAvg*100)/(totalAge*totalFcr):0;
 
   const scopeLabel=profile?.role==='PPL'?'Kandang yang menjadi penugasan PPL ini':'Seluruh kandang / PPL';
@@ -4084,7 +4084,7 @@ async function productionRecapPage(){
   ].filter(Boolean).join(' · ');
 
   let html='<section class="panel"><div class="rhpp-section-head"><div><h3>Rekap Produksi PPL</h3>'+
-    '<p class="muted">'+scopeLabel+' · filter tanggal berdasarkan Chick-In.</p></div></div>'+
+    '<p class="muted">'+scopeLabel+' · filter tanggal berdasarkan Chick-In. CLOSED memakai deplesi final.</p></div></div>'+
     '<form id="productionRecapFilter" class="form-vertical compact-form">'+
       '<label>Pilih Kandang<select name="barn"><option value="">Semua Kandang</option>'+
         filterBarns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
@@ -8341,7 +8341,7 @@ async function reports(){
   const d=await productionBase();
   const [pr,fr,...feedResponses]=await Promise.all([
     db.rpc('production_ppl_directory'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
   const pplRows=pr.data||[],finals=fr.data||[];
@@ -8380,7 +8380,7 @@ async function reports(){
     if(final){
       chickIn=prodNum(final.chick_in_birds);
       chickOut=prodNum(final.total_harvest_birds);
-      mortBirds=Math.max(0,chickIn-chickOut);
+      mortBirds=Math.max(0,prodNum(final.depletion_birds));
       mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
       kg=prodNum(final.total_harvest_kg);
       avg=prodNum(final.avg_bw_kg);
@@ -8420,7 +8420,7 @@ async function reports(){
   const totalAvg=totals.chickOut?totals.kg/totals.chickOut:0;
   const totalMortPct=totals.chickIn?Math.min(100,totals.mortBirds/totals.chickIn*100):0;
   const totalFcr=totals.kg?totals.feed/totals.kg:0;
-  const totalSurvival=totals.chickIn?Math.min(100,totals.chickOut/totals.chickIn*100):0;
+  const totalSurvival=totals.chickIn?Math.min(100,(totals.chickIn-totals.mortBirds)/totals.chickIn*100):0;
   const totalIp=totalAge&&totalFcr&&totalAvg?(totalSurvival*totalAvg*100)/(totalAge*totalFcr):0;
 
   let html='<section class="panel"><h3>Filter Laporan Produksi</h3><form id="productionReportFilter" class="form-vertical">'+
@@ -8431,7 +8431,7 @@ async function reports(){
     '<button type="submit">Tampilkan</button></form></section>';
 
   if(st.shown){
-    html+='<section class="panel" id="productionReportPrintArea"><div class="rhpp-section-head"><div><h3>Laporan Produksi</h3><p class="muted">Khusus data produksi. Tidak memuat RHPP, BOP, Kasbon, atau transaksi Keuangan.</p></div><div class="report-actions"><button type="button" id="productionReportPrint">Cetak / PDF</button></div></div>'+
+    html+='<section class="panel" id="productionReportPrintArea"><div class="rhpp-section-head"><div><h3>Laporan Produksi</h3><p class="muted">Khusus data produksi. CLOSED memakai deplesi final; tidak memuat RHPP, BOP, Kasbon, atau transaksi Keuangan.</p></div><div class="report-actions"><button type="button" id="productionReportPrint">Cetak / PDF</button></div></div>'+
       '<div class="tablewrap"><table style="min-width:1500px"><thead><tr>'+
         '<th>NO</th><th>Kandang / Siklus</th><th>Jenis</th><th>PPL / PIC</th><th>Performance</th><th>Status</th><th>Umur</th><th>Chick-In</th><th>Chick-Out</th><th>Deplesi Ekor</th><th>Deplesi %</th><th>Tonase Panen (Kg)</th><th>BW Rata2 (Kg)</th><th>Pakan (Kg)</th><th>FCR</th><th>IP</th>'+
       '</tr></thead><tbody>'+
