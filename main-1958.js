@@ -5016,8 +5016,9 @@ async function financeMaintenancePage(){
   const barns=br.data||[],rows=mr.data||[];
   const err=[br,mr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  window.__financeMaintenanceState=window.__financeMaintenanceState||{filterBarn:'',from:'',to:'',shown:false};
+  window.__financeMaintenanceState=window.__financeMaintenanceState||{filterBarn:'',from:'',to:'',shown:false,editId:''};
   const st=window.__financeMaintenanceState;
+  const editRow=rows.find(x=>x.id===st.editId)||null;
   const barnName=id=>{const b=barns.find(x=>x.id===id);return b?shortBarnLabel(b):'-';};
   const visible=st.shown?rows.filter(x=>
     (!st.filterBarn||x.barn_id===st.filterBarn)&&
@@ -5026,15 +5027,15 @@ async function financeMaintenancePage(){
   ):[];
   const totalVisible=visible.reduce((n,x)=>n+prodNum(x.amount),0);
 
-  let html='<section class="panel"><h3>Perawatan Kandang</h3>'+
+  let html='<section class="panel"><h3>'+(editRow?'Edit Perawatan Kandang':'Perawatan Kandang')+'</h3>'+
     '<p class="muted"><strong>Tidak terkait siklus produksi.</strong> Perawatan melekat ke kandang fisik dan dapat dicatat kapan saja: sebelum chick-in, saat produksi, setelah panen, atau saat kandang kosong.</p>'+
     '<form id="maintenanceForm" class="form-vertical">'+
-      '<label>Kandang<select name="barn_id" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Tanggal<input name="incurred_on" type="date" value="'+today+'" required></label>'+
-      '<label>Jenis<select name="category" required><option value="">Pilih Jenis</option><option value="PERAWATAN_JANGKA_PANJANG">Perawatan Jangka Panjang</option><option value="RENOVASI">Renovasi</option><option value="PENGGANTIAN_KOMPONEN">Penggantian Komponen</option><option value="PERALATAN">Peralatan Kandang</option><option value="LAINNYA">Lainnya</option></select></label>'+
-      '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Catatan<textarea name="notes" placeholder="Contoh: ganti dinamo blower"></textarea></label>'+
-      '<button type="submit">Simpan Perawatan</button>'+
+      '<label>Kandang<select name="barn_id" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(editRow?.barn_id===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(editRow?.incurred_on||today)+'" required></label>'+
+      '<label>Jenis<select name="category" required><option value="">Pilih Jenis</option><option value="PERAWATAN_JANGKA_PANJANG" '+(editRow?.category==='PERAWATAN_JANGKA_PANJANG'?'selected':'')+'>Perawatan Jangka Panjang</option><option value="RENOVASI" '+(editRow?.category==='RENOVASI'?'selected':'')+'>Renovasi</option><option value="PENGGANTIAN_KOMPONEN" '+(editRow?.category==='PENGGANTIAN_KOMPONEN'?'selected':'')+'>Penggantian Komponen</option><option value="PERALATAN" '+(editRow?.category==='PERALATAN'?'selected':'')+'>Peralatan Kandang</option><option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Lainnya</option></select></label>'+
+      '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
+      '<label>Catatan<textarea name="notes" placeholder="Contoh: ganti dinamo blower">'+esc(editRow?.notes||'')+'</textarea></label>'+
+      '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan Perawatan')+'</button>'+(editRow?'<button type="button" id="maintenanceEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="maintenancePrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Perawatan Kandang</h3></div><div class="report-actions"><button type="button" id="maintenancePrint">Cetak / PDF</button></div></div>'+
       '<form id="maintenanceFilter" class="form-vertical">'+
@@ -5045,9 +5046,9 @@ async function financeMaintenancePage(){
       '</form>'+
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total Perawatan</span><strong>Rp '+prodFmt(totalVisible,0)+'</strong></div>'+
-        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang</th><th>Jenis</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+
-          visible.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td></tr>').join('')+
-        '</tbody><tfoot><tr><th colspan="3">TOTAL</th><th>Rp '+prodFmt(totalVisible,0)+'</th><th></th></tr></tfoot></table></div>'+
+        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang</th><th>Jenis</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
+          visible.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-maintenance="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('barn_maintenance_costs',x.id)+'</div></td></tr>').join('')+
+        '</tbody><tfoot><tr><th colspan="3">TOTAL</th><th>Rp '+prodFmt(totalVisible,0)+'</th><th></th><th></th></tr></tfoot></table></div>'+
         (visible.length?'':'<p class="muted">Belum ada perawatan sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
@@ -5062,20 +5063,17 @@ async function financeMaintenancePage(){
     if(!barns.find(x=>x.id===barnId))return msg('Pilih kandang.');
     const amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<=0)return msg('Nominal perawatan harus lebih dari 0.');
-    const {error}=await db.from('barn_maintenance_costs').insert({
-      contract_assignment_id:null,
-      barn_id:barnId,
-      incurred_on:String(fd.get('incurred_on')||''),
-      category:String(fd.get('category')||''),
-      amount,
-      reference:null,
-      notes:String(fd.get('notes')||'')||null
-    });
+    const payload={contract_assignment_id:null,barn_id:barnId,incurred_on:String(fd.get('incurred_on')||''),category:String(fd.get('category')||''),amount,reference:null,notes:String(fd.get('notes')||'')||null};
+    const {error}=editRow?await db.from('barn_maintenance_costs').update(payload).eq('id',editRow.id):await db.from('barn_maintenance_costs').insert(payload);
     if(error)return msg(error.message);
+    st.editId='';
     await financeMaintenancePage();
-    msg('Perawatan kandang tersimpan tanpa siklus produksi.',true);
+    msg(editRow?'Perawatan kandang berhasil diperbarui.':'Perawatan kandang tersimpan tanpa siklus produksi.',true);
   };
 
+  root.querySelectorAll('[data-edit-maintenance]').forEach(btn=>btn.onclick=async()=>{st.editId=btn.dataset.editMaintenance||'';await financeMaintenancePage();document.getElementById('maintenanceForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const cancelEdit=document.getElementById('maintenanceEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{st.editId='';await financeMaintenancePage();};
+  bindAdminTransactionDeletes(()=>{st.editId='';return financeMaintenancePage();});
   const filter=document.getElementById('maintenanceFilter');
   if(filter)filter.onsubmit=async ev=>{
     ev.preventDefault();
@@ -5175,29 +5173,31 @@ async function financeSupplierPayablesPage(){
 async function financeBopGeneralPage(){
   const {data,error}=await db.from('bop_outside').select('*').order('incurred_on',{ascending:false}).order('created_at',{ascending:false});
   const rows=data||[];
+  window.__financeBopGeneralState=window.__financeBopGeneralState||{editId:''};
+  const editState=window.__financeBopGeneralState,editRow=rows.find(x=>x.id===editState.editId)||null;
   const txn=txnListState(rows,'bop_outside','incurred_on',5);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
-  let html='<section class="panel"><h3>Tambah BOP Umum</h3>'+
+  let html='<section class="panel"><h3>'+(editRow?'Edit BOP Umum':'Tambah BOP Umum')+'</h3>'+
     '<form id="bopOutsideForm" class="form-vertical">'+
-      '<label>Tanggal<input name="incurred_on" type="date" value="'+today+'" required></label>'+
+      '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(editRow?.incurred_on||today)+'" required></label>'+
       '<label>Kategori<select name="category" required>'+
         '<option value="">Pilih Kategori</option>'+
-        '<option value="TENAGA_KERJA">Tenaga Kerja</option>'+
-        '<option value="TRANSPORTASI">Transportasi</option>'+
-        '<option value="LISTRIK">Listrik</option>'+
-        '<option value="PERBAIKAN">Perbaikan</option>'+
-        '<option value="ADMINISTRASI">Administrasi</option>'+
-        '<option value="LAINNYA">Lainnya</option>'+
+        '<option value="TENAGA_KERJA" '+(editRow?.category==='TENAGA_KERJA'?'selected':'')+'>Tenaga Kerja</option>'+
+        '<option value="TRANSPORTASI" '+(editRow?.category==='TRANSPORTASI'?'selected':'')+'>Transportasi</option>'+
+        '<option value="LISTRIK" '+(editRow?.category==='LISTRIK'?'selected':'')+'>Listrik</option>'+
+        '<option value="PERBAIKAN" '+(editRow?.category==='PERBAIKAN'?'selected':'')+'>Perbaikan</option>'+
+        '<option value="ADMINISTRASI" '+(editRow?.category==='ADMINISTRASI'?'selected':'')+'>Administrasi</option>'+
+        '<option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Lainnya</option>'+
       '</select></label>'+
-      '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
+      '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
       ''+
-      '<label>Catatan<textarea name="notes" placeholder="Opsional"></textarea></label>'+
-      '<button type="submit">Simpan</button>'+
+      '<label>Catatan<textarea name="notes" placeholder="Opsional">'+esc(editRow?.notes||'')+'</textarea></label>'+
+      '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan')+'</button>'+(editRow?'<button type="button" id="bopOutsideEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="bopUmumPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Umum</h3></div><div class="report-actions"><button type="button" id="bopUmumPrint">Cetak / PDF</button></div></div>'+txn.controls+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th></tr></thead><tbody>'+
-      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+'</td></tr>').join('')+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
+      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
       '</tbody></table></div>'+
       (!txn.total?'<p>Belum ada data.</p>':'')+txn.pager+
     '</section>';
@@ -5207,6 +5207,9 @@ async function financeBopGeneralPage(){
   bindTxnList(txn,()=>financeBopGeneralPage());const bopUmumPrint=document.getElementById('bopUmumPrint');if(bopUmumPrint)bopUmumPrint.onclick=()=>printFinanceDocument('bopUmumPrintArea','Laporan BOP Umum');
   if(error)msg(error.message);
 
+  root.querySelectorAll('[data-edit-bop-outside]').forEach(btn=>btn.onclick=async()=>{editState.editId=btn.dataset.editBopOutside||'';await financeBopGeneralPage();document.getElementById('bopOutsideForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const cancelEdit=document.getElementById('bopOutsideEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{editState.editId='';await financeBopGeneralPage();};
+  bindAdminTransactionDeletes(()=>{editState.editId='';return financeBopGeneralPage();});
   const form=document.getElementById('bopOutsideForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
@@ -5220,10 +5223,11 @@ async function financeBopGeneralPage(){
       reference:null,
       notes:fd.get('notes')||null
     };
-    const {error}=await db.from('bop_outside').insert(payload);
+    const {error}=editRow?await db.from('bop_outside').update(payload).eq('id',editRow.id):await db.from('bop_outside').insert(payload);
     if(error)return msg(error.message);
+    editState.editId='';
     await financeBopGeneralPage();
-    msg('BOP Umum berhasil disimpan.',true);
+    msg(editRow?'BOP Umum berhasil diperbarui.':'BOP Umum berhasil disimpan.',true);
   };
 }
 
