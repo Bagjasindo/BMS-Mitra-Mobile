@@ -6056,17 +6056,19 @@ async function financeAdvancePage(){
   const totalKasbon=rows.reduce((n,x)=>n+prodNum(x.amount),0);
   const totalBayar=rows.reduce((n,x)=>n+paid(x.id),0);
   const totalSisa=Math.max(0,totalKasbon-totalBayar);
+  window.__financeAdvanceEdit=window.__financeAdvanceEdit||'';
+  const editId=window.__financeAdvanceEdit,editRow=rows.find(x=>x.id===editId)||null;
 
-  let html='<section class="panel"><h3>Kasbon Karyawan / ABK</h3>'+
+  let html='<section class="panel"><h3>'+(editRow?'Edit Kasbon Karyawan / ABK':'Kasbon Karyawan / ABK')+'</h3>'+
     '<p class="muted">Kasbon adalah urusan pribadi karyawan/ABK dengan perusahaan. Tidak terkait kandang, siklus, RHPP, atau produksi.</p>'+
     '<form id="financeAdvanceForm" class="form-vertical">'+
       '<label>Karyawan / ABK<select name="employee_id" required><option value="">Pilih</option>'+
-        employees.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name+' · '+(x.kind==='ABK'?'ABK':'KARYAWAN'))+'</option>').join('')+
+        employees.map(x=>'<option value="'+esc(x.id)+'" '+(editRow?.employee_id===x.id?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+(x.kind==='ABK'?'ABK':'KARYAWAN'))+'</option>').join('')+
       '</select></label>'+
-      '<label>Tanggal Kasbon<input name="advanced_on" type="date" value="'+today+'" required></label>'+
-      '<label>Nominal Kasbon<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Keterangan<input name="description" placeholder="Contoh: Kasbon pribadi"></label>'+
-      '<button type="submit">Simpan Kasbon</button>'+
+      '<label>Tanggal Kasbon<input name="advanced_on" type="date" value="'+esc(editRow?.advanced_on||today)+'" required></label>'+
+      '<label>Nominal Kasbon<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
+      '<label>Keterangan<input name="description" value="'+esc(editRow?.description||'')+'" placeholder="Contoh: Kasbon pribadi"></label>'+
+      '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan Kasbon')+'</button>'+(editRow?'<button type="button" id="advanceEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="advancePrintArea">'+
       '<div class="rhpp-section-head"><div><h3>Rincian Kasbon</h3><p class="muted">Kasbon · Sudah Bayar · Sisa Kasbon.</p></div><div class="report-actions"><button type="button" id="advancePrint">Cetak / PDF</button></div></div>'+
@@ -6075,8 +6077,8 @@ async function financeAdvancePage(){
         '<div class="rhpp-summary-card"><span>Total Bayar</span><strong>Rp '+prodFmt(totalBayar,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Sisa Kasbon</span><strong>Rp '+prodFmt(totalSisa,0)+'</strong></div>'+
       '</div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Karyawan / ABK</th><th>Keterangan</th><th>Kasbon</th><th>Sudah Bayar</th><th>Sisa Kasbon</th><th>Status</th></tr></thead><tbody>'+
-      rows.map(x=>{const p=paid(x.id),bal=Math.max(0,prodNum(x.amount)-p);return '<tr><td>'+prodDateId(x.advanced_on)+'</td><td>'+esc(emp(x.employee_id))+'</td><td>'+esc(x.description||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>Rp '+prodFmt(p,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td>'+(bal<=0.0001?'<strong>LUNAS</strong>':'BELUM LUNAS')+'</td></tr>';}).join('')+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Karyawan / ABK</th><th>Keterangan</th><th>Kasbon</th><th>Sudah Bayar</th><th>Sisa Kasbon</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+      rows.map(x=>{const p=paid(x.id),bal=Math.max(0,prodNum(x.amount)-p);return '<tr><td>'+prodDateId(x.advanced_on)+'</td><td>'+esc(emp(x.employee_id))+'</td><td>'+esc(x.description||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>Rp '+prodFmt(p,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td>'+(bal<=0.0001?'<strong>LUNAS</strong>':'BELUM LUNAS')+'</td><td><div class="inline-actions"><button type="button" data-edit-advance="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('advances',x.id)+'</div></td></tr>';}).join('')+
       '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada kasbon.</p>')+
     '</section>';
 
@@ -6084,6 +6086,9 @@ async function financeAdvancePage(){
   const advancePrint=document.getElementById('advancePrint');
   if(advancePrint)advancePrint.onclick=()=>printFinanceDocument('advancePrintArea','Rincian Kasbon Karyawan dan ABK');
 
+  root.querySelectorAll('[data-edit-advance]').forEach(btn=>btn.onclick=async()=>{window.__financeAdvanceEdit=btn.dataset.editAdvance||'';await financeAdvancePage();document.getElementById('financeAdvanceForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const cancelEdit=document.getElementById('advanceEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{window.__financeAdvanceEdit='';await financeAdvancePage();};
+  bindAdminTransactionDeletes(()=>{window.__financeAdvanceEdit='';return financeAdvancePage();});
   const form=document.getElementById('financeAdvanceForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
@@ -6091,17 +6096,19 @@ async function financeAdvancePage(){
     const employeeId=String(fd.get('employee_id')||'');
     if(!employees.find(x=>x.id===employeeId))return msg('Pilih karyawan / ABK.');
     if(amount===null||amount<=0)return msg('Nominal kasbon tidak valid.');
-    const {error}=await db.rpc('finance_save_employee_advance_atomic',{
-      p_employee_id:employeeId,
-      p_advanced_on:String(fd.get('advanced_on')||''),
-      p_amount:amount,
-      p_contract_assignment_id:null,
-      p_description:String(fd.get('description')||'')||null,
-      p_reference:null
-    });
+    const alreadyPaid=editRow?paid(editRow.id):0;
+    if(editRow&&amount<alreadyPaid)return msg('Nominal Kasbon tidak boleh lebih kecil dari total yang sudah dibayar Rp '+prodFmt(alreadyPaid,0)+'.');
+    let result;
+    if(editRow){
+      result=await db.from('advances').update({employee_id:employeeId,advanced_on:String(fd.get('advanced_on')||''),amount,description:String(fd.get('description')||'')||null,reference:null,contract_assignment_id:null,barn_id:null}).eq('id',editRow.id);
+    }else{
+      result=await db.rpc('finance_save_employee_advance_atomic',{p_employee_id:employeeId,p_advanced_on:String(fd.get('advanced_on')||''),p_amount:amount,p_contract_assignment_id:null,p_description:String(fd.get('description')||'')||null,p_reference:null});
+    }
+    const {error}=result;
     if(error)return msg(error.message);
+    window.__financeAdvanceEdit='';
     await financeAdvancePage();
-    msg('Kasbon berhasil disimpan.',true);
+    msg(editRow?'Kasbon berhasil diperbarui.':'Kasbon berhasil disimpan.',true);
   };
 }
 
