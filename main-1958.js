@@ -6272,8 +6272,10 @@ async function financeSalaryPage(){
   const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],links=lr.data||[],employees=er.data||[],advances=vr.data||[],payments=pr.data||[],salaries=sr.data||[];
   const err=[br,ar,cr,lr,er,vr,pr,sr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  window.__financeSalaryState=window.__financeSalaryState||{barn:'',assignment:'',abk:''};
+  window.__financeSalaryState=window.__financeSalaryState||{barn:'',assignment:'',abk:'',editId:''};
   const st=window.__financeSalaryState;
+  const editSalary=salaries.find(x=>x.id===st.editId)||null;
+  if(editSalary){const a=assignments.find(x=>x.id===editSalary.contract_assignment_id);if(a){st.barn=a.barn_id;st.assignment=a.id;st.abk=editSalary.abk_id;}}
   const cycles=st.barn?assignments.filter(a=>a.barn_id===st.barn):[];
   const abkIds=new Set(links.filter(x=>x.contract_assignment_id===st.assignment).map(x=>x.abk_id));
   const abks=employees.filter(e=>abkIds.has(e.id));
@@ -6283,20 +6285,20 @@ async function financeSalaryPage(){
   const emp=id=>{const e=employees.find(x=>x.id===id);return e?e.code+' · '+e.name:'-'};
   const ident=id=>{const a=assignments.find(x=>x.id===id);return a?assignmentIdentity(assignments,barns,contractsRows,a):'-';};
 
-  let html='<section class="panel"><h3>Gaji ABK per Siklus</h3><p class="muted">Gaji bruto menjadi beban TENAGA KERJA pada BOP siklus. Potongan kasbon mengurangi saldo kasbon; kas keluar saat gajian hanya gaji bersih.</p>'+
+  let html='<section class="panel"><h3>'+(editSalary?'Koreksi Gaji ABK per Siklus':'Gaji ABK per Siklus')+'</h3><p class="muted">Gaji bruto menjadi beban TENAGA KERJA pada BOP siklus. Potongan kasbon mengurangi saldo kasbon; kas keluar saat gajian hanya gaji bersih.</p>'+
     '<form id="salaryForm" class="form-vertical">'+
       '<label>Kandang<select id="salaryBarn" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Siklus<select id="salaryCycle" required '+(!st.barn?'disabled':'')+'><option value="">Pilih Siklus</option>'+cycles.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
       '<label>ABK<select id="salaryAbk" required '+(!st.assignment?'disabled':'')+'><option value="">Pilih ABK</option>'+abks.map(e=>'<option value="'+esc(e.id)+'" '+(st.abk===e.id?'selected':'')+'>'+esc(e.code+' · '+e.name)+'</option>').join('')+'</select></label>'+
       '<div class="rhpp-summary-card"><span>Saldo Kasbon Siklus</span><strong>Rp '+prodFmt(currentBalance,0)+'</strong></div>'+
-      '<label>Gaji Bruto Siklus<input name="gross_salary" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Potongan Kasbon<input name="advance_deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
-      '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
-      '<label>Catatan<input name="notes"></label>'+
-      '<button type="submit">Simpan Gaji Siklus</button>'+
+      '<label>Gaji Bruto Siklus<input name="gross_salary" type="text" inputmode="decimal" data-number="1" value="'+(editSalary?fmtNumber(editSalary.gross_salary):'')+'" required></label>'+
+      '<label>Potongan Kasbon<input name="advance_deduction" type="text" inputmode="decimal" data-number="1" value="'+(editSalary?fmtNumber(editSalary.advance_deduction):'0')+'"></label>'+
+      '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+esc(editSalary?.paid_on||today)+'" required></label>'+
+      '<label>Catatan<input name="notes" value="'+esc(editSalary?.notes||'')+'"></label>'+
+      '<div class="report-actions"><button type="submit">'+(editSalary?'Simpan Koreksi':'Simpan Gaji Siklus')+'</button>'+(editSalary?'<button type="button" id="salaryEditCancel">Batal Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" id="salaryAdminDelete" class="btn-danger">Hapus</button>':''):'')+'</div>'+
     '</form></section>'+
-    '<section class="panel" id="salaryPrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Gaji ABK</h3></div><div class="report-actions"><button type="button" id="salaryPrint">Cetak / PDF</button></div></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang / Siklus</th><th>ABK</th><th>Gaji Bruto</th><th>Potongan Kasbon</th><th>Gaji Dibayar</th></tr></thead><tbody>'+
-      salaries.map(s=>'<tr><td>'+prodDateId(s.paid_on)+'</td><td>'+esc(ident(s.contract_assignment_id))+'</td><td>'+esc(emp(s.abk_id))+'</td><td>Rp '+prodFmt(s.gross_salary,0)+'</td><td>Rp '+prodFmt(s.advance_deduction,0)+'</td><td><strong>Rp '+prodFmt(s.net_paid,0)+'</strong></td></tr>').join('')+
+    '<section class="panel" id="salaryPrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Gaji ABK</h3></div><div class="report-actions"><button type="button" id="salaryPrint">Cetak / PDF</button></div></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang / Siklus</th><th>ABK</th><th>Gaji Bruto</th><th>Potongan Kasbon</th><th>Gaji Dibayar</th><th>Aksi</th></tr></thead><tbody>'+
+      salaries.map(s=>'<tr><td>'+prodDateId(s.paid_on)+'</td><td>'+esc(ident(s.contract_assignment_id))+'</td><td>'+esc(emp(s.abk_id))+'</td><td>Rp '+prodFmt(s.gross_salary,0)+'</td><td>Rp '+prodFmt(s.advance_deduction,0)+'</td><td><strong>Rp '+prodFmt(s.net_paid,0)+'</strong></td><td><div class="inline-actions"><button type="button" data-edit-salary="'+esc(s.id)+'">Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-salary="'+esc(s.id)+'">Hapus</button>':'')+'</div></td></tr>').join('')+
     '</tbody></table></div>'+(salaries.length?'':'<p class="muted">Belum ada gaji ABK.</p>')+'</section>';
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
@@ -6305,20 +6307,26 @@ async function financeSalaryPage(){
   if(b)b.onchange=async()=>{st.barn=b.value||'';st.assignment='';st.abk='';await financeSalaryPage();};
   if(cy)cy.onchange=async()=>{st.assignment=cy.value||'';st.abk='';await financeSalaryPage();};
   if(ab)ab.onchange=async()=>{st.abk=ab.value||'';await financeSalaryPage();};
+  root.querySelectorAll('[data-edit-salary]').forEach(btn=>btn.onclick=async()=>{st.editId=btn.dataset.editSalary||'';await financeSalaryPage();document.getElementById('salaryForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const cancelEdit=document.getElementById('salaryEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{st.editId='';await financeSalaryPage();};
+  const deleteSalary=async id=>{if(profile?.role!=='ADMIN')return msg('Hanya ADMIN yang boleh menghapus transaksi gaji.');if(!await appConfirm('PERINGATAN HAPUS GAJI ABK\n\nGaji ini terhubung ke BOP Tenaga Kerja, potongan kasbon, dan Arus Kas. Jika dihapus, ketiganya akan dikembalikan menyesuaikan.\n\nLanjutkan hapus?'))return;const {error}=await db.rpc('admin_delete_abk_salary_v1',{p_id:id});if(error)return msg(error.message);st.editId='';await financeSalaryPage();msg('Transaksi gaji dan data turunannya berhasil dihapus oleh ADMIN.',true);};
+  root.querySelectorAll('[data-delete-salary]').forEach(btn=>btn.onclick=()=>deleteSalary(btn.dataset.deleteSalary));
+  const salaryAdminDelete=document.getElementById('salaryAdminDelete');if(salaryAdminDelete&&editSalary)salaryAdminDelete.onclick=()=>deleteSalary(editSalary.id);
   const form=document.getElementById('salaryForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
     if(!st.assignment||!st.abk)return msg('Pilih Kandang, Siklus, dan ABK.');
     const fd=new FormData(form),gross=normalizeInputID(fd.get('gross_salary')),ded=normalizeInputID(fd.get('advance_deduction'))||0;
     if(gross===null||gross<0)return msg('Gaji bruto tidak valid.');
-    if(ded<0||ded>gross||ded>currentBalance)return msg('Potongan kasbon tidak valid.');
-    const {error}=await db.rpc('finance_save_abk_salary_atomic',{
-      p_contract_assignment_id:st.assignment,p_abk_id:st.abk,p_gross_salary:gross,p_advance_deduction:ded,
-      p_paid_on:String(fd.get('paid_on')||''),p_reference:null,p_notes:String(fd.get('notes')||'')||null
-    });
+    const allowedBalance=currentBalance+prodNum(editSalary?.advance_deduction);
+    if(ded<0||ded>gross||ded>allowedBalance)return msg('Potongan kasbon tidak valid. Maksimal Rp '+prodFmt(allowedBalance,0)+'.');
+    const result=editSalary
+      ?await db.rpc('finance_correct_abk_salary_v1',{p_id:editSalary.id,p_gross_salary:gross,p_advance_deduction:ded,p_paid_on:String(fd.get('paid_on')||''),p_notes:String(fd.get('notes')||'')||null})
+      :await db.rpc('finance_save_abk_salary_atomic',{p_contract_assignment_id:st.assignment,p_abk_id:st.abk,p_gross_salary:gross,p_advance_deduction:ded,p_paid_on:String(fd.get('paid_on')||''),p_reference:null,p_notes:String(fd.get('notes')||'')||null});
+    const {error}=result;
     if(error)return msg(error.message);
-    st.abk='';
-    await financeSalaryPage();msg('Gaji ABK per siklus berhasil disimpan.',true);
+    st.editId='';st.abk='';
+    await financeSalaryPage();msg(editSalary?'Koreksi Gaji ABK berhasil disimpan.':'Gaji ABK per siklus berhasil disimpan.',true);
   };
 }
 
