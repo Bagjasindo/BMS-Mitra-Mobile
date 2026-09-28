@@ -5638,15 +5638,28 @@ async function financeExpeditionProfitLossPage(){
 async function financeExpeditionBopPage(){
   const [br,tr]=await Promise.all([
     db.from('finance_expedition_bop').select('*').order('incurred_on',{ascending:false}).order('created_at',{ascending:false}),
-    db.from('finance_expedition_trips').select('id,trip_date,mts_sj,driver,vehicle,zone,destination').order('trip_date',{ascending:false}).order('created_at',{ascending:false})
+    db.from('finance_expedition_trips').select('id,trip_date,mts_sj,driver,vehicle,zone,destination,reference').order('trip_date',{ascending:false}).order('created_at',{ascending:false})
   ]);
   const rows=br.data||[],trips=tr.data||[],err=[br,tr].find(x=>x.error)?.error;
   const autoRows=rows.filter(x=>x.reference==='AUTO_TRIP');
   const autoTotalFor=id=>autoRows.filter(x=>x.trip_id===id).reduce((n,x)=>n+prodNum(x.amount),0);
+  const isHistorical=t=>String(t.reference||'').startsWith('HIST-BRU-')||String(t.zone||'').trim().toUpperCase()==='HISTORIS BRU';
+  const physicalTrips=trips.filter(t=>!isHistorical(t));
 
-  let html='<section class="panel"><h3>BOP Expedisi</h3><p class="muted">Isi <strong>Nominal OP</strong> pada setiap trip sesuai catatan biaya, lalu klik Masukkan BOP. Jika salah, ubah nominal pada baris yang sama dan klik Simpan Koreksi. Periksa tanggal dan MTS/SJ sebelum menyimpan.</p></section>'+
-    '<section class="panel"><h3>Trip Belum / Sudah Masuk BOP</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Rute</th><th>Sopir / Truk</th><th>Nominal OP</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
-      trips.map(t=>{
+  window.__fxBopFilter=window.__fxBopFilter||'BELUM';
+  const bopFilter=window.__fxBopFilter;
+  const visibleTrips=physicalTrips.filter(t=>{
+    const done=autoTotalFor(t.id)>0;
+    return bopFilter==='SEMUA'||(bopFilter==='SUDAH'?done:!done);
+  });
+  const countDone=physicalTrips.filter(t=>autoTotalFor(t.id)>0).length;
+  const countPending=physicalTrips.length-countDone;
+
+  let html='<section class="panel"><h3>BOP Expedisi</h3><p class="muted">Isi <strong>Nominal OP</strong> pada setiap trip sesuai catatan biaya, lalu klik Masukkan BOP. Jika salah, ubah nominal pada baris yang sama dan klik Simpan Koreksi. Trip rekonsiliasi HISTORIS BRU tidak masuk antrean BOP.</p></section>'+
+    '<section class="panel"><div class="rhpp-section-head"><div><h3>Trip Belum / Sudah Masuk BOP</h3><p class="muted">Belum: '+countPending+' · Sudah: '+countDone+' · Total trip fisik: '+physicalTrips.length+'</p></div>'+
+      '<label style="min-width:180px">Filter Status<select id="fxBopStatusFilter"><option value="BELUM" '+(bopFilter==='BELUM'?'selected':'')+'>Belum Masuk</option><option value="SUDAH" '+(bopFilter==='SUDAH'?'selected':'')+'>Sudah Masuk</option><option value="SEMUA" '+(bopFilter==='SEMUA'?'selected':'')+'>Semua</option></select></label></div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Rute</th><th>Sopir / Truk</th><th>Nominal OP</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+      visibleTrips.map(t=>{
         const posted=autoTotalFor(t.id),done=posted>0;
         return '<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.zone||'-')+'</td>'+
           '<td>'+esc((t.driver||'-')+' · '+(t.vehicle||'-'))+'</td>'+
@@ -5654,7 +5667,7 @@ async function financeExpeditionBopPage(){
           '<td>'+(done?'<span class="pill">SUDAH MASUK</span>':'<span class="finance-status finance-status-wait">BELUM</span>')+'</td>'+
           '<td>'+(done?'<button type="button" data-correct-exp-bop="'+esc(t.id)+'">Simpan Koreksi</button>':'<button type="button" data-post-exp-bop="'+esc(t.id)+'">Masukkan BOP</button>')+'</td></tr>';
       }).join('')+
-    '</tbody></table></div>'+(trips.length?'':'<p class="muted">Belum ada Trip Expedisi.</p>')+'</section>'+
+    '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">Tidak ada trip pada filter ini.</p>')+'</section>'+
     '<section class="panel" id="fxBopPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Expedisi</h3></div><div class="report-actions"><button type="button" id="fxBopPrint">Cetak / PDF</button></div></div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Trip</th><th>Rute</th><th>Nominal</th><th>Sumber</th></tr></thead><tbody>'+
       rows.map(x=>{const t=trips.find(t=>t.id===x.trip_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td>'+
@@ -5663,6 +5676,8 @@ async function financeExpeditionBopPage(){
       '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada BOP Expedisi.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  const filter=document.getElementById('fxBopStatusFilter');
+  if(filter)filter.onchange=async()=>{window.__fxBopFilter=filter.value||'BELUM';await financeExpeditionBopPage();};
   const p=document.getElementById('fxBopPrint');if(p)p.onclick=()=>printFinanceDocument('fxBopPrintArea','Laporan BOP Expedisi');
   document.querySelectorAll('[data-post-exp-bop]').forEach(btn=>btn.onclick=async()=>{
     const input=document.querySelector('[data-bop-amount="'+btn.dataset.postExpBop+'"]');
