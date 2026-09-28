@@ -6718,9 +6718,9 @@ async function financeReportPage(){
   const rows=xr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[];
   const realIds=new Set((rr.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
   const err=[xr,ar,br,cr,rr].find(x=>x.error)?.error;
-  window.__financeReportState=window.__financeReportState||{barn:'',assignment:'',from:'',to:'',shown:false};
+  window.__financeReportState=window.__financeReportState||{barn:'',assignment:'',from:'',to:'',shown:true};
   const st=window.__financeReportState;
-  const visible=st.shown?rows.filter(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id),d=String(a?.start_date||'');return (!st.barn||x.barn_id===st.barn)&&(!st.assignment||x.contract_assignment_id===st.assignment)&&(!st.from||d>=st.from)&&(!st.to||d<=st.to);}):[];
+  const visible=rows.filter(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id),d=String(a?.start_date||'');return (!st.barn||x.barn_id===st.barn)&&(!st.assignment||x.contract_assignment_id===st.assignment)&&(!st.from||d>=st.from)&&(!st.to||d<=st.to);});
   const processRows=visible.filter(x=>x.active);
   const assignmentOf=x=>assignments.find(a=>a.id===x.contract_assignment_id);
   const isMandiri=x=>assignmentOf(x)?.cycle_type==='MANDIRI';
@@ -6740,7 +6740,7 @@ async function financeReportPage(){
     '<label>Mulai Siklus Dari<input name="from" type="date" value="'+esc(st.from||'')+'"></label>'+
     '<label>Mulai Siklus Sampai<input name="to" type="date" value="'+esc(st.to||'')+'"></label>'+
     '<button type="submit">Tampilkan</button></form></section>';
-  if(st.shown){
+  {
     html+='<section class="panel" id="companyProfitPrintArea"><div class="rhpp-section-head"><div><h3>Ringkasan Keuangan</h3><p class="muted">Angka final tidak mencampur siklus yang masih berjalan.</p></div><div class="report-actions"><button type="button" id="financeReportPrint">Cetak / PDF</button></div></div>'+
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>Biaya Produksi Berjalan</span><strong>Rp '+prodFmt(processCost,0)+'</strong><small>'+processRows.length+' siklus PROSES</small></div>'+
@@ -6786,7 +6786,7 @@ async function financeReportPage(){
   const financeReportPrint=document.getElementById('financeReportPrint');
   if(financeReportPrint)financeReportPrint.onclick=()=>printFinanceDocument(selected?['companyProfitPrintArea','cycleSummaryPrintArea','cycleProcessPrintArea','cycleWaitingPrintArea','cycleFinalPrintArea']:['companyProfitPrintArea','cycleProcessPrintArea','cycleWaitingPrintArea','cycleFinalPrintArea'],'Laporan Keuangan');
   const form=document.getElementById('financeReportFilter');
-  if(form){form.elements.barn.onchange=async()=>{st.barn=form.elements.barn.value||'';st.assignment='';st.shown=false;await financeReportPage();};form.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(form);st.barn=String(fd.get('barn')||'');st.assignment=st.barn?String(fd.get('assignment')||''):'';st.from=String(fd.get('from')||'');st.to=String(fd.get('to')||'');if(st.from&&st.to&&st.from>st.to){const t=st.from;st.from=st.to;st.to=t;}st.shown=true;await financeReportPage();};}
+  if(form){form.elements.barn.onchange=async()=>{st.barn=form.elements.barn.value||'';st.assignment='';await financeReportPage();};form.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(form);st.barn=String(fd.get('barn')||'');st.assignment=st.barn?String(fd.get('assignment')||''):'';st.from=String(fd.get('from')||'');st.to=String(fd.get('to')||'');if(st.from&&st.to&&st.from>st.to){const t=st.from;st.from=st.to;st.to=t;}st.shown=true;await financeReportPage();};}
 }
 async function barnMasterPage(){
   const m=modules.kandang;
