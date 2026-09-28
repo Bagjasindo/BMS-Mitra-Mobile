@@ -8709,15 +8709,18 @@ async function reports(){
   const feedByAssignment=new Map();
   d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
 
-  window.__productionReportState=window.__productionReportState||{barn:'',assignment:'',type:'',status:'',shown:false};
+  window.__productionReportState=window.__productionReportState||{barn:'',assignment:'',type:'',status:'',ppl:'',shown:false};
   const st=window.__productionReportState;
   const pplName=id=>pplRows.find(p=>p.user_id===id)?.full_name||'-';
+  const visiblePplIds=[...new Set(d.assignments.map(a=>a.ppl_id).filter(Boolean))];
+  const visiblePpls=visiblePplIds.map(id=>({id,name:pplName(id)})).sort((a,b)=>a.name.localeCompare(b.name));
   const assignmentDate=a=>{
     const ci=d.chicks.find(c=>c.contract_assignment_id===a.id);
     return ci?.arrived_on||a.start_date||'';
   };
   const cycleRows=d.assignments.filter(a=>
     (!st.barn||a.barn_id===st.barn)&&
+    (!st.ppl||a.ppl_id===st.ppl)&&
     (!st.type||(a.cycle_type||'MITRA')===st.type)
   );
   const feedFor=a=>(feedByAssignment.get(a.id)||[]).reduce((sum,x)=>{
@@ -8727,6 +8730,7 @@ async function reports(){
 
   const assignments=d.assignments.filter(a=>
     (!st.barn||a.barn_id===st.barn)&&
+    (!st.ppl||a.ppl_id===st.ppl)&&
     (!st.assignment||a.id===st.assignment)&&
     (!st.type||(a.cycle_type||'MITRA')===st.type)&&
     (!st.status||(st.status==='PROSES'?a.active===true:a.active===false))
@@ -8752,19 +8756,36 @@ async function reports(){
     }else{
       const live=productionProcessSnapshot(d,a,recs,samples);
       ({chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip}=live);
+      const perf=d.standards.filter(s=>
+        (a.cycle_type==='MANDIRI'||s.contract_id===a.master_contract_id)&&
+        (!a.performance_template_name||s.template_name===a.performance_template_name)
+      ).sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
+      const std=[...perf].reverse().find(s=>prodNum(s.age_days)<=prodNum(live.age))||perf[0]||null;
+      const stdBw=std?.std_body_weight_g!=null?prodNum(std.std_body_weight_g)/1000:null;
+      const stdFcr=std?.std_fcr!=null?prodNum(std.std_fcr):null;
       return {
         a,b,ppl:pplName(a.ppl_id),type:a.cycle_type||'MITRA',
         performance:a.performance_template_name||'-',
         status:'PROSES',
-        ...live
+        ...live,stdBw,stdFcr,
+        bwDiff:stdBw==null?null:prodNum(live.avg)-stdBw,
+        fcrDiff:stdFcr==null?null:stdFcr-prodNum(live.fcr)
       };
     }
 
+    const perf=d.standards.filter(s=>
+      (a.cycle_type==='MANDIRI'||s.contract_id===a.master_contract_id)&&
+      (!a.performance_template_name||s.template_name===a.performance_template_name)
+    ).sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
+    const std=[...perf].reverse().find(s=>prodNum(s.age_days)<=prodNum(age))||perf[0]||null;
+    const stdBw=std?.std_body_weight_g!=null?prodNum(std.std_body_weight_g)/1000:null;
+    const stdFcr=std?.std_fcr!=null?prodNum(std.std_fcr):null;
     return {
       a,b,ppl:pplName(a.ppl_id),type:a.cycle_type||'MITRA',
       performance:a.performance_template_name||'-',
       status:'CLOSED',
-      chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,performanceBirds:chickOut,performanceKg:kg
+      chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,performanceBirds:chickOut,performanceKg:kg,
+      stdBw,stdFcr,bwDiff:stdBw==null?null:avg-stdBw,fcrDiff:stdFcr==null?null:stdFcr-fcr
     };
   }).sort((x,y)=>String(assignmentDate(x.a)).localeCompare(String(assignmentDate(y.a))));
 
@@ -8784,6 +8805,9 @@ async function reports(){
 
   let html='<section class="panel"><h3>Filter Laporan Produksi</h3><form id="productionReportFilter" class="form-vertical">'+
     '<label>Jenis Siklus<select name="type"><option value="">Semua</option><option value="MITRA" '+(st.type==='MITRA'?'selected':'')+'>MITRA</option><option value="MANDIRI" '+(st.type==='MANDIRI'?'selected':'')+'>MANDIRI</option></select></label>'+
+    (profile?.role==='PPL'
+      ?'<label>PPL / PIC<input value="'+esc(profile.full_name||pplName(session?.user?.id))+'" readonly></label>'
+      :'<label>PPL / PIC<select name="ppl"><option value="">Semua PPL</option>'+visiblePpls.map(p=>'<option value="'+esc(p.id)+'" '+(st.ppl===p.id?'selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></label>')+
     '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+d.barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
     '<label>Siklus<select name="assignment"><option value="">Semua Siklus</option>'+cycleRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
     '<label>Status<select name="status"><option value="">Semua Status</option><option value="PROSES" '+(st.status==='PROSES'?'selected':'')+'>PROSES</option><option value="CLOSED" '+(st.status==='CLOSED'?'selected':'')+'>CLOSED</option></select></label>'+
@@ -8792,7 +8816,7 @@ async function reports(){
   if(st.shown){
     html+='<section class="panel" id="productionReportPrintArea"><div class="rhpp-section-head"><div><h3>Laporan Produksi</h3><p class="muted">Khusus data produksi. CLOSED memakai deplesi final; tidak memuat RHPP, BOP, Kasbon, atau transaksi Keuangan.</p></div><div class="report-actions"><button type="button" id="productionReportPrint">Cetak / PDF</button></div></div>'+
       '<div class="tablewrap"><table style="min-width:1500px"><thead><tr>'+
-        '<th>NO</th><th>Kandang / Siklus</th><th>Jenis</th><th>PPL / PIC</th><th>Performance</th><th>Status</th><th>Umur</th><th>Chick-In</th><th>Chick-Out</th><th>Deplesi Ekor</th><th>Deplesi %</th><th>Tonase Panen (Kg)</th><th>BW Rata2 (Kg)</th><th>Pakan (Kg)</th><th>FCR</th><th>IP</th>'+
+        '<th>NO</th><th>Kandang / Siklus</th><th>Jenis</th><th>PPL / PIC</th><th>Performance</th><th>Status</th><th>Umur</th><th>Chick-In</th><th>Chick-Out</th><th>Deplesi Ekor</th><th>Deplesi %</th><th>Tonase Panen (Kg)</th><th>BW Aktual</th><th>BW Standar</th><th>Selisih BW</th><th>Pakan (Kg)</th><th>FCR Aktual</th><th>FCR Standar</th><th>Selisih FCR</th><th>IP</th>'+
       '</tr></thead><tbody>'+
       rows.map((x,i)=>'<tr>'+
         '<td>'+(i+1)+'</td>'+
@@ -8808,11 +8832,15 @@ async function reports(){
         '<td>'+prodFmt(x.mortPct,2)+'</td>'+
         '<td>'+prodFmt(x.kg,2)+'</td>'+
         '<td>'+prodFmt(x.avg,2)+'</td>'+
+        '<td>'+(x.stdBw==null?'-':prodFmt(x.stdBw,2))+'</td>'+
+        '<td>'+(x.bwDiff==null?'-':prodFmt(x.bwDiff,2))+'</td>'+
         '<td>'+prodFmt(x.feed,0)+'</td>'+
         '<td>'+prodFmt(x.fcr,3)+'</td>'+
+        '<td>'+(x.stdFcr==null?'-':prodFmt(x.stdFcr,3))+'</td>'+
+        '<td>'+(x.fcrDiff==null?'-':prodFmt(x.fcrDiff,3))+'</td>'+
         '<td>'+prodFmt(x.ip,2)+'</td>'+
       '</tr>').join('')+
-      (rows.length?'<tr><th colspan="6">TOTAL</th>'+
+      (rows.length?'<tr><th colspan="6">TOTAL / RATA-RATA</th>'+
         '<th>'+prodFmt(totalAge,2)+'</th>'+
         '<th>'+prodFmt(totals.chickIn,0)+'</th>'+
         '<th>'+prodFmt(totals.chickOut,0)+'</th>'+
@@ -8820,10 +8848,20 @@ async function reports(){
         '<th>'+prodFmt(totalMortPct,2)+'</th>'+
         '<th>'+prodFmt(totals.kg,2)+'</th>'+
         '<th>'+prodFmt(totalAvg,2)+'</th>'+
+        '<th>-</th><th>-</th>'+
         '<th>'+prodFmt(totals.feed,0)+'</th>'+
         '<th>'+prodFmt(totalFcr,3)+'</th>'+
+        '<th>-</th><th>-</th>'+
         '<th>'+prodFmt(totalIp,2)+'</th></tr>':'')+
-      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada data sesuai filter.</p>')+'</section>';
+      '</tbody></table></div>'+
+      (rows.length?'<div class="rhpp-summary-cards" style="margin-top:14px">'+
+        '<div class="rhpp-summary-card"><span>Jumlah Siklus</span><strong>'+rows.length+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Total Chick-In</span><strong>'+prodFmt(totals.chickIn,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Total Panen</span><strong>'+prodFmt(totals.kg,2)+' Kg</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Deplesi</span><strong>'+prodFmt(totalMortPct,2)+'%</strong></div>'+
+        '<div class="rhpp-summary-card"><span>FCR Gabungan</span><strong>'+prodFmt(totalFcr,3)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>IP Gabungan</span><strong>'+prodFmt(totalIp,2)+'</strong></div>'+
+      '</div>':'<p class="muted">Belum ada data sesuai filter.</p>')+'</section>';
   }
 
   layout(html);
@@ -8832,16 +8870,17 @@ async function reports(){
 
   const form=document.getElementById('productionReportFilter');
   if(form){
-    const barnSel=form.elements.barn,typeSel=form.elements.type,cycleSel=form.elements.assignment;
+    const barnSel=form.elements.barn,typeSel=form.elements.type,cycleSel=form.elements.assignment,pplSel=form.elements.ppl;
     const refreshCycles=()=>{
-      const barnId=barnSel.value||'',type=typeSel.value||'';
-      const items=d.assignments.filter(a=>(!barnId||a.barn_id===barnId)&&(!type||(a.cycle_type||'MITRA')===type));
+      const barnId=barnSel.value||'',type=typeSel.value||'',pplId=pplSel?.value||'';
+      const items=d.assignments.filter(a=>(!barnId||a.barn_id===barnId)&&(!pplId||a.ppl_id===pplId)&&(!type||(a.cycle_type||'MITRA')===type));
       const current=cycleSel.value;
       cycleSel.innerHTML='<option value="">Semua Siklus</option>'+items.map(a=>'<option value="'+esc(a.id)+'">'+esc(assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('');
       if(items.some(a=>a.id===current))cycleSel.value=current;
     };
     barnSel.onchange=refreshCycles;
     typeSel.onchange=refreshCycles;
+    if(pplSel)pplSel.onchange=refreshCycles;
     form.onsubmit=async ev=>{
       ev.preventDefault();
       const fd=new FormData(form);
@@ -8850,6 +8889,7 @@ async function reports(){
         assignment:String(fd.get('assignment')||''),
         type:String(fd.get('type')||''),
         status:String(fd.get('status')||''),
+        ppl:profile?.role==='PPL'?(session?.user?.id||''):String(fd.get('ppl')||''),
         shown:true
       };
       await reports();
