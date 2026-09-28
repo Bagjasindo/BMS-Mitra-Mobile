@@ -259,3 +259,62 @@ Status: **SUDAH DIKERJAKAN — hanya 3 poin audit, modul PASS lain tidak diubah.
 - RLS dibuat untuk tabel snapshot Mandiri.
 - Index `barn_id` dan `created_by` ditambahkan hanya pada tabel snapshot Mandiri baru.
 - Warning SECURITY DEFINER yang terlihat adalah pola lama project dan tetap memakai pemeriksaan role internal; tidak dilakukan cleanup umum agar tidak menyentuh modul PASS.
+
+
+---
+
+## IMPLEMENTASI 4 TEMUAN SISA AUDIT 2026-09-28
+
+Status: **SUDAH DIKERJAKAN — hanya titik audit terkait, modul PASS lain tidak diubah.**
+
+### 1. Estimasi setelah panen sebagian
+- Preview sekarang memakai panen aktual **sebelum tanggal estimasi** (`harvested_on < estimated_on`), sama dengan logika simpan/riwayat.
+- FCR preview = total pakan / (biomassa panen aktual sebelumnya + biomassa sisa estimasi).
+- IP preview memakai total projected birds dan total projected biomass yang sama dengan riwayat.
+- Preview keuangan sekarang menampilkan:
+  - Panen aktual sebelumnya
+  - Proyeksi sisa panen
+  - Total hasil panen estimasi
+  - Biaya yang sama dengan nilai yang akan disimpan
+- Saat edit estimasi lama, preview mengikuti snapshot feed/cost tersimpan agar tidak berubah diam-diam.
+
+### 2. Retur Tambah Sapronak
+Audit implementasi menemukan modul ini adalah **stok retur perusahaan**, bukan retur kembali ke supplier.
+Karena itu:
+- Hutang supplier **tidak dikurangi** oleh Retur Tambah Sapronak.
+- Biaya siklus asal sekarang dikurangi saat barang masuk stok retur perusahaan.
+- Saat stok retur dikirim ke kandang tujuan, biaya ditambahkan ke siklus tujuan.
+- Tidak lagi terjadi double-out dari siklus asal.
+- `finance_cycle_profit_loss_v2()` memakai:
+  - pembelian luar
+  - dikurangi stok retur dari siklus asal
+  - ditambah transfer stok retur ke siklus tujuan
+- Arus Kas tetap tidak berubah oleh perpindahan stok.
+
+### 3. Dashboard IP CLOSED
+- Label diubah dari `IP Kumulatif yang Close / rata-rata tertimbang RHPP closed`
+  menjadi `IP Gabungan Produksi Closed`.
+- Subtitle menjadi `gabungan seluruh snapshot produksi CLOSED`.
+- Dashboard sekarang membaca snapshot CLOSED Mitra dari `rhpp_system_final` dan snapshot CLOSED Mandiri dari `production_mandiri_final`.
+
+### 4. Laporan Keuangan Mandiri
+- Angka tidak diubah.
+- Label diperjelas menjadi `Laba Operasional (Sebelum Perawatan)`.
+- Kolom tabel menjadi `Laba Operasional`.
+- Keterangan menegaskan bahwa Perawatan Jangka Panjang belum dikurangkan pada angka operasional tersebut.
+
+### Verifikasi
+- Syntax JavaScript: OK.
+- Fungsi laba/rugi siklus terverifikasi:
+  - retur mengurangi biaya siklus asal;
+  - transfer retur menambah biaya siklus tujuan;
+  - hutang supplier tidak terpengaruh oleh stok retur perusahaan.
+- Saat implementasi belum ada data Retur Tambah Sapronak live dan belum ada snapshot Mandiri live; tidak dibuat data fake/test.
+
+### Asset live
+- `main-1958.js?v=2133-audit-four-fixes`
+
+### Commit
+- `88bd1fe823bcda042fdd0db3198d3dedbcd6140d` — Estimasi, label Dashboard, label Mandiri.
+- `5d1a6b45d39d2e2610ff352a15e819e862dbb035` — KPI CLOSED gabung snapshot Mitra + Mandiri.
+- `2094ab1877e6b852702ad0e1fc1364118fbb2365` — refresh asset.
