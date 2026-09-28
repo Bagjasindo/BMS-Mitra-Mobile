@@ -3168,19 +3168,25 @@ async function recordingPplPage(){
   ]);
   const recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
   const txnRecording=txnListState(recs,'pplRecording','recorded_on',5,d.barns,'barn_id',{assignmentKey:'contract_assignment_id',assignments:d.assignments.map(a=>({id:a.id,barn_id:a.barn_id,label:assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'AKTIF':'CLOSED')}))});
-  let html='<section class="panel"><h3>Recording PPL</h3><form id="prodRec" class="form-vertical">'+
-    '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'">'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
-    '<div id="prodRecAge" class="rhpp-summary-card" style="margin-top:10px"><span>Umur Saat Ini</span><strong>Hari ke-1</strong></div>'+
-    '<label>Pakan Tersedia<select name="feed_item" required><option value="">Pilih Kandang / Kontrak dulu</option></select></label>'+
-    '<p id="prodRecStock" class="muted">Sisa stok: -</p>'+
-    '<label>Jumlah Pakan Dipakai (Zak/Satuan)<input type="number" name="feed_units" min="0" step="0.01" required></label>'+
-    '<p id="prodRecKg" class="muted">Pemakaian: 0 Kg</p>'+
-    '<label>Kematian (ekor)<input type="number" name="mortality" min="0" value="0" required></label>'+
-    '<label>Pemusnahan / Afkir (ekor)<input type="number" name="culling" min="0" value="0" required></label>'+
-    '<div><strong>Bobot Sampel per Ekor (Kg)</strong><p class="muted">Contoh: 0,85 Kg = 850 gram · 1,20 Kg = 1,2 Kg</p><div id="weightRows"></div><button type="button" id="addWeight">+ Tambah Sampel</button></div>'+
-    '<label>Catatan<textarea name="notes"></textarea></label>'+
-    '<label>Foto (opsional)<input type="file" name="photo" accept="image/*"></label>'+
-    '<div class="inline-actions"><button id="prodRecSave">Simpan Recording</button><button type="button" id="prodRecCancel" style="display:none">Batal Edit</button></div></form></section>';
+  let html='<section class="panel"><h3>Recording Harian PPL</h3><p class="muted">Isi data lapangan saja. FCR, ADG, IP dan perbandingan standar dihitung otomatis oleh sistem.</p><form id="prodRec" class="form-vertical">'+
+    '<div class="panel" style="padding:14px"><h4>1. Pilih Kandang</h4>'+
+      '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih Kandang</option>'+d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'">'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
+      '<div id="prodRecAge" class="rhpp-summary-card" style="margin-top:10px"><span>Umur Saat Ini</span><strong>1 Hari</strong></div>'+
+    '</div>'+
+    '<div class="panel" style="padding:14px"><h4>2. Isi Data Hari Ini</h4>'+
+      '<label>Pakan yang Dipakai<select name="feed_item" required><option value="">Pilih kandang dulu</option></select></label>'+
+      '<p id="prodRecStock" class="muted">Sisa stok: -</p>'+
+      '<label>Jumlah Pakan Dipakai (Zak/Satuan)<input type="number" name="feed_units" min="0" step="0.01" required placeholder="Contoh: 10"></label>'+
+      '<p id="prodRecKg" class="muted">Pemakaian: 0 Kg</p>'+
+      '<label>Ayam Mati Hari Ini (ekor)<input type="number" name="mortality" min="0" value="0" required></label>'+
+      '<label>Afkir / Dimusnahkan Hari Ini (ekor)<input type="number" name="culling" min="0" value="0" required></label>'+
+      '<div><strong>Bobot Sampel Ayam</strong><p class="muted">Isi dalam Kg. Contoh 0,85 = 850 gram. Minimal satu sampel.</p><div id="weightRows"></div><button type="button" id="addWeight">+ Tambah Sampel Ayam</button></div>'+
+    '</div>'+
+    '<div class="panel" style="padding:14px"><h4>3. Simpan</h4>'+
+      '<label>Catatan (opsional)<textarea name="notes" placeholder="Contoh: ayam aktif, litter kering"></textarea></label>'+
+      '<label>Foto (opsional)<input type="file" name="photo" accept="image/*"></label>'+
+      '<div class="inline-actions"><button id="prodRecSave">Simpan Data Hari Ini</button><button type="button" id="prodRecCancel" style="display:none">Batal Edit</button></div>'+
+    '</div></form></section>';
 
   const metricRows=[];
   for(const r of recs){
@@ -3208,8 +3214,13 @@ async function recordingPplPage(){
     metricRows.push({r,a,population,depl,bwg,cumFeed,fi,fcr,adg,ip,st,stdFeedTotalKg});
   }
 
-  html+='<section class="panel"><h3>Performa Recording</h3>'+txnRecording.controls+'<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Populasi</th><th>Deplesi</th><th>BW Aktual / Standar</th><th>Pakan Aktual / Standar</th><th>Feed Intake</th><th>FCR</th><th>ADG</th><th>IP</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
-    '<div class="inline-actions" style="margin-top:10px"><button type="button" id="prodPerfPrev">Sebelumnya</button><span id="prodPerfPage" class="muted"></span><button type="button" id="prodPerfNext">Berikutnya</button></div></section>';
+  html+='<section class="panel"><h3>Riwayat Recording</h3><p class="muted">Tabel utama dibuat sederhana untuk PPL. Detail teknis tetap tersedia bila diperlukan.</p>'+txnRecording.controls+
+    '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Populasi</th><th>Mati + Afkir</th><th>Bobot Rata2</th><th>Pakan Kumulatif</th><th>FCR</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
+    '<div class="inline-actions" style="margin-top:10px"><button type="button" id="prodPerfPrev">Sebelumnya</button><span id="prodPerfPage" class="muted"></span><button type="button" id="prodPerfNext">Berikutnya</button></div>'+
+    '<details style="margin-top:14px"><summary><strong>Lihat Detail Teknis (opsional)</strong></summary>'+
+      '<p class="muted">Deplesi, bobot vs standar, pakan vs standar, feed intake, FCR, ADG dan IP.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Deplesi</th><th>BW Aktual / Standar</th><th>Pakan Aktual / Standar</th><th>Feed Intake</th><th>FCR</th><th>ADG</th><th>IP</th></tr></thead><tbody id="prodPerfTechBody"></tbody></table></div>'+
+    '</details></section>';
   layout(html);
   if(d.err||rr.error||sr.error)msg((d.err||rr.error||sr.error).message);
 
@@ -3218,14 +3229,18 @@ async function recordingPplPage(){
   const pageSize=5,totalPages=1;
   let page=1;
   const renderPerf=()=>{
-    if(page>totalPages)page=totalPages;if(page<1)page=1;
-    const rows=sortedRows.slice((page-1)*pageSize,page*pageSize);
-    document.getElementById('prodPerfBody').innerHTML=rows.map(x=>
-      '<tr><td>'+esc(prodAssignmentOption(d,x.a))+'</td><td>'+prodFmt(x.r.age_days,0)+'</td><td>'+prodFmt(x.population,0)+'</td><td>'+prodFmt(x.depl,2)+'%</td>'+
+    const rows=sortedRows.slice(0,pageSize);
+    document.getElementById('prodPerfBody').innerHTML=rows.map(x=>{
+      const dead=prodNum(x.r.mortality)+prodNum(x.r.culling);
+      return '<tr><td>'+esc(prodAssignmentOption(d,x.a))+'</td><td><strong>'+prodFmt(x.r.age_days,0)+'</strong></td><td>'+prodFmt(x.population,0)+'</td><td>'+prodFmt(dead,0)+'</td>'+
+      '<td>'+prodFmt(x.bwg,0)+' g</td><td>'+prodFmt(x.cumFeed,2)+' Kg</td><td>'+prodFmt(x.fcr,3)+'</td>'+
+      '<td><div class="inline-actions"><button type="button" data-edit-recording="'+esc(x.r.id)+'">Edit</button>'+adminDeleteTxnButton('recordings',x.r.id)+'</div></td></tr>';
+    }).join('');
+    document.getElementById('prodPerfTechBody').innerHTML=rows.map(x=>
+      '<tr><td>'+esc(prodAssignmentOption(d,x.a))+'</td><td>'+prodFmt(x.r.age_days,0)+'</td><td>'+prodFmt(x.depl,2)+'%</td>'+
       '<td>'+prodFmt(x.bwg,0)+' / '+(x.st?.std_body_weight_g?prodFmt(x.st.std_body_weight_g,0):'-')+' g</td>'+
       '<td>'+prodFmt(x.cumFeed,2)+' / '+(x.stdFeedTotalKg!=null?prodFmt(x.stdFeedTotalKg,2):'-')+' Kg</td>'+
-      '<td>'+prodFmt(x.fi,1)+' g/ekor</td><td>'+prodFmt(x.fcr,3)+'</td><td>'+prodFmt(x.adg,1)+' g</td><td>'+prodFmt(x.ip,1)+'</td>'+
-      '<td><div class="inline-actions"><button type="button" data-edit-recording="'+esc(x.r.id)+'">Edit</button>'+adminDeleteTxnButton('recordings',x.r.id)+'</div></td></tr>'
+      '<td>'+prodFmt(x.fi,1)+' g/ekor</td><td>'+prodFmt(x.fcr,3)+'</td><td>'+prodFmt(x.adg,1)+' g</td><td>'+prodFmt(x.ip,1)+'</td></tr>'
     ).join('');
     document.getElementById('prodPerfPage').textContent='Halaman '+(txnRecording.st.page+1)+' / '+txnRecording.pages+' · '+txnRecording.total+' data';
     document.getElementById('prodPerfPrev').disabled=txnRecording.st.page<=0;
@@ -3294,7 +3309,7 @@ async function recordingPplPage(){
 
   const resetEdit=async()=>{
     editingId=null;editingDay=null;f.assignment.disabled=false;f.reset();weights=[0];renderWeights();
-    saveBtn.textContent='Simpan Recording';cancelBtn.style.display='none';feedStock=[];
+    saveBtn.textContent='Simpan Data Hari Ini';cancelBtn.style.display='none';feedStock=[];
     f.feed_item.innerHTML='<option value="">Pilih Kandang / Kontrak dulu</option>';calc();
   };
   cancelBtn.onclick=resetEdit;
@@ -3307,7 +3322,7 @@ async function recordingPplPage(){
     f.feed_units.value=prodNum(r.feed_quantity_units);f.notes.value=r.notes||'';
     const ws=samples.filter(x=>x.recording_id===r.id).map(x=>prodNum(x.weight_g)/1000);
     weights=ws.length?ws:[prodNum(r.avg_weight_kg)];renderWeights();
-    saveBtn.textContent='Update Recording';cancelBtn.style.display='';
+    saveBtn.textContent='Simpan Perubahan';cancelBtn.style.display='';
     await refreshFeedStock(r.feed_item_id);
     window.scrollTo({top:0,behavior:'smooth'});
   }
