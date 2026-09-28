@@ -7549,7 +7549,7 @@ function renderDashboardTemplate(cfg){
 async function buildDashboardModel(){
   const d=await productionBase();
   const leagueSetting=await loadAbkLeagueSetting();
-  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR]=await Promise.all([
+  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,mandiriFinalR]=await Promise.all([
     db.from('recordings').select('*').not('contract_assignment_id','is',null).order('recorded_on',{ascending:true}),
     db.from('recording_weight_samples').select('*'),
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
@@ -7558,10 +7558,11 @@ async function buildDashboardModel(){
     db.from('production_abk_result_sizes').select('*'),
     db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
     db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on')
+    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on'),
+    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on')
   ]);
-  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR].find(x=>x?.error)?.error;
-  const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=rhppFinalR.data||[];
+  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,mandiriFinalR].find(x=>x?.error)?.error;
+  const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=[...(rhppFinalR.data||[]),...(mandiriFinalR.data||[])];
   const active=d.assignments.filter(a=>a.active&&d.chicks.some(ci=>ci.contract_assignment_id===a.id));
   const ownerParityIssue=profile.role==='OWNER'&&(
     (!d.assignments.length&&(recs.length||estimates.length||abkResults.length))||
