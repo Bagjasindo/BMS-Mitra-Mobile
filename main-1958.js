@@ -5615,24 +5615,190 @@ async function financeExpeditionMaintenancePage(){
 }
 
 async function financeExpeditionProfitLossPage(){
-  const {data,error}=await db.rpc('finance_expedition_profit_loss_v2');
-  const x=(data||[])[0]||{};
-  const revenue=prodNum(x.expedition_revenue),operational=prodNum(x.operational_bop),opProfit=prodNum(x.operational_profit);
-  const maintenance=prodNum(x.maintenance_bop),net=prodNum(x.net_profit),cash=prodNum(x.cash_received),receivable=prodNum(x.receivable);
-  let html='<section class="panel" id="fxProfitLossPrintArea"><div class="rhpp-section-head"><div><h3>Laba / Rugi Expedisi</h3><p class="muted">Unit Expedisi dihitung terpisah dari RHPP dan usaha kandang.</p></div><div class="report-actions"><button type="button" id="fxProfitPrint">Cetak / PDF</button></div></div>'+
-    '<div class="rhpp-summary-cards">'+
-      '<div class="rhpp-summary-card"><span>Pendapatan Expedisi</span><strong>Rp '+prodFmt(revenue,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>BOP Operasional</span><strong>Rp '+prodFmt(operational,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card rhpp-summary-value"><span>Laba Operasional</span><strong>Rp '+prodFmt(opProfit,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>Perawatan Expedisi</span><strong>Rp '+prodFmt(maintenance,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card rhpp-summary-value"><span>Laba Bersih Expedisi</span><strong>Rp '+prodFmt(net,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>Kas Diterima</span><strong>Rp '+prodFmt(cash,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>Piutang</span><strong>Rp '+prodFmt(receivable,0)+'</strong></div>'+
-    '</div>'+
-    '<div class="panel" style="margin-top:12px"><strong>Rumus:</strong><p class="muted">Pendapatan − BOP Operasional = Laba Operasional. Laba Operasional − Perawatan = Laba Bersih Expedisi.</p></div>'+
-    '</section>';
-  layout(html);if(error)msg(error.message);
-  const p=document.getElementById('fxProfitPrint');if(p)p.onclick=()=>printFinanceDocument('fxProfitLossPrintArea','Laba Rugi Expedisi');
+  const [tr,ir,iir,pr,sr,br,mr,cr]=await Promise.all([
+    db.from('finance_expedition_trips').select('*').order('trip_date',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('finance_expedition_invoices').select('*').order('invoice_date',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('finance_expedition_invoice_items').select('invoice_id,trip_id'),
+    db.from('finance_expedition_payments').select('*').order('paid_on',{ascending:false}).order('created_at',{ascending:false}),
+    db.rpc('finance_expedition_summary_v1'),
+    db.from('finance_expedition_bop').select('*').order('incurred_on',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('finance_expedition_maintenance').select('*').order('incurred_on',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('expedition_customers').select('id,code,name,active').order('name',{ascending:true})
+  ]);
+  const trips=tr.data||[],invoices=ir.data||[],links=iir.data||[],payments=pr.data||[],summaries=sr.data||[],bops=br.data||[],maintenance=mr.data||[],customers=cr.data||[];
+  const err=[tr,ir,iir,pr,sr,br,mr,cr].find(x=>x.error)?.error;
+
+  window.__fxReportState=window.__fxReportState||{view:'RINGKASAN',from:'',to:'',customer:'',vehicle:'',route:'',status:''};
+  const st=window.__fxReportState;
+  const views=[
+    ['RINGKASAN','Ringkasan'],['PENDAPATAN','Pendapatan'],['PENERIMAAN','Penerimaan Kas'],['PIUTANG','Piutang'],
+    ['BOP','Kas Jalan / BOP'],['PERAWATAN','Servis / Perawatan'],['BUKU_BESAR','Buku Besar'],['LABA_RUGI','Laba / Rugi']
+  ];
+  const tripById=id=>trips.find(x=>x.id===id);
+  const invoiceById=id=>invoices.find(x=>x.id===id);
+  const summaryById=id=>summaries.find(x=>x.invoice_id===id);
+  const invoiceIdsForTrip=id=>links.filter(x=>x.trip_id===id).map(x=>x.invoice_id);
+  const customerForTrip=id=>{
+    const iid=invoiceIdsForTrip(id)[0],inv=invoiceById(iid);
+    return inv?.customer_name||'';
+  };
+  const routes=[...new Set(trips.map(x=>x.zone).filter(Boolean).concat(bops.map(x=>x.route).filter(Boolean)))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const vehicles=[...new Set(trips.map(x=>x.vehicle).filter(Boolean).concat(maintenance.map(x=>x.vehicle).filter(Boolean)))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const customerNames=[...new Set(customers.map(x=>x.name).filter(Boolean).concat(invoices.map(x=>x.customer_name).filter(Boolean)))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const inDate=(d)=>!d?false:(!st.from||String(d)>=st.from)&&(!st.to||String(d)<=st.to);
+  const matchTrip=(t)=>{
+    if(!t)return true;
+    if(st.vehicle&&String(t.vehicle||'')!==st.vehicle)return false;
+    if(st.route&&String(t.zone||'')!==st.route)return false;
+    if(st.customer&&customerForTrip(t.id)!==st.customer)return false;
+    return true;
+  };
+  const tripIdsForInvoice=id=>links.filter(x=>x.invoice_id===id).map(x=>x.trip_id);
+  const invoiceMatches=(inv)=>{
+    if(!inv)return false;
+    if(!inDate(inv.invoice_date))return false;
+    if(st.customer&&inv.customer_name!==st.customer)return false;
+    if(st.status&&inv.status!==st.status)return false;
+    const ids=tripIdsForInvoice(inv.id),ts=ids.map(tripById).filter(Boolean);
+    if(st.vehicle&&!ts.some(t=>String(t.vehicle||'')===st.vehicle))return false;
+    if(st.route&&!ts.some(t=>String(t.zone||'')===st.route))return false;
+    return true;
+  };
+
+  const reportTrips=trips.filter(t=>matchTrip(t));
+  const reportInvoices=invoices.filter(invoiceMatches);
+  const reportInvoiceIds=new Set(reportInvoices.map(x=>x.id));
+  const reportPayments=payments.filter(p=>{
+    const inv=invoiceById(p.invoice_id); if(!inv||!inDate(p.paid_on))return false;
+    if(st.customer&&inv.customer_name!==st.customer)return false;
+    if(st.status&&inv.status!==st.status)return false;
+    const ids=tripIdsForInvoice(inv.id),ts=ids.map(tripById).filter(Boolean);
+    if(st.vehicle&&!ts.some(t=>String(t.vehicle||'')===st.vehicle))return false;
+    if(st.route&&!ts.some(t=>String(t.zone||'')===st.route))return false;
+    return true;
+  });
+  const reportBops=bops.filter(x=>{
+    if(!inDate(x.incurred_on))return false;
+    const t=tripById(x.trip_id);
+    if(st.vehicle&&String(x.vehicle||t?.vehicle||'')!==st.vehicle)return false;
+    if(st.route&&String(x.route||t?.zone||'')!==st.route)return false;
+    if(st.customer&&t&&customerForTrip(t.id)!==st.customer)return false;
+    if(st.customer&&!t)return false;
+    return true;
+  });
+  const reportMaint=maintenance.filter(x=>{
+    if(!inDate(x.incurred_on))return false;
+    if(st.vehicle&&String(x.vehicle||'')!==st.vehicle)return false;
+    return true;
+  });
+
+  const revenueRows=[];
+  for(const inv of reportInvoices){
+    for(const l of links.filter(x=>x.invoice_id===inv.id)){
+      const t=tripById(l.trip_id); if(!t)continue;
+      revenueRows.push({invoice:inv,trip:t,amount:prodNum(t.trip_price)+prodNum(t.additional)-prodNum(t.deduction)});
+    }
+  }
+  const revenueTotal=revenueRows.reduce((n,x)=>n+x.amount,0);
+  const cashTotal=reportPayments.reduce((n,x)=>n+prodNum(x.amount),0);
+  const bopTotal=reportBops.reduce((n,x)=>n+prodNum(x.amount),0);
+  const maintenanceTotal=reportMaint.reduce((n,x)=>n+prodNum(x.amount),0);
+  const receivableTotal=reportInvoices.reduce((n,i)=>n+prodNum(summaryById(i.id)?.receivable||0),0);
+  const operationalProfit=revenueTotal-bopTotal;
+  const netProfit=operationalProfit-maintenanceTotal;
+
+  const showCustomer=['RINGKASAN','PENDAPATAN','PENERIMAAN','PIUTANG','BUKU_BESAR','LABA_RUGI'].includes(st.view);
+  const showVehicle=['RINGKASAN','PENDAPATAN','PENERIMAAN','BOP','PERAWATAN','BUKU_BESAR','LABA_RUGI'].includes(st.view);
+  const showRoute=['RINGKASAN','PENDAPATAN','PENERIMAAN','BOP','BUKU_BESAR','LABA_RUGI'].includes(st.view);
+  const showStatus=['PENDAPATAN','PENERIMAAN','PIUTANG'].includes(st.view);
+
+  let body='';
+  if(st.view==='RINGKASAN'||st.view==='LABA_RUGI'){
+    body='<div class="rhpp-summary-cards">'+
+      '<div class="rhpp-summary-card"><span>Pendapatan</span><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Penerimaan Kas</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Piutang</span><strong>Rp '+prodFmt(receivableTotal,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Kas Jalan / BOP</span><strong>Rp '+prodFmt(bopTotal,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Servis / Perawatan</span><strong>Rp '+prodFmt(maintenanceTotal,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card rhpp-summary-value"><span>Laba Bersih</span><strong>Rp '+prodFmt(netProfit,0)+'</strong></div>'+
+    '</div>';
+    if(st.view==='LABA_RUGI')body+='<div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>Komponen</th><th>Nilai</th></tr></thead><tbody>'+
+      '<tr><td>Pendapatan Expedisi</td><td>Rp '+prodFmt(revenueTotal,0)+'</td></tr>'+
+      '<tr><td>Kas Jalan / BOP Operasional</td><td>Rp '+prodFmt(bopTotal,0)+'</td></tr>'+
+      '<tr><td><strong>Laba Operasional</strong></td><td><strong>Rp '+prodFmt(operationalProfit,0)+'</strong></td></tr>'+
+      '<tr><td>Servis / Perawatan</td><td>Rp '+prodFmt(maintenanceTotal,0)+'</td></tr>'+
+      '<tr><td><strong>Laba Bersih Expedisi</strong></td><td><strong>Rp '+prodFmt(netProfit,0)+'</strong></td></tr>'+
+      '</tbody></table></div>';
+  }else if(st.view==='PENDAPATAN'){
+    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Pendapatan</span><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Trip Tertagih</span><strong>'+revenueRows.length+'</strong></div></div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tgl Invoice</th><th>Invoice</th><th>Pelanggan</th><th>Tgl Trip</th><th>SJ</th><th>Rute</th><th>Kendaraan</th><th>Tujuan</th><th>Pendapatan</th></tr></thead><tbody>'+
+      revenueRows.map(x=>'<tr><td>'+prodDateId(x.invoice.invoice_date)+'</td><td>'+esc(x.invoice.invoice_number)+'</td><td>'+esc(x.invoice.customer_name)+'</td><td>'+prodDateId(x.trip.trip_date)+'</td><td>'+esc(x.trip.mts_sj||'-')+'</td><td>'+esc(x.trip.zone||'-')+'</td><td>'+esc(x.trip.vehicle||'-')+'</td><td>'+esc(x.trip.destination||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td></tr>').join('')+
+      '</tbody></table></div>'+(revenueRows.length?'':'<p class="muted">Tidak ada pendapatan pada filter ini.</p>');
+  }else if(st.view==='PENERIMAAN'){
+    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Kas Diterima</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Penerimaan</span><strong>'+reportPayments.length+'</strong></div></div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Pelanggan</th><th>Invoice</th><th>Metode</th><th>Referensi</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+
+      reportPayments.map(p=>{const i=invoiceById(p.invoice_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(i?.customer_name||'-')+'</td><td>'+esc(i?.invoice_number||'-')+'</td><td>'+esc(p.method||'-')+'</td><td>'+esc(p.reference||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.notes||'-')+'</td></tr>';}).join('')+
+      '</tbody></table></div>'+(reportPayments.length?'':'<p class="muted">Tidak ada penerimaan kas pada filter ini.</p>');
+  }else if(st.view==='PIUTANG'){
+    const rows=reportInvoices.map(i=>({i,s:summaryById(i.id)}));
+    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Piutang</span><strong>Rp '+prodFmt(receivableTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Invoice</span><strong>'+rows.length+'</strong></div></div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Tagihan</th><th>Dibayar</th><th>Sisa</th><th>Status</th></tr></thead><tbody>'+
+      rows.map(x=>'<tr><td>'+esc(x.i.invoice_number)+'</td><td>'+prodDateId(x.i.invoice_date)+'</td><td>'+(x.i.due_date?prodDateId(x.i.due_date):'-')+'</td><td>'+esc(x.i.customer_name)+'</td><td>Rp '+prodFmt(x.s?.invoice_total||0,0)+'</td><td>Rp '+prodFmt(x.s?.paid_total||0,0)+'</td><td><strong>Rp '+prodFmt(x.s?.receivable||0,0)+'</strong></td><td>'+esc(x.i.status)+'</td></tr>').join('')+
+      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Tidak ada piutang pada filter ini.</p>');
+  }else if(st.view==='BOP'){
+    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Kas Jalan / BOP</span><strong>Rp '+prodFmt(bopTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Transaksi</span><strong>'+reportBops.length+'</strong></div></div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>SJ</th><th>Rute</th><th>Kendaraan</th><th>Kategori</th><th>Nominal</th><th>Sumber</th><th>Catatan</th></tr></thead><tbody>'+
+      reportBops.map(x=>{const t=tripById(x.trip_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(t?.mts_sj||'-')+'</td><td>'+esc(x.route||t?.zone||'-')+'</td><td>'+esc(x.vehicle||t?.vehicle||'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference==='AUTO_TRIP'?'Input OP per Trip':(x.reference||'Manual'))+'</td><td>'+esc(x.notes||'-')+'</td></tr>';}).join('')+
+      '</tbody></table></div>'+(reportBops.length?'':'<p class="muted">Tidak ada BOP pada filter ini.</p>');
+  }else if(st.view==='PERAWATAN'){
+    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Servis / Perawatan</span><strong>Rp '+prodFmt(maintenanceTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Transaksi</span><strong>'+reportMaint.length+'</strong></div></div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Kendaraan</th><th>Nominal</th><th>Referensi</th><th>Catatan</th></tr></thead><tbody>'+
+      reportMaint.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>'+esc(x.vehicle||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+'</td></tr>').join('')+
+      '</tbody></table></div>'+(reportMaint.length?'':'<p class="muted">Tidak ada perawatan pada filter ini.</p>');
+  }else if(st.view==='BUKU_BESAR'){
+    const ledger=[];
+    reportPayments.forEach(p=>{const i=invoiceById(p.invoice_id);ledger.push({date:p.paid_on,type:'KAS MASUK',detail:'Penerimaan '+(i?.customer_name||'Expedisi')+(i?.invoice_number?' · '+i.invoice_number:''),debit:prodNum(p.amount),credit:0,ref:p.reference||''});});
+    reportBops.forEach(x=>{const t=tripById(x.trip_id);ledger.push({date:x.incurred_on,type:'KAS KELUAR',detail:'Kas Jalan/BOP '+(x.route||t?.zone||'Expedisi'),debit:0,credit:prodNum(x.amount),ref:x.reference||''});});
+    reportMaint.forEach(x=>ledger.push({date:x.incurred_on,type:'KAS KELUAR',detail:'Servis/Perawatan '+String(x.category||'').replaceAll('_',' '),debit:0,credit:prodNum(x.amount),ref:x.reference||''}));
+    ledger.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.type).localeCompare(String(b.type)));
+    let running=0;
+    const rows=ledger.map(x=>{running+=x.debit-x.credit;return {...x,balance:running};});
+    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Kas Masuk</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Kas Keluar</span><strong>Rp '+prodFmt(bopTotal+maintenanceTotal,0)+'</strong></div><div class="rhpp-summary-card rhpp-summary-value"><span>Saldo Bersih</span><strong>Rp '+prodFmt(cashTotal-bopTotal-maintenanceTotal,0)+'</strong></div></div>'+
+      '<p class="muted">Buku Besar Expedisi menampilkan arus kas aktual: penerimaan pelanggan, Kas Jalan/BOP, dan servis/perawatan. Pendapatan invoice yang belum diterima tidak ditambahkan lagi agar kas tidak dihitung dua kali.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Rincian</th><th>Referensi</th><th>Masuk</th><th>Keluar</th><th>Saldo</th></tr></thead><tbody>'+
+      rows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.detail)+'</td><td>'+esc(x.ref||'-')+'</td><td>'+(x.debit?'Rp '+prodFmt(x.debit,0):'-')+'</td><td>'+(x.credit?'Rp '+prodFmt(x.credit,0):'-')+'</td><td><strong>Rp '+prodFmt(x.balance,0)+'</strong></td></tr>').join('')+
+      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Tidak ada transaksi kas pada filter ini.</p>');
+  }
+
+  let html='<section class="panel"><div class="rhpp-section-head"><div><h3>Laporan Expedisi</h3><p class="muted">Pusat pemeriksaan Expedisi. Input tetap dilakukan dari menu operasional masing-masing.</p></div><div class="report-actions"><button type="button" id="fxReportCenterPrint">Cetak / PDF</button></div></div>'+
+    '<div class="form-vertical compact-form">'+
+      '<label>Pilih Laporan<select id="fxReportView">'+views.map(v=>'<option value="'+v[0]+'" '+(st.view===v[0]?'selected':'')+'>'+v[1]+'</option>').join('')+'</select></label>'+
+      '<label>Tanggal Dari<input id="fxReportFrom" type="date" value="'+esc(st.from||'')+'"></label>'+
+      '<label>Tanggal Sampai<input id="fxReportTo" type="date" value="'+esc(st.to||'')+'"></label>'+
+      (showCustomer?'<label>Pelanggan<select id="fxReportCustomer"><option value="">Semua Pelanggan</option>'+customerNames.map(v=>'<option value="'+esc(v)+'" '+(st.customer===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select></label>':'')+
+      (showVehicle?'<label>Kendaraan<select id="fxReportVehicle"><option value="">Semua Kendaraan</option>'+vehicles.map(v=>'<option value="'+esc(v)+'" '+(st.vehicle===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select></label>':'')+
+      (showRoute?'<label>Rute<select id="fxReportRoute"><option value="">Semua Rute</option>'+routes.map(v=>'<option value="'+esc(v)+'" '+(st.route===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select></label>':'')+
+      (showStatus?'<label>Status<select id="fxReportStatus"><option value="">Semua Status</option><option value="ISSUED" '+(st.status==='ISSUED'?'selected':'')+'>ISSUED</option><option value="PAID" '+(st.status==='PAID'?'selected':'')+'>PAID</option><option value="VOID" '+(st.status==='VOID'?'selected':'')+'>VOID</option></select></label>':'')+
+      '<div class="inline-actions"><button type="button" id="fxReportApply">Terapkan</button><button type="button" id="fxReportReset">Reset Filter</button></div>'+
+    '</div></section>'+
+    '<section class="panel" id="fxReportCenterPrintArea"><h3>'+esc(views.find(v=>v[0]===st.view)?.[1]||'Laporan Expedisi')+'</h3>'+body+'</section>';
+
+  layout(html);if(err)msg(err.message);
+  const view=document.getElementById('fxReportView');
+  if(view)view.onchange=async()=>{st.view=view.value||'RINGKASAN';st.status='';await financeExpeditionProfitLossPage();};
+  const apply=document.getElementById('fxReportApply');
+  if(apply)apply.onclick=async()=>{
+    st.from=document.getElementById('fxReportFrom')?.value||'';
+    st.to=document.getElementById('fxReportTo')?.value||'';
+    st.customer=document.getElementById('fxReportCustomer')?.value||'';
+    st.vehicle=document.getElementById('fxReportVehicle')?.value||'';
+    st.route=document.getElementById('fxReportRoute')?.value||'';
+    st.status=document.getElementById('fxReportStatus')?.value||'';
+    await financeExpeditionProfitLossPage();
+  };
+  const reset=document.getElementById('fxReportReset');
+  if(reset)reset.onclick=async()=>{window.__fxReportState={view:st.view,from:'',to:'',customer:'',vehicle:'',route:'',status:''};await financeExpeditionProfitLossPage();};
+  const p=document.getElementById('fxReportCenterPrint');if(p)p.onclick=()=>printFinanceDocument('fxReportCenterPrintArea','Laporan Expedisi - '+(views.find(v=>v[0]===st.view)?.[1]||'Ringkasan'));
 }
 
 async function financeExpeditionBopPage(){
