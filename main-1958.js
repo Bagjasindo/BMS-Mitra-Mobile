@@ -5367,13 +5367,20 @@ async function financeSupplierPayablesPage(){
 async function financeBopGeneralPage(){
   const {data,error}=await db.from('bop_outside').select('*').order('incurred_on',{ascending:false}).order('created_at',{ascending:false});
   const rows=data||[];
+  const isSalary=x=>x.category==='TENAGA_KERJA'&&/\b(gaji|salary)\b/i.test(String(x.notes||''));
+  const salaryRows=rows.filter(isSalary),operationalRows=rows.filter(x=>!isSalary(x));
+  const salaryTotal=salaryRows.reduce((n,x)=>n+prodNum(x.amount),0),operationalTotal=operationalRows.reduce((n,x)=>n+prodNum(x.amount),0);
   window.__financeBopGeneralState=window.__financeBopGeneralState||{editId:''};
   const editState=window.__financeBopGeneralState,editRow=rows.find(x=>x.id===editState.editId)||null;
   const txn=txnListState(rows,'bop_outside','incurred_on',5);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
   const bopUmumLabels={TENAGA_KERJA:'Gaji & Insentif',TRANSPORTASI:'BBM & Pajak Kendaraan',LISTRIK:'Listrik Kantor',PERBAIKAN:'Servis & Perbaikan',ADMINISTRASI:'Kebutuhan Kantor & Langganan',LAINNYA:'Sumbangan, Seragam & Lainnya'};
-  let html='<section class="panel"><h3>'+(editRow?'Edit BOP Umum':'Tambah BOP Umum')+'</h3>'+
+  let html='<section class="panel"><h3>Ringkasan Biaya Perusahaan</h3><p class="muted">Gaji karyawan ditampilkan terpisah agar angka BOP Umum tidak tercampur. Keduanya tetap masuk Arus Kas satu kali dari transaksi sumber.</p><div class="rhpp-summary-cards">'+
+    '<div class="rhpp-summary-card"><span>BOP Umum selain gaji</span><strong>Rp '+prodFmt(operationalTotal,0)+'</strong><small>'+operationalRows.length+' transaksi</small></div>'+
+    '<div class="rhpp-summary-card"><span>Gaji Karyawan</span><strong>Rp '+prodFmt(salaryTotal,0)+'</strong><small>'+salaryRows.length+' transaksi</small></div>'+
+    '<div class="rhpp-summary-card"><span>Total Biaya Perusahaan</span><strong>Rp '+prodFmt(operationalTotal+salaryTotal,0)+'</strong></div></div></section>'+
+    '<section class="panel"><h3>'+(editRow?'Edit BOP Umum':'Tambah BOP Umum')+'</h3>'+
     '<p class="muted">Biaya operasional perusahaan. Gaji dan insentif: Tenaga Kerja; BBM dan pajak kendaraan: Transportasi; oli, ban, servis: Perbaikan; rapat, konsumsi kantor, langganan: Administrasi; sumbangan dan seragam: Lainnya. Biaya khusus kandang dicatat di BOP Kandang, biaya trip di Expedisi. Jelaskan transaksi pada Rincian transaksi.</p>'+
     '<form id="bopOutsideForm" class="form-vertical">'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(editRow?.incurred_on||today)+'" required></label>'+
@@ -7049,7 +7056,10 @@ async function financeGlobalProfitLossPage(){
   const bopExp=prodNum(exp.operational_bop);
   const labaExp=prodNum(exp.operational_profit);
   const perawatanExp=prodNum(exp.maintenance_bop);
-  const bopUmum=bopUmumRows.reduce((n,x)=>n+prodNum(x.amount),0);
+  const isSalary=x=>x.category==='TENAGA_KERJA'&&/\b(gaji|salary)\b/i.test(String(x.notes||''));
+  const gajiPerusahaan=bopUmumRows.filter(isSalary).reduce((n,x)=>n+prodNum(x.amount),0);
+  const bopUmumSelainGaji=bopUmumRows.filter(x=>!isSalary(x)).reduce((n,x)=>n+prodNum(x.amount),0);
+  const bopUmum=gajiPerusahaan+bopUmumSelainGaji;
   const labaUsaha=labaKandang+labaExp;
   const biayaGlobal=perawatanKandang+perawatanExp+bopUmum;
   const labaGlobal=labaUsaha-biayaGlobal;
@@ -7064,7 +7074,7 @@ async function financeGlobalProfitLossPage(){
   };
   const barnMaintGroup=groupTotal(barnMaintRows,'category');
   const expMaintGroup=groupTotal(expMaint,'category');
-  const bopUmumGroup=groupTotal(bopUmumRows,'category');
+  const bopUmumGroup=groupTotal(bopUmumRows.filter(x=>!isSalary(x)),'category');
 
   let html='<section class="panel" id="globalProfitPrintArea">'+
     '<div class="rhpp-section-head"><div><h3>Laba/Rugi Global</h3>'+
@@ -7108,7 +7118,8 @@ async function financeGlobalProfitLossPage(){
     '<div class="tablewrap"><table><tbody>'+
       '<tr><td>Perawatan Kandang</td><td>Rp '+prodFmt(perawatanKandang,0)+'</td></tr>'+
       '<tr><td>Perawatan Expedisi</td><td>Rp '+prodFmt(perawatanExp,0)+'</td></tr>'+
-      '<tr><td>BOP Umum</td><td>Rp '+prodFmt(bopUmum,0)+'</td></tr>'+
+      '<tr><td>BOP Umum selain gaji</td><td>Rp '+prodFmt(bopUmumSelainGaji,0)+'</td></tr>'+
+      '<tr><td>Gaji Karyawan Perusahaan</td><td>Rp '+prodFmt(gajiPerusahaan,0)+'</td></tr>'+
       '<tr><td><strong>Total Biaya Global</strong></td><td><strong>Rp '+prodFmt(biayaGlobal,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
     (barnMaintGroup.length?'<h4>Rincian Perawatan Kandang</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+barnMaintGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
