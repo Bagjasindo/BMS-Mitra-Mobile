@@ -3510,12 +3510,11 @@ async function productionVisitPage(){
 }
 async function productionEstimatePage(){
   const d=await productionBase();
-  const [er,sr,rr]=await Promise.all([
+  const [er,sr]=await Promise.all([
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
-    db.from('production_estimate_sizes').select('*'),
-    db.from('recordings').select('*').not('contract_assignment_id','is',null)
+    db.from('production_estimate_sizes').select('*')
   ]);
-  const rows=d.scopeRows(er.data||[]),sizes=sr.data||[],recs=d.scopeRows(rr.data||[]);
+  const rows=d.scopeRows(er.data||[]),sizes=sr.data||[];
   const estimateAssignmentId=window.__pplEstimateAssignment||'';
   const historyEstimates=estimateAssignmentId?rows.filter(x=>x.contract_assignment_id===estimateAssignmentId):[];
   window.__bmsTxnList=window.__bmsTxnList||{};
@@ -3524,44 +3523,20 @@ async function productionEstimatePage(){
   const txnEstimate=txnListState(historyEstimates,'pplEstimate','estimated_on',5,null,'barn_id',{}),pageRows=txnEstimate.rows;
   const eligibleAssignments=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
 
-  const calcFinance=(a,ci,sz,estimatedOn)=>{
-    const contract=d.masters.find(x=>x.id===a?.master_contract_id);
+  const calcFinance=(a,ci,sz)=>{
     let revenue=0,totalBirds=0,totalBiomass=0;
-    for(const s of sz){
-      const bw=prodNum(s.bw_kg),birds=prodNum(s.birds);
+    for(const row of sz){
+      const bw=prodNum(row.bw_kg),birds=prodNum(row.birds);
       const price=d.livePrices.find(p=>p.contract_id===a?.master_contract_id&&bw>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||bw<prodNum(p.max_weight_kg)));
       revenue+=birds*bw*prodNum(price?.price_per_kg);
       totalBirds+=birds;
       totalBiomass+=birds*bw;
     }
-
-    let preKg=0,starterKg=0,finisherKg=0,otherKg=0;
-    recs.filter(r=>r.contract_assignment_id===a?.id&&(!estimatedOn||r.recorded_on<=estimatedOn)).forEach(r=>{
-      const item=d.feedItems.find(i=>i.id===r.feed_item_id);
-      const phase=String(item?.feed_phase||'').trim().toLowerCase();
-      const kg=prodNum(r.feed_kg);
-      if(phase.includes('pre'))preKg+=kg;
-      else if(phase.includes('finish')||phase.includes('finis'))finisherKg+=kg;
-      else if(phase.includes('starter'))starterKg+=kg;
-      else otherKg+=kg;
-    });
-
-    const chickIn=prodNum(ci?.received);
-    const docPrice=prodNum(contract?.doc_price);
-    const prePrice=prodNum(contract?.pre_starter_price);
-    const starterPrice=prodNum(contract?.starter_price);
-    const finisherPrice=prodNum(contract?.finisher_price);
-    const docCost=chickIn*docPrice;
-    const preCost=preKg*prePrice;
-    const starterCost=starterKg*starterPrice;
-    const finisherCost=finisherKg*finisherPrice;
-    const cost=docCost+preCost+starterCost+finisherCost;
-    const profit=revenue-cost;
     const avgBw=totalBirds?totalBiomass/totalBirds:0;
-    return {revenue,cost,profit,perChick:chickIn>0?profit/chickIn:0,avgBw,docCost,preKg,starterKg,finisherKg,otherKg,docPrice,prePrice,starterPrice,finisherPrice,preCost,starterCost,finisherCost};
+    return {revenue,avgBw};
   };
 
-  let html='<section class="panel"><h3>Estimasi</h3><p class="muted">Mulai umur 23 hari. Satu umur/tanggal hanya boleh memiliki satu Estimasi. Gunakan Edit untuk memperbarui data yang sudah tersimpan.</p>'+
+  let html='<section class="panel"><h3>Estimasi</h3><p class="muted">Simulasi produksi berdasarkan Panen aktual Marketing + proyeksi sisa ayam. Estimasi tidak membaca Recording dan tidak memengaruhi RHPP.</p>'+
     '<form id="prodEst" class="form-vertical">'+
     '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+eligibleAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(estimateAssignmentId===a.id?'selected':'')+'>'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
     '<input type="hidden" name="date">'+
@@ -3572,7 +3547,7 @@ async function productionEstimatePage(){
     '<label>Sisa Ayam Real (ekor)<input type="number" min="0" name="remaining" readonly required></label>'+
     '<p id="estUnallocated" class="muted"><strong>Sisa Belum Terbagi: 0 ekor</strong></p>'+
     '<div><strong>Ukuran / BW</strong><div id="estSizes"></div><button type="button" id="addEstSize">+ Tambah Ukuran</button></div>'+
-    '<div class="panel" style="margin:0"><strong>Pakan Terpakai Otomatis</strong><p id="estFeedPre" class="muted">Pre Starter: 0 Kg</p><p id="estFeedStarter" class="muted">Starter: 0 Kg</p><p id="estFeedFinisher" class="muted">Finisher: 0 Kg</p><p id="estFeedTotal"><strong>Total Pakan: 0 Kg</strong></p></div>'+
+    '<p class="muted"><strong>Sumber aktual simulasi:</strong> transaksi Panen Marketing yang sudah tersimpan.</p>'+
     '<label>Catatan<textarea name="notes"></textarea></label>'+
     '<div id="estPreview"></div>'+
     '<div class="inline-actions"><button id="estSave">Simpan Estimasi</button><button type="button" id="estCancel" style="display:none">Batal Edit</button></div>'+
@@ -3582,8 +3557,8 @@ async function productionEstimatePage(){
   html+='<section class="panel"><h3>Riwayat Estimasi</h3>'+
     '<p class="muted">'+(selectedEstimateAssignment?'Menampilkan riwayat estimasi kandang yang sedang dipilih.':'Pilih kandang pada form di atas untuk menampilkan riwayat estimasi.')+'</p>'+
     '<div class="tablewrap"><table><thead><tr>'+
-    '<th>Kandang</th><th>Tanggal</th><th>Umur</th><th>Sisa Ayam</th><th>BW Est.</th><th>Pakan</th><th>FCR Est.</th><th>IP Est.</th>'+
-    '<th>Hasil Panen Est.</th><th>Biaya DOC + Pakan</th><th>Est. Laba</th><th>Laba / Ekor Chick-In</th><th>Aksi</th>'+
+    '<th>Kandang</th><th>Tanggal</th><th>Umur</th><th>Sisa Ayam</th><th>BW Est.</th>'+
+    '<th>Panen Aktual Marketing</th><th>Proyeksi Sisa Panen</th><th>Total Proyeksi</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     pageRows.map(x=>{
       const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
@@ -3597,28 +3572,20 @@ async function productionEstimatePage(){
       const priorHarvests=d.harvests.filter(h=>h.contract_assignment_id===x.contract_assignment_id&&h.harvested_on<x.estimated_on);
       const harvBirds=priorHarvests.reduce((s,h)=>s+prodNum(h.birds),0);
       const harvKg=priorHarvests.reduce((s,h)=>s+prodNum(h.net_weight_kg),0);
-      const totalProjectedBirds=harvBirds+birds;
-      const totalProjectedBio=harvKg+bio;
-      const avgProjectedBw=totalProjectedBirds?totalProjectedBio/totalProjectedBirds:0;
-      const fcr=totalProjectedBio?prodNum(x.feed_used_kg)/totalProjectedBio:0;
-      const initial=ci?prodNum(ci.received)-prodNum(ci.doa):0;
-      const surv=initial?Math.min(100,totalProjectedBirds/initial*100):0;
-      const ip=age&&fcr?(surv*avgProjectedBw*100)/(age*fcr):0;
-      const dyn=calcFinance(a,ci,sz,x.estimated_on);
-      const revenue=x.estimated_revenue==null?dyn.revenue:prodNum(x.estimated_revenue);
-      const cost=x.estimated_cost==null?dyn.cost:prodNum(x.estimated_cost);
-      const profit=x.estimated_profit==null?dyn.profit:prodNum(x.estimated_profit);
-      const perChick=x.profit_per_chick_in==null?dyn.perChick:prodNum(x.profit_per_chick_in);
-      return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodDateId(x.estimated_on)+'</td><td>'+age+'</td><td>'+prodFmt(x.remaining_birds,0)+'</td><td>'+prodFmt(bw,3)+'</td><td>'+prodFmt(prodNum(x.feed_used_kg)/50,0)+' zak</td><td>'+prodFmt(fcr,3)+'</td><td>'+prodFmt(ip,1)+'</td>'+
-        '<td>Rp '+prodFmt(revenue,0)+'</td><td>Rp '+prodFmt(cost,0)+'</td><td>Rp '+prodFmt(profit,0)+'</td><td>Rp '+prodFmt(perChick,0)+'</td>'+
+      const priorRevenue=priorHarvests.reduce((sum,h)=>sum+prodNum(h.total_amount),0);
+      const dyn=calcFinance(a,ci,sz);
+      const projectedRemainingRevenue=dyn.revenue;
+      const totalProjection=priorRevenue+projectedRemainingRevenue;
+      return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodDateId(x.estimated_on)+'</td><td>'+age+'</td><td>'+prodFmt(x.remaining_birds,0)+'</td><td>'+prodFmt(bw,3)+'</td>'+
+        '<td>Rp '+prodFmt(priorRevenue,0)+'</td><td>Rp '+prodFmt(projectedRemainingRevenue,0)+'</td><td>Rp '+prodFmt(totalProjection,0)+'</td>'+
         '<td><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></td></tr>';
     }).join('')+
     '</tbody></table></div>'+
     txnEstimate.pager+
-    '<p class="muted">Rumus: hasil panen per ukuran/BW sesuai harga kontrak − (DOC Chick-In × harga DOC + pakan terpakai per fase × harga kontrak). Laba per ekor dibagi DOC Chick-In.</p></section>';
+    '<p class="muted">Rumus simulasi: Panen aktual Marketing + proyeksi sisa ayam berdasarkan jumlah ekor, BW, dan harga kontrak. Tidak ada nilai dari Recording atau RHPP.</p></section>';
 
   layout(html);
-  if(d.err||er.error||sr.error||rr.error)msg((d.err||er.error||sr.error||rr.error).message);
+  if(d.err||er.error||sr.error)msg((d.err||er.error||sr.error).message);
 
   bindAdminTransactionDeletes(()=>productionEstimatePage());
 
@@ -3644,22 +3611,11 @@ async function productionEstimatePage(){
     if(el)el.innerHTML='<strong>Sisa Belum Terbagi: '+prodFmt(Math.max(0,left),0)+' ekor</strong>'+(left<0?' <span class="error">· Melebihi sisa real '+prodFmt(Math.abs(left),0)+' ekor</span>':'');
     return left;
   };
-  const feedTotals=()=>{
-    const aid=f.assignment.value,date=f.date.value;
-    let pre=0,starter=0,finisher=0,other=0;
-    recs.filter(r=>r.contract_assignment_id===aid&&(!date||r.recorded_on<=date)).forEach(r=>{
-      const item=d.feedItems.find(i=>i.id===r.feed_item_id),phase=String(item?.feed_phase||'').trim().toLowerCase(),kg=prodNum(r.feed_kg);
-      if(phase.includes('pre'))pre+=kg;
-      else if(phase.includes('finish')||phase.includes('finis'))finisher+=kg;
-      else if(phase.includes('starter'))starter+=kg;
-      else other+=kg;
-    });
-    return {pre,starter,finisher,other,total:pre+starter+finisher+other};
-  };
+
   const currentFinancial=()=>{
     const a=d.assignments.find(x=>x.id===f.assignment.value);
     const ci=a&&d.chicks.find(c=>c.contract_assignment_id===a.id);
-    return calcFinance(a,ci,draft.map(x=>({birds:x.birds,bw_kg:x.bw})),f.date.value);
+    return calcFinance(a,ci,draft.map(x=>({birds:x.birds,bw_kg:x.bw})));
   };
   const preview=()=>{
     const a=d.assignments.find(x=>x.id===f.assignment.value),ci=a&&d.chicks.find(c=>c.contract_assignment_id===a.id);
@@ -3673,43 +3629,19 @@ async function productionEstimatePage(){
     const totalProjectedBirds=harvBirds+birds;
     const totalProjectedBio=harvKg+bio;
     const bw=totalProjectedBirds?totalProjectedBio/totalProjectedBirds:0;
-    const feeds=feedTotals();
-    const existingEstimate=editingId?rows.find(x=>x.id===editingId):null;
-    const effectiveFeed=existingEstimate?prodNum(existingEstimate.feed_used_kg):feeds.total;
-    const fcr=totalProjectedBio?effectiveFeed/totalProjectedBio:0;
-    const initial=ci?prodNum(ci.received)-prodNum(ci.doa):0;
-    const surv=initial?Math.min(100,totalProjectedBirds/initial*100):0;
-    const ip=age&&fcr?(surv*bw*100)/(age*fcr):0;
     const fin=currentFinancial();
-    const effectiveCost=existingEstimate?prodNum(existingEstimate.estimated_cost):fin.cost;
     const totalRevenue=priorRevenue+fin.revenue;
-    const profit=totalRevenue-effectiveCost;
-    const perChick=prodNum(ci?.received)>0?profit/prodNum(ci.received):0;
     document.getElementById('estAge').textContent='Umur: '+(ci?age+' hari':'-');
     document.getElementById('estActualHarvest').textContent='Panen aktual sebelum tanggal estimasi: '+prodFmt(harvBirds,0)+' ekor';
-    document.getElementById('estFeedPre').textContent='Pre Starter: '+prodFmt(feeds.pre,2)+' Kg';
-    document.getElementById('estFeedStarter').textContent='Starter: '+prodFmt(feeds.starter,2)+' Kg';
-    document.getElementById('estFeedFinisher').textContent='Finisher: '+prodFmt(feeds.finisher,2)+' Kg';
-    document.getElementById('estFeedTotal').innerHTML='<strong>Total Pakan: '+prodFmt(effectiveFeed,2)+' Kg</strong>'+(existingEstimate?' <span class="muted">· mengikuti snapshot estimasi tersimpan</span>':(feeds.other>0?' <span class="muted">· Fase lain: '+prodFmt(feeds.other,2)+' Kg</span>':''));
     document.getElementById('estPreview').innerHTML=
       '<div class="panel" style="margin:12px 0 0;padding:14px"><h4 style="margin-top:0">Ringkasan Estimasi</h4>'+
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'+
-          '<div class="rhpp-summary-card"><span>BW Proyeksi</span><strong>'+prodFmt(bw,3)+' Kg</strong></div>'+
-          '<div class="rhpp-summary-card"><span>FCR Estimasi</span><strong>'+prodFmt(fcr,3)+'</strong></div>'+
-          '<div class="rhpp-summary-card"><span>IP Estimasi</span><strong>'+prodFmt(ip,1)+'</strong></div>'+
-          '<div class="rhpp-summary-card"><span>Panen Sebelumnya</span><strong>Rp '+prodFmt(priorRevenue,0)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>BW Proyeksi Gabungan</span><strong>'+prodFmt(bw,3)+' Kg</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Panen Aktual Marketing</span><strong>Rp '+prodFmt(priorRevenue,0)+'</strong></div>'+
           '<div class="rhpp-summary-card"><span>Proyeksi Sisa Panen</span><strong>Rp '+prodFmt(fin.revenue,0)+'</strong></div>'+
-          '<div class="rhpp-summary-card"><span>Est. Laba</span><strong>Rp '+prodFmt(profit,0)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Total Proyeksi Panen</span><strong>Rp '+prodFmt(totalRevenue,0)+'</strong></div>'+
         '</div>'+
-        '<details style="margin-top:12px"><summary><strong>Lihat Rincian Biaya</strong></summary>'+
-          '<div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Komponen</th><th>Jumlah</th><th>Harga</th><th>Nilai</th></tr></thead><tbody>'+
-            '<tr><td>DOC</td><td>'+prodFmt(prodNum(ci?.received),0)+' ekor</td><td>Rp '+prodFmt(fin.docPrice,0)+'</td><td>Rp '+prodFmt(fin.docCost,0)+'</td></tr>'+
-            '<tr><td>Pre Starter</td><td>'+prodFmt(fin.preKg,2)+' Kg</td><td>Rp '+prodFmt(fin.prePrice,0)+'</td><td>Rp '+prodFmt(fin.preCost,0)+'</td></tr>'+
-            '<tr><td>Starter</td><td>'+prodFmt(fin.starterKg,2)+' Kg</td><td>Rp '+prodFmt(fin.starterPrice,0)+'</td><td>Rp '+prodFmt(fin.starterCost,0)+'</td></tr>'+
-            '<tr><td>Finisher</td><td>'+prodFmt(fin.finisherKg,2)+' Kg</td><td>Rp '+prodFmt(fin.finisherPrice,0)+'</td><td>Rp '+prodFmt(fin.finisherCost,0)+'</td></tr>'+
-          '</tbody></table></div>'+
-          '<p style="margin:10px 0 0"><strong>Total Hasil Panen Est.:</strong> Rp '+prodFmt(totalRevenue,0)+' &nbsp; · &nbsp; <strong>Total Biaya DOC + Pakan:</strong> Rp '+prodFmt(effectiveCost,0)+' &nbsp; · &nbsp; <strong>Laba/Ekor Chick-In:</strong> Rp '+prodFmt(perChick,0)+'</p>'+
-        '</details>'+
+        '<p class="muted" style="margin:10px 0 0">Simulasi ini berdiri sendiri dan tidak memengaruhi RHPP.</p>'+
       '</div>';
   };
   const syncEstimateDraftFromDom=()=>{
@@ -3729,8 +3661,13 @@ async function productionEstimatePage(){
   const syncEstimateDate=()=>{
     const a=d.assignments.find(x=>x.id===f.assignment.value),ci=a&&d.chicks.find(c=>c.contract_assignment_id===a.id);
     if(!a||!ci){f.date.value='';document.getElementById('estDate').textContent='Tanggal Estimasi: -';return}
-    const eligible=recs.filter(r=>r.contract_assignment_id===a.id&&prodNum(r.age_days)>=23).sort((x,y)=>prodNum(y.age_days)-prodNum(x.age_days));
-    const autoDate=eligible[0]?.recorded_on||prodDateAdd(ci.arrived_on,22);
+    const marketingHarvests=d.harvests
+      .filter(h=>h.contract_assignment_id===a.id)
+      .sort((x,y)=>String(y.harvested_on||'').localeCompare(String(x.harvested_on||'')));
+    const today=prodToday();
+    const minDate=prodDateAdd(ci.arrived_on,22);
+    const latestHarvest=marketingHarvests[0]?.harvested_on||'';
+    const autoDate=[today,minDate,latestHarvest].filter(Boolean).sort().pop();
     f.date.value=autoDate;
     document.getElementById('estDate').textContent='Tanggal Estimasi: '+prodDateId(autoDate);
   };
@@ -3751,9 +3688,8 @@ async function productionEstimatePage(){
     syncEstimateDate();
     const a=d.assignments.find(x=>x.id===f.assignment.value),ci=a&&d.chicks.find(c=>c.contract_assignment_id===a.id);
     if(a&&ci&&f.date.value){
-      const death=recs.filter(r=>r.contract_assignment_id===a.id&&r.recorded_on<=f.date.value).reduce((s,r)=>s+prodNum(r.mortality)+prodNum(r.culling),0);
-      const harv=d.harvests.filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<f.date.value).reduce((s,h)=>s+prodNum(h.birds),0);
-      f.remaining.value=Math.max(0,prodNum(ci.received)-prodNum(ci.doa)-death-harv);
+      const harv=d.harvests.filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<=f.date.value).reduce((sum,h)=>sum+prodNum(h.birds),0);
+      f.remaining.value=Math.max(0,prodNum(ci.received)-prodNum(ci.doa)-harv);
     }else f.remaining.value='';
     draft=[{birds:0,bw:0}];renderSizes();updateUnallocated();syncExistingState();preview();
   };
@@ -3794,23 +3730,17 @@ async function productionEstimatePage(){
     const left=updateUnallocated();
     if(left<0)return msg('Jumlah ayam per ukuran melebihi Sisa Ayam Real.');
     if(left>0)return msg('Masih ada '+prodFmt(left,0)+' ekor yang belum terbagi ke ukuran.');
-    const feeds=feedTotals(),fin=currentFinancial();
-    const existingEstimate=editingId?rows.find(x=>x.id===editingId):null;
-    let saveFeed=feeds.total,saveCost=fin.cost;
-    if(existingEstimate){
-      saveFeed=prodNum(existingEstimate.feed_used_kg);
-      saveCost=prodNum(existingEstimate.estimated_cost);
-    }
+    const fin=currentFinancial();
     const priorRevenue=d.harvests
-      .filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<f.date.value)
+      .filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<=f.date.value)
       .reduce((s,h)=>s+prodNum(h.total_amount),0);
     const projectedRemainingRevenue=draft.reduce((sum,x)=>{
       const price=d.livePrices.find(p=>p.contract_id===a.master_contract_id&&x.bw>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||x.bw<prodNum(p.max_weight_kg)));
       return sum+prodNum(x.birds)*prodNum(x.bw)*prodNum(price?.price_per_kg);
     },0);
     const saveRevenue=priorRevenue+projectedRemainingRevenue;
-    const saveProfit=saveRevenue-saveCost;
-    const savePerChick=prodNum(ci.received)>0?saveProfit/prodNum(ci.received):0;
+    const saveProfit=0;
+    const savePerChick=0;
     const wasEdit=!!editingId;
     const {error:saveError}=await db.rpc('save_production_estimate_atomic',{
       p_id:editingId||null,
@@ -3818,10 +3748,10 @@ async function productionEstimatePage(){
       p_barn_id:a.barn_id,
       p_estimated_on:f.date.value,
       p_remaining_birds:Math.trunc(prodNum(f.remaining.value)),
-      p_feed_used_kg:saveFeed,
+      p_feed_used_kg:0,
       p_notes:f.notes.value||null,
       p_estimated_revenue:saveRevenue,
-      p_estimated_cost:saveCost,
+      p_estimated_cost:0,
       p_estimated_profit:saveProfit,
       p_profit_per_chick_in:savePerChick,
       p_sizes:draft.map(x=>({birds:Math.trunc(prodNum(x.birds)),bw_kg:prodNum(x.bw)}))
