@@ -5765,11 +5765,18 @@ async function financeExpeditionProfitLossPage(){
       '<tr><td><strong>Laba Bersih Expedisi</strong></td><td><strong>Rp '+prodFmt(netProfit,0)+'</strong></td></tr>'+
       '</tbody></table></div>';
   }else if(st.view==='PENDAPATAN'){
-    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Pendapatan</span><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Trip Tertagih</span><strong>'+revenueRows.length+'</strong></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tgl Invoice</th><th>Invoice</th><th>Pelanggan</th><th>Tgl Trip</th><th>SJ</th><th>Rute</th><th>Kendaraan</th><th>Tujuan</th><th>Pendapatan</th></tr></thead><tbody>'+
+    const historicalRevenueRows=revenueRows.filter(x=>String(x.trip.reference||'').startsWith('HIST-BRU-')||String(x.trip.zone||'').trim().toUpperCase()==='HISTORIS BRU');
+    const regularRevenueRows=revenueRows.filter(x=>!historicalRevenueRows.includes(x));
+    const historicalRevenueTotal=historicalRevenueRows.reduce((n,x)=>n+x.amount,0);
+    const regularRevenueTotal=regularRevenueRows.reduce((n,x)=>n+x.amount,0);
+    body='<div class="tablewrap"><table><thead><tr><th>Tgl Invoice</th><th>Invoice</th><th>Pelanggan</th><th>Tgl Trip</th><th>SJ</th><th>Rute</th><th>Kendaraan</th><th>Tujuan</th><th>Pendapatan</th></tr></thead><tbody>'+
       revenueRows.map(x=>'<tr><td>'+prodDateId(x.invoice.invoice_date)+'</td><td>'+esc(x.invoice.invoice_number)+'</td><td>'+esc(x.invoice.customer_name)+'</td><td>'+prodDateId(x.trip.trip_date)+'</td><td>'+esc(x.trip.mts_sj||'-')+'</td><td>'+esc(x.trip.zone||'-')+'</td><td>'+esc(x.trip.vehicle||'-')+'</td><td>'+esc(x.trip.destination||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td></tr>').join('')+
-      (revenueRows.length?'<tr><td colspan="7"></td><td><strong>JUMLAH TOTAL · '+revenueRows.length+' TRIP</strong></td><td><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></td></tr>':'')+
-      '</tbody></table></div>'+(revenueRows.length?'':'<p class="muted">Tidak ada pendapatan pada filter ini.</p>');
+      '</tbody></table></div>'+
+      (revenueRows.length?'<div class="panel" style="margin-top:14px"><table><tbody>'+
+        '<tr><td><strong>Trip Reguler</strong></td><td>'+regularRevenueRows.length+' trip</td><td style="text-align:right"><strong>Rp '+prodFmt(regularRevenueTotal,0)+'</strong></td></tr>'+
+        '<tr><td><strong>Historis BRU</strong></td><td>'+historicalRevenueRows.length+' data</td><td style="text-align:right"><strong>Rp '+prodFmt(historicalRevenueTotal,0)+'</strong></td></tr>'+
+        '<tr><td><strong>GRAND TOTAL</strong></td><td><strong>'+revenueRows.length+' data</strong></td><td style="text-align:right"><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></td></tr>'+
+      '</tbody></table></div>':'<p class="muted">Tidak ada pendapatan pada filter ini.</p>');
   }else if(st.view==='PENERIMAAN'){
     body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Kas Diterima</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Penerimaan</span><strong>'+reportPayments.length+'</strong></div></div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Pelanggan</th><th>Invoice</th><th>Metode</th><th>Referensi</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+
