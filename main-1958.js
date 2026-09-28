@@ -656,6 +656,42 @@ function layout(content){
       '</aside>'+
       '<main><header><div><h2>'+title[tab]+'</h2><small>'+esc(profile.full_name)+' · '+esc(profile.role)+'</small></div></header><p id="message"></p>'+content+'</main>'+
     '</div>';
+  const legacyTxnDeleteMap={
+    'delete-shipment':'logistics_shipments',
+    'delete-external':'logistics_external_shipments',
+    'delete-mandiri-purchase':'logistics_mandiri_purchases',
+    'delete-harvest':'marketing_contract_harvests',
+    'delete-bl':'marketing_external_meat_purchases',
+    'delete-ext-return':'logistics_external_returns',
+    'delete-return':'logistics_returns'
+  };
+  const legacyTxnSelectors=Object.keys(legacyTxnDeleteMap).map(k=>'[data-'+k+']').concat('[data-delete-abk-harvest]');
+  if(profile?.role!=='ADMIN'){
+    root.querySelectorAll(legacyTxnSelectors.join(',')).forEach(el=>el.remove());
+  }else{
+    if(window.__legacyTxnDeleteCapture)root.removeEventListener('click',window.__legacyTxnDeleteCapture,true);
+    window.__legacyTxnDeleteCapture=async ev=>{
+      const btn=ev.target?.closest?.(legacyTxnSelectors.join(','));
+      if(!btn)return;
+      ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
+      const attr=Object.keys(legacyTxnDeleteMap).find(k=>btn.hasAttribute('data-'+k));
+      if(btn.hasAttribute('data-delete-abk-harvest')){
+        const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nPanen ABK ini memengaruhi klasemen/kinerja ABK dan rekap produksi. Pastikan transaksi memang salah.\n\nLanjutkan hapus?');
+        if(!ok)return;
+        const {error}=await db.rpc('delete_production_abk_harvest_atomic',{p_size_id:btn.getAttribute('data-delete-abk-harvest')});
+        if(error)return msg(error.message);
+        await render();msg('Transaksi Panen ABK berhasil dihapus oleh ADMIN.',true);return;
+      }
+      if(!attr)return;
+      const table=legacyTxnDeleteMap[attr],id=btn.getAttribute('data-'+attr);
+      const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nJika transaksi ini dihapus, '+transactionDeleteImpact(table)+'.\n\nPastikan data memang salah dan tidak lagi diperlukan.\n\nLanjutkan hapus?');
+      if(!ok)return;
+      const {error}=await db.rpc('admin_delete_transaction_v1',{p_table:table,p_id:String(id||'')});
+      if(error)return msg(error.message);
+      await render();msg('Transaksi berhasil dihapus oleh ADMIN.',true);
+    };
+    root.addEventListener('click',window.__legacyTxnDeleteCapture,true);
+  }
   decorateNavigation(root);
   enhanceSearchableSelects();
   requestAnimationFrame(updateTableScrollHints);
