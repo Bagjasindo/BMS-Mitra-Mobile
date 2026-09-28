@@ -6062,7 +6062,7 @@ async function financeExpeditionBopPage(){
         '<label>Rute<input type="text" value="'+esc(selectedTrip.zone||'-')+'" readonly></label>'+
         '<label>Sopir / Truk<input type="text" value="'+esc((selectedTrip.driver||'-')+' · '+(selectedTrip.vehicle||'-'))+'" readonly></label>'+
         '<label>Nominal OP<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(selectedDone?esc(fmtNumber(selectedAmount)):'')+'" placeholder="Contoh: 685.000" required></label>'+
-        '<div class="inline-actions"><button type="submit">'+(selectedDone?'Simpan Koreksi':'Simpan BOP')+'</button><button type="button" id="fxBopCancel" class="btn-secondary">Batal</button></div>'+
+        '<div class="inline-actions"><button type="submit">'+(selectedDone?'Simpan Koreksi':'Simpan BOP')+'</button><button type="button" id="fxBopCancel" class="btn-secondary">Batal</button>'+(selectedDone&&profile?.role==='ADMIN'?'<button type="button" id="fxBopDelete" class="btn-danger">Hapus BOP</button>':'')+'</div>'+
       '</form></section>';
   }
 
@@ -6098,6 +6098,9 @@ async function financeExpeditionBopPage(){
 
   const cancel=document.getElementById('fxBopCancel');
   if(cancel)cancel.onclick=async()=>{window.__fxBopSelected=null;await financeExpeditionBopPage();};
+
+  const deleteBop=document.getElementById('fxBopDelete');
+  if(deleteBop&&selectedTrip)deleteBop.onclick=async()=>{if(profile?.role!=='ADMIN')return msg('Hanya ADMIN yang boleh menghapus BOP Expedisi.');if(!await appConfirm('PERINGATAN HAPUS BOP EXPEDISI\n\nBOP trip ini akan dihapus dari Arus Kas dan laba/rugi Expedisi. Trip tetap ada dan statusnya kembali BELUM MASUK BOP.\n\nLanjutkan hapus?'))return;const {error}=await db.rpc('admin_delete_expedition_trip_bop_v1',{p_trip_id:selectedTrip.id});if(error)return msg(error.message);window.__fxBopSelected=null;await financeExpeditionBopPage();msg('BOP Expedisi berhasil dihapus oleh ADMIN.',true);};
 
   const form=document.getElementById('fxBopEntryForm');
   if(form&&selectedTrip)form.onsubmit=async ev=>{
