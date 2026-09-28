@@ -3081,19 +3081,34 @@ function prodSelectAssignments(d,onlyActive=true){
 }
 async function chickInPage(){
   const d=await productionBase();
-  let html='<section class="panel"><h3>Chick-In / DOC Masuk</h3><form id="prodChick" class="form-vertical">'+
-    '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+prodSelectAssignments(d,true)+'</select></label>'+
-    '<input type="hidden" name="date" value="'+prodToday()+'">'+
-    '<label>DOC In<input type="text" inputmode="numeric" data-number="1" name="received" required></label>'+
-    '<label>DOC Mati Box<input type="text" inputmode="numeric" data-number="1" name="doa" value="0" required></label>'+
-    '<label>Bobot Rata2<input type="text" inputmode="decimal" data-number="1" name="avg_weight"></label>'+
-    '<label>Nomor DO<input name="delivery_number"></label>'+
+  window.__chickInEdit=window.__chickInEdit||'';
+  const editRow=d.chicks.find(x=>x.id===window.__chickInEdit)||null;
+  const optionHtml=d.assignments.filter(a=>a.active).map(a=>'<option value="'+esc(a.id)+'" '+(editRow?.contract_assignment_id===a.id?'selected':'')+'>'+esc(prodAssignmentOption(d,a))+'</option>').join('');
+
+  let html='<section class="panel"><h3>'+(editRow?'Edit Chick-In / DOC Masuk':'Chick-In / DOC Masuk')+'</h3><form id="prodChick" class="form-vertical">'+
+    '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+optionHtml+'</select></label>'+
+    '<input type="hidden" name="date" value="'+esc(editRow?.arrived_on||prodToday())+'">'+
+    '<label>DOC In<input type="text" inputmode="numeric" data-number="1" name="received" value="'+(editRow?fmtNumber(editRow.received):'')+'" required></label>'+
+    '<label>DOC Mati Box<input type="text" inputmode="numeric" data-number="1" name="doa" value="'+(editRow?fmtNumber(editRow.doa||0):'0')+'" required></label>'+
+    '<label>Bobot Rata2<input type="text" inputmode="decimal" data-number="1" name="avg_weight" value="'+(editRow&&prodNum(editRow.avg_weight)>0?fmtNumber(editRow.avg_weight):'')+'" placeholder="Opsional, gram"></label>'+
+    '<label>Nomor DO<input name="delivery_number" value="'+esc(editRow&&String(editRow.delivery_number||'').match(/^DOC-PLACEHOLDER-/i)?'':(editRow?.delivery_number||''))+'" placeholder="Opsional"></label>'+
     '<p id="prodChickNet" class="muted">Populasi awal bersih: 0 ekor</p>'+
-    '<button>Simpan Chick-In</button></form></section>';
-  html+='<section class="panel"><h3>Data Chick-In</h3><div class="tablewrap"><table><thead><tr><th>Kandang / Kontrak</th><th>DOC In</th><th>DOC Mati Box</th><th>Bobot Rata2</th><th>Nomor DO</th><th>Aksi</th></tr></thead><tbody>'+
-    d.chicks.filter(x=>x.contract_assignment_id).map(x=>{const a=d.assignments.find(a=>a.id===x.contract_assignment_id);return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodFmt(x.received,0)+'</td><td>'+prodFmt(x.doa,0)+'</td><td>'+prodFmt(x.avg_weight,2)+' g</td><td>'+esc(x.delivery_number||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-chick="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('chick_ins',x.id)+'</div></td></tr>'}).join('')+
+    '<div class="inline-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan Chick-In')+'</button>'+(editRow?'<button type="button" id="chickEditCancel">Batal Edit</button>':'')+'</div></form></section>';
+
+  html+='<section class="panel"><h3>Data Chick-In</h3><div class="tablewrap"><table><thead><tr>'+
+    '<th>Kandang / Kontrak</th><th>DOC In</th><th>DOC Mati Box</th><th>Populasi Awal Bersih</th><th>Bobot Rata2</th><th>Nomor DO</th><th>Aksi</th>'+
+    '</tr></thead><tbody>'+
+    d.chicks.filter(x=>x.contract_assignment_id).map(x=>{
+      const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
+      const net=Math.max(0,prodNum(x.received)-prodNum(x.doa));
+      const weight=prodNum(x.avg_weight)>0?prodFmt(x.avg_weight,2)+' g':'-';
+      const rawDo=String(x.delivery_number||'').trim();
+      const doText=(!rawDo||/^DOC-PLACEHOLDER-/i.test(rawDo))?'-':rawDo;
+      return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodFmt(x.received,0)+'</td><td>'+prodFmt(x.doa,0)+'</td><td><strong>'+prodFmt(net,0)+'</strong></td><td>'+weight+'</td><td>'+esc(doText)+'</td><td><div class="inline-actions"><button type="button" data-edit-chick="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('chick_ins',x.id)+'</div></td></tr>';
+    }).join('')+
     '</tbody></table></div></section>';
-  layout(html); bindNumberInputs(); if(d.err)msg(d.err.message);
+
+  layout(html);bindNumberInputs();if(d.err)msg(d.err.message);
   const f=document.getElementById('prodChick'),net=document.getElementById('prodChickNet');
   const calc=()=>{
     f.received.value=formatInputID(f.received.value);
@@ -3101,22 +3116,48 @@ async function chickInPage(){
     if(f.avg_weight.value)f.avg_weight.value=formatInputID(f.avg_weight.value);
     net.textContent='Populasi awal bersih: '+Math.max(0,(normalizeInputID(f.received.value)||0)-(normalizeInputID(f.doa.value)||0)).toLocaleString('id-ID')+' ekor';
   };
+  calc();
   f.received.oninput=calc;f.doa.oninput=calc;f.avg_weight.oninput=calc;
-  root.querySelectorAll('[data-edit-chick]').forEach(btn=>btn.onclick=()=>{const x=d.chicks.find(v=>v.id===btn.dataset.editChick);if(!x)return;f.assignment.value=x.contract_assignment_id||'';f.received.value=fmtNumber(x.received);f.doa.value=fmtNumber(x.doa);f.avg_weight.value=x.avg_weight==null?'':fmtNumber(x.avg_weight);f.delivery_number.value=x.delivery_number||'';calc();document.getElementById('prodChick')?.scrollIntoView({behavior:'smooth',block:'start'});});
-  bindAdminTransactionDeletes(()=>chickInPage());
-  bindAdminTransactionDeletes(()=>productionVisitPage());
 
-  f.onsubmit=async e=>{e.preventDefault();const a=d.assignments.find(x=>x.id===f.assignment.value);if(!a)return msg('Pilih kontrak aktif dari Logistik.');
+  root.querySelectorAll('[data-edit-chick]').forEach(btn=>btn.onclick=async()=>{
+    window.__chickInEdit=btn.dataset.editChick||'';
+    await chickInPage();
+    document.getElementById('prodChick')?.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  const cancel=document.getElementById('chickEditCancel');
+  if(cancel)cancel.onclick=async()=>{window.__chickInEdit='';await chickInPage();};
+  bindAdminTransactionDeletes(()=>{window.__chickInEdit='';return chickInPage();});
+
+  f.onsubmit=async e=>{
+    e.preventDefault();
+    const a=d.assignments.find(x=>x.id===f.assignment.value);
+    if(!a)return msg('Pilih kontrak aktif dari Logistik.');
     const received=normalizeInputID(f.received.value);
     const doa=normalizeInputID(f.doa.value);
     const avgWeight=f.avg_weight.value?normalizeInputID(f.avg_weight.value):null;
     if(received===null||received<=0)return msg('Jumlah DOC Masuk harus lebih dari 0 ekor.');
-    if(doa===null||doa<0)return msg('DOA harus 0 atau lebih.');
-    if(doa>=received)return msg('DOA harus lebih kecil dari Jumlah DOC Masuk. Populasi awal bersih harus lebih dari 0 ekor.');
-    const payload={contract_assignment_id:a.id,barn_id:a.barn_id,arrived_on:f.date.value,received,shipped:received,doa,strain:null,avg_weight:avgWeight,delivery_number:f.delivery_number.value||null};
-    const existing=d.chicks.find(x=>x.contract_assignment_id===a.id);
-    const q=existing?db.from('chick_ins').update(payload).eq('id',existing.id):db.from('chick_ins').insert(payload);
-    const {error}=await q;if(error)return msg('Gagal menyimpan Chick-In: '+error.message);await chickInPage();msg('Chick-In tersimpan.',true);
+    if(doa===null||doa<0)return msg('DOC Mati Box harus 0 atau lebih.');
+    if(doa>=received)return msg('DOC Mati Box harus lebih kecil dari DOC In. Populasi awal bersih harus lebih dari 0 ekor.');
+    if(avgWeight!==null&&avgWeight<=0)return msg('Bobot Rata2 harus lebih dari 0 gram atau dikosongkan.');
+
+    const rawDo=String(f.delivery_number.value||'').trim();
+    const payload={
+      contract_assignment_id:a.id,barn_id:a.barn_id,arrived_on:f.date.value,
+      received,shipped:received,doa,strain:null,avg_weight:avgWeight,
+      delivery_number:rawDo&&!/^DOC-PLACEHOLDER-/i.test(rawDo)?rawDo:null
+    };
+
+    const duplicate=d.chicks.find(x=>x.contract_assignment_id===a.id&&x.id!==editRow?.id);
+    if(duplicate)return msg('Kandang/siklus ini sudah memiliki Chick-In. Gunakan Edit pada data yang sudah ada.');
+
+    const q=editRow
+      ?db.from('chick_ins').update(payload).eq('id',editRow.id)
+      :db.from('chick_ins').insert(payload);
+    const {error}=await q;
+    if(error)return msg('Gagal menyimpan Chick-In: '+error.message);
+    window.__chickInEdit='';
+    await chickInPage();
+    msg(editRow?'Chick-In berhasil diperbarui.':'Chick-In berhasil disimpan.',true);
   };
 }
 async function recordingPplPage(){
