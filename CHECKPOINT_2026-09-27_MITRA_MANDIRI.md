@@ -374,3 +374,41 @@ Belum boleh ditandai 100% PASS sebelum:
 1. Dashboard aktif mengurangi panen sebagian.
 2. Performa Recording mengurangi panen sampai tanggal recording.
 3. Sisa Ayam Real pada Estimasi memakai boundary tanggal yang konsisten dengan snapshot tersimpan.
+
+
+---
+
+## PERBAIKAN 3 TITIK PRODUKSI 2026-09-28
+
+Status: **SUDAH DIKERJAKAN — hanya area Produksi, RHPP dan modul PASS lain tidak diubah.**
+
+### 1. Dashboard Produksi aktif
+- Populasi berjalan sekarang = Chick-In - deplesi recording - panen sampai recording terakhir.
+- Data live verifikasi:
+  - Chick-In 14.800
+  - Deplesi 2.278
+  - Panen 6.762
+  - Populasi hidup benar 5.760
+- Sebelumnya Dashboard membaca 12.522 karena panen belum dikurangkan.
+
+### 2. Performa Recording
+- Populasi pada setiap baris recording sekarang mengurangi panen sampai tanggal recording tersebut.
+- Perhitungan ini hanya untuk monitoring/pembanding Produksi.
+- Tidak digunakan untuk mengubah RHPP.
+
+### 3. Estimasi
+- Sisa Ayam Real pada Estimasi memakai panen dengan tanggal **lebih kecil dari** tanggal estimasi.
+- Panen pada tanggal yang sama tidak dikurangkan karena aturan existing: Estimasi dibuat sebelum panen Marketing pada hari yang sama.
+- Ini menjaga konsistensi dengan data Estimasi lama yang sudah tersimpan.
+
+### Batas Integrasi
+- Recording dan Estimasi adalah monitoring/pembanding Produksi.
+- Estimasi tidak menjadi input RHPP.
+- Perubahan ini tidak menyentuh fungsi RHPP, snapshot RHPP Mitra, Finance, Logistik, Marketing, atau Expedisi.
+
+### Asset live
+- `main-1958.js?v=2134-production-consistency`
+
+### Commit
+- `8113da32b1e9ad7b6235457785480fda8845e13b` — tiga perbaikan konsistensi Produksi.
+- `e857e59c3e283fac84a2904da54dfaea4c36b10c` — refresh asset.
