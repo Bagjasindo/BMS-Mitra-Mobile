@@ -3953,17 +3953,49 @@ async function leagueAbkPage(editSizeId=null){
   const cancel=document.getElementById('cancelAbkEdit');
   if(cancel)cancel.onclick=()=>leagueAbkPage();
 }
+function productionProcessSnapshot(d,a,recs,samples){
+  const ci=d.chicks.find(x=>x.contract_assignment_id===a.id);
+  const rows=recs.filter(x=>x.contract_assignment_id===a.id)
+    .sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days)||String(u.recorded_on||'').localeCompare(String(v.recorded_on||'')));
+  const latest=rows[rows.length-1]||null;
+  const chickIn=ci?Math.max(0,prodNum(ci.received)-prodNum(ci.doa)):0;
+  const mortBirds=rows.reduce((s,x)=>s+prodNum(x.mortality)+prodNum(x.culling),0);
+  const mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
+  const hs=d.harvests.filter(h=>h.contract_assignment_id===a.id);
+  const chickOut=hs.reduce((s,h)=>s+prodNum(h.birds),0);
+  const harvestedKg=hs.reduce((s,h)=>s+prodNum(h.net_weight_kg),0);
+  const currentBirds=Math.max(0,chickIn-mortBirds-chickOut);
+  const ws=latest?samples.filter(s=>s.recording_id===latest.id).map(s=>prodNum(s.weight_g)).filter(v=>v>0):[];
+  const currentBw=ws.length?ws.reduce((s,x)=>s+x,0)/ws.length/1000:prodNum(latest?.avg_weight_kg);
+  const currentKg=currentBirds*Math.max(0,currentBw);
+  const performanceBirds=chickOut+currentBirds;
+  const performanceKg=harvestedKg+currentKg;
+  const harvestAgeWeight=ci?hs.reduce((s,h)=>s+prodAge(ci.arrived_on,h.harvested_on)*prodNum(h.birds),0):0;
+  const currentAge=prodNum(latest?.age_days);
+  const age=performanceBirds?(harvestAgeWeight+currentAge*currentBirds)/performanceBirds:currentAge;
+  const feed=rows.reduce((s,x)=>s+prodNum(x.feed_kg),0);
+  const avg=performanceBirds?performanceKg/performanceBirds:0;
+  const fcr=performanceKg?feed/performanceKg:0;
+  const survival=chickIn?Math.min(100,(chickIn-mortBirds)/chickIn*100):0;
+  const ip=age&&fcr&&avg?(survival*avg*100)/(age*fcr):0;
+  return {chickIn,chickOut,mortBirds,mortPct,kg:harvestedKg,avg,age,feed,fcr,ip,performanceBirds,performanceKg,currentBirds,currentBw};
+}
+
 async function productionRecapPage(){
   const d=await productionBase();
-  const [cpr,pr,fr,...feedResponses]=await Promise.all([
+  const [cpr,pr,fr,mfr,rr,sr,...feedResponses]=await Promise.all([
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('production_ppl_directory'),
     db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
+    db.from('recording_weight_samples').select('recording_id,weight_g'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
   const company=cpr.data||{};
   const pplRows=pr.data||[];
-  const finals=fr.data||[];
+  const finals=[...(fr.data||[]),...(mfr.data||[])];
+  const recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
   const feedByAssignment=new Map();
   d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
 
@@ -4037,40 +4069,30 @@ async function productionRecapPage(){
       const ip=prodNum(final.ip);
       return {
         a,b,ci,ppl:pplName(a.ppl_id),status:'CLOSED',
-        chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,
+        chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,performanceBirds:chickOut,performanceKg:kg,
         cycle:Math.max(1,cycles.indexOf(a.id)+1)
       };
     }
 
-    const hs=d.harvests.filter(h=>h.contract_assignment_id===a.id);
-    const chickIn=ci?Math.max(0,prodNum(ci.received)-prodNum(ci.doa)):0;
-    const chickOut=hs.reduce((sum,h)=>sum+prodNum(h.birds),0);
-    const mortBirds=Math.max(0,chickIn-chickOut);
-    const mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
-    const kg=hs.reduce((sum,h)=>sum+prodNum(h.net_weight_kg),0);
-    const avg=chickOut?kg/chickOut:0;
-    const age=chickOut&&ci?hs.reduce((sum,h)=>sum+prodAge(ci.arrived_on,h.harvested_on)*prodNum(h.birds),0)/chickOut:0;
-    const feed=feedFor(a);
-    const fcr=kg?feed/kg:0;
-    const survival=chickIn?Math.min(100,chickOut/chickIn*100):0;
-    const ip=age&&fcr&&avg?(survival*avg*100)/(age*fcr):0;
+    const live=productionProcessSnapshot(d,a,recs,samples);
     return {
       a,b,ci,ppl:pplName(a.ppl_id),status:'PROSES',
-      chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,
+      ...live,
       cycle:Math.max(1,cycles.indexOf(a.id)+1)
     };
   }).sort((x,y)=>String(dateOfAssignment(x.a)).localeCompare(String(dateOfAssignment(y.a))));
 
   const totals=rows.reduce((o,x)=>{
+    const pb=prodNum(x.performanceBirds||x.chickOut),pk=prodNum(x.performanceKg||x.kg);
     o.chickIn+=x.chickIn;o.chickOut+=x.chickOut;o.mortBirds+=x.mortBirds;
-    o.kg+=x.kg;o.feed+=x.feed;o.ageWeight+=x.age*Math.max(1,x.chickOut);
+    o.kg+=x.kg;o.feed+=x.feed;o.performanceBirds+=pb;o.performanceKg+=pk;o.ageWeight+=x.age*Math.max(1,pb);
     return o;
-  },{chickIn:0,chickOut:0,mortBirds:0,kg:0,feed:0,ageWeight:0});
-  const ageWeightBase=rows.reduce((sum,x)=>sum+Math.max(1,x.chickOut),0);
+  },{chickIn:0,chickOut:0,mortBirds:0,kg:0,feed:0,performanceBirds:0,performanceKg:0,ageWeight:0});
+  const ageWeightBase=rows.reduce((sum,x)=>sum+Math.max(1,prodNum(x.performanceBirds||x.chickOut)),0);
   const totalAge=ageWeightBase?totals.ageWeight/ageWeightBase:0;
-  const totalAvg=totals.chickOut?totals.kg/totals.chickOut:0;
+  const totalAvg=totals.performanceBirds?totals.performanceKg/totals.performanceBirds:0;
   const totalMortPct=totals.chickIn?Math.min(100,totals.mortBirds/totals.chickIn*100):0;
-  const totalFcr=totals.kg?totals.feed/totals.kg:0;
+  const totalFcr=totals.performanceKg?totals.feed/totals.performanceKg:0;
   const totalSurvival=totals.chickIn?Math.min(100,(totals.chickIn-totals.mortBirds)/totals.chickIn*100):0;
   const totalIp=totalAge&&totalFcr&&totalAvg?(totalSurvival*totalAvg*100)/(totalAge*totalFcr):0;
 
@@ -4137,7 +4159,7 @@ async function productionRecapPage(){
 
   layout(html);
   const feedErr=feedResponses.find(x=>x?.error)?.error;
-  if(d.err||cpr.error||pr.error||fr.error||feedErr)msg((d.err||cpr.error||pr.error||fr.error||feedErr).message);
+  if(d.err||cpr.error||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr)msg((d.err||cpr.error||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr).message);
 
   const form=document.getElementById('productionRecapFilter');
   if(form){
@@ -8339,12 +8361,15 @@ async function logisticsReports(){
 
 async function reports(){
   const d=await productionBase();
-  const [pr,fr,...feedResponses]=await Promise.all([
+  const [pr,fr,mfr,rr,sr,...feedResponses]=await Promise.all([
     db.rpc('production_ppl_directory'),
     db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
+    db.from('recording_weight_samples').select('recording_id,weight_g'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
-  const pplRows=pr.data||[],finals=fr.data||[];
+  const pplRows=pr.data||[],finals=[...(fr.data||[]),...(mfr.data||[])],recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
   const feedByAssignment=new Map();
   d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
 
@@ -8389,37 +8414,35 @@ async function reports(){
       fcr=prodNum(final.fcr_actual);
       ip=prodNum(final.ip);
     }else{
-      const hs=d.harvests.filter(h=>h.contract_assignment_id===a.id);
-      chickIn=ci?Math.max(0,prodNum(ci.received)-prodNum(ci.doa)):0;
-      chickOut=hs.reduce((sum,h)=>sum+prodNum(h.birds),0);
-      mortBirds=Math.max(0,chickIn-chickOut);
-      mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
-      kg=hs.reduce((sum,h)=>sum+prodNum(h.net_weight_kg),0);
-      avg=chickOut?kg/chickOut:0;
-      age=chickOut&&ci?hs.reduce((sum,h)=>sum+prodAge(ci.arrived_on,h.harvested_on)*prodNum(h.birds),0)/chickOut:0;
-      feed=feedFor(a);
-      fcr=kg?feed/kg:0;
-      const survival=chickIn?Math.min(100,chickOut/chickIn*100):0;
-      ip=age&&fcr&&avg?(survival*avg*100)/(age*fcr):0;
+      const live=productionProcessSnapshot(d,a,recs,samples);
+      ({chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip}=live);
+      return {
+        a,b,ppl:pplName(a.ppl_id),type:a.cycle_type||'MITRA',
+        performance:a.performance_template_name||'-',
+        status:'PROSES',
+        ...live
+      };
     }
 
     return {
       a,b,ppl:pplName(a.ppl_id),type:a.cycle_type||'MITRA',
       performance:a.performance_template_name||'-',
-      status:a.active?'PROSES':'CLOSED',
-      chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip
+      status:'CLOSED',
+      chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,performanceBirds:chickOut,performanceKg:kg
     };
   }).sort((x,y)=>String(assignmentDate(x.a)).localeCompare(String(assignmentDate(y.a))));
 
   const totals=rows.reduce((o,x)=>{
-    o.chickIn+=x.chickIn;o.chickOut+=x.chickOut;o.mortBirds+=x.mortBirds;o.kg+=x.kg;o.feed+=x.feed;o.ageWeight+=x.age*Math.max(1,x.chickOut);
+    const pb=prodNum(x.performanceBirds||x.chickOut),pk=prodNum(x.performanceKg||x.kg);
+    o.chickIn+=x.chickIn;o.chickOut+=x.chickOut;o.mortBirds+=x.mortBirds;o.kg+=x.kg;o.feed+=x.feed;
+    o.performanceBirds+=pb;o.performanceKg+=pk;o.ageWeight+=x.age*Math.max(1,pb);
     return o;
-  },{chickIn:0,chickOut:0,mortBirds:0,kg:0,feed:0,ageWeight:0});
-  const ageWeightBase=rows.reduce((sum,x)=>sum+Math.max(1,x.chickOut),0);
+  },{chickIn:0,chickOut:0,mortBirds:0,kg:0,feed:0,performanceBirds:0,performanceKg:0,ageWeight:0});
+  const ageWeightBase=rows.reduce((sum,x)=>sum+Math.max(1,prodNum(x.performanceBirds||x.chickOut)),0);
   const totalAge=ageWeightBase?totals.ageWeight/ageWeightBase:0;
-  const totalAvg=totals.chickOut?totals.kg/totals.chickOut:0;
+  const totalAvg=totals.performanceBirds?totals.performanceKg/totals.performanceBirds:0;
   const totalMortPct=totals.chickIn?Math.min(100,totals.mortBirds/totals.chickIn*100):0;
-  const totalFcr=totals.kg?totals.feed/totals.kg:0;
+  const totalFcr=totals.performanceKg?totals.feed/totals.performanceKg:0;
   const totalSurvival=totals.chickIn?Math.min(100,(totals.chickIn-totals.mortBirds)/totals.chickIn*100):0;
   const totalIp=totalAge&&totalFcr&&totalAvg?(totalSurvival*totalAvg*100)/(totalAge*totalFcr):0;
 
@@ -8469,7 +8492,7 @@ async function reports(){
 
   layout(html);
   const feedErr=feedResponses.find(x=>x?.error)?.error;
-  if(d.err||pr.error||fr.error||feedErr)msg((d.err||pr.error||fr.error||feedErr).message);
+  if(d.err||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr)msg((d.err||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr).message);
 
   const form=document.getElementById('productionReportFilter');
   if(form){
