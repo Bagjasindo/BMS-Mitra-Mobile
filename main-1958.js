@@ -8338,47 +8338,167 @@ async function logisticsReports(){
 }
 
 async function reports(){
-  const [ar,br,cr,rr,hr,bopr,rhppr,bal]=await Promise.all([
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
-    db.from('barns').select('id,code,name'),
-    db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('recordings').select('contract_assignment_id,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null),
-    db.from('marketing_contract_harvests').select('contract_assignment_id,birds,net_weight_kg,total_amount'),
-    db.from('bop').select('contract_assignment_id,amount'),
-    db.from('rhpp_real').select('contract_assignment_id,amount'),
-    db.from('advance_balances').select('*')
+  const d=await productionBase();
+  const [pr,fr,...feedResponses]=await Promise.all([
+    db.rpc('production_ppl_directory'),
+    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
-  const err=[ar,br,cr,rr,hr,bopr,rhppr,bal].find(x=>x.error)?.error;
-  const ars=ar.data||[],bs=br.data||[],cs=cr.data||[],recs=rr.data||[],hs=hr.data||[],bops=bopr.data||[],rhpps=rhppr.data||[],balances=bal.data||[];
-  window.__productionReportState=window.__productionReportState||{barn:'',assignment:''};
+  const pplRows=pr.data||[],finals=fr.data||[];
+  const feedByAssignment=new Map();
+  d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
+
+  window.__productionReportState=window.__productionReportState||{barn:'',assignment:'',type:'',status:'',shown:false};
   const st=window.__productionReportState;
-  const cycleRows=st.barn?ars.filter(a=>a.barn_id===st.barn):[];
-  const visibleAssignments=ars.filter(a=>(!st.barn||a.barn_id===st.barn)&&(!st.assignment||a.id===st.assignment));
-  const rows=visibleAssignments.map(a=>{
-    const b=bs.find(x=>x.id===a.barn_id),k=cs.find(x=>x.id===a.master_contract_id);
-    const rs=recs.filter(x=>x.contract_assignment_id===a.id),hh=hs.filter(x=>x.contract_assignment_id===a.id);
-    const mortality=rs.reduce((n,x)=>n+prodNum(x.mortality)+prodNum(x.culling),0);
-    const feed=rs.reduce((n,x)=>n+prodNum(x.feed_kg),0);
-    const birds=hh.reduce((n,x)=>n+prodNum(x.birds),0);
-    const kg=hh.reduce((n,x)=>n+prodNum(x.net_weight_kg),0);
-    const bop=bops.filter(x=>x.contract_assignment_id===a.id).reduce((n,x)=>n+prodNum(x.amount),0);
-    const rhpp=rhpps.find(x=>x.contract_assignment_id===a.id);
-    return '<tr><td>'+esc(assignmentIdentity(ars,bs,cs,a))+'</td><td>'+esc(shortContractLabel(k?.number)||'-')+'</td><td>'+(a.active?'AKTIF':'CLOSED')+'</td><td>'+prodFmt(mortality,0)+'</td><td>'+prodFmt(feed,2)+'</td><td>'+prodFmt(birds,0)+'</td><td>'+prodFmt(kg,2)+'</td><td>'+prodFmt(rhpp?.amount||0,2)+'</td><td>'+prodFmt(bop,2)+'</td></tr>';
-  }).join('');
-  layout('<section class="panel"><h3>Filter Laporan Produksi</h3><form id="productionReportFilter" class="form-vertical">'+
-    '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+bs.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-    '<label>Siklus<select name="assignment" '+(!st.barn?'disabled':'')+'><option value="">Semua Siklus</option>'+cycleRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(ars,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'AKTIF':'CLOSED'))+'</option>').join('')+'</select></label>'+
-    '<button type="submit">Tampilkan</button></form></section>'+
-    '<section class="panel" id="productionReportPrintArea"><div class="rhpp-section-head"><div><h3>Rekap per Kontrak Logistik</h3></div><div class="report-actions"><button type="button" id="productionReportPrint">Cetak / PDF</button></div></div><div class="tablewrap"><table><thead><tr><th>Kandang / Siklus / Kontrak</th><th>Kontrak</th><th>Status</th><th>Deplesi Ekor</th><th>Pakan Kg</th><th>Panen Ekor</th><th>Panen Kg</th><th>RHPP</th><th>BOP</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
-    (['ADMIN','OWNER','KEUANGAN'].includes(profile.role)?'<section class="panel"><h3>Sisa Kasbon Karyawan</h3><div class="tablewrap"><table><tr><th>ID</th><th>Nominal</th><th>Dibayar</th><th>Sisa</th></tr>'+balances.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+fmtNumber(x.amount)+'</td><td>'+fmtNumber(x.paid)+'</td><td>'+fmtNumber(x.balance)+'</td></tr>').join('')+'</table></div></section>':''));
-  const productionReportPrint=document.getElementById('productionReportPrint');if(productionReportPrint)productionReportPrint.onclick=()=>printFinanceDocument('productionReportPrintArea','Laporan Produksi');
-  const reportFilter=document.getElementById('productionReportFilter');
-  if(reportFilter){
-    const barnSel=reportFilter.elements.barn;
-    barnSel.onchange=async()=>{st.barn=barnSel.value||'';st.assignment='';await reports();};
-    reportFilter.onsubmit=async e=>{e.preventDefault();const fd=new FormData(reportFilter);st.barn=String(fd.get('barn')||'');st.assignment=st.barn?String(fd.get('assignment')||''):'';await reports();};
+  const pplName=id=>pplRows.find(p=>p.user_id===id)?.full_name||'-';
+  const assignmentDate=a=>{
+    const ci=d.chicks.find(c=>c.contract_assignment_id===a.id);
+    return ci?.arrived_on||a.start_date||'';
+  };
+  const cycleRows=d.assignments.filter(a=>
+    (!st.barn||a.barn_id===st.barn)&&
+    (!st.type||(a.cycle_type||'MITRA')===st.type)
+  );
+  const feedFor=a=>(feedByAssignment.get(a.id)||[]).reduce((sum,x)=>{
+    const delivered=prodNum(x.sent_units)+prodNum(x.external_units)-prodNum(x.returned_units);
+    return sum+Math.max(0,delivered)*prodNum(x.kg_per_unit);
+  },0);
+
+  const assignments=d.assignments.filter(a=>
+    (!st.barn||a.barn_id===st.barn)&&
+    (!st.assignment||a.id===st.assignment)&&
+    (!st.type||(a.cycle_type||'MITRA')===st.type)&&
+    (!st.status||(st.status==='PROSES'?a.active===true:a.active===false))
+  );
+
+  const rows=assignments.map(a=>{
+    const b=d.barns.find(x=>x.id===a.barn_id);
+    const ci=d.chicks.find(c=>c.contract_assignment_id===a.id);
+    const final=!a.active?finals.find(x=>x.contract_assignment_id===a.id):null;
+
+    let chickIn=0,chickOut=0,mortBirds=0,mortPct=0,kg=0,avg=0,age=0,feed=0,fcr=0,ip=0;
+    if(final){
+      chickIn=prodNum(final.chick_in_birds);
+      chickOut=prodNum(final.total_harvest_birds);
+      mortBirds=Math.max(0,chickIn-chickOut);
+      mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
+      kg=prodNum(final.total_harvest_kg);
+      avg=prodNum(final.avg_bw_kg);
+      age=prodNum(final.weighted_age);
+      feed=prodNum(final.net_feed_kg);
+      fcr=prodNum(final.fcr_actual);
+      ip=prodNum(final.ip);
+    }else{
+      const hs=d.harvests.filter(h=>h.contract_assignment_id===a.id);
+      chickIn=ci?Math.max(0,prodNum(ci.received)-prodNum(ci.doa)):0;
+      chickOut=hs.reduce((sum,h)=>sum+prodNum(h.birds),0);
+      mortBirds=Math.max(0,chickIn-chickOut);
+      mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
+      kg=hs.reduce((sum,h)=>sum+prodNum(h.net_weight_kg),0);
+      avg=chickOut?kg/chickOut:0;
+      age=chickOut&&ci?hs.reduce((sum,h)=>sum+prodAge(ci.arrived_on,h.harvested_on)*prodNum(h.birds),0)/chickOut:0;
+      feed=feedFor(a);
+      fcr=kg?feed/kg:0;
+      const survival=chickIn?Math.min(100,chickOut/chickIn*100):0;
+      ip=age&&fcr&&avg?(survival*avg*100)/(age*fcr):0;
+    }
+
+    return {
+      a,b,ppl:pplName(a.ppl_id),type:a.cycle_type||'MITRA',
+      performance:a.performance_template_name||'-',
+      status:a.active?'PROSES':'CLOSED',
+      chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip
+    };
+  }).sort((x,y)=>String(assignmentDate(x.a)).localeCompare(String(assignmentDate(y.a))));
+
+  const totals=rows.reduce((o,x)=>{
+    o.chickIn+=x.chickIn;o.chickOut+=x.chickOut;o.mortBirds+=x.mortBirds;o.kg+=x.kg;o.feed+=x.feed;o.ageWeight+=x.age*Math.max(1,x.chickOut);
+    return o;
+  },{chickIn:0,chickOut:0,mortBirds:0,kg:0,feed:0,ageWeight:0});
+  const ageWeightBase=rows.reduce((sum,x)=>sum+Math.max(1,x.chickOut),0);
+  const totalAge=ageWeightBase?totals.ageWeight/ageWeightBase:0;
+  const totalAvg=totals.chickOut?totals.kg/totals.chickOut:0;
+  const totalMortPct=totals.chickIn?Math.min(100,totals.mortBirds/totals.chickIn*100):0;
+  const totalFcr=totals.kg?totals.feed/totals.kg:0;
+  const totalSurvival=totals.chickIn?Math.min(100,totals.chickOut/totals.chickIn*100):0;
+  const totalIp=totalAge&&totalFcr&&totalAvg?(totalSurvival*totalAvg*100)/(totalAge*totalFcr):0;
+
+  let html='<section class="panel"><h3>Filter Laporan Produksi</h3><form id="productionReportFilter" class="form-vertical">'+
+    '<label>Jenis Siklus<select name="type"><option value="">Semua</option><option value="MITRA" '+(st.type==='MITRA'?'selected':'')+'>MITRA</option><option value="MANDIRI" '+(st.type==='MANDIRI'?'selected':'')+'>MANDIRI</option></select></label>'+
+    '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+d.barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+    '<label>Siklus<select name="assignment"><option value="">Semua Siklus</option>'+cycleRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
+    '<label>Status<select name="status"><option value="">Semua Status</option><option value="PROSES" '+(st.status==='PROSES'?'selected':'')+'>PROSES</option><option value="CLOSED" '+(st.status==='CLOSED'?'selected':'')+'>CLOSED</option></select></label>'+
+    '<button type="submit">Tampilkan</button></form></section>';
+
+  if(st.shown){
+    html+='<section class="panel" id="productionReportPrintArea"><div class="rhpp-section-head"><div><h3>Laporan Produksi</h3><p class="muted">Khusus data produksi. Tidak memuat RHPP, BOP, Kasbon, atau transaksi Keuangan.</p></div><div class="report-actions"><button type="button" id="productionReportPrint">Cetak / PDF</button></div></div>'+
+      '<div class="tablewrap"><table style="min-width:1500px"><thead><tr>'+
+        '<th>NO</th><th>Kandang / Siklus</th><th>Jenis</th><th>PPL / PIC</th><th>Performance</th><th>Status</th><th>Umur</th><th>Chick-In</th><th>Chick-Out</th><th>Deplesi Ekor</th><th>Deplesi %</th><th>Tonase Panen (Kg)</th><th>BW Rata2 (Kg)</th><th>Pakan (Kg)</th><th>FCR</th><th>IP</th>'+
+      '</tr></thead><tbody>'+
+      rows.map((x,i)=>'<tr>'+
+        '<td>'+(i+1)+'</td>'+
+        '<td>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,x.a))+'</td>'+
+        '<td><strong>'+esc(x.type)+'</strong></td>'+
+        '<td>'+esc(x.ppl)+'</td>'+
+        '<td>'+esc(x.performance)+'</td>'+
+        '<td>'+esc(x.status)+'</td>'+
+        '<td>'+prodFmt(x.age,2)+'</td>'+
+        '<td>'+prodFmt(x.chickIn,0)+'</td>'+
+        '<td>'+prodFmt(x.chickOut,0)+'</td>'+
+        '<td>'+prodFmt(x.mortBirds,0)+'</td>'+
+        '<td>'+prodFmt(x.mortPct,2)+'</td>'+
+        '<td>'+prodFmt(x.kg,2)+'</td>'+
+        '<td>'+prodFmt(x.avg,2)+'</td>'+
+        '<td>'+prodFmt(x.feed,0)+'</td>'+
+        '<td>'+prodFmt(x.fcr,3)+'</td>'+
+        '<td>'+prodFmt(x.ip,2)+'</td>'+
+      '</tr>').join('')+
+      (rows.length?'<tr><th colspan="6">TOTAL</th>'+
+        '<th>'+prodFmt(totalAge,2)+'</th>'+
+        '<th>'+prodFmt(totals.chickIn,0)+'</th>'+
+        '<th>'+prodFmt(totals.chickOut,0)+'</th>'+
+        '<th>'+prodFmt(totals.mortBirds,0)+'</th>'+
+        '<th>'+prodFmt(totalMortPct,2)+'</th>'+
+        '<th>'+prodFmt(totals.kg,2)+'</th>'+
+        '<th>'+prodFmt(totalAvg,2)+'</th>'+
+        '<th>'+prodFmt(totals.feed,0)+'</th>'+
+        '<th>'+prodFmt(totalFcr,3)+'</th>'+
+        '<th>'+prodFmt(totalIp,2)+'</th></tr>':'')+
+      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada data sesuai filter.</p>')+'</section>';
   }
-  if(err)msg(err.message);
+
+  layout(html);
+  const feedErr=feedResponses.find(x=>x?.error)?.error;
+  if(d.err||pr.error||fr.error||feedErr)msg((d.err||pr.error||fr.error||feedErr).message);
+
+  const form=document.getElementById('productionReportFilter');
+  if(form){
+    const barnSel=form.elements.barn,typeSel=form.elements.type,cycleSel=form.elements.assignment;
+    const refreshCycles=()=>{
+      const barnId=barnSel.value||'',type=typeSel.value||'';
+      const items=d.assignments.filter(a=>(!barnId||a.barn_id===barnId)&&(!type||(a.cycle_type||'MITRA')===type));
+      const current=cycleSel.value;
+      cycleSel.innerHTML='<option value="">Semua Siklus</option>'+items.map(a=>'<option value="'+esc(a.id)+'">'+esc(assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('');
+      if(items.some(a=>a.id===current))cycleSel.value=current;
+    };
+    barnSel.onchange=refreshCycles;
+    typeSel.onchange=refreshCycles;
+    form.onsubmit=async ev=>{
+      ev.preventDefault();
+      const fd=new FormData(form);
+      window.__productionReportState={
+        barn:String(fd.get('barn')||''),
+        assignment:String(fd.get('assignment')||''),
+        type:String(fd.get('type')||''),
+        status:String(fd.get('status')||''),
+        shown:true
+      };
+      await reports();
+    };
+  }
+
+  const p=document.getElementById('productionReportPrint');
+  if(p)p.onclick=()=>printFinanceDocument('productionReportPrintArea','Laporan Produksi');
 }
 
 start();
