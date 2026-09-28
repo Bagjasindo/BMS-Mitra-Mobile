@@ -1,7 +1,7 @@
 # BMS Mitra Online
 
 ## Garis Ketat RHPP
-- **Sumber RHPP Real hanya Logistik dan Marketing.**
+- **Sumber RHPP  hanya Logistik dan Marketing.**
 - **Logistik menjadi sumber Chick-In dan seluruh sapronak : pengiriman, retur, tambah sapronak, transfer/alih barang, dan nilai biayanya.**
 - **Marketing menjadi sumber panen : Chick-Out/ekor panen, berat, harga, nilai panen, serta tambah daging bila ada.**
 - **Mortalitas/Deplesi RHPP dihitung dari data  Chick-In Logistik dibanding Chick-Out/Panen Marketing.**
