@@ -3266,16 +3266,39 @@ async function recordingPplPage(){
   document.getElementById('addWeight').onclick=()=>{syncWeightsFromDom();weights.push(0);renderWeights()};
   renderWeights();
 
-  const nextDayFor=assignmentId=>{
-    const used=new Set(recs.filter(r=>r.contract_assignment_id===assignmentId).map(r=>prodNum(r.age_days)).filter(n=>n>=1));
-    let day=1;while(used.has(day))day++;return day
+  const todayID=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const realAgeFor=assignmentId=>{
+    const ci=d.chicks.find(x=>x.contract_assignment_id===assignmentId);
+    if(!ci?.arrived_on)return 1;
+    const start=Date.parse(ci.arrived_on+'T00:00:00Z');
+    const today=Date.parse(todayID()+'T00:00:00Z');
+    return Math.max(1,Math.floor((today-start)/86400000)+1);
+  };
+  const missingDaysFor=assignmentId=>{
+    const age=realAgeFor(assignmentId);
+    const used=new Set(recs.filter(r=>r.contract_assignment_id===assignmentId).map(r=>prodNum(r.age_days)).filter(n=>n>=1&&n<age));
+    const missing=[];
+    for(let day=1;day<age;day++)if(!used.has(day))missing.push(day);
+    return missing;
   };
   let currentDay=1;
 
   const calc=()=>{
-    currentDay=editingId?editingDay:(f.assignment.value?nextDayFor(f.assignment.value):1);
+    currentDay=editingId?editingDay:(f.assignment.value?realAgeFor(f.assignment.value):1);
     const ageBox=document.getElementById('prodRecAge');
-    if(ageBox)ageBox.innerHTML='<span>'+(editingId?'Hari Recording':'Umur Saat Ini')+'</span><strong>'+currentDay+' Hari'+(editingId?' · Mode Edit':'')+'</strong>';
+    if(ageBox){
+      if(editingId){
+        ageBox.innerHTML='<span>Hari Recording</span><strong>'+currentDay+' Hari · Mode Edit</strong>';
+      }else if(f.assignment.value){
+        const missing=missingDaysFor(f.assignment.value);
+        const todayFilled=recs.some(r=>r.contract_assignment_id===f.assignment.value&&prodNum(r.age_days)===currentDay);
+        ageBox.innerHTML='<span>Umur Saat Ini</span><strong>'+currentDay+' Hari</strong>'+
+          (missing.length?'<small class="muted" style="display:block;margin-top:6px">Belum terisi: Hari '+missing.join(', ')+'</small>':'<small class="muted" style="display:block;margin-top:6px">Recording hari sebelumnya lengkap.</small>')+
+          '<small class="muted" style="display:block;margin-top:4px">Hari '+currentDay+': '+(todayFilled?'sudah diisi':'belum diisi (hari ini)')+'</small>';
+      }else{
+        ageBox.innerHTML='<span>Umur Saat Ini</span><strong>1 Hari</strong><small class="muted" style="display:block;margin-top:6px">Pilih kandang untuk melihat umur dan hari yang belum terisi.</small>';
+      }
+    }
     const stock=feedStock.find(x=>x.item_id===f.feed_item.value);
     const used=prodNum(f.feed_units.value);
     document.getElementById('prodRecStock').textContent=stock?'Sisa stok tersedia: '+prodFmt(stock.remaining_units,2)+' '+(stock.unit||'Satuan')+' ('+prodFmt(stock.remaining_kg,2)+' Kg)':'Sisa stok: -';
@@ -3347,7 +3370,10 @@ async function recordingPplPage(){
     const feedUnits=prodNum(f.feed_units.value);
     if(feedUnits<=0)return msg('Jumlah pakan dipakai harus lebih dari 0.');
     if(feedUnits>prodNum(stock.remaining_units))return msg('Pemakaian melebihi sisa stok. Sisa '+prodFmt(stock.remaining_units,2)+' '+(stock.unit||'Satuan')+'.');
-    currentDay=editingId?editingDay:nextDayFor(a.id);
+    currentDay=editingId?editingDay:realAgeFor(a.id);
+    if(!editingId&&recs.some(r=>r.contract_assignment_id===a.id&&prodNum(r.age_days)===currentDay)){
+      return msg('Recording Hari '+currentDay+' sudah diisi. Gunakan tombol Edit pada riwayat recording.');
+    }
     let photo=editingId?(recs.find(x=>x.id===editingId)?.photo_data||null):null;
     const file=f.photo.files?.[0];
     if(file){if(file.size>1024*1024)return msg('Foto maksimal 1 MB.');photo=await new Promise(res=>{const rd=new FileReader();rd.onload=()=>res(String(rd.result||''));rd.readAsDataURL(file)})}
