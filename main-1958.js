@@ -4005,18 +4005,17 @@ function productionProcessSnapshot(d,a,recs,samples){
 
 async function productionRecapPage(){
   const d=await productionBase();
-  const [cpr,pr,fr,mfr,rr,sr,...feedResponses]=await Promise.all([
+  const [cpr,pr,fr,rr,sr,...feedResponses]=await Promise.all([
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('production_ppl_directory'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
-    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type'),
     db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
     db.from('recording_weight_samples').select('recording_id,weight_g'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
   const company=cpr.data||{};
   const pplRows=pr.data||[];
-  const finals=[...(fr.data||[]),...(mfr.data||[])];
+  const finals=fr.data||[];
   const recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
   const feedByAssignment=new Map();
   d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
@@ -4181,7 +4180,7 @@ async function productionRecapPage(){
 
   layout(html);
   const feedErr=feedResponses.find(x=>x?.error)?.error;
-  if(d.err||cpr.error||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr)msg((d.err||cpr.error||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr).message);
+  if(d.err||cpr.error||pr.error||fr.error||rr.error||sr.error||feedErr)msg((d.err||cpr.error||pr.error||fr.error||rr.error||sr.error||feedErr).message);
 
   const form=document.getElementById('productionRecapFilter');
   if(form){
@@ -7542,7 +7541,7 @@ function renderDashboardTemplate(cfg){
 async function buildDashboardModel(){
   const d=await productionBase();
   const leagueSetting=await loadAbkLeagueSetting();
-  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,mandiriFinalR]=await Promise.all([
+  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR]=await Promise.all([
     db.from('recordings').select('*').not('contract_assignment_id','is',null).order('recorded_on',{ascending:true}),
     db.from('recording_weight_samples').select('*'),
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
@@ -7551,11 +7550,16 @@ async function buildDashboardModel(){
     db.from('production_abk_result_sizes').select('*'),
     db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
     db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on'),
-    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on')
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on,cycle_type')
   ]);
-  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,mandiriFinalR].find(x=>x?.error)?.error;
-  const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=[...(rhppFinalR.data||[]),...(mandiriFinalR.data||[])];
+  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR].find(x=>x?.error)?.error;
+  const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=rhppFinalR.data||[];
+  const abkReferenceContractId=a=>{
+    if(a?.master_contract_id)return a.master_contract_id;
+    if(a?.cycle_type!=='MANDIRI')return '';
+    const ids=[...new Set((d.livePrices||[]).map(p=>p.contract_id).filter(Boolean))];
+    return ids.length===1?ids[0]:'';
+  };
   const active=d.assignments.filter(a=>a.active&&d.chicks.some(ci=>ci.contract_assignment_id===a.id));
   const ownerParityIssue=profile.role==='OWNER'&&(
     (!d.assignments.length&&(recs.length||estimates.length||abkResults.length))||
@@ -7698,15 +7702,16 @@ async function buildDashboardModel(){
     const age=birds&&ci?sz.reduce((s,v)=>s+prodAge(ci.arrived_on,v.harvest_date)*prodNum(v.birds),0)/birds:0;
     const initial=prodNum(link?.initial_birds),surv=initial?Math.min(100,birds/initial*100):0;
     const ip=initial&&age&&fcr?(surv*bw*100)/(age*fcr):0;
+    const refContractId=abkReferenceContractId(a);
     let revenue=0;
     for(const s of sz){
       const av=prodNum(s.birds)?prodNum(s.weight_kg)/prodNum(s.birds):0;
-      const p=d.livePrices.find(p=>p.contract_id===a?.master_contract_id&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
+      const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
       revenue+=prodNum(s.weight_kg)*prodNum(p?.price_per_kg);
     }
-    const cc=costContracts.find(v=>v.id===a?.master_contract_id);
+    const cc=costContracts.find(v=>v.id===refContractId);
     const cost=initial*prodNum(cc?.doc_price)+prodNum(link?.feed_pre_bags)*50*prodNum(cc?.pre_starter_price)+prodNum(link?.feed_starter_bags)*50*prodNum(cc?.starter_price)+prodNum(link?.feed_finisher_bags)*50*prodNum(cc?.finisher_price);
-    const match=(metric,value)=>prodNum(bonusRows.find(v=>v.contract_id===a?.master_contract_id&&v.metric===metric&&(v.min_value==null||value>=prodNum(v.min_value))&&(v.max_value==null||value<prodNum(v.max_value)))?.rupiah_per_kg);
+    const match=(metric,value)=>prodNum(bonusRows.find(v=>v.contract_id===refContractId&&v.metric===metric&&(v.min_value==null||value>=prodNum(v.min_value))&&(v.max_value==null||value<prodNum(v.max_value)))?.rupiah_per_kg);
     const ipBonus=kg*match('IP',ip);
     const profit=revenue-cost+ipBonus;
     const perBird=birds?profit/birds:0;
@@ -8370,15 +8375,14 @@ async function logisticsReports(){
 
 async function reports(){
   const d=await productionBase();
-  const [pr,fr,mfr,rr,sr,...feedResponses]=await Promise.all([
+  const [pr,fr,rr,sr,...feedResponses]=await Promise.all([
     db.rpc('production_ppl_directory'),
-    db.from('rhpp_system_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
-    db.from('production_mandiri_final').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on'),
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type'),
     db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
     db.from('recording_weight_samples').select('recording_id,weight_g'),
     ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
   ]);
-  const pplRows=pr.data||[],finals=[...(fr.data||[]),...(mfr.data||[])],recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
+  const pplRows=pr.data||[],finals=fr.data||[],recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
   const feedByAssignment=new Map();
   d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
 
@@ -8501,7 +8505,7 @@ async function reports(){
 
   layout(html);
   const feedErr=feedResponses.find(x=>x?.error)?.error;
-  if(d.err||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr)msg((d.err||pr.error||fr.error||mfr.error||rr.error||sr.error||feedErr).message);
+  if(d.err||pr.error||fr.error||rr.error||sr.error||feedErr)msg((d.err||pr.error||fr.error||rr.error||sr.error||feedErr).message);
 
   const form=document.getElementById('productionReportFilter');
   if(form){
