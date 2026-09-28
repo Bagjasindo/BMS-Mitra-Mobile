@@ -7330,7 +7330,7 @@ async function financeRhppRealPage(){
   const canInput=['ADMIN','KEUANGAN'].includes(profile.role);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
-  window.__financeRhppRealState=window.__financeRhppRealState||{selected:'',barn:'',assignment:'',status:'',shown:false};
+  window.__financeRhppRealState=window.__financeRhppRealState||{selected:'',barn:'',assignment:'',status:'',shown:false,editRealId:''};
   const st=window.__financeRhppRealState;
   if(st.barn===undefined)st.barn='';
   if(st.assignment===undefined)st.assignment='';
@@ -7393,6 +7393,7 @@ async function financeRhppRealPage(){
     const b=barns.find(x=>x.id===selected.barn_id);
     const k=contractsRows.find(x=>x.id===a?.master_contract_id);
     const real=reals.find(x=>x.contract_assignment_id===selected.contract_assignment_id);
+    const editingReal=real&&st.editRealId===real.id;
     const diff=real?prodNum(real.amount)-prodNum(selected.system_amount):null;
     const diffLabel=diff===null?'MENUNGGU':diff===0?'SESUAI':diff>0?'REAL LEBIH BESAR':'REAL LEBIH KECIL';
 
@@ -7406,7 +7407,20 @@ async function financeRhppRealPage(){
         '<tr><td>Status Selisih</td><td><strong>'+diffLabel+'</strong></td></tr>'+
       '</tbody></table></div>'+
       (real?
-        '<p class="muted">RHPP Real tersimpan '+prodDateId(real.received_on)+'. Data tidak dapat diedit dari layar ini.</p>':
+        (canInput?
+          (editingReal?
+            '<form class="form-vertical" data-rhpp-real-edit-form="'+esc(real.id)+'">'+
+              '<label>Tanggal RHPP Real<input name="received_on" type="date" value="'+esc(real.received_on||today)+'" required></label>'+
+              '<label>Nominal RHPP Real sesuai PDF<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+fmtNumber(real.amount)+'" required></label>'+
+              '<label>Referensi<input name="reference" value="'+esc(real.reference||'')+'" placeholder="Opsional"></label>'+
+              '<label>Catatan<textarea name="notes">'+esc(real.notes||'')+'</textarea></label>'+
+              '<div class="report-actions"><button type="submit">Simpan Koreksi</button><button type="button" id="rhppRealEditCancel">Batal Koreksi</button>'+adminDeleteTxnButton('rhpp_real',real.id)+'</div>'+
+            '</form>':
+            '<div class="report-actions"><button type="button" id="rhppRealEdit">Koreksi RHPP Real</button>'+adminDeleteTxnButton('rhpp_real',real.id)+'</div>'+
+            '<p class="muted">RHPP Real tersimpan '+prodDateId(real.received_on)+'. Gunakan Koreksi jika tanggal/nominal salah.</p>'
+          ):
+          '<p class="muted">RHPP Real tersimpan '+prodDateId(real.received_on)+'.</p>'
+        ):
         canInput?
           '<form class="form-vertical" data-rhpp-real-form="'+esc(selected.contract_assignment_id)+'">'+
             '<label>Nominal RHPP Real sesuai PDF<input name="amount" type="text" inputmode="decimal" data-number="1" required placeholder="Rp"></label>'+
@@ -7436,8 +7450,27 @@ async function financeRhppRealPage(){
 
   root.querySelectorAll('[data-open-rhpp-real]').forEach(btn=>btn.onclick=async()=>{
     const id=btn.dataset.openRhppReal;
-    st.selected=st.selected===id?'':id;
+    st.selected=st.selected===id?'':id;st.editRealId='';
     await financeRhppRealPage();
+  });
+
+  const editBtn=document.getElementById('rhppRealEdit');if(editBtn)editBtn.onclick=async()=>{const real=reals.find(x=>x.contract_assignment_id===st.selected);if(real)st.editRealId=real.id;await financeRhppRealPage();document.querySelector('[data-rhpp-real-edit-form]')?.scrollIntoView({behavior:'smooth',block:'start'});};
+  const editCancel=document.getElementById('rhppRealEditCancel');if(editCancel)editCancel.onclick=async()=>{st.editRealId='';await financeRhppRealPage();};
+  bindAdminTransactionDeletes(()=>{st.editRealId='';st.selected='';return financeRhppRealPage();});
+
+  if(canInput)root.querySelectorAll('[data-rhpp-real-edit-form]').forEach(form=>form.onsubmit=async ev=>{
+    ev.preventDefault();
+    const fd=new FormData(form),amount=normalizeInputID(fd.get('amount'));
+    if(amount===null||amount<0)return msg('Nominal RHPP Real tidak valid.');
+    if(!await appConfirm('Koreksi RHPP Real menjadi Rp '+prodFmt(amount,0)+'? Arus Kas dan laba/rugi terkait akan mengikuti nilai baru.'))return;
+    const {error}=await db.rpc('finance_correct_rhpp_real_v1',{
+      p_id:form.dataset.rhppRealEditForm,p_received_on:String(fd.get('received_on')||''),
+      p_amount:amount,p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null
+    });
+    if(error)return msg(error.message);
+    st.editRealId='';
+    await financeRhppRealPage();
+    msg('Koreksi RHPP Real berhasil disimpan.',true);
   });
 
   if(canInput)root.querySelectorAll('[data-rhpp-real-form]').forEach(form=>form.onsubmit=async ev=>{
@@ -7445,7 +7478,7 @@ async function financeRhppRealPage(){
     const fd=new FormData(form);
     const amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<0)return msg('Nominal RHPP Real tidak valid.');
-    if(!await appConfirm('Simpan RHPP Real sebesar Rp '+prodFmt(amount,0)+'? Setelah tersimpan, nominal ini tidak diedit dari layar Keuangan.'))return;
+    if(!await appConfirm('Simpan RHPP Real sebesar Rp '+prodFmt(amount,0)+'? Nominal akan masuk Arus Kas dan dapat dikoreksi dari menu ini bila terjadi salah input.'))return;
     const {error}=await db.rpc('finance_save_rhpp_real_atomic',{
       p_contract_assignment_id:form.dataset.rhppRealForm,
       p_amount:amount,
