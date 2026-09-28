@@ -412,3 +412,97 @@ Status: **SUDAH DIKERJAKAN — hanya area Produksi, RHPP dan modul PASS lain tid
 ### Commit
 - `8113da32b1e9ad7b6235457785480fda8845e13b` — tiga perbaikan konsistensi Produksi.
 - `e857e59c3e283fac84a2904da54dfaea4c36b10c` — refresh asset.
+
+
+---
+
+## AUDIT TOTAL LOGIN → LAPORAN GLOBAL 2026-09-28
+
+Status: **BELUM 100% PASS — perhitungan utama PASS, tetapi ada blocker isolasi role dan definisi RHPP.**
+Audit ini tidak mengubah kode aplikasi.
+
+### PASS — Login / Session
+- Login memakai Supabase Auth password.
+- Profil wajib aktif sebelum masuk aplikasi.
+- Profil user tidak duplikat dan tidak orphan.
+- 8 akun aktif terpetakan: ADMIN 1, KEUANGAN 1, LOGISTIK 1, MARKETING 1, OWNER 2, PPL 2.
+- Asset login BMS direferensikan dan CSS login tersedia.
+- Cache main asset menggunakan versi `2134-production-consistency` dan no-store aktif.
+
+### PASS — Integritas Siklus / Produksi
+- Total siklus 8: 1 aktif, 7 CLOSED.
+- MITRA tanpa kontrak: 0.
+- MANDIRI memakai kontrak: 0.
+- Siklus tanpa Performance: 0.
+- CLOSED Mitra tanpa snapshot final: 0.
+- CLOSED Mandiri tanpa snapshot final: 0.
+- Snapshot final pada siklus aktif: 0.
+- Duplicate Chick-In per assignment: 0.
+- Chick-In invalid DOA/populasi: 0.
+- Panen invalid: 0.
+- Total panen mismatch Kg × Harga: 0.
+- Trigger lock CLOSED tersedia pada Chick-In, Recording, Estimasi, Panen, Logistik, Retur, Tambah Daging, ABK result, Visits, dan child rows terkait.
+
+### PASS — Keuangan / Laporan Global
+- Overpayment Mandiri: 0.
+- Supplier payment non-positive: 0.
+- Laba/Rugi Kandang v2: identitas matematika mismatch 0.
+- Hutang Supplier: negative balance 0; status mismatch 0.
+- Expedisi: identitas Pendapatan − BOP − Perawatan mismatch 0.
+- Laporan perusahaan/global: identity mismatch 0.
+- Cashflow live: 201 entries; sumber supplier mengikuti payment actual.
+- Global P/L yang diuji konsisten dengan Kandang + Expedisi − BOP Umum.
+
+### BLOCKER 1 — Recording masih memengaruhi RHPP Final
+Aturan terbaru: Recording hanya pembanding/monitoring dan tidak boleh menjadi sumber nilai RHPP final.
+Namun `finance_rhpp_summary_v5()` saat ini memilih `recorded_depletion_birds` sebagai `effective_depletion_birds` bila Recording memiliki nilai.
+Dampaknya:
+- mortality_pct RHPP dipengaruhi Recording;
+- IP RHPP dipengaruhi Recording;
+- bonus IP / bonus depletion dapat dipengaruhi Recording;
+- `admin_close_production_atomic()` menyimpan hasil v5 itu ke snapshot RHPP final.
+Live: dari 7 CLOSED, ada 1 snapshot dengan selisih recorded-vs-implied sebesar maksimum 557 ekor.
+Ini bertentangan dengan keputusan Bos bahwa Recording hanya pembanding.
+
+### BLOCKER 2 — Kebocoran Panen antar-kandang untuk PPL
+Policy `marketing_contract_harvest_read` memberi PPL SELECT tanpa `can_read_assignment()`.
+Tes sebagai akun PPL asli:
+- assignment yang boleh terlihat langsung: 5;
+- Panen yang terlihat via RLS: 119 rows dari 8 assignment.
+Artinya PPL dapat membaca Panen kandang lain melalui Data API walaupun UI melakukan filter.
+
+### BLOCKER 3 — RPC RHPP PPL tidak scoped per assignment
+`finance_rhpp_summary_v5()` adalah SECURITY DEFINER dan hanya memeriksa role, tidak membatasi PPL ke `ppl_id=auth.uid()`.
+Tes sebagai PPL:
+- assignment langsung terlihat: 5;
+- RPC RHPP mengembalikan: 8 assignment.
+Ini kebocoran antar-kandang.
+
+### BLOCKER 4 — Marketing dapat membaca Estimasi Produksi
+Policy `production_estimates` mengizinkan MARKETING membaca Estimasi.
+Tes live sebagai Marketing:
+- production_estimates terlihat: 13 rows.
+Menu Estimasi tidak ada di Marketing dan scope kerja Marketing tidak membutuhkan data Estimasi Produksi.
+Untuk isolasi role ketat, akses ini harus ditutup.
+
+### SECURITY WARNINGS
+Supabase Advisor masih melaporkan:
+- 1 SECURITY DEFINER RPC executable oleh anon: `production_ppl_directory()`.
+  Tes anon saat audit mengembalikan 0 row, jadi belum ada kebocoran live, tetapi permission tetap terlalu luas.
+- SECURITY DEFINER authenticated warnings pada banyak RPC; sebagian memiliki role check internal.
+  Yang terbukti bermasalah adalah scope PPL di `finance_rhpp_summary_v5()`.
+- Leaked Password Protection Supabase Auth masih disabled.
+- 2 counter tables RLS aktif tanpa policy; saat ini dipakai internal RPC, bukan UI langsung.
+
+### ROUTING / UI
+- 65 tab visible terpetakan.
+- `harga_hidup` dan `bonus_kontrak` tidak memakai branch khusus karena dirender melalui generic module renderer; bukan route hilang.
+- Role gating UI memakai `visibleTabs`; namun database RLS/RPC tetap harus menjadi sumber keamanan utama.
+
+### Kesimpulan
+Belum boleh diberi label 100% PASS sebelum minimal:
+1. Pisahkan Recording dari perhitungan RHPP final sesuai keputusan terbaru.
+2. Scope SELECT Panen PPL dengan assignment/PPL.
+3. Scope `finance_rhpp_summary_v5()` untuk PPL ke assignment sendiri.
+4. Tutup akses Marketing ke Estimasi Produksi jika mengikuti role matrix ketat.
+5. Review warning login security (leaked-password protection dan anon execute) untuk target security 100%.
