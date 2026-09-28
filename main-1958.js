@@ -5588,12 +5588,17 @@ async function financeExpeditionMaintenancePage(){
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const total=rows.reduce((n,x)=>n+prodNum(x.amount),0);
 
-  window.__fxMaintenanceEdit=window.__fxMaintenanceEdit||null;
+  window.__fxMaintenanceEdit=window.__fxMaintenanceEdit||'';
   const editId=window.__fxMaintenanceEdit;
   const selected=rows.find(x=>x.id===editId)||null;
 
-  let html='<section class="panel"><h3>Perawatan Expedisi</h3><p class="muted">Biaya perawatan kendaraan dipisahkan dari BOP Trip dan mengurangi Laba Bersih Expedisi.</p>'+
+  let html='<section class="panel"><h3>Perawatan Expedisi</h3><p class="muted">Halaman ini khusus untuk input dan koreksi biaya perawatan. Riwayat lengkap ada di Laporan Expedisi → Servis / Perawatan.</p>'+
     '<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Perawatan</span><strong>Rp '+prodFmt(total,0)+'</strong></div></div></section>'+
+    '<section class="panel"><h3>Koreksi Data Perawatan</h3>'+
+      '<label>Pilih data yang akan dikoreksi<select id="fxMaintenanceEditSelect"><option value="">Tambah data baru / tidak ada koreksi</option>'+
+        rows.map(x=>'<option value="'+esc(x.id)+'" '+(editId===x.id?'selected':'')+'>'+esc(prodDateId(x.incurred_on)+' · '+String(x.category||'').replaceAll('_',' ')+' · '+(x.vehicle||'-')+' · Rp '+prodFmt(x.amount,0))+'</option>').join('')+
+      '</select></label>'+
+    '</section>'+
     '<section class="panel"><h3>'+(selected?'Koreksi Perawatan Expedisi':'Tambah Biaya Perawatan')+'</h3><form id="fxMaintenanceForm" class="form-vertical">'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(selected?.incurred_on||today)+'" required></label>'+
       '<label>Kategori<select name="category" required>'+
@@ -5602,23 +5607,20 @@ async function financeExpeditionMaintenancePage(){
       '<label>Kendaraan<select name="vehicle"><option value="">Tidak terkait kendaraan tertentu</option>'+vehicles.map(v=>'<option value="'+esc(v.plate_number)+'" '+(selected?.vehicle===v.plate_number?'selected':'')+'>'+esc(v.plate_number+(v.vehicle_type?' · '+v.vehicle_type:''))+'</option>').join('')+'</select></label>'+
       '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(selected?esc(fmtNumber(selected.amount)):'')+'" required></label>'+
       '<label>Catatan<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
-      '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Simpan Perawatan')+'</button>'+(selected?'<button type="button" id="fxMaintenanceCancel" class="btn-secondary">Batal</button>':'')+'</div></form></section>'+
-    '<section class="panel"><div class="rhpp-section-head"><div><h3>Riwayat Perawatan Expedisi</h3></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Kendaraan</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-      rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>'+esc(x.vehicle||'-')+'</td><td><strong>Rp '+prodFmt(x.amount,0)+'</strong></td><td>'+esc(x.notes||'-')+'</td><td><button type="button" data-edit-maintenance="'+esc(x.id)+'">Koreksi</button></td></tr>').join('')+
-      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada biaya perawatan Expedisi.</p>')+'</section>';
+      '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Simpan Perawatan')+'</button>'+(selected?'<button type="button" id="fxMaintenanceCancel" class="btn-secondary">Batal Koreksi</button>':'')+'</div>'+
+    '</form></section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
-  document.querySelectorAll('[data-edit-maintenance]').forEach(btn=>btn.onclick=async()=>{
-    window.__fxMaintenanceEdit=btn.dataset.editMaintenance||null;
+  const editSelect=document.getElementById('fxMaintenanceEditSelect');
+  if(editSelect)editSelect.onchange=async()=>{
+    window.__fxMaintenanceEdit=editSelect.value||'';
     await financeExpeditionMaintenancePage();
-    document.getElementById('fxMaintenanceForm')?.scrollIntoView({behavior:'smooth',block:'start'});
-  });
+  };
 
   const cancel=document.getElementById('fxMaintenanceCancel');
   if(cancel)cancel.onclick=async()=>{
-    window.__fxMaintenanceEdit=null;
+    window.__fxMaintenanceEdit='';
     await financeExpeditionMaintenancePage();
   };
 
@@ -5641,7 +5643,7 @@ async function financeExpeditionMaintenancePage(){
       result=await db.from('finance_expedition_maintenance').insert({...payload,reference:null});
     }
     if(result.error)return msg(result.error.message);
-    window.__fxMaintenanceEdit=null;
+    window.__fxMaintenanceEdit='';
     await financeExpeditionMaintenancePage();
     msg(selected?'Koreksi perawatan Expedisi tersimpan.':'Biaya perawatan Expedisi tersimpan.',true);
   };
