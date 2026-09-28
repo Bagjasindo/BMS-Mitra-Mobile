@@ -5854,13 +5854,7 @@ async function financeExpeditionBopPage(){
           '<td>'+(done?'<span class="pill">SUDAH MASUK</span>':'<span class="finance-status finance-status-wait">BELUM</span>')+'</td>'+
           '<td><button type="button" data-select-exp-bop="'+esc(t.id)+'">'+(done?'Koreksi':'Isi BOP')+'</button></td></tr>';
       }).join('')+
-    '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">'+(bopFilter==='BELUM'&&countPending===0?'Semua trip sudah masuk BOP. Tidak ada trip yang menunggu input.':'Tidak ada trip pada filter ini.')+'</p>')+'</section>'+
-    '<section class="panel" id="fxBopPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Expedisi</h3></div><div class="report-actions"><button type="button" id="fxBopPrint">Cetak / PDF</button></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Trip</th><th>Rute</th><th>Nominal</th><th>Sumber</th></tr></thead><tbody>'+
-      rows.map(x=>{const t=trips.find(t=>t.id===x.trip_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td>'+
-        '<td>'+esc(t?((t.mts_sj||'-')+' · '+(t.destination||'-')):'-')+'</td><td>'+esc(x.route||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td>'+
-        '<td>'+(x.reference==='AUTO_TRIP'?'Input OP per Trip':'Manual')+'</td></tr>';}).join('')+
-      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada BOP Expedisi.</p>')+'</section>';
+    '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">'+(bopFilter==='BELUM'&&countPending===0?'Semua trip sudah masuk BOP. Tidak ada trip yang menunggu input.':'Tidak ada trip pada filter ini.')+'</p>')+'</section>'+;
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
@@ -5899,7 +5893,6 @@ async function financeExpeditionBopPage(){
     msg((selectedDone?'Koreksi BOP Expedisi tersimpan: Rp ':'BOP Expedisi tersimpan: Rp ')+prodFmt(result.data||0,0)+'.',true);
   };
 
-  const p=document.getElementById('fxBopPrint');if(p)p.onclick=()=>printFinanceDocument('fxBopPrintArea','Laporan BOP Expedisi');
 }
 
 async function financeAdvancePage(){
