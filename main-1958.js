@@ -5950,127 +5950,108 @@ async function financeExpeditionBopPage(){
 }
 
 async function financeAdvancePage(){
-  const [br,ar,cr,lr,er,vr,pr]=await Promise.all([
-    db.from('barns').select('id,code,name').order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,created_at').order('start_date',{ascending:false}),
-    db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('logistics_contract_assignment_abks').select('contract_assignment_id,abk_id'),
+  const [er,vr,pr]=await Promise.all([
     db.from('employees').select('id,code,name,kind,active').eq('active',true).order('code',{ascending:true}),
-    db.from('advances').select('id,employee_id,contract_assignment_id,barn_id,advanced_on,amount,description,reference,created_at').order('advanced_on',{ascending:false}),
+    db.from('advances').select('id,employee_id,advanced_on,amount,description,reference,created_at').order('advanced_on',{ascending:false}).order('created_at',{ascending:false}),
     db.from('advance_payments').select('advance_id,amount')
   ]);
-  const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],links=lr.data||[],employees=er.data||[],rows=vr.data||[],payments=pr.data||[];
-  const err=[br,ar,cr,lr,er,vr,pr].find(x=>x.error)?.error;
+  const employees=er.data||[],rows=vr.data||[],payments=pr.data||[];
+  const err=[er,vr,pr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-
-  window.__financeAdvanceState=window.__financeAdvanceState||{employee:'',barn:'',assignment:''};
-  const st=window.__financeAdvanceState;
-  const selectedEmployee=employees.find(x=>x.id===st.employee);
-  const isAbk=selectedEmployee?.kind==='ABK';
-  const abkAssignmentIds=new Set(links.filter(x=>x.abk_id===st.employee).map(x=>x.contract_assignment_id));
-  const abkBarnIds=new Set(assignments.filter(a=>abkAssignmentIds.has(a.id)).map(a=>a.barn_id));
-  const selectableBarns=isAbk?barns.filter(b=>abkBarnIds.has(b.id)):[];
-  const cycles=isAbk&&st.barn?assignments.filter(a=>a.barn_id===st.barn&&abkAssignmentIds.has(a.id)):[];
   const paid=id=>payments.filter(x=>x.advance_id===id).reduce((n,x)=>n+prodNum(x.amount),0);
   const emp=id=>{const x=employees.find(e=>e.id===id);return x?x.code+' · '+x.name:'-'};
-  const identity=id=>{const a=assignments.find(x=>x.id===id);return a?assignmentIdentity(assignments,barns,contractsRows,a):'KARYAWAN UMUM';};
+  const totalKasbon=rows.reduce((n,x)=>n+prodNum(x.amount),0);
+  const totalBayar=rows.reduce((n,x)=>n+paid(x.id),0);
+  const totalSisa=Math.max(0,totalKasbon-totalBayar);
 
-  let html='<section class="panel"><h3>Kasbon Karyawan</h3>'+
-    '<p class="muted">ABK wajib terkait Kandang + Siklus. Karyawan umum tidak terikat kandang/siklus. Semua kasbon tetap tercatat sebagai kas keluar dan saldo piutang karyawan.</p>'+
+  let html='<section class="panel"><h3>Kasbon Karyawan / ABK</h3>'+
+    '<p class="muted">Kasbon adalah urusan pribadi karyawan/ABK dengan perusahaan. Tidak terkait kandang, siklus, RHPP, atau produksi.</p>'+
     '<form id="financeAdvanceForm" class="form-vertical">'+
-      '<label>Karyawan<select id="advanceEmployee" name="employee_id" required><option value="">Pilih Karyawan</option>'+
-        employees.map(x=>'<option value="'+esc(x.id)+'" '+(st.employee===x.id?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+(x.kind==='ABK'?'ABK':'KARYAWAN'))+'</option>').join('')+
+      '<label>Karyawan / ABK<select name="employee_id" required><option value="">Pilih</option>'+
+        employees.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name+' · '+(x.kind==='ABK'?'ABK':'KARYAWAN'))+'</option>').join('')+
       '</select></label>'+
-      (isAbk
-        ?'<label>Kandang<select id="advanceBarn" name="barn_id" required><option value="">Pilih Kandang</option>'+selectableBarns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-         '<label>Siklus<select id="advanceCycle" name="contract_assignment_id" required '+(!st.barn?'disabled':'')+'><option value="">Pilih Siklus</option>'+cycles.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'
-        :selectedEmployee?'<p class="muted"><strong>Karyawan Umum:</strong> Kasbon tidak dibebankan ke kandang/siklus.</p>':'')+
       '<label>Tanggal Kasbon<input name="advanced_on" type="date" value="'+today+'" required></label>'+
-      '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Keterangan<input name="description"></label>'+
-      ''+
+      '<label>Nominal Kasbon<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
+      '<label>Keterangan<input name="description" placeholder="Contoh: Kasbon pribadi"></label>'+
       '<button type="submit">Simpan Kasbon</button>'+
     '</form></section>'+
-    '<section class="panel" id="advancePrintArea"><div class="rhpp-section-head"><div><h3>Saldo Kasbon Karyawan</h3></div><div class="report-actions"><button type="button" id="advancePrint">Cetak / PDF</button></div></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Karyawan</th><th>Jenis</th><th>Kandang / Siklus</th><th>Kasbon</th><th>Terpotong/Dibayar</th><th>Sisa</th></tr></thead><tbody>'+
-    rows.map(x=>{const e=employees.find(v=>v.id===x.employee_id),p=paid(x.id),bal=prodNum(x.amount)-p;return '<tr><td>'+prodDateId(x.advanced_on)+'</td><td>'+esc(emp(x.employee_id))+'</td><td>'+esc(e?.kind==='ABK'?'ABK':'KARYAWAN')+'</td><td>'+esc(identity(x.contract_assignment_id))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>Rp '+prodFmt(p,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td></tr>';}).join('')+
-    '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada kasbon.</p>')+'</section>';
+    '<section class="panel" id="advancePrintArea">'+
+      '<div class="rhpp-section-head"><div><h3>Rincian Kasbon</h3><p class="muted">Kasbon · Sudah Bayar · Sisa Kasbon.</p></div><div class="report-actions"><button type="button" id="advancePrint">Cetak / PDF</button></div></div>'+
+      '<div class="rhpp-summary-cards">'+
+        '<div class="rhpp-summary-card"><span>Total Kasbon</span><strong>Rp '+prodFmt(totalKasbon,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Total Bayar</span><strong>Rp '+prodFmt(totalBayar,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Sisa Kasbon</span><strong>Rp '+prodFmt(totalSisa,0)+'</strong></div>'+
+      '</div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Karyawan / ABK</th><th>Keterangan</th><th>Kasbon</th><th>Sudah Bayar</th><th>Sisa Kasbon</th><th>Status</th></tr></thead><tbody>'+
+      rows.map(x=>{const p=paid(x.id),bal=Math.max(0,prodNum(x.amount)-p);return '<tr><td>'+prodDateId(x.advanced_on)+'</td><td>'+esc(emp(x.employee_id))+'</td><td>'+esc(x.description||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>Rp '+prodFmt(p,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td>'+(bal<=0.0001?'<strong>LUNAS</strong>':'BELUM LUNAS')+'</td></tr>';}).join('')+
+      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada kasbon.</p>')+
+    '</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
-
-  const advancePrint=document.getElementById('advancePrint');if(advancePrint)advancePrint.onclick=()=>printFinanceDocument('advancePrintArea','Laporan Saldo Kasbon Karyawan');
-  const employeeSel=document.getElementById('advanceEmployee');
-  const barnSel=document.getElementById('advanceBarn');
-  const cycleSel=document.getElementById('advanceCycle');
-  if(employeeSel)employeeSel.onchange=async()=>{
-    st.employee=employeeSel.value||'';st.barn='';st.assignment='';
-    await financeAdvancePage();
-  };
-  if(barnSel)barnSel.onchange=async()=>{st.barn=barnSel.value||'';st.assignment='';await financeAdvancePage();};
-  if(cycleSel)cycleSel.onchange=async()=>{st.assignment=cycleSel.value||'';await financeAdvancePage();};
+  const advancePrint=document.getElementById('advancePrint');
+  if(advancePrint)advancePrint.onclick=()=>printFinanceDocument('advancePrintArea','Rincian Kasbon Karyawan dan ABK');
 
   const form=document.getElementById('financeAdvanceForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
     const fd=new FormData(form),amount=normalizeInputID(fd.get('amount'));
     const employeeId=String(fd.get('employee_id')||'');
-    const employee=employees.find(x=>x.id===employeeId);
-    if(!employee)return msg('Pilih karyawan.');
+    if(!employees.find(x=>x.id===employeeId))return msg('Pilih karyawan / ABK.');
     if(amount===null||amount<=0)return msg('Nominal kasbon tidak valid.');
-    if(employee.kind==='ABK'&&!st.assignment)return msg('Kasbon ABK wajib memilih Kandang dan Siklus.');
     const {error}=await db.rpc('finance_save_employee_advance_atomic',{
       p_employee_id:employeeId,
       p_advanced_on:String(fd.get('advanced_on')||''),
       p_amount:amount,
-      p_contract_assignment_id:employee.kind==='ABK'?st.assignment:null,
+      p_contract_assignment_id:null,
       p_description:String(fd.get('description')||'')||null,
       p_reference:null
     });
     if(error)return msg(error.message);
     await financeAdvancePage();
-    msg('Kasbon '+(employee.kind==='ABK'?'ABK':'karyawan')+' berhasil disimpan.',true);
+    msg('Kasbon berhasil disimpan.',true);
   };
 }
 
 async function financeAdvancePaymentPage(){
-  const [vr,pr,er,ar,br,cr]=await Promise.all([
-    db.from('advances').select('id,employee_id,contract_assignment_id,barn_id,advanced_on,amount,description,reference,created_at').order('advanced_on',{ascending:true}),
-    db.from('advance_payments').select('id,advance_id,paid_on,amount,method,reference,notes,created_at').order('paid_on',{ascending:false}),
-    db.from('employees').select('id,code,name,kind,active').eq('active',true).order('name',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
-    db.from('barns').select('id,code,name'),
-    db.from('contracts').select('id,number').is('cycle_id',null)
+  const [vr,pr,er]=await Promise.all([
+    db.from('advances').select('id,employee_id,advanced_on,amount,description,reference,created_at').order('advanced_on',{ascending:true}),
+    db.from('advance_payments').select('id,advance_id,paid_on,amount,method,reference,notes,created_at').order('paid_on',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('employees').select('id,code,name,kind,active').eq('active',true).order('name',{ascending:true})
   ]);
-  const advances=vr.data||[],payments=pr.data||[],employees=er.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[];
-  const err=[vr,pr,er,ar,br,cr].find(x=>x.error)?.error;
+  const advances=vr.data||[],payments=pr.data||[],employees=er.data||[];
+  const err=[vr,pr,er].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const paid=id=>payments.filter(x=>x.advance_id===id).reduce((n,x)=>n+prodNum(x.amount),0);
-  const open=advances.map(a=>({...a,balance:prodNum(a.amount)-paid(a.id)})).filter(a=>a.balance>0.0001);
+  const open=advances.map(a=>({...a,balance:Math.max(0,prodNum(a.amount)-paid(a.id))})).filter(a=>a.balance>0.0001);
   const emp=id=>{const e=employees.find(x=>x.id===id);return e?e.code+' · '+e.name:'-'};
-  const ident=id=>{const a=assignments.find(x=>x.id===id);return a?assignmentIdentity(assignments,barns,contractsRows,a):'KARYAWAN UMUM';};
 
   window.__financeAdvancePaymentState=window.__financeAdvancePaymentState||{employee:''};
   const st=window.__financeAdvancePaymentState;
   const employeeOpen=st.employee?open.filter(a=>a.employee_id===st.employee):[];
 
-  let html='<section class="panel"><h3>Cicilan Kasbon</h3><p class="muted">Pilih nama karyawan terlebih dahulu, lalu pilih kasbon aktif yang akan dibayar.</p>'+
+  let html='<section class="panel"><h3>Bayar Kasbon</h3><p class="muted">Pilih karyawan/ABK, pilih kasbon yang masih memiliki sisa, lalu catat pembayaran.</p>'+
     '<form id="advancePaymentForm" class="form-vertical">'+
-      '<label>Karyawan<select id="advancePaymentEmployee" required><option value="">Pilih Karyawan</option>'+
+      '<label>Karyawan / ABK<select id="advancePaymentEmployee" required><option value="">Pilih</option>'+
         employees.map(e=>'<option value="'+esc(e.id)+'" '+(st.employee===e.id?'selected':'')+'>'+esc(e.code+' · '+e.name+' · '+(e.kind==='ABK'?'ABK':'KARYAWAN'))+'</option>').join('')+
       '</select></label>'+
-      '<label>Kasbon<select name="advance_id" required '+(!st.employee?'disabled':'')+'><option value="">Pilih Kasbon</option>'+employeeOpen.map(a=>'<option value="'+esc(a.id)+'">'+esc(prodDateId(a.advanced_on)+' · '+ident(a.contract_assignment_id)+' · Sisa Rp '+prodFmt(a.balance,0))+'</option>').join('')+'</select></label>'+
-      (st.employee&&!employeeOpen.length?'<p class="muted">Belum ada kasbon aktif untuk karyawan ini.</p>':'')+
+      '<label>Kasbon Aktif<select name="advance_id" required '+(!st.employee?'disabled':'')+'><option value="">Pilih Kasbon</option>'+employeeOpen.map(a=>'<option value="'+esc(a.id)+'">'+esc(prodDateId(a.advanced_on)+' · '+(a.description||'Kasbon')+' · Sisa Rp '+prodFmt(a.balance,0))+'</option>').join('')+'</select></label>'+
+      (st.employee&&!employeeOpen.length?'<p class="muted">Tidak ada kasbon yang masih memiliki sisa.</p>':'')+
       '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+today+'" required></label>'+
-      '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Metode<select name="method" required><option value="TUNAI">Tunai</option><option value="TRANSFER">Transfer</option></select></label>'+
+      '<label>Nominal Bayar<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
+      '<label>Metode<select name="method" required><option value="TUNAI">Tunai</option><option value="TRANSFER">Transfer</option><option value="POTONG_GAJI">Potong Gaji</option></select></label>'+
       '<label>Catatan<input name="notes"></label>'+
-      '<button type="submit" '+(!employeeOpen.length?'disabled':'')+'>Simpan Cicilan</button>'+
+      '<button type="submit" '+(!employeeOpen.length?'disabled':'')+'>Simpan Pembayaran</button>'+
     '</form></section>'+
-    '<section class="panel" id="advancePaymentPrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Cicilan / Potongan</h3></div><div class="report-actions"><button type="button" id="advancePaymentPrint">Cetak / PDF</button></div></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Karyawan</th><th>Kandang / Siklus</th><th>Metode</th><th>Nominal</th></tr></thead><tbody>'+
-    payments.map(p=>{const a=advances.find(x=>x.id===p.advance_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(emp(a?.employee_id))+'</td><td>'+esc(ident(a?.contract_assignment_id))+'</td><td>'+esc(p.method)+'</td><td>Rp '+prodFmt(p.amount,0)+'</td></tr>';}).join('')+
-    '</tbody></table></div>'+(payments.length?'':'<p class="muted">Belum ada cicilan.</p>')+'</section>';
+    '<section class="panel" id="advancePaymentPrintArea">'+
+      '<div class="rhpp-section-head"><div><h3>Rincian Bayar Kasbon</h3></div><div class="report-actions"><button type="button" id="advancePaymentPrint">Cetak / PDF</button></div></div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal Bayar</th><th>Karyawan / ABK</th><th>Tanggal Kasbon</th><th>Keterangan Kasbon</th><th>Metode</th><th>Nominal Bayar</th><th>Sisa Setelah Bayar</th></tr></thead><tbody>'+
+      payments.map(p=>{const a=advances.find(x=>x.id===p.advance_id),allFor=payments.filter(x=>x.advance_id===p.advance_id).filter(x=>String(x.paid_on||'')<=String(p.paid_on||'')).reduce((n,x)=>n+prodNum(x.amount),0),bal=Math.max(0,prodNum(a?.amount)-allFor);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(emp(a?.employee_id))+'</td><td>'+prodDateId(a?.advanced_on)+'</td><td>'+esc(a?.description||'-')+'</td><td>'+esc(String(p.method||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td></tr>';}).join('')+
+      '</tbody></table></div>'+(payments.length?'':'<p class="muted">Belum ada pembayaran kasbon.</p>')+
+    '</section>';
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
-  const advancePaymentPrint=document.getElementById('advancePaymentPrint');if(advancePaymentPrint)advancePaymentPrint.onclick=()=>printFinanceDocument('advancePaymentPrintArea','Riwayat Cicilan Kasbon');
+  const advancePaymentPrint=document.getElementById('advancePaymentPrint');
+  if(advancePaymentPrint)advancePaymentPrint.onclick=()=>printFinanceDocument('advancePaymentPrintArea','Rincian Bayar Kasbon');
   const employeeSel=document.getElementById('advancePaymentEmployee');
   if(employeeSel)employeeSel.onchange=async()=>{
     st.employee=employeeSel.value||'';
@@ -6079,16 +6060,22 @@ async function financeAdvancePaymentPage(){
 
   const form=document.getElementById('advancePaymentForm');
   if(form)form.onsubmit=async ev=>{
-    ev.preventDefault();const fd=new FormData(form),id=String(fd.get('advance_id')||''),a=employeeOpen.find(x=>x.id===id),amount=normalizeInputID(fd.get('amount'));
-    if(!st.employee)return msg('Pilih karyawan.');
+    ev.preventDefault();
+    const fd=new FormData(form),id=String(fd.get('advance_id')||''),a=employeeOpen.find(x=>x.id===id),amount=normalizeInputID(fd.get('amount'));
+    if(!st.employee)return msg('Pilih karyawan / ABK.');
     if(!a)return msg('Pilih kasbon aktif.');
-    if(amount===null||amount<=0||amount>a.balance)return msg('Nominal cicilan tidak valid atau melebihi saldo.');
+    if(amount===null||amount<=0||amount>a.balance)return msg('Nominal bayar tidak valid atau melebihi sisa kasbon.');
     const {error}=await db.from('advance_payments').insert({
-      advance_id:id,paid_on:fd.get('paid_on'),amount,method:fd.get('method'),
-      reference:null,notes:fd.get('notes')||null
+      advance_id:id,
+      paid_on:fd.get('paid_on'),
+      amount,
+      method:fd.get('method'),
+      reference:null,
+      notes:fd.get('notes')||null
     });
     if(error)return msg(error.message);
-    await financeAdvancePaymentPage();msg('Cicilan kasbon berhasil disimpan.',true);
+    await financeAdvancePaymentPage();
+    msg('Pembayaran kasbon berhasil disimpan.',true);
   };
 }
 
