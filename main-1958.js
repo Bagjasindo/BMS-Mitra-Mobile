@@ -3170,7 +3170,7 @@ async function recordingPplPage(){
   const txnRecording=txnListState(recs,'pplRecording','recorded_on',5,d.barns,'barn_id',{assignmentKey:'contract_assignment_id',assignments:d.assignments.map(a=>({id:a.id,barn_id:a.barn_id,label:assignmentCycleLabel(d.assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'AKTIF':'CLOSED')}))});
   let html='<section class="panel"><h3>Recording PPL</h3><form id="prodRec" class="form-vertical">'+
     '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'">'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
-    '<p id="prodRecAge" class="muted"><strong>Hari ke-1</strong></p>'+
+    '<div id="prodRecAge" class="rhpp-summary-card" style="margin-top:10px"><span>Umur Saat Ini</span><strong>Hari ke-1</strong></div>'+
     '<label>Pakan Tersedia<select name="feed_item" required><option value="">Pilih Kandang / Kontrak dulu</option></select></label>'+
     '<p id="prodRecStock" class="muted">Sisa stok: -</p>'+
     '<label>Jumlah Pakan Dipakai (Zak/Satuan)<input type="number" name="feed_units" min="0" step="0.01" required></label>'+
@@ -3259,7 +3259,8 @@ async function recordingPplPage(){
 
   const calc=()=>{
     currentDay=editingId?editingDay:(f.assignment.value?nextDayFor(f.assignment.value):1);
-    document.getElementById('prodRecAge').innerHTML='<strong>Hari ke-'+currentDay+(editingId?' · Mode Edit':'')+'</strong>';
+    const ageBox=document.getElementById('prodRecAge');
+    if(ageBox)ageBox.innerHTML='<span>'+(editingId?'Hari Recording':'Umur Saat Ini')+'</span><strong>'+currentDay+' Hari'+(editingId?' · Mode Edit':'')+'</strong>';
     const stock=feedStock.find(x=>x.item_id===f.feed_item.value);
     const used=prodNum(f.feed_units.value);
     document.getElementById('prodRecStock').textContent=stock?'Sisa stok tersedia: '+prodFmt(stock.remaining_units,2)+' '+(stock.unit||'Satuan')+' ('+prodFmt(stock.remaining_kg,2)+' Kg)':'Sisa stok: -';
