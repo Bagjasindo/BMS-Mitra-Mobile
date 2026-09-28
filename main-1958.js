@@ -3276,25 +3276,29 @@ async function recordingPplPage(){
   };
   const missingDaysFor=assignmentId=>{
     const age=realAgeFor(assignmentId);
-    const used=new Set(recs.filter(r=>r.contract_assignment_id===assignmentId).map(r=>prodNum(r.age_days)).filter(n=>n>=1&&n<age));
+    const used=new Set(recs.filter(r=>r.contract_assignment_id===assignmentId).map(r=>prodNum(r.age_days)).filter(n=>n>=1&&n<=age));
     const missing=[];
-    for(let day=1;day<age;day++)if(!used.has(day))missing.push(day);
+    for(let day=1;day<=age;day++)if(!used.has(day))missing.push(day);
     return missing;
+  };
+  const targetDayFor=assignmentId=>{
+    const missing=missingDaysFor(assignmentId);
+    return missing.length?missing[0]:realAgeFor(assignmentId);
   };
   let currentDay=1;
 
   const calc=()=>{
-    currentDay=editingId?editingDay:(f.assignment.value?realAgeFor(f.assignment.value):1);
+    const actualAge=f.assignment.value?realAgeFor(f.assignment.value):1;
+    currentDay=editingId?editingDay:(f.assignment.value?targetDayFor(f.assignment.value):1);
     const ageBox=document.getElementById('prodRecAge');
     if(ageBox){
       if(editingId){
         ageBox.innerHTML='<span>Hari Recording</span><strong>'+currentDay+' Hari · Mode Edit</strong>';
       }else if(f.assignment.value){
         const missing=missingDaysFor(f.assignment.value);
-        const todayFilled=recs.some(r=>r.contract_assignment_id===f.assignment.value&&prodNum(r.age_days)===currentDay);
-        ageBox.innerHTML='<span>Umur Saat Ini</span><strong>'+currentDay+' Hari</strong>'+
-          (missing.length?'<small class="muted" style="display:block;margin-top:6px">Belum terisi: Hari '+missing.join(', ')+'</small>':'<small class="muted" style="display:block;margin-top:6px">Recording hari sebelumnya lengkap.</small>')+
-          '<small class="muted" style="display:block;margin-top:4px">Hari '+currentDay+': '+(todayFilled?'sudah diisi':'belum diisi (hari ini)')+'</small>';
+        ageBox.innerHTML='<span>Umur Saat Ini</span><strong>'+actualAge+' Hari</strong>'+
+          (missing.length?'<small class="muted" style="display:block;margin-top:6px">Belum terisi: Hari '+missing.join(', ')+'</small>':'<small class="muted" style="display:block;margin-top:6px">Recording sampai hari ini lengkap.</small>')+
+          '<small style="display:block;margin-top:6px"><strong>Form ini akan mengisi Hari '+currentDay+'</strong></small>';
       }else{
         ageBox.innerHTML='<span>Umur Saat Ini</span><strong>1 Hari</strong><small class="muted" style="display:block;margin-top:6px">Pilih kandang untuk melihat umur dan hari yang belum terisi.</small>';
       }
@@ -3370,7 +3374,7 @@ async function recordingPplPage(){
     const feedUnits=prodNum(f.feed_units.value);
     if(feedUnits<=0)return msg('Jumlah pakan dipakai harus lebih dari 0.');
     if(feedUnits>prodNum(stock.remaining_units))return msg('Pemakaian melebihi sisa stok. Sisa '+prodFmt(stock.remaining_units,2)+' '+(stock.unit||'Satuan')+'.');
-    currentDay=editingId?editingDay:realAgeFor(a.id);
+    currentDay=editingId?editingDay:targetDayFor(a.id);
     if(!editingId&&recs.some(r=>r.contract_assignment_id===a.id&&prodNum(r.age_days)===currentDay)){
       return msg('Recording Hari '+currentDay+' sudah diisi. Gunakan tombol Edit pada riwayat recording.');
     }
