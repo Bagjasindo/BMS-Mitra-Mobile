@@ -3513,11 +3513,12 @@ async function productionVisitPage(){
 }
 async function productionEstimatePage(){
   const d=await productionBase({includeRhppCosts:false});
-  const [er,sr]=await Promise.all([
+  const [er,sr,rr]=await Promise.all([
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
-    db.from('production_estimate_sizes').select('*')
+    db.from('production_estimate_sizes').select('*'),
+    db.from('recordings').select('contract_assignment_id,recorded_on,mortality,culling').not('contract_assignment_id','is',null)
   ]);
-  const rows=d.scopeRows(er.data||[]),sizes=sr.data||[];
+  const rows=d.scopeRows(er.data||[]),sizes=sr.data||[],recs=d.scopeRows(rr.data||[]);
   const estimateAssignmentId=window.__pplEstimateAssignment||'';
   const historyEstimates=estimateAssignmentId?rows.filter(x=>x.contract_assignment_id===estimateAssignmentId):[];
   window.__bmsTxnList=window.__bmsTxnList||{};
@@ -3539,7 +3540,7 @@ async function productionEstimatePage(){
     return {revenue,avgBw};
   };
 
-  let html='<section class="panel"><h3>Estimasi</h3><p class="muted">Simulasi produksi berdasarkan Panen aktual Marketing + proyeksi sisa ayam. Estimasi tidak membaca Recording dan tidak memengaruhi RHPP.</p>'+
+  let html='<section class="panel"><h3>Estimasi</h3><p class="muted">Simulasi produksi memakai kematian/culling dari Recording sebagai acuan sisa ayam dan Panen aktual Marketing. Estimasi tidak memengaruhi RHPP.</p>'+
     '<form id="prodEst" class="form-vertical">'+
     '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+eligibleAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(estimateAssignmentId===a.id?'selected':'')+'>'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
     '<input type="hidden" name="date">'+
@@ -3550,7 +3551,7 @@ async function productionEstimatePage(){
     '<label>Sisa Ayam Real (ekor)<input type="number" min="0" name="remaining" readonly required></label>'+
     '<p id="estUnallocated" class="muted"><strong>Sisa Belum Terbagi: 0 ekor</strong></p>'+
     '<div><strong>Ukuran / BW</strong><div id="estSizes"></div><button type="button" id="addEstSize">+ Tambah Ukuran</button></div>'+
-    '<p class="muted"><strong>Sumber aktual simulasi:</strong> transaksi Panen Marketing yang sudah tersimpan.</p>'+
+    '<p class="muted"><strong>Sumber aktual simulasi:</strong> kematian/culling dari Recording + transaksi Panen Marketing yang sudah tersimpan.</p>'+
     '<label>Catatan<textarea name="notes"></textarea></label>'+
     '<div id="estPreview"></div>'+
     '<div class="inline-actions"><button id="estSave">Simpan Estimasi</button><button type="button" id="estCancel" style="display:none">Batal Edit</button></div>'+
@@ -3588,7 +3589,7 @@ async function productionEstimatePage(){
     '<p class="muted">Rumus simulasi: Panen aktual Marketing + proyeksi sisa ayam berdasarkan jumlah ekor, BW, dan harga kontrak. Tidak ada nilai dari Recording atau RHPP.</p></section>';
 
   layout(html);
-  if(d.err||er.error||sr.error)msg((d.err||er.error||sr.error).message);
+  if(d.err||er.error||sr.error||rr.error)msg((d.err||er.error||sr.error||rr.error).message);
 
   bindAdminTransactionDeletes(()=>productionEstimatePage());
 
@@ -3644,7 +3645,7 @@ async function productionEstimatePage(){
           '<div class="rhpp-summary-card"><span>Proyeksi Sisa Panen</span><strong>Rp '+prodFmt(fin.revenue,0)+'</strong></div>'+
           '<div class="rhpp-summary-card"><span>Total Proyeksi Panen</span><strong>Rp '+prodFmt(totalRevenue,0)+'</strong></div>'+
         '</div>'+
-        '<p class="muted" style="margin:10px 0 0">Simulasi ini berdiri sendiri dan tidak memengaruhi RHPP.</p>'+
+        '<p class="muted" style="margin:10px 0 0">Kematian/culling hanya diambil dari Recording untuk Estimasi. Data ini tidak masuk RHPP.</p>'+
       '</div>';
   };
   const syncEstimateDraftFromDom=()=>{
@@ -3691,8 +3692,13 @@ async function productionEstimatePage(){
     syncEstimateDate();
     const a=d.assignments.find(x=>x.id===f.assignment.value),ci=a&&d.chicks.find(c=>c.contract_assignment_id===a.id);
     if(a&&ci&&f.date.value){
-      const harv=d.harvests.filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<=f.date.value).reduce((sum,h)=>sum+prodNum(h.birds),0);
-      f.remaining.value=Math.max(0,prodNum(ci.received)-prodNum(ci.doa)-harv);
+      const death=recs
+        .filter(r=>r.contract_assignment_id===a.id&&r.recorded_on<=f.date.value)
+        .reduce((sum,r)=>sum+prodNum(r.mortality)+prodNum(r.culling),0);
+      const harv=d.harvests
+        .filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<=f.date.value)
+        .reduce((sum,h)=>sum+prodNum(h.birds),0);
+      f.remaining.value=Math.max(0,prodNum(ci.received)-prodNum(ci.doa)-death-harv);
     }else f.remaining.value='';
     draft=[{birds:0,bw:0}];renderSizes();updateUnallocated();syncExistingState();preview();
   };
