@@ -5768,6 +5768,7 @@ async function financeExpeditionProfitLossPage(){
     body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Pendapatan</span><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Trip Tertagih</span><strong>'+revenueRows.length+'</strong></div></div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tgl Invoice</th><th>Invoice</th><th>Pelanggan</th><th>Tgl Trip</th><th>SJ</th><th>Rute</th><th>Kendaraan</th><th>Tujuan</th><th>Pendapatan</th></tr></thead><tbody>'+
       revenueRows.map(x=>'<tr><td>'+prodDateId(x.invoice.invoice_date)+'</td><td>'+esc(x.invoice.invoice_number)+'</td><td>'+esc(x.invoice.customer_name)+'</td><td>'+prodDateId(x.trip.trip_date)+'</td><td>'+esc(x.trip.mts_sj||'-')+'</td><td>'+esc(x.trip.zone||'-')+'</td><td>'+esc(x.trip.vehicle||'-')+'</td><td>'+esc(x.trip.destination||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td></tr>').join('')+
+      (revenueRows.length?'<tr><td colspan="7"></td><td><strong>JUMLAH TOTAL · '+revenueRows.length+' TRIP</strong></td><td><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></td></tr>':'')+
       '</tbody></table></div>'+(revenueRows.length?'':'<p class="muted">Tidak ada pendapatan pada filter ini.</p>');
   }else if(st.view==='PENERIMAAN'){
     body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Kas Diterima</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Penerimaan</span><strong>'+reportPayments.length+'</strong></div></div>'+
