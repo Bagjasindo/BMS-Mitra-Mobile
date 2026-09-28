@@ -5813,7 +5813,13 @@ async function financeExpeditionBopPage(){
   const physicalTrips=trips.filter(t=>!isHistorical(t));
 
   window.__fxBopFilter=window.__fxBopFilter||'BELUM';
+  window.__fxBopSelected=window.__fxBopSelected||null;
   const bopFilter=window.__fxBopFilter;
+  const selectedId=window.__fxBopSelected;
+  const selectedTrip=physicalTrips.find(t=>t.id===selectedId)||null;
+  const selectedAmount=selectedTrip?autoTotalFor(selectedTrip.id):0;
+  const selectedDone=selectedAmount>0;
+
   const visibleTrips=physicalTrips.filter(t=>{
     const done=autoTotalFor(t.id)>0;
     return bopFilter==='SEMUA'||(bopFilter==='SUDAH'?done:!done);
@@ -5821,19 +5827,34 @@ async function financeExpeditionBopPage(){
   const countDone=physicalTrips.filter(t=>autoTotalFor(t.id)>0).length;
   const countPending=physicalTrips.length-countDone;
 
-  let html='<section class="panel"><h3>BOP Expedisi</h3><p class="muted">Isi <strong>Nominal OP</strong> pada setiap trip sesuai catatan biaya, lalu klik Masukkan BOP. Jika salah, ubah nominal pada baris yang sama dan klik Simpan Koreksi. Trip rekonsiliasi HISTORIS BRU tidak masuk antrean BOP.</p></section>'+
-    '<section class="panel"><div class="rhpp-section-head"><div><h3>Trip Belum / Sudah Masuk BOP</h3><p class="muted">Belum: '+countPending+' · Sudah: '+countDone+' · Total trip fisik: '+physicalTrips.length+'</p></div>'+
-      '<label style="min-width:180px">Filter Status<select id="fxBopStatusFilter"><option value="BELUM" '+(bopFilter==='BELUM'?'selected':'')+'>Belum Masuk</option><option value="SUDAH" '+(bopFilter==='SUDAH'?'selected':'')+'>Sudah Masuk</option><option value="SEMUA" '+(bopFilter==='SEMUA'?'selected':'')+'>Semua</option></select></label></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Rute</th><th>Sopir / Truk</th><th>Nominal OP</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+  let html='<section class="panel"><h3>BOP Expedisi</h3><p class="muted">Pilih trip pada daftar, lalu isi atau koreksi BOP melalui satu form. Trip rekonsiliasi HISTORIS BRU tidak masuk antrean BOP.</p></section>';
+
+  if(selectedTrip){
+    html+='<section class="panel"><h3>'+(selectedDone?'Koreksi BOP Expedisi':'Isi BOP Expedisi')+'</h3>'+
+      '<form id="fxBopEntryForm" class="form-vertical">'+
+        '<label>Tanggal Trip<input type="text" value="'+esc(prodDateId(selectedTrip.trip_date))+'" readonly></label>'+
+        '<label>MTS/SJ<input type="text" value="'+esc(selectedTrip.mts_sj||'-')+'" readonly></label>'+
+        '<label>Rute<input type="text" value="'+esc(selectedTrip.zone||'-')+'" readonly></label>'+
+        '<label>Sopir / Truk<input type="text" value="'+esc((selectedTrip.driver||'-')+' · '+(selectedTrip.vehicle||'-'))+'" readonly></label>'+
+        '<label>Nominal OP<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(selectedDone?esc(fmtNumber(selectedAmount)):'')+'" placeholder="Contoh: 685.000" required></label>'+
+        '<div class="inline-actions"><button type="submit">'+(selectedDone?'Simpan Koreksi':'Simpan BOP')+'</button><button type="button" id="fxBopCancel" class="btn-secondary">Batal</button></div>'+
+      '</form></section>';
+  }
+
+  html+='<section class="panel"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:12px">'+
+      '<div><h3 style="margin-bottom:4px">Trip Belum / Sudah Masuk BOP</h3><p class="muted" style="margin:0">Belum: '+countPending+' · Sudah: '+countDone+' · Total trip fisik: '+physicalTrips.length+'</p></div>'+
+      '<label style="min-width:220px">Filter Status<select id="fxBopStatusFilter"><option value="BELUM" '+(bopFilter==='BELUM'?'selected':'')+'>Belum Masuk</option><option value="SUDAH" '+(bopFilter==='SUDAH'?'selected':'')+'>Sudah Masuk</option><option value="SEMUA" '+(bopFilter==='SEMUA'?'selected':'')+'>Semua</option></select></label>'+
+    '</div>'+
+    '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Rute</th><th>Sopir / Truk</th><th>Nominal OP</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
       visibleTrips.map(t=>{
         const posted=autoTotalFor(t.id),done=posted>0;
         return '<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.zone||'-')+'</td>'+
           '<td>'+esc((t.driver||'-')+' · '+(t.vehicle||'-'))+'</td>'+
-          '<td><input type="text" inputmode="decimal" data-number="1" data-bop-amount="'+esc(t.id)+'" aria-label="Nominal OP '+esc(t.mts_sj||t.trip_date)+'" placeholder="Isi nominal" value="'+(done?esc(fmtNumber(posted)):'')+'" style="min-width:145px"></td>'+
+          '<td>'+(done?'<strong>Rp '+prodFmt(posted,0)+'</strong>':'-')+'</td>'+
           '<td>'+(done?'<span class="pill">SUDAH MASUK</span>':'<span class="finance-status finance-status-wait">BELUM</span>')+'</td>'+
-          '<td>'+(done?'<button type="button" data-correct-exp-bop="'+esc(t.id)+'">Simpan Koreksi</button>':'<button type="button" data-post-exp-bop="'+esc(t.id)+'">Masukkan BOP</button>')+'</td></tr>';
+          '<td><button type="button" data-select-exp-bop="'+esc(t.id)+'">'+(done?'Koreksi':'Isi BOP')+'</button></td></tr>';
       }).join('')+
-    '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">Tidak ada trip pada filter ini.</p>')+'</section>'+
+    '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">'+(bopFilter==='BELUM'&&countPending===0?'Semua trip sudah masuk BOP. Tidak ada trip yang menunggu input.':'Tidak ada trip pada filter ini.')+'</p>')+'</section>'+
     '<section class="panel" id="fxBopPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Expedisi</h3></div><div class="report-actions"><button type="button" id="fxBopPrint">Cetak / PDF</button></div></div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Trip</th><th>Rute</th><th>Nominal</th><th>Sumber</th></tr></thead><tbody>'+
       rows.map(x=>{const t=trips.find(t=>t.id===x.trip_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td>'+
@@ -5842,27 +5863,43 @@ async function financeExpeditionBopPage(){
       '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada BOP Expedisi.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+
   const filter=document.getElementById('fxBopStatusFilter');
-  if(filter)filter.onchange=async()=>{window.__fxBopFilter=filter.value||'BELUM';await financeExpeditionBopPage();};
+  if(filter)filter.onchange=async()=>{
+    window.__fxBopFilter=filter.value||'BELUM';
+    window.__fxBopSelected=null;
+    await financeExpeditionBopPage();
+  };
+
+  document.querySelectorAll('[data-select-exp-bop]').forEach(btn=>btn.onclick=async()=>{
+    window.__fxBopSelected=btn.dataset.selectExpBop||null;
+    await financeExpeditionBopPage();
+    document.getElementById('fxBopEntryForm')?.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+
+  const cancel=document.getElementById('fxBopCancel');
+  if(cancel)cancel.onclick=async()=>{window.__fxBopSelected=null;await financeExpeditionBopPage();};
+
+  const form=document.getElementById('fxBopEntryForm');
+  if(form&&selectedTrip)form.onsubmit=async ev=>{
+    ev.preventDefault();
+    const amount=normalizeInputID(new FormData(form).get('amount'));
+    if(amount===null||amount<=0)return msg('Isi nominal OP lebih dari nol.');
+    const submit=form.querySelector('button[type="submit"]');
+    if(submit){submit.disabled=true;submit.textContent='Menyimpan...';}
+    const result=selectedDone
+      ?await db.rpc('finance_correct_expedition_trip_op',{p_trip_id:selectedTrip.id,p_amount:amount})
+      :await db.rpc('finance_post_expedition_bop_for_trip',{p_trip_id:selectedTrip.id,p_operational_override:amount});
+    if(result.error){
+      if(submit){submit.disabled=false;submit.textContent=selectedDone?'Simpan Koreksi':'Simpan BOP';}
+      return msg(result.error.message);
+    }
+    window.__fxBopSelected=null;
+    await financeExpeditionBopPage();
+    msg((selectedDone?'Koreksi BOP Expedisi tersimpan: Rp ':'BOP Expedisi tersimpan: Rp ')+prodFmt(result.data||0,0)+'.',true);
+  };
+
   const p=document.getElementById('fxBopPrint');if(p)p.onclick=()=>printFinanceDocument('fxBopPrintArea','Laporan BOP Expedisi');
-  document.querySelectorAll('[data-post-exp-bop]').forEach(btn=>btn.onclick=async()=>{
-    const input=document.querySelector('[data-bop-amount="'+btn.dataset.postExpBop+'"]');
-    const amount=normalizeInputID(String(input?.value||'').trim());
-    if(amount===null||amount<=0){input?.focus();return msg('Isi nominal OP lebih dari nol pada trip ini.');}
-    btn.disabled=true;btn.textContent='Memproses...';
-    const {data,error}=await db.rpc('finance_post_expedition_bop_for_trip',{p_trip_id:btn.dataset.postExpBop,p_operational_override:amount});
-    if(error){btn.disabled=false;btn.textContent='Masukkan BOP';return msg(error.message);}
-    await financeExpeditionBopPage();msg('BOP Expedisi tersimpan: Rp '+prodFmt(data||0,0)+'.',true);
-  });
-  document.querySelectorAll('[data-correct-exp-bop]').forEach(btn=>btn.onclick=async()=>{
-    const input=document.querySelector('[data-bop-amount="'+btn.dataset.correctExpBop+'"]');
-    const amount=normalizeInputID(String(input?.value||'').trim());
-    if(amount===null||amount<=0){input?.focus();return msg('Isi nominal OP lebih dari nol untuk koreksi.');}
-    btn.disabled=true;btn.textContent='Menyimpan...';
-    const {data,error}=await db.rpc('finance_correct_expedition_trip_op',{p_trip_id:btn.dataset.correctExpBop,p_amount:amount});
-    if(error){btn.disabled=false;btn.textContent='Simpan Koreksi';return msg(error.message);}
-    await financeExpeditionBopPage();msg('Koreksi BOP Expedisi tersimpan: Rp '+prodFmt(data||0,0)+'.',true);
-  });
 }
 
 async function financeAdvancePage(){
