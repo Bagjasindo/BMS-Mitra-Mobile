@@ -13,7 +13,7 @@
 
 ## Fokus Berikutnya
 - **Modul operasional utama sebelum Keuangan/Owner dianggap terkunci sesuai audit terakhir.**
-- **⚠️ GARIS KERAS FOKUS KERJA: ADMINISTRATOR WAJIB TETAP FOKUS HANYA KE KEUANGAN DAN OWNER SAMPAI KEDUA AREA INI SELESAI DIAUDIT/FIX. JIKA PEMBAHASAN MULAI BALIK KE MODUL LAMA, WAJIB DIINGATKAN DAN DIARAHKAN KEMBALI KE KEUANGAN/OWNER. MODUL LAIN TIDAK BOLEH DIBUKA ATAU DIUBAH TANPA IZIN EKSPLISIT ADMINISTRATOR.**
+- **⚠️ GARIS KERAS FOKUS KERJA: ADMINISTRATOR WAJIB TETAP FOKUS HANYA KE KEUANGAN DAN OWNER SAMPAI KEDUA AREA INI SELESAI DIAUDIT/FIX. JIKA PEMBAHASAN MULAI BALIK KE MODUL LAMA, WAJIB DIINGATKAN DAN DIARAHKAN KEMBALI KE KEUANGAN/OWNER. PENGECUALIAN HANYA BOLEH JIKA ADA ALASAN LOGIS YANG JELAS DAN TERBUKTI BERKAITAN LANGSUNG DENGAN KEUANGAN/OWNER ATAU MENGHALANGI AUDIT/FIX KEDUANYA. MODUL LAIN TIDAK BOLEH DIBUKA ATAU DIUBAH TANPA IZIN EKSPLISIT ADMINISTRATOR.**
 - **Pekerjaan berikutnya difokuskan hanya pada Keuangan dan Owner.**
 - **Ruang audit/fix berikutnya meliputi laporan Keuangan, BOP, arus kas, laba/rugi, hutang/piutang, penerimaan/pembayaran, serta laporan Owner yang membaca hasil akhir terkait.**
 - **Audit boleh dilakukan untuk membaca, membandingkan, dan menemukan masalah, tetapi tidak boleh mengubah kode, SQL, view, RPC, data, konfigurasi, maupun alur aplikasi tanpa izin eksplisit Administrator.**
