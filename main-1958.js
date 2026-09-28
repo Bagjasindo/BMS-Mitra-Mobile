@@ -235,6 +235,7 @@ const transactionDeleteImpact=(table)=>{
     finance_expedition_maintenance:'perawatan dan laba/rugi Expedisi dapat berubah',
     advances:'kasbon, sisa kasbon, Arus Kas, dan pembayaran terkait dapat berubah',
     advance_payments:'sisa kasbon dan Arus Kas dapat berubah',
+    supplier_payments:'sisa hutang supplier dan Arus Kas dapat berubah',
     finance_mandiri_sales_receipts:'penerimaan Mandiri, sisa piutang, dan Arus Kas dapat berubah',
     finance_mandiri_supplier_payments:'pembayaran supplier Mandiri, sisa hutang, dan Arus Kas dapat berubah',
     rhpp_real:'status final Mitra, Arus Kas, dan laba/rugi dapat berubah',
@@ -6155,7 +6156,7 @@ async function financeAdvancePage(){
     if(editRow&&amount<alreadyPaid)return msg('Nominal Kasbon tidak boleh lebih kecil dari total yang sudah dibayar Rp '+prodFmt(alreadyPaid,0)+'.');
     let result;
     if(editRow){
-      result=await db.from('advances').update({employee_id:employeeId,advanced_on:String(fd.get('advanced_on')||''),amount,description:String(fd.get('description')||'')||null,reference:null,contract_assignment_id:null,barn_id:null}).eq('id',editRow.id);
+      result=await db.rpc('finance_correct_employee_advance_v1',{p_id:editRow.id,p_employee_id:employeeId,p_advanced_on:String(fd.get('advanced_on')||''),p_amount:amount,p_description:String(fd.get('description')||'')||null});
     }else{
       result=await db.rpc('finance_save_employee_advance_atomic',{p_employee_id:employeeId,p_advanced_on:String(fd.get('advanced_on')||''),p_amount:amount,p_contract_assignment_id:null,p_description:String(fd.get('description')||'')||null,p_reference:null});
     }
@@ -6227,7 +6228,7 @@ async function financeAdvancePaymentPage(){
     const otherPaid=payments.filter(x=>x.advance_id===id&&x.id!==editPayment?.id).reduce((n,x)=>n+prodNum(x.amount),0),maxPay=Math.max(0,prodNum(a.amount)-otherPaid);
     if(amount===null||amount<=0||amount>maxPay)return msg('Nominal bayar tidak valid atau melebihi sisa kasbon Rp '+prodFmt(maxPay,0)+'.');
     const payload={advance_id:id,paid_on:fd.get('paid_on'),amount,method:fd.get('method'),reference:null,notes:fd.get('notes')||null};
-    const {error}=editPayment?await db.from('advance_payments').update(payload).eq('id',editPayment.id):await db.from('advance_payments').insert(payload);
+    const {error}=editPayment?await db.rpc('finance_correct_advance_payment_v1',{p_id:editPayment.id,p_advance_id:id,p_paid_on:fd.get('paid_on'),p_amount:amount,p_method:fd.get('method'),p_notes:fd.get('notes')||null}):await db.from('advance_payments').insert(payload);
     if(error)return msg(error.message);
     st.editId='';
     await financeAdvancePaymentPage();
@@ -6393,11 +6394,10 @@ async function financeMandiriReceiptsPage(){
     if(!await appConfirm('Konfirmasi penerimaan Rp '+prodFmt(amount,0)+' dari '+(current.buyer_name||'pelanggan')+'?'))return;
     let result;
     if(editReceipt){
-      result=await db.from('finance_mandiri_sales_receipts').update({
-        received_on:fd.get('received_on'),amount,method:fd.get('method'),
-        reference:String(fd.get('reference')||'').trim()||null,
-        notes:String(fd.get('notes')||'').trim()||null
-      }).eq('id',editReceipt.id);
+      result=await db.rpc('finance_correct_mandiri_receipt_v1',{
+        p_id:editReceipt.id,p_received_on:fd.get('received_on'),p_amount:amount,p_method:fd.get('method'),
+        p_reference:String(fd.get('reference')||'').trim()||null,p_notes:String(fd.get('notes')||'').trim()||null
+      });
     }else{
       result=await db.rpc('finance_receive_mandiri_sale_atomic',{
         p_harvest_id:current.id,p_received_on:fd.get('received_on'),p_amount:amount,p_method:fd.get('method'),
@@ -6576,11 +6576,10 @@ async function financeMandiriSupplierPaymentPage(){
     if(!await appConfirm('Konfirmasi pembayaran supplier Rp '+prodFmt(amount,0)+'?'))return;
     let result;
     if(editPayment){
-      result=await db.from('finance_mandiri_supplier_payments').update({
-        paid_on:fd.get('paid_on'),amount,method:fd.get('method'),
-        reference:String(fd.get('reference')||'').trim()||null,
-        notes:String(fd.get('notes')||'').trim()||null
-      }).eq('id',editPayment.id);
+      result=await db.rpc('finance_correct_mandiri_supplier_payment_v1',{
+        p_id:editPayment.id,p_paid_on:fd.get('paid_on'),p_amount:amount,p_method:fd.get('method'),
+        p_reference:String(fd.get('reference')||'').trim()||null,p_notes:String(fd.get('notes')||'').trim()||null
+      });
     }else{
       result=await db.rpc('finance_pay_mandiri_supplier_atomic',{
         p_purchase_id:current.id,p_paid_on:fd.get('paid_on'),p_amount:amount,p_method:fd.get('method'),
