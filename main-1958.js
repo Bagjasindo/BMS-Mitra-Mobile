@@ -6385,19 +6385,6 @@ async function financeMandiriSupplierPaymentPage(){
     '<label>Status<select id="mandiriSupplierPaymentStatus"><option value="">Semua</option><option value="BELUM BAYAR" '+(st.status==='BELUM BAYAR'?'selected':'')+'>Belum Bayar</option><option value="SEBAGIAN" '+(st.status==='SEBAGIAN'?'selected':'')+'>Sebagian</option><option value="LUNAS" '+(st.status==='LUNAS'?'selected':'')+'>Lunas</option></select></label>'+
     '</section>';
 
-  html+='<section class="panel"><h3>Daftar Hutang Mandiri</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Item</th><th>Nilai</th><th>Dibayar</th><th>Sisa</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
-    shown.map(x=>{const s=suppliers.find(v=>v.id===x.supplier_id),i=items.find(v=>v.id===x.item_id);return '<tr>'+
-      '<td>'+prodDateId(x.purchase_date)+'</td>'+
-      '<td>'+esc(s?.name||'-')+'</td>'+
-      '<td>'+esc(i?.name||'-')+'</td>'+
-      '<td>Rp '+prodFmt(x.total,0)+'</td>'+
-      '<td>Rp '+prodFmt(x.paid,0)+'</td>'+
-      '<td><strong>Rp '+prodFmt(x.balance,0)+'</strong></td>'+
-      '<td><strong>'+esc(x.status)+'</strong></td>'+
-      '<td>'+(x.balance>0.005?'<button type="button" data-pay-mandiri-supplier="'+esc(x.id)+'">Bayar</button>':'Lunas')+'</td>'+
-    '</tr>';}).join('')+
-    '</tbody></table></div>'+(shown.length?'':'<p class="muted">Tidak ada data sesuai filter.</p>')+'</section>';
-
   if(selected&&selected.balance>0.005){
     const s=suppliers.find(x=>x.id===selected.supplier_id),i=items.find(x=>x.id===selected.item_id);
     html+='<section class="panel"><h3>Konfirmasi Pembayaran Supplier</h3>'+
@@ -6412,6 +6399,19 @@ async function financeMandiriSupplierPaymentPage(){
       '</form></section>';
   }
 
+  html+='<section class="panel"><h3>Daftar Hutang Mandiri</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Item</th><th>Nilai</th><th>Dibayar</th><th>Sisa</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    shown.map(x=>{const s=suppliers.find(v=>v.id===x.supplier_id),i=items.find(v=>v.id===x.item_id);return '<tr>'+
+      '<td>'+prodDateId(x.purchase_date)+'</td>'+
+      '<td>'+esc(s?.name||'-')+'</td>'+
+      '<td>'+esc(i?.name||'-')+'</td>'+
+      '<td>Rp '+prodFmt(x.total,0)+'</td>'+
+      '<td>Rp '+prodFmt(x.paid,0)+'</td>'+
+      '<td><strong>Rp '+prodFmt(x.balance,0)+'</strong></td>'+
+      '<td><strong>'+esc(x.status)+'</strong></td>'+
+      '<td>'+(x.balance>0.005?'<button type="button" data-pay-mandiri-supplier="'+esc(x.id)+'">Bayar</button>':'Lunas')+'</td>'+
+    '</tr>';}).join('')+
+    '</tbody></table></div>'+(shown.length?'':'<p class="muted">Tidak ada data sesuai filter.</p>')+'</section>';
+
   const history=selected?payments.filter(p=>p.purchase_id===selected.id):payments;
   if(history.length){
     html+='<section class="panel"><h3>Riwayat Pembayaran'+(selected?' Hutang Dipilih':'')+'</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Catatan</th></tr></thead><tbody>'+
@@ -6424,7 +6424,7 @@ async function financeMandiriSupplierPaymentPage(){
 
   const status=document.getElementById('mandiriSupplierPaymentStatus');
   if(status)status.onchange=async()=>{st.status=status.value||'';st.selected='';await financeMandiriSupplierPaymentPage();};
-  root.querySelectorAll('[data-pay-mandiri-supplier]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.payMandiriSupplier;await financeMandiriSupplierPaymentPage();});
+  root.querySelectorAll('[data-pay-mandiri-supplier]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.payMandiriSupplier;await financeMandiriSupplierPaymentPage();const paymentForm=document.getElementById('mandiriSupplierPaymentForm');if(paymentForm)paymentForm.scrollIntoView({behavior:'smooth',block:'start'});});
   const cancel=document.getElementById('cancelMandiriSupplierPayment');
   if(cancel)cancel.onclick=async()=>{st.selected='';await financeMandiriSupplierPaymentPage();};
   const form=document.getElementById('mandiriSupplierPaymentForm');
