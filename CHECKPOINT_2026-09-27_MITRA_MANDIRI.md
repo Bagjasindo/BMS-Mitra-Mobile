@@ -318,3 +318,59 @@ Karena itu:
 - `88bd1fe823bcda042fdd0db3198d3dedbcd6140d` — Estimasi, label Dashboard, label Mandiri.
 - `5d1a6b45d39d2e2610ff352a15e819e862dbb035` — KPI CLOSED gabung snapshot Mitra + Mandiri.
 - `2094ab1877e6b852702ad0e1fc1364118fbb2365` — refresh asset.
+
+
+---
+
+## AUDIT ULANG VERIFIKASI PASS 2026-09-28
+
+Status: **BELUM 100% PASS — ditemukan 2 ketidakkonsistenan Produksi aktif.**
+Audit ini tidak mengubah kode.
+
+### PASS
+- Syntax JS main: OK.
+- Asset live: `2133-audit-four-fixes`.
+- Close Mandiri snapshot: struktur tersedia dan RPC menulis ke `production_mandiri_final`.
+- Arus Kas supplier: cash basis dari `supplier_payments`.
+- Retur Tambah Sapronak: biaya keluar dari siklus asal dan masuk ke siklus tujuan saat transfer; hutang supplier tidak berubah.
+- Dashboard label IP CLOSED sudah sesuai definisi.
+- Laporan Mandiri sudah memakai label Laba Operasional.
+- RPC utama Finance/RHPP/Expedisi berhasil dieksekusi tanpa error pada audit.
+
+### TEMUAN 1 — Dashboard Produksi aktif setelah panen sebagian
+`buildDashboardModel()` masih menghitung:
+`population = initial - dead`
+dan belum mengurangi panen yang sudah terjadi.
+
+Data live:
+- Chick-In 14.800
+- Deplesi 2.278
+- Panen 6.762
+- Dashboard formula lama: 12.522
+- Populasi hidup benar: 5.760
+
+Akibat:
+- Populasi Dashboard salah setelah panen sebagian.
+- Biomassa/FCR/IP Dashboard aktif ikut bias.
+
+### TEMUAN 2 — Performa Recording setelah panen sebagian
+`recordingPplPage()` juga masih memakai:
+`population = initial - cumulative_depletion`
+tanpa mengurangi panen sampai tanggal recording.
+
+Audit live menemukan 5 baris recording setelah panen sudah dimulai yang terdampak.
+
+### CATATAN ESTIMASI
+Enam estimasi memiliki panen Marketing pada tanggal yang sama.
+Data tersimpan membuktikan estimasi dibuat **sebelum panen hari yang sama**:
+- remaining_birds tersimpan cocok dengan formula panen `< estimated_on`, bukan `<= estimated_on`.
+
+Namun handler pemilihan/edit Estimasi masih menghitung Sisa Ayam Real memakai panen `<= tanggal estimasi`.
+Ini berpotensi menampilkan sisa yang terlalu kecil ketika membuka ulang tanggal yang sama setelah Marketing memasukkan panen hari itu.
+Perlu disamakan menjadi `< estimated_on` untuk menjaga aturan existing “Estimasi sebelum panen Marketing pada tanggal yang sama”.
+
+### Kesimpulan
+Belum boleh ditandai 100% PASS sebelum:
+1. Dashboard aktif mengurangi panen sebagian.
+2. Performa Recording mengurangi panen sampai tanggal recording.
+3. Sisa Ayam Real pada Estimasi memakai boundary tanggal yang konsisten dengan snapshot tersimpan.
