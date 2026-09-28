@@ -1,5 +1,11 @@
 # BMS Mitra Online
 
+## Garis Ketat RHPP Real
+- **Recording PPL hanya untuk monitoring operasional/produksi dan bukan sumber data RHPP Real.**
+- **Data Recording PPL dilarang dipakai untuk menghitung atau mengoreksi Mortalitas/Deplesi, Chick-In, Chick-Out, FCR, IP, nilai panen, biaya, bonus, laba, atau komponen RHPP Real lainnya.**
+- **RHPP Real harus bersumber dari data transaksi/final yang memang ditetapkan untuk RHPP, bukan dari data monitoring PPL.**
+- Perubahan kode, SQL, view, RPC, laporan, atau rekonsiliasi yang membuat Recording PPL memengaruhi RHPP Real dianggap melanggar aturan ini dan tidak boleh diterapkan tanpa instruksi eksplisit Administrator.
+
 ## Checkpoint 27 September 2026
 - Audit alur utama selesai: Logistik, Marketing, Produksi/PPL, Keuangan, Expedisi, Owner.
 - Laba/Rugi Kandang, Laba/Rugi Expedisi, dan Laba/Rugi Global sudah dipisahkan.
