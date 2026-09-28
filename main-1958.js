@@ -3395,27 +3395,38 @@ async function productionEstimatePage(){
   const preview=()=>{
     const a=d.assignments.find(x=>x.id===f.assignment.value),ci=a&&d.chicks.find(c=>c.contract_assignment_id===a.id);
     const age=ci&&f.date.value?prodAge(ci.arrived_on,f.date.value):0;
-    const harv=a?d.harvests.filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<=f.date.value).reduce((s,h)=>s+prodNum(h.birds),0):0;
+    const priorHarvests=a?d.harvests.filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<f.date.value):[];
+    const harvBirds=priorHarvests.reduce((s,h)=>s+prodNum(h.birds),0);
+    const harvKg=priorHarvests.reduce((s,h)=>s+prodNum(h.net_weight_kg),0);
+    const priorRevenue=priorHarvests.reduce((s,h)=>s+prodNum(h.total_amount),0);
     const birds=draft.reduce((s,x)=>s+prodNum(x.birds),0);
     const bio=draft.reduce((s,x)=>s+prodNum(x.birds)*prodNum(x.bw),0);
-    const bw=birds?bio/birds:0;
+    const totalProjectedBirds=harvBirds+birds;
+    const totalProjectedBio=harvKg+bio;
+    const bw=totalProjectedBirds?totalProjectedBio/totalProjectedBirds:0;
     const feeds=feedTotals();
-    const fcr=bio?feeds.total/bio:0;
+    const existingEstimate=editingId?rows.find(x=>x.id===editingId):null;
+    const effectiveFeed=existingEstimate?prodNum(existingEstimate.feed_used_kg):feeds.total;
+    const fcr=totalProjectedBio?effectiveFeed/totalProjectedBio:0;
     const initial=ci?prodNum(ci.received)-prodNum(ci.doa):0;
-    const surv=initial?Math.min(100,(prodNum(f.remaining.value)+harv)/initial*100):0;
+    const surv=initial?Math.min(100,totalProjectedBirds/initial*100):0;
     const ip=age&&fcr?(surv*bw*100)/(age*fcr):0;
     const fin=currentFinancial();
+    const effectiveCost=existingEstimate?prodNum(existingEstimate.estimated_cost):fin.cost;
+    const totalRevenue=priorRevenue+fin.revenue;
+    const profit=totalRevenue-effectiveCost;
+    const perChick=prodNum(ci?.received)>0?profit/prodNum(ci.received):0;
     document.getElementById('estAge').textContent='Umur: '+(ci?age+' hari':'-');
-    document.getElementById('estActualHarvest').textContent='Panen aktual Marketing: '+prodFmt(harv,0)+' ekor';
+    document.getElementById('estActualHarvest').textContent='Panen aktual sebelum tanggal estimasi: '+prodFmt(harvBirds,0)+' ekor';
     document.getElementById('estFeedPre').textContent='Pre Starter: '+prodFmt(feeds.pre,2)+' Kg';
     document.getElementById('estFeedStarter').textContent='Starter: '+prodFmt(feeds.starter,2)+' Kg';
     document.getElementById('estFeedFinisher').textContent='Finisher: '+prodFmt(feeds.finisher,2)+' Kg';
-    document.getElementById('estFeedTotal').innerHTML='<strong>Total Pakan: '+prodFmt(feeds.total,2)+' Kg</strong>'+(feeds.other>0?' <span class="muted">· Fase lain: '+prodFmt(feeds.other,2)+' Kg</span>':'');
-    document.getElementById('estPreview').innerHTML='<p><strong>BW Estimasi:</strong> '+prodFmt(bw,3)+' Kg · <strong>FCR:</strong> '+prodFmt(fcr,3)+' · <strong>IP:</strong> '+prodFmt(ip,1)+'</p>'+
-      '<p><strong>BW Rataan:</strong> '+prodFmt(fin.avgBw,3)+' Kg</p>'+
+    document.getElementById('estFeedTotal').innerHTML='<strong>Total Pakan: '+prodFmt(effectiveFeed,2)+' Kg</strong>'+(existingEstimate?' <span class="muted">· mengikuti snapshot estimasi tersimpan</span>':(feeds.other>0?' <span class="muted">· Fase lain: '+prodFmt(feeds.other,2)+' Kg</span>':''));
+    document.getElementById('estPreview').innerHTML='<p><strong>BW Rataan Proyeksi:</strong> '+prodFmt(bw,3)+' Kg · <strong>FCR:</strong> '+prodFmt(fcr,3)+' · <strong>IP:</strong> '+prodFmt(ip,1)+'</p>'+
+      '<p><strong>Panen Aktual Sebelumnya:</strong> Rp '+prodFmt(priorRevenue,0)+' · <strong>Proyeksi Sisa Panen:</strong> Rp '+prodFmt(fin.revenue,0)+'</p>'+
       '<p><strong>Biaya DOC:</strong> Rp '+prodFmt(fin.docCost,0)+' ('+prodFmt(prodNum(ci?.received),0)+' × Rp '+prodFmt(fin.docPrice,0)+')</p>'+
       '<p><strong>Pre Starter:</strong> '+prodFmt(fin.preKg,2)+' Kg × Rp '+prodFmt(fin.prePrice,0)+' = Rp '+prodFmt(fin.preCost,0)+' · <strong>Starter:</strong> '+prodFmt(fin.starterKg,2)+' Kg × Rp '+prodFmt(fin.starterPrice,0)+' = Rp '+prodFmt(fin.starterCost,0)+' · <strong>Finisher:</strong> '+prodFmt(fin.finisherKg,2)+' Kg × Rp '+prodFmt(fin.finisherPrice,0)+' = Rp '+prodFmt(fin.finisherCost,0)+'</p>'+
-      '<p><strong>Hasil Panen Est.:</strong> Rp '+prodFmt(fin.revenue,0)+' · <strong>Total Biaya DOC + Pakan:</strong> Rp '+prodFmt(fin.cost,0)+' · <strong>Est. Laba:</strong> Rp '+prodFmt(fin.profit,0)+' · <strong>Laba/Ekor Chick-In:</strong> Rp '+prodFmt(fin.perChick,0)+'</p>';
+      '<p><strong>Total Hasil Panen Est.:</strong> Rp '+prodFmt(totalRevenue,0)+' · <strong>Total Biaya DOC + Pakan:</strong> Rp '+prodFmt(effectiveCost,0)+' · <strong>Est. Laba:</strong> Rp '+prodFmt(profit,0)+' · <strong>Laba/Ekor Chick-In:</strong> Rp '+prodFmt(perChick,0)+'</p>';
   };
   const syncEstimateDraftFromDom=()=>{
     holder.querySelectorAll('[data-est-birds]').forEach(x=>{const i=Number(x.dataset.estBirds);if(draft[i])draft[i].birds=birdInt(x.value)});
@@ -6031,9 +6042,9 @@ async function financeMandiriReportPage(){
   const rows=(xr.data||[]).filter(x=>amap.get(x.contract_assignment_id)?.cycle_type==='MANDIRI');
   const sales=rows.reduce((n,x)=>n+prodNum(x.rhpp_real),0),bop=rows.reduce((n,x)=>n+prodNum(x.bop_produksi),0),sap=rows.reduce((n,x)=>n+prodNum(x.sapronak_luar),0),meat=rows.reduce((n,x)=>n+prodNum(x.tambah_daging),0);
   const net=sales-bop-sap-meat;
-  let html='<section class="panel"><h3>Laporan Keuangan Mandiri</h3><p class="muted">Khusus siklus Mandiri. Tidak mencampur RHPP Real Mitra.</p>'+
-    '<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Penjualan Mandiri</span><strong>Rp '+prodFmt(sales,0)+'</strong></div><div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(bop,0)+'</strong></div><div class="rhpp-summary-card"><span>Biaya Sapronak</span><strong>Rp '+prodFmt(sap,0)+'</strong></div><div class="rhpp-summary-card"><span>Laba/Rugi Operasional</span><strong>Rp '+prodFmt(net,0)+'</strong></div></div></section>'+
-    '<section class="panel"><div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Status</th><th>Penjualan</th><th>BOP</th><th>Sapronak</th><th>Tambah Daging</th><th>Laba/Rugi</th></tr></thead><tbody>'+
+  let html='<section class="panel"><h3>Laporan Keuangan Mandiri</h3><p class="muted">Khusus siklus Mandiri. Tidak mencampur RHPP Real Mitra. Laba Operasional belum mengurangi Perawatan Jangka Panjang.</p>'+
+    '<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Penjualan Mandiri</span><strong>Rp '+prodFmt(sales,0)+'</strong></div><div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(bop,0)+'</strong></div><div class="rhpp-summary-card"><span>Biaya Sapronak</span><strong>Rp '+prodFmt(sap,0)+'</strong></div><div class="rhpp-summary-card"><span>Laba Operasional (Sebelum Perawatan)</span><strong>Rp '+prodFmt(net,0)+'</strong></div></div></section>'+
+    '<section class="panel"><div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Status</th><th>Penjualan</th><th>BOP</th><th>Sapronak</th><th>Tambah Daging</th><th>Laba Operasional</th></tr></thead><tbody>'+
     rows.map(x=>{const a=amap.get(x.contract_assignment_id);const n=prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging);return '<tr><td>'+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):'-')+'</td><td>'+esc(x.active?'PROSES':'CLOSED')+'</td><td>Rp '+prodFmt(x.rhpp_real,0)+'</td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td><td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td><td><strong>Rp '+prodFmt(n,0)+'</strong></td></tr>';}).join('')+
     '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada siklus Mandiri.</p>')+'</section>';
   layout(html);const err=[xr,ar,br,cr].find(x=>x.error)?.error;if(err)msg(err.message);
@@ -7565,7 +7576,7 @@ async function buildDashboardModel(){
         {label:'Kandang Aktif',value:'-',small:'periode berjalan'},
         {label:'Kandang Rehat',value:'-',small:'tidak ada periode aktif'},
         {label:'Total Populasi Berjalan',value:'-',small:'ekor · seluruh kandang aktif'},
-        {label:'IP Kumulatif yang Close',value:'-',small:'rata-rata tertimbang RHPP closed'}
+        {label:'IP Gabungan Produksi Closed',value:'-',small:'gabungan seluruh snapshot produksi CLOSED'}
       ],
       mainTitle:'Performa Kandang Terbaru',
       mainSubtitle:'Recording terakhir setiap kandang aktif; tanggal ditampilkan per kandang.',
@@ -7772,7 +7783,7 @@ async function buildDashboardModel(){
       {label:'Kandang Aktif',value:String(active.length),small:'periode berjalan'},
       {label:'Kandang Rehat',value:String(ownerRestingBarnCount),small:'tidak ada periode aktif'},
       {label:'Total Populasi Berjalan',value:prodFmt(ownerRunningPopulation,0),small:'ekor · seluruh kandang aktif'},
-      {label:'IP Kumulatif yang Close',value:prodFmt(ownerClosedIpTotal,2),small:'rata-rata tertimbang RHPP closed'}
+      {label:'IP Gabungan Produksi Closed',value:prodFmt(ownerClosedIpTotal,2),small:'gabungan seluruh snapshot produksi CLOSED'}
     ],
     mainTitle:'Performa Kandang Terbaru',
     mainSubtitle:'Recording terakhir setiap kandang aktif; tanggal ditampilkan per kandang.',
