@@ -4955,59 +4955,92 @@ async function financeBopPage(){
 
 
 async function financeMaintenancePage(){
-  const [br,ar,cr,mr]=await Promise.all([
+  const [br,mr]=await Promise.all([
     db.from('barns').select('id,code,name').order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,created_at').order('start_date',{ascending:false}).order('created_at',{ascending:false}),
-    db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('barn_maintenance_costs').select('id,contract_assignment_id,barn_id,incurred_on,category,amount,reference,notes,created_at').order('incurred_on',{ascending:false}).order('created_at',{ascending:false})
+    db.from('barn_maintenance_costs').select('id,barn_id,incurred_on,category,amount,reference,notes,created_at').order('incurred_on',{ascending:false}).order('created_at',{ascending:false})
   ]);
-  const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],rows=mr.data||[];
-  const err=[br,ar,cr,mr].find(x=>x.error)?.error;
+  const barns=br.data||[],rows=mr.data||[];
+  const err=[br,mr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  window.__financeMaintenanceState=window.__financeMaintenanceState||{barn:'',assignment:'',filterBarn:'',filterAssignment:'',shown:false};
+  window.__financeMaintenanceState=window.__financeMaintenanceState||{filterBarn:'',from:'',to:'',shown:false};
   const st=window.__financeMaintenanceState;
-  const cycles=st.barn?assignments.filter(a=>a.barn_id===st.barn):[];
-  const visible=st.shown?rows.filter(x=>(!st.filterBarn||x.barn_id===st.filterBarn)&&(!st.filterAssignment||x.contract_assignment_id===st.filterAssignment)):[];
-  const ident=id=>{const a=assignments.find(x=>x.id===id);return a?assignmentIdentity(assignments,barns,contractsRows,a):'-';};
-  let html='<section class="panel"><h3>Perawatan Kandang · Jangka Panjang</h3>'+
-    '<p class="muted"><strong>Tidak masuk BOP Produksi.</strong> Gunakan menu ini untuk perawatan yang manfaatnya lebih dari satu siklus. Siklus dipilih hanya untuk menempatkan biaya pada laporan akhir yang benar.</p>'+
+  const barnName=id=>{const b=barns.find(x=>x.id===id);return b?shortBarnLabel(b):'-';};
+  const visible=st.shown?rows.filter(x=>
+    (!st.filterBarn||x.barn_id===st.filterBarn)&&
+    (!st.from||String(x.incurred_on||'')>=st.from)&&
+    (!st.to||String(x.incurred_on||'')<=st.to)
+  ):[];
+  const totalVisible=visible.reduce((n,x)=>n+prodNum(x.amount),0);
+
+  let html='<section class="panel"><h3>Perawatan Kandang</h3>'+
+    '<p class="muted"><strong>Tidak terkait siklus produksi.</strong> Perawatan melekat ke kandang fisik dan dapat dicatat kapan saja: sebelum chick-in, saat produksi, setelah panen, atau saat kandang kosong.</p>'+
     '<form id="maintenanceForm" class="form-vertical">'+
-      '<label>Kandang<select id="maintenanceBarn" name="barn_id" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Siklus Laporan<select name="contract_assignment_id" required '+(!st.barn?'disabled':'')+'><option value="">Pilih Siklus</option>'+cycles.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
+      '<label>Kandang<select name="barn_id" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+today+'" required></label>'+
       '<label>Jenis<select name="category" required><option value="">Pilih Jenis</option><option value="PERAWATAN_JANGKA_PANJANG">Perawatan Jangka Panjang</option><option value="RENOVASI">Renovasi</option><option value="PENGGANTIAN_KOMPONEN">Penggantian Komponen</option><option value="PERALATAN">Peralatan Kandang</option><option value="LAINNYA">Lainnya</option></select></label>'+
       '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" required></label>'+
-      '<label>Catatan<textarea name="notes" placeholder="Contoh: ganti dinamo blower untuk pemakaian jangka panjang"></textarea></label>'+
-      '<button type="submit">Simpan Perawatan</button></form></section>'+
+      '<label>Catatan<textarea name="notes" placeholder="Contoh: ganti dinamo blower"></textarea></label>'+
+      '<button type="submit">Simpan Perawatan</button>'+
+    '</form></section>'+
     '<section class="panel" id="maintenancePrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Perawatan Kandang</h3></div><div class="report-actions"><button type="button" id="maintenancePrint">Cetak / PDF</button></div></div>'+
-      '<form id="maintenanceFilter" class="form-vertical"><label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.filterBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Siklus<select name="assignment" '+(!st.filterBarn?'disabled':'')+'><option value="">Semua Siklus</option>'+assignments.filter(a=>a.barn_id===st.filterBarn).map(a=>'<option value="'+esc(a.id)+'" '+(st.filterAssignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date))+'</option>').join('')+'</select></label><button type="submit">Tampilkan</button></form>'+
-      (st.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang / Siklus Laporan</th><th>Jenis</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+visible.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(ident(x.contract_assignment_id))+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td></tr>').join('')+'</tbody></table></div>'+(visible.length?'':'<p class="muted">Belum ada perawatan sesuai filter.</p>'):'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
+      '<form id="maintenanceFilter" class="form-vertical">'+
+        '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.filterBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+        '<label>Tanggal Dari<input name="from" type="date" value="'+esc(st.from||'')+'"></label>'+
+        '<label>Tanggal Sampai<input name="to" type="date" value="'+esc(st.to||'')+'"></label>'+
+        '<div class="report-actions"><button type="submit">Tampilkan</button><button type="button" id="maintenanceReset">Reset</button></div>'+
+      '</form>'+
+      (st.shown?
+        '<div class="rhpp-summary-card"><span>Total Perawatan</span><strong>Rp '+prodFmt(totalVisible,0)+'</strong></div>'+
+        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang</th><th>Jenis</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+
+          visible.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+'</td></tr>').join('')+
+        '</tbody><tfoot><tr><th colspan="3">TOTAL</th><th>Rp '+prodFmt(totalVisible,0)+'</th><th></th></tr></tfoot></table></div>'+
+        (visible.length?'':'<p class="muted">Belum ada perawatan sesuai filter.</p>')
+        :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
+
   layout(html);bindNumberInputs();if(err)msg(err.message);
-  const barnSel=document.getElementById('maintenanceBarn');
-  if(barnSel)barnSel.onchange=async()=>{st.barn=barnSel.value||'';st.assignment='';await financeMaintenancePage();};
+
   const form=document.getElementById('maintenanceForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
-    const fd=new FormData(form),assignmentId=String(fd.get('contract_assignment_id')||''),a=assignments.find(x=>x.id===assignmentId);
-    if(!a)return msg('Pilih siklus laporan.');
+    const fd=new FormData(form);
+    const barnId=String(fd.get('barn_id')||'');
+    if(!barns.find(x=>x.id===barnId))return msg('Pilih kandang.');
     const amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<=0)return msg('Nominal perawatan harus lebih dari 0.');
-    const {error}=await db.from('barn_maintenance_costs').insert({contract_assignment_id:assignmentId,barn_id:a.barn_id,incurred_on:String(fd.get('incurred_on')||''),category:String(fd.get('category')||''),amount,reference:null,notes:String(fd.get('notes')||'')||null});
+    const {error}=await db.from('barn_maintenance_costs').insert({
+      contract_assignment_id:null,
+      barn_id:barnId,
+      incurred_on:String(fd.get('incurred_on')||''),
+      category:String(fd.get('category')||''),
+      amount,
+      reference:null,
+      notes:String(fd.get('notes')||'')||null
+    });
     if(error)return msg(error.message);
-    st.assignment=assignmentId;
     await financeMaintenancePage();
-    msg('Perawatan tersimpan terpisah dari BOP Produksi.',true);
+    msg('Perawatan kandang tersimpan tanpa siklus produksi.',true);
   };
-  const filter=document.getElementById('maintenanceFilter');
-  if(filter){
-    filter.elements.barn.onchange=async()=>{st.filterBarn=filter.elements.barn.value||'';st.filterAssignment='';st.shown=false;await financeMaintenancePage();};
-    filter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(filter);st.filterBarn=String(fd.get('barn')||'');st.filterAssignment=st.filterBarn?String(fd.get('assignment')||''):'';st.shown=true;await financeMaintenancePage();};
-  }
-  const print=document.getElementById('maintenancePrint');if(print)print.onclick=()=>printFinanceDocument('maintenancePrintArea','Laporan Perawatan Kandang');
-}
 
+  const filter=document.getElementById('maintenanceFilter');
+  if(filter)filter.onsubmit=async ev=>{
+    ev.preventDefault();
+    const fd=new FormData(filter);
+    st.filterBarn=String(fd.get('barn')||'');
+    st.from=String(fd.get('from')||'');
+    st.to=String(fd.get('to')||'');
+    if(st.from&&st.to&&st.from>st.to){const t=st.from;st.from=st.to;st.to=t;}
+    st.shown=true;
+    await financeMaintenancePage();
+  };
+  const reset=document.getElementById('maintenanceReset');
+  if(reset)reset.onclick=async()=>{
+    st.filterBarn='';st.from='';st.to='';st.shown=false;
+    await financeMaintenancePage();
+  };
+  const print=document.getElementById('maintenancePrint');
+  if(print)print.onclick=()=>printFinanceDocument('maintenancePrintArea','Laporan Perawatan Kandang');
+}
 
 async function financeSupplierPayablesPage(){
   const [pr,ar,br,cr]=await Promise.all([
@@ -6559,7 +6592,7 @@ async function financeBarnProfitLossPage(){
 
 
 async function financeGlobalProfitLossPage(){
-  const [xr,rr,ar,br,cr,er,mr,gr]=await Promise.all([
+  const [xr,rr,ar,br,cr,er,mr,gr,kmr]=await Promise.all([
     db.rpc('finance_cycle_profit_loss_v2'),
     db.from('rhpp_real').select('contract_assignment_id'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
@@ -6567,12 +6600,13 @@ async function financeGlobalProfitLossPage(){
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.rpc('finance_expedition_profit_loss_v2'),
     db.from('finance_expedition_maintenance').select('incurred_on,category,vehicle,amount,notes'),
-    db.from('bop_outside').select('incurred_on,category,amount,notes')
+    db.from('bop_outside').select('incurred_on,category,amount,notes'),
+    db.from('barn_maintenance_costs').select('barn_id,incurred_on,category,amount,notes')
   ]);
   const rows=xr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[];
   const exp=(er.data||[])[0]||{};
-  const expMaint=mr.data||[],bopUmumRows=gr.data||[];
-  const err=[xr,rr,ar,br,cr,er,mr,gr].find(x=>x.error)?.error;
+  const expMaint=mr.data||[],bopUmumRows=gr.data||[],barnMaintRows=kmr.data||[];
+  const err=[xr,rr,ar,br,cr,er,mr,gr,kmr].find(x=>x.error)?.error;
   const realIds=new Set((rr.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
   const assignmentOf=x=>assignments.find(a=>a.id===x.contract_assignment_id);
   const finalRows=rows.filter(x=>{
@@ -6586,7 +6620,7 @@ async function financeGlobalProfitLossPage(){
   const totalSapronak=sum(finalRows,'sapronak_luar');
   const totalTambahDaging=sum(finalRows,'tambah_daging');
   const labaKandang=sum(finalRows,'laba_operasional_produksi');
-  const perawatanKandang=sum(finalRows,'perawatan_jangka_panjang');
+  const perawatanKandang=barnMaintRows.reduce((n,x)=>n+prodNum(x.amount),0);
 
   const pendapatanExp=prodNum(exp.expedition_revenue);
   const bopExp=prodNum(exp.operational_bop);
@@ -6605,6 +6639,7 @@ async function financeGlobalProfitLossPage(){
     });
     return [...m.entries()].sort((a,b)=>b[1]-a[1]);
   };
+  const barnMaintGroup=groupTotal(barnMaintRows,'category');
   const expMaintGroup=groupTotal(expMaint,'category');
   const bopUmumGroup=groupTotal(bopUmumRows,'category');
 
@@ -6653,6 +6688,7 @@ async function financeGlobalProfitLossPage(){
       '<tr><td>BOP Umum</td><td>Rp '+prodFmt(bopUmum,0)+'</td></tr>'+
       '<tr><td><strong>Total Biaya Global</strong></td><td><strong>Rp '+prodFmt(biayaGlobal,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
+    (barnMaintGroup.length?'<h4>Rincian Perawatan Kandang</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+barnMaintGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
     (expMaintGroup.length?'<h4>Rincian Perawatan Expedisi</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+expMaintGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
     (bopUmumGroup.length?'<h4>Rincian BOP Umum</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+bopUmumGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
 
