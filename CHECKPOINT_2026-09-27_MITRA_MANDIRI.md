@@ -213,3 +213,49 @@ Status: **AUDIT SAJA — temuan di bawah belum diperbaiki kecuali perbaikan kumu
 4. Estimasi setelah panen sebagian.
 5. Retur Sapronak Luar terhadap hutang dan biaya.
 6. Koreksi label/istilah Dashboard dan laporan.
+
+
+---
+
+## IMPLEMENTASI 3 TEMUAN KRITIS 2026-09-28
+
+Status: **SUDAH DIKERJAKAN — hanya 3 poin audit, modul PASS lain tidak diubah.**
+
+### 1. Produksi PROSES
+- Laporan Produksi dan Rekap Produksi PPL tidak lagi memakai `Chick-In - Chick-Out` sebagai deplesi siklus berjalan.
+- Deplesi PROSES sekarang berasal dari kumulatif `recordings.mortality + recordings.culling`.
+- Populasi hidup berjalan = Chick-In - Deplesi Recording - Panen yang sudah terjadi.
+- FCR/IP berjalan memakai pakan terpakai Recording dan biomassa gabungan: panen yang sudah terjadi + ayam hidup berdasarkan BW recording terakhir.
+- CLOSED tetap memakai snapshot final dan tidak diubah.
+- Data live verifikasi: Chick-In 14.800; deplesi recording 2.278; panen 6.762; populasi hidup 5.760. Angka 8.038 tidak lagi dipakai sebagai deplesi.
+
+### 2. Arus Kas Supplier
+- `finance_cashflow_entries_v1()` tidak lagi mengakui seluruh SAPRONAK LUAR/TAMBAH DAGING sebagai Kas Keluar pada tanggal transaksi.
+- Kas Keluar supplier sekarang hanya berasal dari `supplier_payments` pada `paid_on`.
+- Hutang/biaya transaksi tetap terpisah dan perhitungan laba-rugi tidak diubah.
+- Verifikasi live saat implementasi: nilai invoice Sapronak Luar Rp14.700.000 dan pembayaran supplier Rp0; hasil Arus Kas supplier juga Rp0.
+
+### 3. Close Mandiri Snapshot
+- Dibuat tabel khusus `production_mandiri_final`, terpisah dari `rhpp_system_final` Mitra.
+- `admin_close_mandiri_cycle_atomic` sekarang:
+  1. validasi ADMIN;
+  2. validasi MANDIRI aktif;
+  3. validasi Performance terpilih;
+  4. validasi Chick-In dan Panen;
+  5. hitung ringkasan produksi Mandiri;
+  6. simpan snapshot produksi final Mandiri;
+  7. baru mengubah siklus menjadi CLOSED.
+- Laporan Produksi dan Rekap Produksi PPL membaca snapshot Mitra + snapshot Mandiri sesuai jenis siklus.
+- Tidak ada data Mandiri live saat implementasi, sehingga tidak dibuat data test/fake.
+
+### Asset live
+- `main-1958.js?v=2132-audit-critical-fixes`
+
+### Commit aplikasi
+- `7da62ea426da94eb530d6a77c036a0f9cff17409` — Produksi PROSES + snapshot Mandiri pada laporan.
+- `c9e2ee5708f6c1594d6191f21700ce85e60aac17` — refresh asset.
+
+### Catatan advisor
+- RLS dibuat untuk tabel snapshot Mandiri.
+- Index `barn_id` dan `created_by` ditambahkan hanya pada tabel snapshot Mandiri baru.
+- Warning SECURITY DEFINER yang terlihat adalah pola lama project dan tetap memakai pemeriksaan role internal; tidak dilakukan cleanup umum agar tidak menyentuh modul PASS.
