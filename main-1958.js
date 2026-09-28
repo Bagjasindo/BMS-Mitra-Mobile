@@ -5533,6 +5533,12 @@ async function financeExpeditionBusinessPage(){
   const totalInvoice=summaries.reduce((n,x)=>n+prodNum(x.invoice_total),0);
   const totalPaid=summaries.reduce((n,x)=>n+prodNum(x.paid_total),0);
   const totalReceivable=summaries.reduce((n,x)=>n+prodNum(x.receivable),0);
+  window.__fxTripEdit=window.__fxTripEdit||'';
+  window.__fxInvoiceEdit=window.__fxInvoiceEdit||'';
+  const selectedTripEdit=trips.find(x=>x.id===window.__fxTripEdit)||null;
+  const selectedInvoiceEdit=invoices.find(x=>x.id===window.__fxInvoiceEdit)||null;
+  const selectedInvoiceTripIds=new Set(selectedInvoiceEdit?links.filter(x=>x.invoice_id===selectedInvoiceEdit.id).map(x=>x.trip_id):[]);
+  const invoiceAvailable=selectedInvoiceEdit?trips.filter(t=>!used.has(t.id)||selectedInvoiceTripIds.has(t.id)):unbilled;
 
   let html='<section class="panel"><h3>Expedisi</h3><p class="muted"><strong>Unit usaha terpisah dari RHPP/Kandang.</strong> '+
     (role==='LOGISTIK'?'Logistik mengelola Trip dan Invoice.':role==='KEUANGAN'?'Keuangan mengelola Pembayaran, Piutang dan BOP Expedisi.':role==='OWNER'?'Owner melihat laporan Expedisi.':'Administrator memiliki akses penuh.')+
@@ -5545,6 +5551,48 @@ async function financeExpeditionBusinessPage(){
       '<div class="rhpp-summary-card"><span>Piutang</span><strong>Rp '+prodFmt(totalReceivable,0)+'</strong></div>'+
       '<div class="rhpp-summary-card"><span>Trip Belum Ditagihkan</span><strong>'+unbilled.length+'</strong></div>'+
     '</div></section>';
+  }
+
+  if(canOps&&selectedTripEdit){
+    const editDetails=detailsForTrip(selectedTripEdit.id);
+    html+='<section class="panel"><h3>Koreksi Trip Expedisi</h3><p class="muted">Perubahan trip yang sudah masuk invoice akan divalidasi agar total invoice tidak lebih kecil dari pembayaran yang sudah diterima.</p>'+
+      '<form id="fxTripCorrectionForm" class="form-vertical">'+
+        '<label>Tanggal<input name="trip_date" type="date" value="'+esc(selectedTripEdit.trip_date||today)+'" required></label>'+
+        '<label>MTS/SJ<input name="mts_sj" value="'+esc(selectedTripEdit.mts_sj||'')+'"></label>'+
+        '<label>RR<input name="rr" value="'+esc(selectedTripEdit.rr||'')+'"></label>'+
+        '<label>Sopir<select name="driver" required><option value="">Pilih Sopir</option>'+drivers.map(x=>'<option value="'+esc(x.name)+'" '+(selectedTripEdit.driver===x.name?'selected':'')+'>'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
+        '<label>Truk<select name="vehicle" required><option value="">Pilih Kendaraan</option>'+vehicles.map(x=>'<option value="'+esc(x.plate_number)+'" '+(selectedTripEdit.vehicle===x.plate_number?'selected':'')+'>'+esc(x.plate_number+(x.vehicle_type?' · '+x.vehicle_type:''))+'</option>').join('')+'</select></label>'+
+        '<label>Zona / Rute<select name="route_id" required><option value="">Pilih Rute</option>'+routes.map(x=>'<option value="'+esc(x.id)+'" '+(selectedTripEdit.zone===x.route_name?'selected':'')+'>'+esc(x.code+' · '+x.route_name+' · Rp '+prodFmt(x.default_trip_price,0))+'</option>').join('')+'</select></label>'+
+        '<input type="hidden" name="zone" value="'+esc(selectedTripEdit.zone||'')+'">'+
+        '<fieldset><legend>Detail Tujuan / Muatan</legend>'+
+          (editDetails.length?editDetails.map((d,idx)=>'<div class="fx-destination-row" data-correction-line="'+idx+'">'+
+            '<label>Tujuan<select name="dest_'+idx+'" required><option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.id)+'" '+(d.destination_id===x.id?'selected':'')+'>'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
+            '<label>Jenis Muatan<input name="cargo_'+idx+'" value="'+esc(d.cargo||'')+'" required></label>'+
+            '<label>Qty<input name="qty_'+idx+'" type="text" inputmode="decimal" value="'+(d.qty==null?'':fmtNumber(d.qty))+'"></label>'+
+            '<label>Satuan<select name="unit_'+idx+'"><option value="zak" '+(d.unit==='zak'?'selected':'')+'>zak</option><option value="kg" '+(d.unit==='kg'?'selected':'')+'>kg</option><option value="ekor" '+(d.unit==='ekor'?'selected':'')+'>ekor</option><option value="unit" '+(d.unit==='unit'?'selected':'')+'>unit</option></select></label>'+
+          '</div>').join(''):'<p class="muted">Detail tujuan lama tidak ditemukan. Gunakan data tujuan yang sudah ada di trip.</p>')+
+        '</fieldset>'+
+        '<label>Harga Trip<input name="trip_price" type="text" inputmode="decimal" data-number="1" value="'+fmtNumber(selectedTripEdit.trip_price)+'" required></label>'+
+        '<label>Tambahan<input name="additional" type="text" inputmode="decimal" data-number="1" value="'+fmtNumber(selectedTripEdit.additional||0)+'"></label>'+
+        '<label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="'+fmtNumber(selectedTripEdit.deduction||0)+'"></label>'+
+        '<label>Catatan<textarea name="notes">'+esc(selectedTripEdit.notes||'')+'</textarea></label>'+
+        '<div class="inline-actions"><button type="submit">Simpan Koreksi</button><button type="button" id="fxTripCorrectionCancel" class="btn-secondary">Batal</button>'+(profile?.role==='ADMIN'?'<button type="button" id="fxTripCorrectionDelete" class="btn-danger">Hapus Trip</button>':'')+'</div>'+
+      '</form></section>';
+  }
+
+  if(canOps&&selectedInvoiceEdit){
+    const currentSummary=sumFor(selectedInvoiceEdit.id);
+    html+='<section class="panel"><h3>Koreksi Invoice Expedisi</h3><p class="muted">No. Invoice tetap <strong>'+esc(selectedInvoiceEdit.invoice_number)+'</strong>. Total baru tidak boleh lebih kecil dari pembayaran yang sudah diterima Rp '+prodFmt(currentSummary?.paid_total||0,0)+'.</p>'+
+      '<form id="fxInvoiceCorrectionForm" class="form-vertical">'+
+        '<label>Tanggal Invoice<input name="invoice_date" type="date" value="'+esc(selectedInvoiceEdit.invoice_date||today)+'" required></label>'+
+        '<label>Jatuh Tempo<input name="due_date" type="date" value="'+esc(selectedInvoiceEdit.due_date||'')+'"></label>'+
+        '<label>Tagihan Kepada<select name="customer_id" required><option value="">Pilih Pelanggan</option>'+customers.map(x=>'<option value="'+esc(x.id)+'" '+(selectedInvoiceEdit.customer_name===x.name?'selected':'')+'>'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
+        '<fieldset class="fx-trip-picker"><legend>Pilih Trip</legend><div class="fx-trip-list">'+
+          invoiceAvailable.map(t=>'<label class="fx-trip-option"><input type="checkbox" name="trip_ids" value="'+esc(t.id)+'" '+(selectedInvoiceTripIds.has(t.id)?'checked':'')+'><span class="fx-trip-checkmark"></span><span class="fx-trip-text"><strong>'+esc(prodDateId(t.trip_date)+' · '+(t.mts_sj||'-'))+'</strong><small>'+esc(destinationText(t)+' · Rp '+prodFmt(tripTotal(t),0))+'</small></span></label>').join('')+
+        '</div></fieldset>'+
+        '<label>Catatan<textarea name="notes">'+esc(selectedInvoiceEdit.notes||'')+'</textarea></label>'+
+        '<div class="inline-actions"><button type="submit">Simpan Koreksi</button><button type="button" id="fxInvoiceCorrectionCancel" class="btn-secondary">Batal</button>'+(profile?.role==='ADMIN'?'<button type="button" id="fxInvoiceCorrectionDelete" class="btn-danger">Hapus Invoice</button>':'')+'</div>'+
+      '</form></section>';
   }
 
   if(canOps){
@@ -5565,9 +5613,9 @@ async function financeExpeditionBusinessPage(){
         '<label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Catatan<textarea name="notes"></textarea></label><button type="submit">Simpan Trip</button>'+
       '</form></section>'+
-      '<section class="panel"><h3>Trip Belum Ditagihkan</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th></tr></thead><tbody>'+
-        unbilled.map(t=>'<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(destinationText(t))+'</td><td>'+esc(cargoText(t))+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td></tr>').join('')+
-      '</tbody></table></div>'+(unbilled.length?'':'<p class="muted">Tidak ada trip yang belum ditagihkan.</p>')+'</section>'+
+      '<section class="panel"><h3>Daftar Trip Expedisi</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+        trips.map(t=>{const billed=used.has(t.id);return '<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(destinationText(t))+'</td><td>'+esc(cargoText(t))+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td><td>'+(billed?'SUDAH INVOICE':'BELUM INVOICE')+'</td><td><div class="inline-actions"><button type="button" data-edit-exp-trip="'+esc(t.id)+'">Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-exp-trip="'+esc(t.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
+      '</tbody></table></div>'+(trips.length?'':'<p class="muted">Belum ada trip Expedisi.</p>')+'</section>'+
       '<section class="panel"><h3>Buat Invoice Expedisi</h3><p class="muted"><strong>No. Invoice otomatis.</strong> Format: 001/BMS-BSI/FMC/'+today.slice(0,4)+' dan naik berurutan sesuai tahun invoice.</p><form id="fxInvoiceForm" class="form-vertical">'+
         '<label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
         '<label>Jatuh Tempo<input name="due_date" type="date"></label>'+
@@ -5584,7 +5632,7 @@ async function financeExpeditionBusinessPage(){
 
   html+='<section class="panel" id="fxInvoiceReport"><div class="rhpp-section-head"><div><h3>Invoice & Piutang Expedisi</h3></div><div class="report-actions"><button type="button" id="fxReportPrint">Cetak / PDF</button></div></div>'+
     '<div class="tablewrap"><table><thead><tr><th>No Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Piutang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
-      summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+prodDateId(x.invoice_date)+'</td><td>'+(x.due_date?prodDateId(x.due_date):'-')+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td><td><button type="button" data-fx-print="'+esc(x.invoice_id)+'">Cetak Invoice</button></td></tr>').join('')+
+      summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+prodDateId(x.invoice_date)+'</td><td>'+(x.due_date?prodDateId(x.due_date):'-')+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td><td><div class="inline-actions"><button type="button" data-fx-print="'+esc(x.invoice_id)+'">Cetak Invoice</button>'+(canOps?'<button type="button" data-edit-exp-invoice="'+esc(x.invoice_id)+'">Koreksi</button>':'')+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-exp-invoice="'+esc(x.invoice_id)+'">Hapus</button>':'')+'</div></td></tr>').join('')+
     '</tbody></table></div>'+(summaries.length?'':'<p class="muted">Belum ada invoice Expedisi.</p>')+'</section>';
 
 
@@ -5709,6 +5757,64 @@ async function financeExpeditionBusinessPage(){
   };
 
 
+
+  const deleteTrip=async id=>{
+    if(profile?.role!=='ADMIN')return msg('Hanya ADMIN yang boleh menghapus trip.');
+    if(!await appConfirm('PERINGATAN HAPUS TRIP EXPEDISI\n\nTrip akan dihapus bersama detail tujuan dan BOP terkait. Jika trip sudah masuk invoice, sistem akan menolak penghapusan.\n\nLanjutkan hapus?'))return;
+    const {error}=await db.rpc('admin_delete_expedition_trip_v1',{p_trip_id:id});
+    if(error)return msg(error.message);
+    window.__fxTripEdit='';await financeExpeditionBusinessPage();msg('Trip Expedisi berhasil dihapus oleh ADMIN.',true);
+  };
+  root.querySelectorAll('[data-edit-exp-trip]').forEach(btn=>btn.onclick=async()=>{window.__fxTripEdit=btn.dataset.editExpTrip||'';window.__fxInvoiceEdit='';await financeExpeditionBusinessPage();document.getElementById('fxTripCorrectionForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  root.querySelectorAll('[data-delete-exp-trip]').forEach(btn=>btn.onclick=()=>deleteTrip(btn.dataset.deleteExpTrip));
+  const tripCancel=document.getElementById('fxTripCorrectionCancel');if(tripCancel)tripCancel.onclick=async()=>{window.__fxTripEdit='';await financeExpeditionBusinessPage();};
+  const tripDelete=document.getElementById('fxTripCorrectionDelete');if(tripDelete&&selectedTripEdit)tripDelete.onclick=()=>deleteTrip(selectedTripEdit.id);
+
+  const tripCorrection=document.getElementById('fxTripCorrectionForm');
+  if(tripCorrection&&selectedTripEdit)tripCorrection.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(tripCorrection);
+    const route=routes.find(x=>x.id===String(fd.get('route_id')||''));
+    const tripPrice=normalizeInputID(fd.get('trip_price')),additional=normalizeInputID(fd.get('additional'))||0,deduction=normalizeInputID(fd.get('deduction'))||0;
+    if(!route||tripPrice===null||tripPrice<0||additional<0||deduction<0)return msg('Nilai atau rute trip tidak valid.');
+    const editDetails=detailsForTrip(selectedTripEdit.id);
+    const detailData=editDetails.map((d,idx)=>{
+      const destinationId=String(fd.get('dest_'+idx)||''),dest=destinations.find(x=>x.id===destinationId);
+      const qtyRaw=String(fd.get('qty_'+idx)||''),qty=qtyRaw===''?null:normalizeInputID(qtyRaw);
+      return {destination_id:destinationId,destination_name:dest?.name||'',cargo:String(fd.get('cargo_'+idx)||'').trim(),qty,unit:String(fd.get('unit_'+idx)||'').trim(),notes:null,line_no:idx+1};
+    });
+    if(!detailData.length||detailData.some(x=>!x.destination_id||!x.destination_name||!x.cargo))return msg('Detail tujuan/muatan tidak lengkap.');
+    const {error}=await db.rpc('finance_correct_expedition_trip_v1',{
+      p_trip_id:selectedTripEdit.id,p_trip_date:String(fd.get('trip_date')||''),p_mts_sj:String(fd.get('mts_sj')||'')||null,p_rr:String(fd.get('rr')||'')||null,
+      p_driver:String(fd.get('driver')||''),p_vehicle:String(fd.get('vehicle')||''),p_zone:route.route_name,
+      p_trip_price:tripPrice,p_additional:additional,p_deduction:deduction,p_notes:String(fd.get('notes')||'')||null,p_destinations:detailData
+    });
+    if(error)return msg(error.message);
+    window.__fxTripEdit='';await financeExpeditionBusinessPage();msg('Koreksi Trip Expedisi berhasil disimpan.',true);
+  };
+
+  const deleteInvoice=async id=>{
+    if(profile?.role!=='ADMIN')return msg('Hanya ADMIN yang boleh menghapus invoice.');
+    if(!await appConfirm('PERINGATAN HAPUS INVOICE EXPEDISI\n\nTrip di invoice akan kembali menjadi belum ditagihkan. Jika invoice sudah memiliki pembayaran, sistem akan menolak sampai pembayaran dikoreksi atau dihapus.\n\nLanjutkan hapus?'))return;
+    const {error}=await db.rpc('admin_delete_expedition_invoice_v1',{p_invoice_id:id});
+    if(error)return msg(error.message);
+    window.__fxInvoiceEdit='';await financeExpeditionBusinessPage();msg('Invoice Expedisi berhasil dihapus oleh ADMIN.',true);
+  };
+  root.querySelectorAll('[data-edit-exp-invoice]').forEach(btn=>btn.onclick=async()=>{window.__fxInvoiceEdit=btn.dataset.editExpInvoice||'';window.__fxTripEdit='';await financeExpeditionBusinessPage();document.getElementById('fxInvoiceCorrectionForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  root.querySelectorAll('[data-delete-exp-invoice]').forEach(btn=>btn.onclick=()=>deleteInvoice(btn.dataset.deleteExpInvoice));
+  const invoiceCancel=document.getElementById('fxInvoiceCorrectionCancel');if(invoiceCancel)invoiceCancel.onclick=async()=>{window.__fxInvoiceEdit='';await financeExpeditionBusinessPage();};
+  const invoiceDelete=document.getElementById('fxInvoiceCorrectionDelete');if(invoiceDelete&&selectedInvoiceEdit)invoiceDelete.onclick=()=>deleteInvoice(selectedInvoiceEdit.id);
+
+  const invoiceCorrection=document.getElementById('fxInvoiceCorrectionForm');
+  if(invoiceCorrection&&selectedInvoiceEdit)invoiceCorrection.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(invoiceCorrection),ids=fd.getAll('trip_ids').map(String),customer=customers.find(x=>x.id===String(fd.get('customer_id')||''));
+    if(!customer||!ids.length)return msg('Pilih pelanggan dan minimal satu trip.');
+    const {error}=await db.rpc('finance_correct_expedition_invoice_v1',{
+      p_invoice_id:selectedInvoiceEdit.id,p_invoice_date:String(fd.get('invoice_date')||''),p_due_date:String(fd.get('due_date')||'')||null,
+      p_customer_name:customer.name,p_customer_address:customer.address||null,p_trip_ids:ids,p_notes:String(fd.get('notes')||'')||null
+    });
+    if(error)return msg(error.message);
+    window.__fxInvoiceEdit='';await financeExpeditionBusinessPage();msg('Koreksi Invoice Expedisi berhasil disimpan.',true);
+  };
 
   document.querySelectorAll('[data-fx-print]').forEach(btn=>btn.onclick=()=>{
     const id=btn.dataset.fxPrint,i=invoices.find(x=>x.id===id),its=invoiceTrips(id),x=sumFor(id);if(!i)return;
