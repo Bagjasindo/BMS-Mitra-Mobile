@@ -7933,10 +7933,8 @@ async function financeRhppPage(){
   const selectedRows=activeRows.filter(x=>x.contract_assignment_id===selectedAssignment);
   selectedRows.forEach(x=>{
     const fin=finals.find(r=>r.contract_assignment_id===x.contract_assignment_id);
-    const variance=Math.abs(prodNum(x.depletion_variance_birds));
     const ready=!fin&&!!x.active&&prodNum(x.chick_in_birds)>0&&prodNum(x.total_harvest_birds)>0&&prodNum(x.total_harvest_kg)>0&&prodNum(x.net_feed_kg)>0&&prodNum(x.sapronak_cost)>0;
     const status=fin?'CLOSED · RHPP SISTEM FINAL':ready?'SIAP DICEK & CLOSE':'BELUM SIAP';
-    const warning=variance>=0.5?'Pembanding populasi: selisih '+prodFmt(x.depletion_variance_birds,0)+' ekor. Tidak memblokir RHPP Final.':'';
     const hs=harvests.filter(h=>h.contract_assignment_id===x.contract_assignment_id);
 
     const shipIds=new Set(ships.filter(s=>s.contract_assignment_id===x.contract_assignment_id).map(s=>s.id));
@@ -7984,7 +7982,6 @@ async function financeRhppPage(){
 
     html+='<section class="panel rhpp-panel rhpp-head"><h3>'+esc((x.barn_code||'')+' · '+(x.barn_name||''))+'</h3>'+
       '<p class="muted">'+esc(x.contract_number||'')+' · Status: <strong>'+status+'</strong></p>'+
-      (warning?'<p class="error">'+esc(warning)+'</p>':'')+
       '</section>';
 
     html+='<section class="panel rhpp-panel rhpp-wide rhpp-harvest"><div class="rhpp-section-head"><div><h3>Rincian Panen</h3><p class="muted">Data panen Marketing yang menjadi sumber nilai produksi RHPP.</p></div><span class="rhpp-count">'+hs.length+' transaksi</span></div>'+
@@ -8035,10 +8032,7 @@ async function financeRhppPage(){
       '</tbody></table></div></section>'+
 
       '<section class="panel rhpp-panel"><h3>Perhitungan RHPP</h3><div class="tablewrap"><table><tbody>'+
-        '<tr><td>Deplesi PPL</td><td>'+prodFmt(x.recorded_depletion_birds,0)+'</td></tr>'+
-        '<tr><td>Chick-In − Panen</td><td>'+prodFmt(x.implied_depletion_birds,0)+'</td></tr>'+
-        '<tr><td>Sisa Belum Terjelaskan</td><td>'+prodFmt(x.depletion_variance_birds,0)+'</td></tr>'+
-        '<tr><td>Pembanding Populasi</td><td>'+(x.population_balanced?'SEIMBANG':'SELISIH '+prodFmt(x.depletion_variance_birds,0)+' EKOR')+'</td></tr>'+
+        '<tr><td>Deplesi / Mortalitas PPL</td><td>'+prodFmt(x.recorded_depletion_birds,0)+' ekor · '+prodFmt(x.mortality_pct,2)+'%</td></tr>'+
         '<tr><td>Nilai Panen</td><td>Rp '+prodFmt(x.harvest_value,0)+'</td></tr>'+
         '<tr><td>DOC Utama</td><td>Rp '+prodFmt(x.main_doc_cost,0)+'</td></tr>'+
         '<tr><td>Pakan Utama</td><td>Rp '+prodFmt(x.main_feed_cost,0)+'</td></tr>'+
