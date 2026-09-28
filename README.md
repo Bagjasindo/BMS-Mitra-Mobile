@@ -13,6 +13,7 @@
 
 ## Fokus Berikutnya
 - **Modul operasional utama sebelum Keuangan/Owner dianggap terkunci sesuai audit terakhir.**
+- **Pengingat kerja: jika pembahasan mulai melebar ke modul lain, Administrator harus diingatkan untuk kembali fokus hanya ke Keuangan dan Owner sampai dua area ini selesai diaudit/fix.**
 - **Pekerjaan berikutnya difokuskan hanya pada Keuangan dan Owner.**
 - **Ruang audit/fix berikutnya meliputi laporan Keuangan, BOP, arus kas, laba/rugi, hutang/piutang, penerimaan/pembayaran, serta laporan Owner yang membaca hasil akhir terkait.**
 - **Audit boleh dilakukan untuk membaca, membandingkan, dan menemukan masalah, tetapi tidak boleh mengubah kode, SQL, view, RPC, data, konfigurasi, maupun alur aplikasi tanpa izin eksplisit Administrator.**
