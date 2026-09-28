@@ -173,3 +173,58 @@ Setiap perubahan wajib:
 3. Jika perubahan perlu mengubah baseline, tulis dulu perubahan yang diusulkan dan dampaknya.
 4. Setelah implementasi, audit regresi modul terkait.
 5. Update dokumen ini hanya setelah perubahan disetujui dan benar-benar PASS.
+
+
+## STATUS FINAL 100% PASS APLIKASI
+Tanggal verifikasi final: 2026-09-28
+
+Status: **100% PASS untuk alur aplikasi, hak akses bisnis, integritas data, dan perhitungan sampai Laporan Global.**
+
+Final gate:
+- Syntax web: PASS.
+- Login/session/profile aktif: PASS.
+- Mitra wajib kontrak: PASS.
+- Mandiri tanpa kontrak: PASS.
+- Performance wajib: PASS.
+- Chick-In valid: PASS.
+- Panen valid dan nilai Kg × Harga konsisten: PASS.
+- Snapshot CLOSED Mitra: PASS.
+- Snapshot CLOSED Mandiri: PASS.
+- Recording/Estimasi tidak menjadi sumber RHPP Final: PASS.
+- Recording tetap pembanding: PASS.
+- PPL scope assignment: PASS.
+- PPL scope Panen: PASS.
+- PPL scope RPC RHPP: PASS.
+- Marketing tetap boleh membaca Estimasi: PASS.
+- Arus Kas supplier berbasis pembayaran aktual: PASS.
+- Hutang Supplier: PASS.
+- Laba/Rugi Kandang: PASS.
+- Expedisi: PASS.
+- Laporan Global: PASS.
+- Anonymous execute production_ppl_directory: DITUTUP / PASS.
+
+Hasil verifikasi matematis:
+- cycle identity mismatch: 0
+- expedition identity mismatch: 0
+- company/global identity mismatch: 0
+- supplier negative balance: 0
+- supplier status mismatch: 0
+
+Hasil verifikasi scope PPL:
+- visible assignments: 5
+- visible harvest assignments: 5
+- RHPP RPC assignments: 5
+
+Catatan platform:
+- Supabase project saat ini memakai Free plan.
+- Fitur Supabase Auth “Leaked Password Protection” hanya tersedia pada Pro plan dan di atas.
+- Karena fitur tersebut tidak tersedia pada plan saat ini, statusnya **N/A PLAN**, bukan kegagalan aplikasi.
+- Jika project Supabase di-upgrade ke Pro di masa depan, aktifkan fitur tersebut sebagai hardening tambahan tanpa mengubah alur bisnis.
+
+### ATURAN SETELAH FINAL PASS
+Baseline ini tidak boleh diubah secara diam-diam.
+Setiap perubahan baru wajib:
+1. dibandingkan dengan baseline ini;
+2. tidak merusak modul PASS;
+3. tidak mengubah hak akses tanpa keputusan eksplisit Bos;
+4. menjalani audit regresi sebelum baseline diperbarui.
