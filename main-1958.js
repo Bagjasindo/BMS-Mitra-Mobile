@@ -5749,21 +5749,32 @@ async function financeExpeditionProfitLossPage(){
 
   let body='';
   if(st.view==='RINGKASAN'||st.view==='LABA_RUGI'){
-    body='<div class="rhpp-summary-cards">'+
-      '<div class="rhpp-summary-card"><span>Pendapatan</span><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>Penerimaan Kas</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>Piutang</span><strong>Rp '+prodFmt(receivableTotal,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>Kas Jalan / BOP</span><strong>Rp '+prodFmt(bopTotal,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>Servis / Perawatan</span><strong>Rp '+prodFmt(maintenanceTotal,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card rhpp-summary-value"><span>Laba Bersih</span><strong>Rp '+prodFmt(netProfit,0)+'</strong></div>'+
-    '</div>';
-    if(st.view==='LABA_RUGI')body+='<div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>Komponen</th><th>Nilai</th></tr></thead><tbody>'+
-      '<tr><td>Pendapatan Expedisi</td><td>Rp '+prodFmt(revenueTotal,0)+'</td></tr>'+
-      '<tr><td>Kas Jalan / BOP Operasional</td><td>Rp '+prodFmt(bopTotal,0)+'</td></tr>'+
-      '<tr><td><strong>Laba Operasional</strong></td><td><strong>Rp '+prodFmt(operationalProfit,0)+'</strong></td></tr>'+
-      '<tr><td>Servis / Perawatan</td><td>Rp '+prodFmt(maintenanceTotal,0)+'</td></tr>'+
-      '<tr><td><strong>Laba Bersih Expedisi</strong></td><td><strong>Rp '+prodFmt(netProfit,0)+'</strong></td></tr>'+
-      '</tbody></table></div>';
+    if(st.view==='RINGKASAN'){
+      body='<div class="rhpp-summary-cards">'+
+        '<div class="rhpp-summary-card"><span>Pendapatan</span><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Penerimaan Kas</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Piutang</span><strong>Rp '+prodFmt(receivableTotal,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Kas Jalan / BOP</span><strong>Rp '+prodFmt(bopTotal,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Servis / Perawatan</span><strong>Rp '+prodFmt(maintenanceTotal,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card rhpp-summary-value"><span>Laba Bersih</span><strong>Rp '+prodFmt(netProfit,0)+'</strong></div>'+
+      '</div>';
+    }else{
+      body='<div class="tablewrap"><table><thead><tr><th>Komponen</th><th>Nilai</th></tr></thead><tbody>'+
+        '<tr><td>Pendapatan Expedisi</td><td>Rp '+prodFmt(revenueTotal,0)+'</td></tr>'+
+        '<tr><td>Kas Jalan / BOP Operasional</td><td>Rp '+prodFmt(bopTotal,0)+'</td></tr>'+
+        '<tr><td><strong>Laba Operasional</strong></td><td><strong>Rp '+prodFmt(operationalProfit,0)+'</strong></td></tr>'+
+        '<tr><td>Servis / Perawatan</td><td>Rp '+prodFmt(maintenanceTotal,0)+'</td></tr>'+
+        '<tr><td><strong>Laba Bersih Expedisi</strong></td><td><strong>Rp '+prodFmt(netProfit,0)+'</strong></td></tr>'+
+        '</tbody></table></div>'+
+        '<div class="rhpp-summary-cards" style="margin-top:14px">'+
+          '<div class="rhpp-summary-card"><span>Pendapatan</span><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Penerimaan Kas</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Piutang</span><strong>Rp '+prodFmt(receivableTotal,0)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Kas Jalan / BOP</span><strong>Rp '+prodFmt(bopTotal,0)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Servis / Perawatan</span><strong>Rp '+prodFmt(maintenanceTotal,0)+'</strong></div>'+
+          '<div class="rhpp-summary-card rhpp-summary-value"><span>Laba Bersih</span><strong>Rp '+prodFmt(netProfit,0)+'</strong></div>'+
+        '</div>';
+    }
   }else if(st.view==='PENDAPATAN'){
     const historicalRevenueRows=revenueRows.filter(x=>String(x.trip.reference||'').startsWith('HIST-BRU-')||String(x.trip.zone||'').trim().toUpperCase()==='HISTORIS BRU');
     const regularRevenueRows=revenueRows.filter(x=>!historicalRevenueRows.includes(x));
@@ -5778,26 +5789,26 @@ async function financeExpeditionProfitLossPage(){
         '<tr><td><strong>GRAND TOTAL</strong></td><td><strong>'+revenueRows.length+' data</strong></td><td style="text-align:right"><strong>Rp '+prodFmt(revenueTotal,0)+'</strong></td></tr>'+
       '</tbody></table></div>':'<p class="muted">Tidak ada pendapatan pada filter ini.</p>');
   }else if(st.view==='PENERIMAAN'){
-    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Kas Diterima</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Penerimaan</span><strong>'+reportPayments.length+'</strong></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Pelanggan</th><th>Invoice</th><th>Metode</th><th>Referensi</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+
+    body='<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Pelanggan</th><th>Invoice</th><th>Metode</th><th>Referensi</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+
       reportPayments.map(p=>{const i=invoiceById(p.invoice_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(i?.customer_name||'-')+'</td><td>'+esc(i?.invoice_number||'-')+'</td><td>'+esc(p.method||'-')+'</td><td>'+esc(p.reference||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.notes||'-')+'</td></tr>';}).join('')+
-      '</tbody></table></div>'+(reportPayments.length?'':'<p class="muted">Tidak ada penerimaan kas pada filter ini.</p>');
+      '</tbody></table></div>'+
+      (reportPayments.length?'<div class="rhpp-summary-cards" style="margin-top:14px"><div class="rhpp-summary-card"><span>Total Kas Diterima</span><strong>Rp '+prodFmt(cashTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Penerimaan</span><strong>'+reportPayments.length+'</strong></div></div>':'<p class="muted">Tidak ada penerimaan kas pada filter ini.</p>');
   }else if(st.view==='PIUTANG'){
     const rows=reportInvoices.map(i=>({i,s:summaryById(i.id)}));
-    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Piutang</span><strong>Rp '+prodFmt(receivableTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Invoice</span><strong>'+rows.length+'</strong></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Tagihan</th><th>Dibayar</th><th>Sisa</th><th>Status</th></tr></thead><tbody>'+
+    body='<div class="tablewrap"><table><thead><tr><th>Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Tagihan</th><th>Dibayar</th><th>Sisa</th><th>Status</th></tr></thead><tbody>'+
       rows.map(x=>'<tr><td>'+esc(x.i.invoice_number)+'</td><td>'+prodDateId(x.i.invoice_date)+'</td><td>'+(x.i.due_date?prodDateId(x.i.due_date):'-')+'</td><td>'+esc(x.i.customer_name)+'</td><td>Rp '+prodFmt(x.s?.invoice_total||0,0)+'</td><td>Rp '+prodFmt(x.s?.paid_total||0,0)+'</td><td><strong>Rp '+prodFmt(x.s?.receivable||0,0)+'</strong></td><td>'+esc(x.i.status)+'</td></tr>').join('')+
-      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Tidak ada piutang pada filter ini.</p>');
+      '</tbody></table></div>'+
+      (rows.length?'<div class="rhpp-summary-cards" style="margin-top:14px"><div class="rhpp-summary-card"><span>Total Piutang</span><strong>Rp '+prodFmt(receivableTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Invoice</span><strong>'+rows.length+'</strong></div></div>':'<p class="muted">Tidak ada piutang pada filter ini.</p>');
   }else if(st.view==='BOP'){
-    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Kas Jalan / BOP</span><strong>Rp '+prodFmt(bopTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Transaksi</span><strong>'+reportBops.length+'</strong></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>SJ</th><th>Rute</th><th>Kendaraan</th><th>Kategori</th><th>Nominal</th><th>Sumber</th><th>Catatan</th></tr></thead><tbody>'+
+    body='<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>SJ</th><th>Rute</th><th>Kendaraan</th><th>Kategori</th><th>Nominal</th><th>Sumber</th><th>Catatan</th></tr></thead><tbody>'+
       reportBops.map(x=>{const t=tripById(x.trip_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(t?.mts_sj||'-')+'</td><td>'+esc(x.route||t?.zone||'-')+'</td><td>'+esc(x.vehicle||t?.vehicle||'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference==='AUTO_TRIP'?'Input OP per Trip':(x.reference||'Manual'))+'</td><td>'+esc(x.notes||'-')+'</td></tr>';}).join('')+
-      '</tbody></table></div>'+(reportBops.length?'':'<p class="muted">Tidak ada BOP pada filter ini.</p>');
+      '</tbody></table></div>'+
+      (reportBops.length?'<div class="rhpp-summary-cards" style="margin-top:14px"><div class="rhpp-summary-card"><span>Total Kas Jalan / BOP</span><strong>Rp '+prodFmt(bopTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Transaksi</span><strong>'+reportBops.length+'</strong></div></div>':'<p class="muted">Tidak ada BOP pada filter ini.</p>');
   }else if(st.view==='PERAWATAN'){
-    body='<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Servis / Perawatan</span><strong>Rp '+prodFmt(maintenanceTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Transaksi</span><strong>'+reportMaint.length+'</strong></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Kendaraan</th><th>Nominal</th><th>Referensi</th><th>Catatan</th></tr></thead><tbody>'+
+    body='<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Kendaraan</th><th>Nominal</th><th>Referensi</th><th>Catatan</th></tr></thead><tbody>'+
       reportMaint.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>'+esc(x.vehicle||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+'</td></tr>').join('')+
-      '</tbody></table></div>'+(reportMaint.length?'':'<p class="muted">Tidak ada perawatan pada filter ini.</p>');
+      '</tbody></table></div>'+
+      (reportMaint.length?'<div class="rhpp-summary-cards" style="margin-top:14px"><div class="rhpp-summary-card"><span>Total Servis / Perawatan</span><strong>Rp '+prodFmt(maintenanceTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Transaksi</span><strong>'+reportMaint.length+'</strong></div></div>':'<p class="muted">Tidak ada perawatan pada filter ini.</p>');
   }else if(st.view==='BUKU_BESAR'){
     const ledger=[];
     reportPayments.forEach(p=>{const i=invoiceById(p.invoice_id);ledger.push({date:p.paid_on,type:'KAS MASUK',detail:'Penerimaan '+(i?.customer_name||'Expedisi')+(i?.invoice_number?' · '+i.invoice_number:''),debit:prodNum(p.amount),credit:0,ref:p.reference||''});});
