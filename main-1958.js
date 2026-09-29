@@ -3075,7 +3075,7 @@ async function productionBase(options={}){
     db.from('chick_ins').select('*').order('arrived_on',{ascending:false}),
     db.from('logistics_contract_assignment_abks').select('id,contract_assignment_id,abk_id,initial_birds,feed_pre_bags,feed_starter_bags,feed_finisher_bags,basics_locked_at'),
     db.from('employees').select('id,code,name,kind,active').eq('kind','ABK').order('code'),
-    db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit,active').eq('active',true).eq('category','PAKAN').order('code'),
+    db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit,active').eq('active',true).order('code'),
     db.from('performance_standards').select('*'),
     db.from('marketing_contract_harvests').select('id,contract_assignment_id,harvested_on,birds,net_weight_kg,avg_weight_kg,total_amount'),
     db.from('contract_live_prices').select('contract_id,min_weight_kg,max_weight_kg,price_per_kg').order('min_weight_kg'),
@@ -3090,7 +3090,7 @@ async function productionBase(options={}){
   const allowedBarnIds=new Set(assignments.map(a=>a.barn_id).filter(Boolean));
   const scoped=x=>profile?.role==='PPL'?(x||[]).filter(v=>allowedIds.has(v.contract_assignment_id)):(x||[]);
   const visibleBarns=profile?.role==='PPL'?(br.data||[]).filter(b=>allowedBarnIds.has(b.id)):(br.data||[]);
-  return {err,assignments,barns:visibleBarns,masters:cr.data||[],chicks:scoped(cir.data),links:scoped(abr.data),abks:er.data||[],feedItems:ir.data||[],standards:psr.data||[],harvests:scoped(mhr.data),livePrices:lpr.data||[],rhppCosts:scoped(costr.data),scopeRows:scoped};
+  return {err,assignments,barns:visibleBarns,masters:cr.data||[],chicks:scoped(cir.data),links:scoped(abr.data),abks:er.data||[],items:ir.data||[],feedItems:(ir.data||[]).filter(i=>i.category==='PAKAN'),standards:psr.data||[],harvests:scoped(mhr.data),livePrices:lpr.data||[],rhppCosts:scoped(costr.data),scopeRows:scoped};
 }
 function estimateContractLivePrice(d,a,bw){
   const w=prodNum(bw);
@@ -3141,6 +3141,83 @@ function estimateUsedFeedCost(d,a,recs){
     cost+=prodNum(r.feed_kg)*estimateFeedPricePerKg(contract,item);
   }
   return cost;
+}
+function estimateSapronakSnapshot({d,a,ci,recToDate,shipments,shipmentItems,returns,returnItems,items,estimatedOn}){
+  const contract=d.masters.find(c=>c.id===a?.master_contract_id);
+  const until=String(estimatedOn||'');
+  const shipIds=new Set((shipments||[])
+    .filter(s=>s.contract_assignment_id===a?.id&&(!until||String(s.shipment_date||'')<=until))
+    .map(s=>s.id));
+  const returnIds=new Set((returns||[])
+    .filter(r=>r.contract_assignment_id===a?.id&&(!until||String(r.return_date||'')<=until))
+    .map(r=>r.id));
+
+  const incoming=new Map(), returned=new Map(), used=new Map();
+  const ensure=(map,itemId)=>{
+    if(!map.has(itemId))map.set(itemId,{qty:0,kg:0,value:0});
+    return map.get(itemId);
+  };
+  (shipmentItems||[]).filter(v=>shipIds.has(v.shipment_id)).forEach(v=>{
+    const x=ensure(incoming,v.item_id);
+    x.qty+=prodNum(v.quantity);x.kg+=prodNum(v.quantity_kg);x.value+=prodNum(v.quantity)*prodNum(v.unit_price);
+  });
+  (returnItems||[]).filter(v=>returnIds.has(v.return_id)).forEach(v=>{
+    const x=ensure(returned,v.item_id);
+    x.qty+=prodNum(v.quantity);x.kg+=prodNum(v.quantity_kg);x.value+=prodNum(v.quantity)*prodNum(v.unit_price);
+  });
+  (recToDate||[]).filter(r=>r.feed_item_id&&prodNum(r.feed_kg)>0).forEach(r=>{
+    used.set(r.feed_item_id,prodNum(used.get(r.feed_item_id))+prodNum(r.feed_kg));
+  });
+
+  const rows=[];
+  const initial=ci?Math.max(0,prodNum(ci.received)-prodNum(ci.doa)):0;
+  const docPrice=prodNum(contract?.doc_price);
+  rows.push({
+    key:'DOC',category:'DOC',label:'DOC / Chick-In',unit:'EKOR',
+    incoming:initial,usedOrReturn:0,balance:initial,price:docPrice,value:initial*docPrice,
+    source:'CHICK_IN'
+  });
+
+  const itemIds=new Set([...incoming.keys(),...returned.keys(),...used.keys()]);
+  for(const itemId of itemIds){
+    const item=(items||[]).find(i=>i.id===itemId);
+    if(!item||item.category==='DOC')continue;
+    const inc=incoming.get(itemId)||{qty:0,kg:0,value:0};
+    const ret=returned.get(itemId)||{qty:0,kg:0,value:0};
+
+    if(item.category==='PAKAN'){
+      const usedKg=prodNum(used.get(itemId));
+      const netInKg=inc.kg-ret.kg;
+      const stockKg=netInKg-usedKg;
+      const priceKg=estimateFeedPricePerKg(contract,item);
+      rows.push({
+        key:itemId,category:'PAKAN',
+        label:[item.name,item.feed_phase].filter(Boolean).join(' · '),
+        unit:'Kg',incoming:netInKg,usedOrReturn:usedKg,balance:stockKg,
+        price:priceKg,value:usedKg*priceKg,source:'RECORDING'
+      });
+      continue;
+    }
+
+    const netQty=inc.qty-ret.qty;
+    const netValue=inc.value-ret.value;
+    const price=netQty!==0?netValue/netQty:(inc.qty?inc.value/inc.qty:0);
+    rows.push({
+      key:itemId,category:item.category||'LAINNYA',label:item.name||item.code||'Sapronak',
+      unit:item.unit||'satuan',incoming:inc.qty,usedOrReturn:ret.qty,balance:netQty,
+      price,value:netValue,source:'LOGISTIK'
+    });
+  }
+
+  const order={DOC:1,PAKAN:2,OVK:3,LAINNYA:4};
+  rows.sort((u,v)=>(order[u.category]||9)-(order[v.category]||9)||String(u.label).localeCompare(String(v.label)));
+  return {
+    rows,
+    totalCost:rows.reduce((sum,r)=>sum+prodNum(r.value),0),
+    feedUsedKg:rows.filter(r=>r.category==='PAKAN').reduce((sum,r)=>sum+prodNum(r.usedOrReturn),0),
+    feedIncomingKg:rows.filter(r=>r.category==='PAKAN').reduce((sum,r)=>sum+prodNum(r.incoming),0),
+    feedBalanceKg:rows.filter(r=>r.category==='PAKAN').reduce((sum,r)=>sum+prodNum(r.balance),0)
+  };
 }
 function prodAssignmentOption(d,a){
   return assignmentIdentity(d.assignments,d.barns,d.masters,a);
@@ -3697,11 +3774,13 @@ async function productionEstimatePage(){
       (v.min_value==null||value>=prodNum(v.min_value))&&
       (v.max_value==null||value<prodNum(v.max_value))
     )?.rupiah_per_kg);
-    const rhppCostRow=d.rhppCosts.find(v=>v.contract_assignment_id===x.contract_assignment_id);
-    const usedFeedCost=estimateUsedFeedCost(d,a,recToDate);
-    const sapronakCost=Math.max(0,
-      prodNum(rhppCostRow?.net_sapronak_cost)-prodNum(rhppCostRow?.feed_cost)+usedFeedCost
-    );
+    const sapSnapshot=estimateSapronakSnapshot({
+      d,a,ci,recToDate,
+      shipments:sapShipments,shipmentItems:sapShipmentItems,
+      returns:sapReturns,returnItems:sapReturnItems,
+      items:sapItems,estimatedOn:x.estimated_on
+    });
+    const sapronakCost=sapSnapshot.totalCost;
     const ipBonus=totalProjectedKg*matchBonus('IP',ip);
     const fcrDiff=fcrStd>0?fcrStd-fcr:0;
     const fcrBonus=fcrDiff>0?totalProjectedKg*matchBonus('FCR_DIFFERENCE',fcrDiff):0;
@@ -3709,64 +3788,21 @@ async function productionEstimatePage(){
     const farmerProfit=totalProjection-sapronakCost+ipBonus+fcrBonus+depletionBonus;
     const revenuePerBird=initial>0?farmerProfit/initial:0;
 
-    const estimateShipIds=new Set(sapShipments
-      .filter(s=>s.contract_assignment_id===x.contract_assignment_id&&String(s.shipment_date||'')<=String(x.estimated_on||''))
-      .map(s=>s.id));
-    const estimateReturnIds=new Set(sapReturns
-      .filter(r=>r.contract_assignment_id===x.contract_assignment_id&&String(r.return_date||'')<=String(x.estimated_on||''))
-      .map(r=>r.id));
-    const sapMap=new Map();
-    const ensureSap=itemId=>{
-      if(!sapMap.has(itemId)){
-        const item=sapItems.find(i=>i.id===itemId);
-        sapMap.set(itemId,{item,shipQty:0,shipKg:0,shipValue:0,retQty:0,retKg:0,retValue:0});
-      }
-      return sapMap.get(itemId);
-    };
-    sapShipmentItems.filter(v=>estimateShipIds.has(v.shipment_id)).forEach(v=>{
-      const g=ensureSap(v.item_id);
-      g.shipQty+=prodNum(v.quantity);
-      g.shipKg+=prodNum(v.quantity_kg);
-      g.shipValue+=prodNum(v.quantity)*prodNum(v.unit_price);
-    });
-    sapReturnItems.filter(v=>estimateReturnIds.has(v.return_id)).forEach(v=>{
-      const g=ensureSap(v.item_id);
-      g.retQty+=prodNum(v.quantity);
-      g.retKg+=prodNum(v.quantity_kg);
-      g.retValue+=prodNum(v.quantity)*prodNum(v.unit_price);
-    });
-    recToDate.filter(r=>r.feed_item_id&&prodNum(r.feed_kg)>0).forEach(r=>{
-      const g=ensureSap(r.feed_item_id);
-      if(g)g.usedKg=(g.usedKg||0)+prodNum(r.feed_kg);
-    });
-    const sapRows=[...sapMap.values()]
-      .filter(g=>g.item&&(g.shipQty||g.retQty||prodNum(g.usedKg)>0))
-      .sort((u,v)=>{
-        const order={DOC:1,PAKAN:2,OVK:3,LAINNYA:4};
-        return (order[u.item.category]||9)-(order[v.item.category]||9)||String(u.item.name||'').localeCompare(String(v.item.name||''));
-      });
-    const sapTotal=sapRows.reduce((sum,g)=>sum+g.shipValue-g.retValue,0);
-    const sapronakHtml=sapRows.length
+    const sapronakHtml=sapSnapshot.rows.length
       ?'<div class="tablewrap estimate-sapronak-table"><table><thead><tr><th>Sapronak</th><th>Masuk</th><th>Terpakai / Retur</th><th>Sisa / Bersih</th><th>Harga Kontrak</th><th>Beban Estimasi</th></tr></thead><tbody>'+
-        sapRows.map(g=>{
-          const netQty=g.shipQty-g.retQty;
-          const netValue=g.shipValue-g.retValue;
-          const label=[g.item.name,g.item.category==='PAKAN'&&g.item.feed_phase?g.item.feed_phase:''].filter(Boolean).join(' · ');
-          if(g.item.category==='PAKAN'){
-            const usedKg=prodNum(g.usedKg);
-            const contract=d.masters.find(c=>c.id===a?.master_contract_id);
-            const priceKg=estimateFeedPricePerKg(contract,g.item);
-            const usedValue=usedKg*priceKg;
-            const incomingKg=g.shipKg-g.retKg;
-            const stockKg=Math.max(0,incomingKg-usedKg);
-            return '<tr><td>'+esc(label)+'</td><td class="num">'+prodFmt(incomingKg,0)+' Kg</td><td class="num">'+prodFmt(usedKg,0)+' Kg</td><td class="num"><strong>'+prodFmt(stockKg,0)+' Kg</strong></td><td class="num">Rp '+prodFmt(priceKg,0)+'/Kg</td><td class="num">Rp '+prodFmt(usedValue,0)+'</td></tr>';
-          }
-          const price=netQty!==0?netValue/netQty:(g.shipQty?g.shipValue/g.shipQty:0);
-          return '<tr><td>'+esc(label)+'</td><td class="num">'+prodFmt(g.shipQty,2)+' '+esc(g.item.unit||'')+'</td><td class="num">'+prodFmt(g.retQty,2)+' '+esc(g.item.unit||'')+'</td><td class="num"><strong>'+prodFmt(netQty,2)+' '+esc(g.item.unit||'')+'</strong></td><td class="num">Rp '+prodFmt(price,0)+'/'+esc(g.item.unit||'satuan')+'</td><td class="num">Rp '+prodFmt(netValue,0)+'</td></tr>';
+        sapSnapshot.rows.map(r=>{
+          const balanceClass=prodNum(r.balance)<0?' class="num error"':' class="num"';
+          return '<tr><td>'+esc(r.label)+'</td>'+
+            '<td class="num">'+prodFmt(r.incoming,r.category==='DOC'?0:2)+' '+esc(r.unit)+'</td>'+
+            '<td class="num">'+prodFmt(r.usedOrReturn,r.category==='DOC'?0:2)+' '+esc(r.unit)+'</td>'+
+            '<td'+balanceClass+'><strong>'+prodFmt(r.balance,r.category==='DOC'?0:2)+' '+esc(r.unit)+'</strong></td>'+
+            '<td class="num">Rp '+prodFmt(r.price,0)+'/'+esc(r.unit)+'</td>'+
+            '<td class="num">Rp '+prodFmt(r.value,0)+'</td></tr>';
         }).join('')+
-        '<tr class="estimate-sapronak-total"><td colspan="5"><strong>Total Beban Sapronak Estimasi</strong></td><td class="num"><strong>Rp '+prodFmt(sapronakCost,0)+'</strong></td></tr>'+
-        '</tbody></table></div>'
-      :'<p class="muted">Belum ada transaksi sapronak Logistik untuk estimasi ini.</p>';
+        '<tr class="estimate-sapronak-total"><td colspan="5"><strong>Total Beban Sapronak Estimasi</strong></td><td class="num"><strong>Rp '+prodFmt(sapSnapshot.totalCost,0)+'</strong></td></tr>'+
+        '</tbody></table></div>'+
+        '<div class="estimate-sapronak-meta"><span>Pakan masuk bersih: <strong>'+prodFmt(sapSnapshot.feedIncomingKg,0)+' Kg</strong></span><span>Pakan terpakai Recording: <strong>'+prodFmt(sapSnapshot.feedUsedKg,0)+' Kg</strong></span><span>Sisa/selisih stok: <strong>'+prodFmt(sapSnapshot.feedBalanceKg,0)+' Kg</strong></span></div>'
+      :'<p class="muted">Belum ada sumber sapronak untuk estimasi ini.</p>';
 
     const harvestContractRows=[
       ...priorHarvests.map((h,i)=>{
@@ -3824,7 +3860,7 @@ async function productionEstimatePage(){
     (selectedEstimateAssignment?'<span class="pill">'+historyEstimates.length+' estimasi</span>':'')+'</div>'+
     '<div class="estimate-history-list">'+(estimateHistoryCards||'<p class="muted">Belum ada riwayat estimasi untuk kandang ini.</p>')+'</div>'+
     txnEstimate.pager+
-    '<p class="muted estimate-history-foot">Rumus simulasi: nilai panen memakai harga kontrak per BW; biaya pakan hanya yang TERPAKAI di Recording dan dinilai sesuai harga kontrak per fase. Stok pakan yang belum terpakai tidak dibebankan. Estimasi tidak mengubah RHPP.</p></section>';
+    '<p class="muted estimate-history-foot">Sumber sistematis Estimasi: DOC dari Chick-In; pakan TERPAKAI dari Recording; masuk/retur/stok dari Logistik; harga dari Kontrak; panen dari Marketing. Semua tampilan dan Pend./Ekor memakai snapshot sumber yang sama. Estimasi tidak mengubah RHPP.</p></section>';
 
   layout(html);
   if(d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||returnR.error||returnItemR.error||itemR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||returnR.error||returnItemR.error||itemR.error).message);
@@ -8716,7 +8752,7 @@ function renderDashboardTemplate(cfg){
 async function buildDashboardModel(){
   const d=await productionBase();
   const leagueSetting=await loadAbkLeagueSetting();
-  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR]=await Promise.all([
+  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,returnR,returnItemR,itemR]=await Promise.all([
     db.from('recordings').select('*').not('contract_assignment_id','is',null).order('recorded_on',{ascending:true}),
     db.from('recording_weight_samples').select('*'),
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
@@ -8725,10 +8761,17 @@ async function buildDashboardModel(){
     db.from('production_abk_result_sizes').select('*'),
     db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
     db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
-    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on,cycle_type')
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on,cycle_type'),
+    db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date'),
+    db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
+    db.from('logistics_returns').select('id,contract_assignment_id,return_date'),
+    db.from('logistics_return_items').select('return_id,item_id,quantity,quantity_kg,unit_price'),
+    db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit')
   ]);
-  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR].find(x=>x?.error)?.error;
+  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,returnR,returnItemR,itemR].find(x=>x?.error)?.error;
   const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=rhppFinalR.data||[];
+  const dashShipments=d.scopeRows(shipR.data||[]),dashShipmentItems=shipItemR.data||[];
+  const dashReturns=d.scopeRows(returnR.data||[]),dashReturnItems=returnItemR.data||[],dashItems=itemR.data||[];
   const abkReferenceContractId=a=>{
     if(a?.master_contract_id)return a.master_contract_id;
     if(a?.cycle_type!=='MANDIRI')return '';
@@ -8907,11 +8950,13 @@ async function buildDashboardModel(){
     };
 
     const totalProjection=priorRevenue+projectedRemainingRevenue;
-    const rhppCostRow=d.rhppCosts.find(v=>v.contract_assignment_id===e.contract_assignment_id);
-    const usedFeedCost=estimateUsedFeedCost(d,a,recToDate);
-    const sapronakCost=Math.max(0,
-      prodNum(rhppCostRow?.net_sapronak_cost)-prodNum(rhppCostRow?.feed_cost)+usedFeedCost
-    );
+    const sapSnapshot=estimateSapronakSnapshot({
+      d,a,ci,recToDate,
+      shipments:dashShipments,shipmentItems:dashShipmentItems,
+      returns:dashReturns,returnItems:dashReturnItems,
+      items:dashItems,estimatedOn:e.estimated_on
+    });
+    const sapronakCost=sapSnapshot.totalCost;
     const ipBonus=totalProjectedKg*matchBonus('IP',ip);
     const fcrDiff=fcrStd>0?fcrStd-fcr:0;
     const fcrBonus=fcrDiff>0?totalProjectedKg*matchBonus('FCR_DIFFERENCE',fcrDiff):0;
