@@ -3535,13 +3535,31 @@ async function recordingPplPage(){
     await recordingPplPage();
   };
   f.feed_item.onchange=calc;f.feed_units.oninput=calc;calc();renderPerf();
-  if(f.assignment.value)await refreshFeedStock();
-  else {
+
+  const autoLoadCurrentRecording=async()=>{
+    if(!f.assignment.value||editingId)return false;
+    const targetDay=targetDayFor(f.assignment.value);
+    const existing=recs.find(r=>
+      r.contract_assignment_id===f.assignment.value&&
+      prodNum(r.age_days)===prodNum(targetDay)
+    );
+    if(!existing)return false;
+    await startEdit(existing.id);
+    return true;
+  };
+
+  if(f.assignment.value){
+    const opened=await autoLoadCurrentRecording();
+    if(!opened)await refreshFeedStock();
+  }else{
     const eligible=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
     if(eligible.length===1){
       f.assignment.value=eligible[0].id;
+      window.__pplRecordingAssignment=eligible[0].id;
+      window.__pplRecordingHistoryAssignment=eligible[0].id;
       calc();
-      await refreshFeedStock();
+      const opened=await autoLoadCurrentRecording();
+      if(!opened)await refreshFeedStock();
     }
   }
 
