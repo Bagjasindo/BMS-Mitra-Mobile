@@ -6010,11 +6010,6 @@ async function financeExpeditionMaintenancePage(){
 
   let html='<section class="panel"><h3>Perawatan Expedisi</h3><p class="muted">Halaman ini khusus untuk input dan koreksi biaya perawatan. Riwayat lengkap ada di Laporan Expedisi → Servis / Perawatan.</p>'+
     '<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Perawatan</span><strong>Rp '+prodFmt(total,0)+'</strong></div></div></section>'+
-    '<section class="panel"><h3>Koreksi Data Perawatan</h3>'+
-      '<label>Pilih data yang akan dikoreksi<select id="fxMaintenanceEditSelect"><option value="">Tambah data baru / tidak ada koreksi</option>'+
-        rows.map(x=>'<option value="'+esc(x.id)+'" '+(editId===x.id?'selected':'')+'>'+esc(prodDateId(x.incurred_on)+' · '+String(x.category||'').replaceAll('_',' ')+' · '+(x.vehicle||'-')+' · Rp '+prodFmt(x.amount,0))+'</option>').join('')+
-      '</select></label>'+
-    '</section>'+
     '<section class="panel"><h3>'+(selected?'Koreksi Perawatan Expedisi':'Tambah Biaya Perawatan')+'</h3><form id="fxMaintenanceForm" class="form-vertical">'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(selected?.incurred_on||today)+'" required></label>'+
       '<label>Kategori<select name="category" required>'+
@@ -6024,7 +6019,12 @@ async function financeExpeditionMaintenancePage(){
       '<label>Nominal<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(selected?esc(fmtNumber(selected.amount)):'')+'" required></label>'+
       '<label>Catatan<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
       '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Simpan Perawatan')+'</button>'+(selected?'<button type="button" id="fxMaintenanceCancel" class="btn-secondary">Batal Koreksi</button>'+adminDeleteTxnButton('finance_expedition_maintenance',selected.id):'')+'</div>'+
-    '</form></section>';
+    '</form></section>'+
+    '<section class="panel"><h3>Koreksi Data Perawatan</h3>'+
+      '<label>Pilih data yang akan dikoreksi<select id="fxMaintenanceEditSelect"><option value="">Tambah data baru / tidak ada koreksi</option>'+
+        rows.map(x=>'<option value="'+esc(x.id)+'" '+(editId===x.id?'selected':'')+'>'+esc(prodDateId(x.incurred_on)+' · '+String(x.category||'').replaceAll('_',' ')+' · '+(x.vehicle||'-')+' · Rp '+prodFmt(x.amount,0))+'</option>').join('')+
+      '</select></label>'+
+    '</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
