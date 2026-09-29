@@ -18,3 +18,4 @@
 - **Ruang audit/fix berikutnya meliputi laporan Keuangan, BOP, arus kas, laba/rugi, hutang/piutang, penerimaan/pembayaran, serta laporan Owner yang membaca hasil akhir terkait.**
 - **Audit boleh dilakukan untuk membaca, membandingkan, dan menemukan masalah, tetapi tidak boleh mengubah kode, SQL, view, RPC, data, konfigurasi, maupun alur aplikasi tanpa izin eksplisit Administrator.**
 - **Jangan membuka kembali atau mengubah Logistik, Marketing, Produksi/PPL, Estimasi, Liga ABK, RHPP, Keuangan, maupun Owner tanpa persetujuan Administrator.**
+https://bagjasindo.github.io/BMS-Mitra-Mobile/
