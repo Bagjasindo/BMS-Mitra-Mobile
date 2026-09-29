@@ -3142,10 +3142,13 @@ function estimateUsedFeedCost(d,a,recs){
   }
   return cost;
 }
-function estimateSapronakSnapshot({d,a,ci,recToDate,shipments,shipmentItems,returns,returnItems,items,estimatedOn}){
+function estimateSapronakSnapshot({d,a,ci,recToDate,shipments,shipmentItems,externalShipments,externalShipmentItems,returns,returnItems,items,estimatedOn}){
   const contract=d.masters.find(c=>c.id===a?.master_contract_id);
   const until=String(estimatedOn||'');
   const shipIds=new Set((shipments||[])
+    .filter(s=>s.contract_assignment_id===a?.id&&(!until||String(s.shipment_date||'')<=until))
+    .map(s=>s.id));
+  const externalShipIds=new Set((externalShipments||[])
     .filter(s=>s.contract_assignment_id===a?.id&&(!until||String(s.shipment_date||'')<=until))
     .map(s=>s.id));
   const returnIds=new Set((returns||[])
@@ -3160,6 +3163,11 @@ function estimateSapronakSnapshot({d,a,ci,recToDate,shipments,shipmentItems,retu
   (shipmentItems||[]).filter(v=>shipIds.has(v.shipment_id)).forEach(v=>{
     const x=ensure(incoming,v.item_id);
     x.qty+=prodNum(v.quantity);x.kg+=prodNum(v.quantity_kg);x.value+=prodNum(v.quantity)*prodNum(v.unit_price);
+  });
+  (externalShipmentItems||[]).filter(v=>externalShipIds.has(v.external_shipment_id)).forEach(v=>{
+    const x=ensure(incoming,v.item_id);
+    x.qty+=prodNum(v.quantity);x.kg+=prodNum(v.quantity_kg);
+    x.value+=prodNum(v.quantity)*prodNum(v.purchase_unit_price);
   });
   (returnItems||[]).filter(v=>returnIds.has(v.return_id)).forEach(v=>{
     const x=ensure(returned,v.item_id);
@@ -3681,19 +3689,24 @@ async function productionVisitPage(){
 }
 async function productionEstimatePage(){
   const d=await productionBase();
-  const [er,sr,rr,bonusR,shipR,shipItemR,returnR,returnItemR,itemR]=await Promise.all([
+  const [er,sr,rr,bonusR,shipR,shipItemR,extShipR,extShipItemR,returnR,returnItemR,itemR]=await Promise.all([
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
     db.from('production_estimate_sizes').select('*'),
     db.from('recordings').select('contract_assignment_id,recorded_on,mortality,culling,feed_kg,feed_item_id').not('contract_assignment_id','is',null),
     db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
     db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date'),
     db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
+    db.from('logistics_external_shipments').select('id,contract_assignment_id,shipment_date'),
+    db.from('logistics_external_shipment_items').select('external_shipment_id,item_id,quantity,quantity_kg,purchase_unit_price'),
+    db.from('logistics_external_shipments').select('id,contract_assignment_id,shipment_date'),
+    db.from('logistics_external_shipment_items').select('external_shipment_id,item_id,quantity,quantity_kg,purchase_unit_price'),
     db.from('logistics_returns').select('id,contract_assignment_id,return_date'),
     db.from('logistics_return_items').select('return_id,item_id,quantity,quantity_kg,unit_price'),
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit')
   ]);
   const rows=d.scopeRows(er.data||[]),sizes=sr.data||[],recs=d.scopeRows(rr.data||[]),bonusRows=bonusR.data||[];
   const sapShipments=d.scopeRows(shipR.data||[]),sapShipmentItems=shipItemR.data||[];
+  const sapExternalShipments=d.scopeRows(extShipR.data||[]),sapExternalShipmentItems=extShipItemR.data||[];
   const sapReturns=d.scopeRows(returnR.data||[]),sapReturnItems=returnItemR.data||[],sapItems=itemR.data||[];
   const eligibleAssignments=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
   const estimateAssignmentId=window.__pplEstimateAssignment||(eligibleAssignments.length===1?eligibleAssignments[0].id:'');
@@ -3777,6 +3790,7 @@ async function productionEstimatePage(){
     const sapSnapshot=estimateSapronakSnapshot({
       d,a,ci,recToDate,
       shipments:sapShipments,shipmentItems:sapShipmentItems,
+      externalShipments:sapExternalShipments,externalShipmentItems:sapExternalShipmentItems,
       returns:sapReturns,returnItems:sapReturnItems,
       items:sapItems,estimatedOn:x.estimated_on
     });
@@ -3860,10 +3874,10 @@ async function productionEstimatePage(){
     (selectedEstimateAssignment?'<span class="pill">'+historyEstimates.length+' estimasi</span>':'')+'</div>'+
     '<div class="estimate-history-list">'+(estimateHistoryCards||'<p class="muted">Belum ada riwayat estimasi untuk kandang ini.</p>')+'</div>'+
     txnEstimate.pager+
-    '<p class="muted estimate-history-foot">Sumber sistematis Estimasi: DOC dari Chick-In; pakan TERPAKAI dari Recording; masuk/retur/stok dari Logistik; harga dari Kontrak; panen dari Marketing. Semua tampilan dan Pend./Ekor memakai snapshot sumber yang sama. Estimasi tidak mengubah RHPP.</p></section>';
+    '<p class="muted estimate-history-foot">Sumber sistematis Estimasi: DOC dari Chick-In; pakan TERPAKAI dari Recording; masuk/retur/stok dari Logistik termasuk Sapronak Luar; harga dari Kontrak; panen dari Marketing. Semua tampilan dan Pend./Ekor memakai snapshot sumber yang sama. Estimasi tidak mengubah RHPP.</p></section>';
 
   layout(html);
-  if(d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||returnR.error||returnItemR.error||itemR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||returnR.error||returnItemR.error||itemR.error).message);
+  if(d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||extShipR.error||extShipItemR.error||returnR.error||returnItemR.error||itemR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||extShipR.error||extShipItemR.error||returnR.error||returnItemR.error||itemR.error).message);
 
   bindAdminTransactionDeletes(()=>productionEstimatePage());
 
@@ -8752,7 +8766,7 @@ function renderDashboardTemplate(cfg){
 async function buildDashboardModel(){
   const d=await productionBase();
   const leagueSetting=await loadAbkLeagueSetting();
-  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,returnR,returnItemR,itemR]=await Promise.all([
+  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,extShipR,extShipItemR,returnR,returnItemR,itemR]=await Promise.all([
     db.from('recordings').select('*').not('contract_assignment_id','is',null).order('recorded_on',{ascending:true}),
     db.from('recording_weight_samples').select('*'),
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
@@ -8768,9 +8782,10 @@ async function buildDashboardModel(){
     db.from('logistics_return_items').select('return_id,item_id,quantity,quantity_kg,unit_price'),
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit')
   ]);
-  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,returnR,returnItemR,itemR].find(x=>x?.error)?.error;
+  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,extShipR,extShipItemR,returnR,returnItemR,itemR].find(x=>x?.error)?.error;
   const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=rhppFinalR.data||[];
   const dashShipments=d.scopeRows(shipR.data||[]),dashShipmentItems=shipItemR.data||[];
+  const dashExternalShipments=d.scopeRows(extShipR.data||[]),dashExternalShipmentItems=extShipItemR.data||[];
   const dashReturns=d.scopeRows(returnR.data||[]),dashReturnItems=returnItemR.data||[],dashItems=itemR.data||[];
   const abkReferenceContractId=a=>{
     if(a?.master_contract_id)return a.master_contract_id;
@@ -8953,6 +8968,7 @@ async function buildDashboardModel(){
     const sapSnapshot=estimateSapronakSnapshot({
       d,a,ci,recToDate,
       shipments:dashShipments,shipmentItems:dashShipmentItems,
+      externalShipments:dashExternalShipments,externalShipmentItems:dashExternalShipmentItems,
       returns:dashReturns,returnItems:dashReturnItems,
       items:dashItems,estimatedOn:e.estimated_on
     });
