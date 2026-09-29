@@ -8696,7 +8696,7 @@ async function buildDashboardModel(){
   });
   const productionAttention=metrics.flatMap(x=>{
     const b=d.barns.find(v=>v.id===x.a.barn_id);
-    return x.alerts.map(a=>({barn:b?shortBarnLabel(b):'-',text:a,level:'production'}));
+    return x.alerts.map(a=>({barn:b?shortBarnLabel(b):'-',text:a,level:'danger'}));
   });
   const attention=[...estimateAttention,...productionAttention].slice(0,8);
   const alertHtml=attention.length?attention.map(x=>'<div class="owner-alert-row '+esc(x.level||'')+'"><span>!</span><div><strong>'+esc(x.barn)+'</strong><small>'+esc(x.text)+'</small></div></div>').join(''):'<div class="owner-empty-ok">Estimasi seluruh kandang aktif masih dalam kondisi normal.</div>';
