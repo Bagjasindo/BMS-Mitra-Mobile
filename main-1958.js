@@ -3235,7 +3235,7 @@ async function recordingPplPage(){
     '<p id="prodPerfPage" class="muted" style="margin-top:10px"></p>'+
     '<details style="margin-top:14px"><summary><strong>Lihat Detail Teknis (opsional)</strong></summary>'+
       '<p class="muted">Deplesi, bobot vs standar, pakan vs standar, feed intake, FCR, ADG dan IP.</p>'+
-      '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Deplesi</th><th>BW Aktual / Standar</th><th>Pakan Aktual / Standar</th><th>Feed Intake</th><th>FCR</th><th>ADG</th><th>IP</th></tr></thead><tbody id="prodPerfTechBody"></tbody></table></div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Depl.</th><th>BW A/S</th><th>Pakan A/S</th><th>FI</th><th>FCR</th><th>ADG</th><th>IP</th></tr></thead><tbody id="prodPerfTechBody"></tbody></table></div>'+
     '</details></section>';
   layout(html);
   if(d.err||rr.error||sr.error)msg((d.err||rr.error||sr.error).message);
