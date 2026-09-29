@@ -3225,18 +3225,19 @@ async function recordingPplPage(){
   }
 
   const selectedHistoryAssignment=d.assignments.find(a=>a.id===historyAssignmentId);
+  const recordingHistoryLabel=a=>{
+    const b=d.barns.find(x=>x.id===a?.barn_id);
+    return (b?shortBarnLabel(b):'-')+' · S'+(assignmentCycleNo(d.assignments,a)||'-');
+  };
   html+='<section class="panel"><h3>Riwayat Recording Harian</h3>'+
     '<p class="muted">Pilih kandang / siklus untuk menampilkan seluruh history recording harian yang sudah tersimpan.</p>'+
     '<label>Pilih Kandang / Siklus<select id="prodRecHistoryAssignment"><option value="">Pilih History Recording</option>'+
-      historyAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(historyAssignmentId===a.id?'selected':'')+'>'+esc(prodAssignmentOption(d,a)+(a.active?' · AKTIF':' · SELESAI'))+'</option>').join('')+
+      historyAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(historyAssignmentId===a.id?'selected':'')+'>'+esc(recordingHistoryLabel(a)+(a.active?' · AKTIF':' · SELESAI'))+'</option>').join('')+
     '</select></label>'+
-    (selectedHistoryAssignment?'<p class="muted" style="margin-top:8px">Menampilkan: <strong>'+esc(prodAssignmentOption(d,selectedHistoryAssignment))+'</strong></p>':'')+
-    '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Populasi</th><th>Mati + Afkir</th><th>Bobot Rata2</th><th>Pakan Kumulatif</th><th>FCR</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
+    (selectedHistoryAssignment?'<p class="muted" style="margin-top:8px">Menampilkan: <strong>'+esc(recordingHistoryLabel(selectedHistoryAssignment))+'</strong></p>':'')+
+    '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Pop.</th><th>M+A</th><th>Depl.</th><th>BW A/S</th><th>Pakan A/S</th><th>FI</th><th>FCR</th><th>ADG</th><th>IP</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
     '<p id="prodPerfPage" class="muted" style="margin-top:10px"></p>'+
-    '<details style="margin-top:14px"><summary><strong>Lihat Detail Teknis (opsional)</strong></summary>'+
-      '<p class="muted">Deplesi, bobot vs standar, pakan vs standar, feed intake, FCR, ADG dan IP.</p>'+
-      '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Depl.</th><th>BW A/S</th><th>Pakan A/S</th><th>FI</th><th>FCR</th><th>ADG</th><th>IP</th></tr></thead><tbody id="prodPerfTechBody"></tbody></table></div>'+
-    '</details></section>';
+    '</section>';
   layout(html);
   if(d.err||rr.error||sr.error)msg((d.err||rr.error||sr.error).message);
 
@@ -3250,16 +3251,13 @@ async function recordingPplPage(){
     const rows=sortedRows;
     document.getElementById('prodPerfBody').innerHTML=rows.map(x=>{
       const dead=prodNum(x.r.mortality)+prodNum(x.r.culling);
-      return '<tr><td>'+esc(prodAssignmentOption(d,x.a))+'</td><td><strong>'+prodFmt(x.r.age_days,0)+'</strong></td><td>'+prodFmt(x.population,0)+'</td><td>'+prodFmt(dead,0)+'</td>'+
-      '<td>'+prodFmt(x.bwg,0)+' g</td><td>'+prodFmt(x.cumFeed,2)+' Kg</td><td>'+prodFmt(x.fcr,3)+'</td>'+
+      return '<tr><td>'+esc(recordingHistoryLabel(x.a))+'</td><td><strong>'+prodFmt(x.r.age_days,0)+'</strong></td><td>'+prodFmt(x.population,0)+'</td><td>'+prodFmt(dead,0)+'</td>'+
+      '<td>'+prodFmt(x.depl,2)+'%</td>'+
+      '<td>'+prodFmt(x.bwg,0)+'/'+(x.st?.std_body_weight_g?prodFmt(x.st.std_body_weight_g,0):'-')+'g</td>'+
+      '<td>'+prodFmt(x.cumFeed,0)+'/'+(x.stdFeedTotalKg!=null?prodFmt(x.stdFeedTotalKg,0):'-')+'Kg</td>'+
+      '<td>'+prodFmt(x.fi,0)+'</td><td>'+prodFmt(x.fcr,2)+'</td><td>'+prodFmt(x.adg,1)+'</td><td>'+prodFmt(x.ip,1)+'</td>'+
       '<td><div class="inline-actions"><button type="button" data-edit-recording="'+esc(x.r.id)+'">Edit</button>'+adminDeleteTxnButton('recordings',x.r.id)+'</div></td></tr>';
     }).join('');
-    document.getElementById('prodPerfTechBody').innerHTML=rows.map(x=>
-      '<tr><td>'+esc(prodAssignmentOption(d,x.a))+'</td><td>'+prodFmt(x.r.age_days,0)+'</td><td>'+prodFmt(x.depl,2)+'%</td>'+
-      '<td>'+prodFmt(x.bwg,0)+' / '+(x.st?.std_body_weight_g?prodFmt(x.st.std_body_weight_g,0):'-')+' g</td>'+
-      '<td>'+prodFmt(x.cumFeed,2)+' / '+(x.stdFeedTotalKg!=null?prodFmt(x.stdFeedTotalKg,2):'-')+' Kg</td>'+
-      '<td>'+prodFmt(x.fi,1)+' g/ekor</td><td>'+prodFmt(x.fcr,3)+'</td><td>'+prodFmt(x.adg,1)+' g</td><td>'+prodFmt(x.ip,1)+'</td></tr>'
-    ).join('');
     document.getElementById('prodPerfPage').textContent=historyAssignmentId?(sortedRows.length+' data recording · terbaru ke terlama'):'Pilih kandang / siklus untuk menampilkan history recording.';
     document.querySelectorAll('[data-edit-recording]').forEach(b=>b.onclick=()=>startEdit(b.dataset.editRecording));
     bindAdminTransactionDeletes(()=>recordingPplPage());
