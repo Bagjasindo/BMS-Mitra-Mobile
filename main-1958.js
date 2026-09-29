@@ -8563,7 +8563,7 @@ async function buildDashboardModel(){
       attentionSubtitle:'Prioritas dari Estimasi Produksi Berjalan, lalu alert performa.',
       attentionHtml:'<div class="owner-alert-row warning"><span>!</span><div><strong>Sinkronisasi data</strong><small>Data Owner belum lengkap.</small></div></div>',
       detailTitle:'Estimasi per Kandang',
-      detailSubtitle:'Estimasi produksi terakhir yang tersimpan.',
+      detailSubtitle:'Estimasi terakhir dengan acuan kontrak: harga hidup, biaya sapronak, standar performa, dan bonus kontrak.',
       detailHtml:'<p class="muted">Data estimasi belum dapat ditampilkan.</p>',
       bottomTitle:'Klasemen Performa ABK',
       bottomSubtitle:'Bobot: Pendapatan/Ekor 50% · FCR 30% · IP 20%',
@@ -8691,10 +8691,34 @@ async function buildDashboardModel(){
     const survival=initial>0?Math.min(100,outBirds/initial*100):0;
     const age=ci?prodAge(ci.arrived_on,e.estimated_on):0;
     const ip=age>0&&fcr>0?(survival*avgProjectedBw*100)/(age*fcr):0;
-    const totalProjection=priorRevenue+projectedRemainingRevenue;
-    const revenuePerBird=initial>0?totalProjection/initial:0;
 
-    return {e,a,b,ci,initial,outBirds,fc,mort,ip,revenuePerBird,age};
+    const std=d.standards.find(row=>
+      row.contract_id===a?.master_contract_id&&
+      row.template_name===a?.performance_template_name&&
+      prodNum(row.age_days)===age
+    );
+    const fcStd=prodNum(std?.std_feed_g_per_bird);
+    const fcrStd=prodNum(std?.std_fcr);
+
+    const matchBonus=(metric,value)=>{
+      const row=bonusRows.find(v=>
+        v.contract_id===a?.master_contract_id&&
+        v.metric===metric&&
+        (v.min_value==null||value>=prodNum(v.min_value))&&
+        (v.max_value==null||value<prodNum(v.max_value))
+      );
+      return prodNum(row?.rupiah_per_kg);
+    };
+
+    const totalProjection=priorRevenue+projectedRemainingRevenue;
+    const sapronakCost=prodNum(d.rhppCosts.find(v=>v.contract_assignment_id===e.contract_assignment_id)?.net_sapronak_cost);
+    const ipBonus=totalProjectedKg*matchBonus('IP',ip);
+    const fcrDiff=fcrStd>0?fcrStd-fcr:0;
+    const fcrBonus=fcrDiff>0?totalProjectedKg*matchBonus('FCR_DIFFERENCE',fcrDiff):0;
+    const estimatedFarmerProfit=totalProjection-sapronakCost+ipBonus+fcrBonus;
+    const revenuePerBird=initial>0?estimatedFarmerProfit/initial:0;
+
+    return {e,a,b,ci,initial,outBirds,fc,fcStd,mort,ip,revenuePerBird,age};
   });
 
   const estimateRows=estimateDashboardData.map(x=>{
@@ -8704,7 +8728,7 @@ async function buildDashboardModel(){
       '<td>'+x.age+' hari</td>'+
       '<td class="num">'+prodFmt(x.initial,0)+'</td>'+
       '<td class="num">'+prodFmt(x.outBirds,0)+'</td>'+
-      '<td class="num">'+prodFmt(x.fc,0)+' g/ekor</td>'+
+      '<td class="num">'+prodFmt(x.fc,0)+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+' g/ekor</td>'+
       '<td class="num">'+prodFmt(x.mort,2)+'%</td>'+
       '<td class="num">'+prodFmt(x.ip,1)+'</td>'+
       '<td class="num">Rp '+prodFmt(x.revenuePerBird,0)+'</td>'+
@@ -8716,10 +8740,10 @@ async function buildDashboardModel(){
       '<div class="owner-mobile-metrics">'+
         '<div><span>IN</span><b>'+prodFmt(x.initial,0)+'</b></div>'+
         '<div><span>OUT</span><b>'+prodFmt(x.outBirds,0)+'</b></div>'+
-        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+' g/ekor</b></div>'+
+        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+(x.fcStd>0?' / '+prodFmt(x.fcStd,0):'')+'</b></div>'+
         '<div><span>Mort</span><b>'+prodFmt(x.mort,2)+'%</b></div>'+
         '<div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div>'+
-        '<div><span>Pend./Ekor</span><b>Rp '+prodFmt(x.revenuePerBird,0)+'</b></div>'+
+        '<div><span>Pend./Ekor Kontrak</span><b>Rp '+prodFmt(x.revenuePerBird,0)+'</b></div>'+
       '</div><small>'+prodDateId(x.e.estimated_on)+'</small></article>';
   }).join('');
 
@@ -8826,7 +8850,7 @@ async function buildDashboardModel(){
     detailTitle:'Estimasi per Kandang',
     detailSubtitle:'Estimasi produksi terakhir yang tersimpan.',
     detailBadge:'<span class="pill">'+latestEst.length+' estimasi</span>',
-    detailHtml:'<div class="owner-desktop-only tablewrap owner-estimate-scroll"><table class="owner-table"><thead><tr><th>Kandang</th><th>Tanggal</th><th>Umur</th><th class="num">IN</th><th class="num">OUT</th><th class="num">FC</th><th class="num">Mort</th><th class="num">IP</th><th class="num">Pend./Ekor</th></tr></thead><tbody>'+estimateRows+'</tbody></table></div><div class="owner-mobile-only owner-mobile-list">'+estimateCards+'</div>'+(latestEst.length?'':'<p class="muted">Belum ada estimasi aktif.</p>'),
+    detailHtml:'<div class="owner-desktop-only tablewrap owner-estimate-scroll"><table class="owner-table"><thead><tr><th>Kandang</th><th>Tanggal</th><th>Umur</th><th class="num">IN</th><th class="num">OUT</th><th class="num">FC</th><th class="num">Mort</th><th class="num">IP</th><th class="num">Pend./Ekor Kontrak</th></tr></thead><tbody>'+estimateRows+'</tbody></table></div><div class="owner-mobile-only owner-mobile-list">'+estimateCards+'</div>'+(latestEst.length?'':'<p class="muted">Belum ada estimasi aktif.</p>'),
     bottomTitle:'Klasemen Performa ABK',
     bottomSubtitle:'Musim sejak '+prodDateId(leagueSetting.data?.season_start||'')+' · Bobot: Pendapatan/Ekor 50% · FCR 30% · IP 20%',
     bottomBadge:'<span class="owner-trophy">🏆</span>',
