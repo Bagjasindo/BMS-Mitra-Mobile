@@ -8789,6 +8789,8 @@ async function buildDashboardModel(){
     db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on,cycle_type'),
     db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date'),
     db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
+    db.from('logistics_external_shipments').select('id,contract_assignment_id,shipment_date'),
+    db.from('logistics_external_shipment_items').select('external_shipment_id,item_id,quantity,quantity_kg,purchase_unit_price'),
     db.from('logistics_returns').select('id,contract_assignment_id,return_date'),
     db.from('logistics_return_items').select('return_id,item_id,quantity,quantity_kg,unit_price'),
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit')
