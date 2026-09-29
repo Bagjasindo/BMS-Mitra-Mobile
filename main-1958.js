@@ -27,9 +27,8 @@ const shortBarnLabel=b=>b?(shortBarnName(b.name)||b.name):'-';
 const shortContractLabel=name=>String(name||'').replace(/^Kontrak\s+/i,'').trim();
 const assignmentIdentity=(rows,barnRows,contractRows,a)=>{
   if(!a)return '-';
-  const b=(barnRows||[]).find(x=>x.id===a.barn_id),k=(contractRows||[]).find(x=>x.id===a.master_contract_id);
-  const cycle='Siklus '+(assignmentCycleNo(rows,a)||'-');
-  return (b?shortBarnLabel(b):'-')+' · '+cycle+' · '+(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'));
+  const b=(barnRows||[]).find(x=>x.id===a.barn_id);
+  return (b?shortBarnLabel(b):'-')+' · S'+(assignmentCycleNo(rows,a)||'-');
 };
 const assignmentActiveBarnLabel=(barnRows,a)=>{
   const b=a&&(barnRows||[]).find(x=>x.id===a.barn_id);
@@ -3077,7 +3076,7 @@ function prodAssignmentOption(d,a){
   return assignmentIdentity(d.assignments,d.barns,d.masters,a);
 }
 function prodActiveBarnOption(d,a){
-  return assignmentActiveBarnLabel(d.barns,a);
+  return assignmentIdentity(d.assignments,d.barns,d.masters,a);
 }
 function prodSelectAssignments(d,onlyActive=true){
   return d.assignments.filter(a=>!onlyActive||a.active).map(a=>'<option value="'+esc(a.id)+'">'+esc(onlyActive?prodActiveBarnOption(d,a):prodAssignmentOption(d,a))+'</option>').join('');
