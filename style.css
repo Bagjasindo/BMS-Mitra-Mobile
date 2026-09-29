@@ -3159,3 +3159,48 @@ main select.app-select-native{
 @media(max-width:520px){
   .estimate-history-sapronak{padding:7px}
 }
+
+
+/* estimate-contract-harvest-economy-20260929 */
+.estimate-harvest-contract-table{margin-top:5px}
+.estimate-harvest-contract-table table{min-width:680px}
+.estimate-harvest-contract-table th,
+.estimate-harvest-contract-table td{
+  padding:6px 7px;
+  font-size:9.5px;
+}
+.estimate-harvest-contract-table .num{text-align:right;white-space:nowrap}
+.estimate-harvest-contract-total td{
+  background:#f2f7fa;
+  border-top:2px solid #d5e2e9;
+}
+.estimate-economy-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.estimate-economy-grid>div{
+  padding:8px 9px;
+  border:1px solid #e7edf1;
+  border-radius:8px;
+  background:#fff;
+}
+.estimate-economy-grid span{
+  display:block;
+  color:var(--bms-muted);
+  font-size:9px;
+}
+.estimate-economy-grid strong{
+  display:block;
+  margin-top:3px;
+  font-size:11.5px;
+}
+.estimate-economy-total{
+  grid-column:1/-1;
+  background:#f2f7fa!important;
+}
+.estimate-economy-total strong{font-size:13px}
+@media(max-width:520px){
+  .estimate-economy-grid{grid-template-columns:1fr}
+  .estimate-economy-total{grid-column:auto}
+}
