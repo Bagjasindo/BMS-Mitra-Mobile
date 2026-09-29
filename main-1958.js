@@ -3561,7 +3561,7 @@ async function productionEstimatePage(){
   ]);
   const rows=d.scopeRows(er.data||[]),sizes=sr.data||[],recs=d.scopeRows(rr.data||[]);
   const estimateAssignmentId=window.__pplEstimateAssignment||'';
-  const historyEstimates=estimateAssignmentId?rows.filter(x=>x.contract_assignment_id===estimateAssignmentId):[];
+  const historyEstimates=estimateAssignmentId?rows.filter(x=>x.contract_assignment_id===estimateAssignmentId):rows;
   window.__bmsTxnList=window.__bmsTxnList||{};
   const oldEstimatePage=window.__bmsTxnList.pplEstimate?.page||0;
   window.__bmsTxnList.pplEstimate={from:'',to:'',barn:'',assignment:'',status:'',page:oldEstimatePage};
@@ -3600,7 +3600,7 @@ async function productionEstimatePage(){
 
   const selectedEstimateAssignment=d.assignments.find(a=>a.id===estimateAssignmentId);
   html+='<section class="panel"><h3>Riwayat Estimasi</h3>'+
-    '<p class="muted">'+(selectedEstimateAssignment?'Menampilkan riwayat estimasi kandang yang sedang dipilih.':'Pilih kandang pada form di atas untuk menampilkan riwayat estimasi.')+'</p>'+
+    '<p class="muted">'+(selectedEstimateAssignment?'Menampilkan riwayat estimasi kandang yang sedang dipilih.':'Menampilkan seluruh riwayat estimasi yang dapat diakses akun ini.')+'</p>'+
     '<div class="tablewrap"><table><thead><tr>'+
     '<th>Kandang</th><th>Tanggal</th><th>Umur</th><th>Sisa Ayam</th><th>BW Est.</th>'+
     '<th>Panen Aktual Marketing</th><th>Proyeksi Sisa Panen</th><th>Total Proyeksi</th><th>Aksi</th>'+
