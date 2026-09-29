@@ -8536,7 +8536,7 @@ async function buildDashboardModel(){
     if(latest&&st?.std_body_weight_g&&bwg<prodNum(st.std_body_weight_g))alerts.push('BW di bawah standar');
     if(latest&&st?.std_fcr&&fcr>prodNum(st.std_fcr))alerts.push('FCR di atas standar');
     if(fcLow)alerts.push('FC di bawah standar');
-    return {a,ci,latest,initial,population,feed,fc,fcStd,fcLow,bwg,bw,fcr,dep,age,ip,prevBwg,st,alerts};
+    return {a,ci,latest,initial,harvested,population,feed,fc,fcStd,fcLow,bwg,bw,fcr,dep,age,ip,prevBwg,st,alerts};
   });
   const valid=metrics.filter(x=>x.latest);
   const avg=k=>valid.length?valid.reduce((s,x)=>s+prodNum(x[k]),0)/valid.length:0;
@@ -8570,8 +8570,8 @@ async function buildDashboardModel(){
     const trend=!x.latest?'':x.prevBwg?(x.bwg>x.prevBwg?'↑':x.bwg<x.prevBwg?'↓':'→'):'→';
     const isSim=String(x.latest?.notes||'').includes('SIMULASI DASHBOARD KPI'); const alert=isSim?'<span class="owner-sim">SIMULASI</span>':(x.alerts.length?'<span class="owner-alert">'+esc(x.alerts[0])+'</span>':'<span class="owner-ok">Normal</span>');
     return '<article class="owner-barn-card"><div class="owner-barn-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+'</strong><small>Umur saat ini '+(currentAge||'-')+' hari · Update data umur '+(x.age||'-')+' hari · '+(x.latest?prodDateId(x.latest.recorded_on):'-')+'</small></div>'+alert+'</div>'+
-      '<div class="owner-metrics"><div><span>Populasi</span><b>'+prodFmt(x.population,0)+'</b></div><div><span>BW</span><b>'+prodFmt(x.bw,3)+' kg '+trend+'</b></div><div><span>FCR</span><b>'+prodFmt(x.fcr,3)+'</b></div><div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div></div>'+
-      '<div class="owner-card-foot">Deplesi '+prodFmt(x.dep,2)+'% · <span class="'+(x.fcLow?'owner-fc-low':'owner-fc-ok')+'">FC '+prodFmt(x.fc,0)+' g/ekor'+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</span> · Pakan '+prodFmt(x.feed,0)+' Kg</div></article>';
+      '<div class="owner-metrics"><div><span>Sisa Ayam</span><b>'+prodFmt(x.population,0)+'</b></div><div><span>BW</span><b>'+prodFmt(x.bw,3)+' kg '+trend+'</b></div><div><span>FCR</span><b>'+prodFmt(x.fcr,3)+'</b></div><div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div></div>'+
+      '<div class="owner-card-foot"><strong>Populasi Awal '+prodFmt(x.initial,0)+' ekor</strong> · Terpanen '+prodFmt(x.harvested,0)+' ekor · Sisa Ayam '+prodFmt(x.population,0)+' ekor<br>Deplesi '+prodFmt(x.dep,2)+'% · <span class="'+(x.fcLow?'owner-fc-low':'owner-fc-ok')+'">FC '+prodFmt(x.fc,0)+' g/ekor'+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</span> · Pakan '+prodFmt(x.feed,0)+' Kg</div></article>';
   }).join('');
 
   const latestEst=active.map(a=>estimates.find(e=>e.contract_assignment_id===a.id)).filter(Boolean);
