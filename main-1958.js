@@ -3660,6 +3660,7 @@ async function productionEstimatePage(){
         '<div><span>IN</span><strong>'+prodFmt(initial,0)+'</strong></div>'+
         '<div><span>OUT</span><strong>'+prodFmt(outBirds,0)+'</strong></div>'+
         '<div><span>Umur Rata2</span><strong>'+prodFmt(age,2)+' hari</strong></div>'+
+        '<div><span>Kg Panen</span><strong>'+prodFmt(totalProjectedKg,0)+' Kg</strong></div>'+
         '<div><span>Mort</span><strong>'+prodFmt(mort,2)+'%</strong></div>'+
         '<div><span>Pakan</span><strong>'+prodFmt(feedKg,0)+' Kg</strong></div>'+
         '<div><span>BW</span><strong>'+prodFmt(bw,3)+' Kg</strong></div>'+
@@ -8769,7 +8770,7 @@ async function buildDashboardModel(){
     const estimatedFarmerProfit=totalProjection-sapronakCost+ipBonus+fcrBonus;
     const revenuePerBird=initial>0?estimatedFarmerProfit/initial:0;
 
-    return {e,a,b,ci,initial,outBirds,age,mort,feedKg,bw:avgProjectedBw,fc,fcStd,ip,revenuePerBird};
+    return {e,a,b,ci,initial,outBirds,age,totalProjectedKg,mort,feedKg,bw:avgProjectedBw,fc,fcStd,ip,revenuePerBird};
   });
 
   const estimateRows=estimateDashboardData.map(x=>{
@@ -8792,6 +8793,7 @@ async function buildDashboardModel(){
         '<div><span>IN</span><b>'+prodFmt(x.initial,0)+'</b></div>'+
         '<div><span>OUT</span><b>'+prodFmt(x.outBirds,0)+'</b></div>'+
         '<div><span>Umur Rata2</span><b>'+prodFmt(x.age,2)+' hari</b></div>'+
+        '<div><span>Kg Panen</span><b>'+prodFmt(x.totalProjectedKg,0)+' Kg</b></div>'+
         '<div><span>Mort</span><b>'+prodFmt(x.mort,2)+'%</b></div>'+
         '<div><span>Pakan</span><b>'+prodFmt(x.feedKg,0)+' Kg</b></div>'+
         '<div><span>BW</span><b>'+prodFmt(x.bw,3)+' Kg</b></div>'+
