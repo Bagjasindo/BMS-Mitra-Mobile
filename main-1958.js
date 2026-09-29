@@ -3205,14 +3205,15 @@ async function recordingPplPage(){
     const cumDead=prev.reduce((s,x)=>s+prodNum(x.mortality)+prodNum(x.culling),0);
     const cumFeed=prev.reduce((s,x)=>s+prodNum(x.feed_kg),0);
     const initial=prodNum(ci.received)-prodNum(ci.doa);
-    const harvestedToDate=d.harvests
-      .filter(h=>h.contract_assignment_id===r.contract_assignment_id&&h.harvested_on<r.recorded_on)
-      .reduce((s,h)=>s+prodNum(h.birds),0);
+    const harvestsBeforeRecording=d.harvests
+      .filter(h=>h.contract_assignment_id===r.contract_assignment_id&&h.harvested_on<r.recorded_on);
+    const harvestedToDate=harvestsBeforeRecording.reduce((s,h)=>s+prodNum(h.birds),0);
+    const harvestedKgToDate=harvestsBeforeRecording.reduce((s,h)=>s+prodNum(h.net_weight_kg),0);
     const population=Math.max(0,initial-cumDead-harvestedToDate);
     const ws=samples.filter(s=>s.recording_id===r.id).map(s=>prodNum(s.weight_g));
     const bwg=ws.length?ws.reduce((s,x)=>s+x,0)/ws.length:prodNum(r.avg_weight_kg)*1000;
-    const bwkg=bwg/1000,biomass=population*bwkg;
-    const fcr=biomass>0?cumFeed/biomass:0;
+    const bwkg=bwg/1000,standingBiomass=population*bwkg,totalProducedKg=standingBiomass+harvestedKgToDate;
+    const fcr=totalProducedKg>0?cumFeed/totalProducedKg:0;
     const depl=initial>0?cumDead/initial*100:0;
     const age=prodNum(r.age_days);
     const ip=age>0&&fcr>0?((100-depl)*bwkg*100)/(age*fcr):0;
