@@ -3071,7 +3071,7 @@ async function productionBase(options={}){
   const [ar,br,cr,cir,abr,er,ir,psr,mhr,lpr,costr]=await Promise.all([
     db.from('logistics_contract_assignments').select('id,barn_id,ppl_id,master_contract_id,performance_template_name,start_date,active,created_at,cycle_type').order('created_at',{ascending:false}),
     db.from('barns').select('id,code,name,active').order('code'),
-    db.from('contracts').select('id,number').is('cycle_id',null),
+    db.from('contracts').select('id,number,doc_price,pre_starter_price,starter_price,finisher_price,ovk_price,ovk_price_basis,ovk_vat_percent').is('cycle_id',null),
     db.from('chick_ins').select('*').order('arrived_on',{ascending:false}),
     db.from('logistics_contract_assignment_abks').select('id,contract_assignment_id,abk_id,initial_birds,feed_pre_bags,feed_starter_bags,feed_finisher_bags,basics_locked_at'),
     db.from('employees').select('id,code,name,kind,active').eq('kind','ABK').order('code'),
