@@ -8661,26 +8661,65 @@ async function buildDashboardModel(){
     const b=d.barns.find(x=>x.id===a?.barn_id);
     const ci=d.chicks.find(x=>x.contract_assignment_id===a?.id);
     const sz=estSizes.filter(s=>s.estimate_id===e.id);
-    const birds=sz.reduce((sum,x)=>sum+prodNum(x.birds),0);
-    const bio=sz.reduce((sum,x)=>sum+prodNum(x.birds)*prodNum(x.bw_kg),0);
-    const bw=birds?bio/birds:0;
-    const age=ci?prodAge(ci.arrived_on,e.estimated_on):0;
+
+    const initial=ci?Math.max(0,prodNum(ci.received)-prodNum(ci.doa)):0;
+    const estimateBirds=sz.reduce((sum,row)=>sum+prodNum(row.birds),0);
+    const estimateBio=sz.reduce((sum,row)=>sum+prodNum(row.birds)*prodNum(row.bw_kg),0);
+
+    const recToDate=recs.filter(r=>r.contract_assignment_id===e.contract_assignment_id&&String(r.recorded_on||'')<=String(e.estimated_on||''));
+    const mortalityBirds=recToDate.reduce((sum,r)=>sum+prodNum(r.mortality)+prodNum(r.culling),0);
+    const feedKg=recToDate.reduce((sum,r)=>sum+prodNum(r.feed_kg),0);
+
     const priorHarvests=d.harvests.filter(h=>h.contract_assignment_id===e.contract_assignment_id&&h.harvested_on<e.estimated_on);
+    const harvestedBirds=priorHarvests.reduce((sum,h)=>sum+prodNum(h.birds),0);
+    const harvestedKg=priorHarvests.reduce((sum,h)=>sum+prodNum(h.net_weight_kg),0);
     const priorRevenue=priorHarvests.reduce((sum,h)=>sum+prodNum(h.total_amount),0);
+
     const projectedRemainingRevenue=sz.reduce((sum,row)=>{
       const rowBw=prodNum(row.bw_kg),rowBirds=prodNum(row.birds);
       const price=d.livePrices.find(p=>p.contract_id===a?.master_contract_id&&rowBw>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||rowBw<prodNum(p.max_weight_kg)));
       return sum+rowBirds*rowBw*prodNum(price?.price_per_kg);
     },0);
-    return {e,a,b,ci,birds,bw,age,priorRevenue,projectedRemainingRevenue,totalProjection:priorRevenue+projectedRemainingRevenue};
+
+    const outBirds=harvestedBirds+estimateBirds;
+    const totalProjectedKg=harvestedKg+estimateBio;
+    const avgProjectedBw=outBirds>0?totalProjectedKg/outBirds:0;
+    const fcr=totalProjectedKg>0?feedKg/totalProjectedKg:0;
+    const fc=initial>0?feedKg*1000/initial:0;
+    const mort=initial>0?mortalityBirds/initial*100:0;
+    const survival=initial>0?Math.min(100,outBirds/initial*100):0;
+    const age=ci?prodAge(ci.arrived_on,e.estimated_on):0;
+    const ip=age>0&&fcr>0?(survival*avgProjectedBw*100)/(age*fcr):0;
+    const totalProjection=priorRevenue+projectedRemainingRevenue;
+    const revenuePerBird=initial>0?totalProjection/initial:0;
+
+    return {e,a,b,ci,initial,outBirds,fc,mort,ip,revenuePerBird,age};
   });
+
   const estimateRows=estimateDashboardData.map(x=>{
-    return '<tr><td>'+esc(x.b?shortBarnLabel(x.b):'-')+'</td><td>'+prodDateId(x.e.estimated_on)+'</td><td>'+x.age+' hari</td><td class="num">'+prodFmt(x.e.remaining_birds,0)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td><td class="num">Rp '+prodFmt(x.priorRevenue,0)+'</td><td class="num">Rp '+prodFmt(x.projectedRemainingRevenue,0)+'</td><td class="num">Rp '+prodFmt(x.totalProjection,0)+'</td></tr>';
+    return '<tr>'+
+      '<td>'+esc(x.b?shortBarnLabel(x.b):'-')+'</td>'+
+      '<td>'+prodDateId(x.e.estimated_on)+'</td>'+
+      '<td>'+x.age+' hari</td>'+
+      '<td class="num">'+prodFmt(x.initial,0)+'</td>'+
+      '<td class="num">'+prodFmt(x.outBirds,0)+'</td>'+
+      '<td class="num">'+prodFmt(x.fc,0)+' g/ekor</td>'+
+      '<td class="num">'+prodFmt(x.mort,2)+'%</td>'+
+      '<td class="num">'+prodFmt(x.ip,1)+'</td>'+
+      '<td class="num">Rp '+prodFmt(x.revenuePerBird,0)+'</td>'+
+      '</tr>';
   }).join('');
+
   const estimateCards=estimateDashboardData.map(x=>{
     return '<article class="owner-mobile-card"><div class="owner-mobile-card-head"><strong>'+esc(x.b?shortBarnLabel(x.b):'-')+'</strong><span>'+x.age+' hari</span></div>'+
-      '<div class="owner-mobile-metrics"><div><span>Sisa Ayam</span><b>'+prodFmt(x.e.remaining_birds,0)+'</b></div><div><span>BW Est.</span><b>'+prodFmt(x.bw,3)+' kg</b></div><div><span>Panen Aktual</span><b>Rp '+prodFmt(x.priorRevenue,0)+'</b></div><div><span>Proyeksi Sisa</span><b>Rp '+prodFmt(x.projectedRemainingRevenue,0)+'</b></div><div><span>Total Proyeksi</span><b>Rp '+prodFmt(x.totalProjection,0)+'</b></div></div>'+
-      '<small>'+prodDateId(x.e.estimated_on)+'</small></article>';
+      '<div class="owner-mobile-metrics">'+
+        '<div><span>IN</span><b>'+prodFmt(x.initial,0)+'</b></div>'+
+        '<div><span>OUT</span><b>'+prodFmt(x.outBirds,0)+'</b></div>'+
+        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+' g/ekor</b></div>'+
+        '<div><span>Mort</span><b>'+prodFmt(x.mort,2)+'%</b></div>'+
+        '<div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div>'+
+        '<div><span>Pend./Ekor</span><b>Rp '+prodFmt(x.revenuePerBird,0)+'</b></div>'+
+      '</div><small>'+prodDateId(x.e.estimated_on)+'</small></article>';
   }).join('');
 
   const leagueRaw=abkResults.map(x=>{
@@ -8786,7 +8825,7 @@ async function buildDashboardModel(){
     detailTitle:'Estimasi per Kandang',
     detailSubtitle:'Estimasi produksi terakhir yang tersimpan.',
     detailBadge:'<span class="pill">'+latestEst.length+' estimasi</span>',
-    detailHtml:'<div class="owner-desktop-only tablewrap owner-estimate-scroll"><table class="owner-table"><thead><tr><th>Kandang</th><th>Tanggal</th><th>Umur</th><th class="num">Sisa Ayam</th><th class="num">BW Est.</th><th class="num">Panen Aktual</th><th class="num">Proyeksi Sisa Panen</th><th class="num">Total Proyeksi Panen</th></tr></thead><tbody>'+estimateRows+'</tbody></table></div><div class="owner-mobile-only owner-mobile-list">'+estimateCards+'</div>'+(latestEst.length?'':'<p class="muted">Belum ada estimasi aktif.</p>'),
+    detailHtml:'<div class="owner-desktop-only tablewrap owner-estimate-scroll"><table class="owner-table"><thead><tr><th>Kandang</th><th>Tanggal</th><th>Umur</th><th class="num">IN</th><th class="num">OUT</th><th class="num">FC</th><th class="num">Mort</th><th class="num">IP</th><th class="num">Pend./Ekor</th></tr></thead><tbody>'+estimateRows+'</tbody></table></div><div class="owner-mobile-only owner-mobile-list">'+estimateCards+'</div>'+(latestEst.length?'':'<p class="muted">Belum ada estimasi aktif.</p>'),
     bottomTitle:'Klasemen Performa ABK',
     bottomSubtitle:'Musim sejak '+prodDateId(leagueSetting.data?.season_start||'')+' · Bobot: Pendapatan/Ekor 50% · FCR 30% · IP 20%',
     bottomBadge:'<span class="owner-trophy">🏆</span>',
