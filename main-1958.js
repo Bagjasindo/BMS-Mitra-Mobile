@@ -3588,13 +3588,20 @@ async function productionVisitPage(){
 }
 async function productionEstimatePage(){
   const d=await productionBase();
-  const [er,sr,rr,bonusR]=await Promise.all([
+  const [er,sr,rr,bonusR,shipR,shipItemR,returnR,returnItemR,itemR]=await Promise.all([
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
     db.from('production_estimate_sizes').select('*'),
     db.from('recordings').select('contract_assignment_id,recorded_on,mortality,culling,feed_kg').not('contract_assignment_id','is',null),
-    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg')
+    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
+    db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date'),
+    db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
+    db.from('logistics_returns').select('id,contract_assignment_id,return_date'),
+    db.from('logistics_return_items').select('return_id,item_id,quantity,quantity_kg,unit_price'),
+    db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit')
   ]);
   const rows=d.scopeRows(er.data||[]),sizes=sr.data||[],recs=d.scopeRows(rr.data||[]),bonusRows=bonusR.data||[];
+  const sapShipments=d.scopeRows(shipR.data||[]),sapShipmentItems=shipItemR.data||[];
+  const sapReturns=d.scopeRows(returnR.data||[]),sapReturnItems=returnItemR.data||[],sapItems=itemR.data||[];
   const eligibleAssignments=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
   const estimateAssignmentId=window.__pplEstimateAssignment||(eligibleAssignments.length===1?eligibleAssignments[0].id:'');
   if(estimateAssignmentId)window.__pplEstimateAssignment=estimateAssignmentId;
@@ -3682,6 +3689,52 @@ async function productionEstimatePage(){
     const farmerProfit=totalProjection-sapronakCost+ipBonus+fcrBonus+depletionBonus;
     const revenuePerBird=initial>0?farmerProfit/initial:0;
 
+    const estimateShipIds=new Set(sapShipments
+      .filter(s=>s.contract_assignment_id===x.contract_assignment_id&&String(s.shipment_date||'')<=String(x.estimated_on||''))
+      .map(s=>s.id));
+    const estimateReturnIds=new Set(sapReturns
+      .filter(r=>r.contract_assignment_id===x.contract_assignment_id&&String(r.return_date||'')<=String(x.estimated_on||''))
+      .map(r=>r.id));
+    const sapMap=new Map();
+    const ensureSap=itemId=>{
+      if(!sapMap.has(itemId)){
+        const item=sapItems.find(i=>i.id===itemId);
+        sapMap.set(itemId,{item,shipQty:0,shipKg:0,shipValue:0,retQty:0,retKg:0,retValue:0});
+      }
+      return sapMap.get(itemId);
+    };
+    sapShipmentItems.filter(v=>estimateShipIds.has(v.shipment_id)).forEach(v=>{
+      const g=ensureSap(v.item_id);
+      g.shipQty+=prodNum(v.quantity);
+      g.shipKg+=prodNum(v.quantity_kg);
+      g.shipValue+=prodNum(v.quantity)*prodNum(v.unit_price);
+    });
+    sapReturnItems.filter(v=>estimateReturnIds.has(v.return_id)).forEach(v=>{
+      const g=ensureSap(v.item_id);
+      g.retQty+=prodNum(v.quantity);
+      g.retKg+=prodNum(v.quantity_kg);
+      g.retValue+=prodNum(v.quantity)*prodNum(v.unit_price);
+    });
+    const sapRows=[...sapMap.values()]
+      .filter(g=>g.item&&(g.shipQty||g.retQty))
+      .sort((u,v)=>{
+        const order={DOC:1,PAKAN:2,OVK:3,LAINNYA:4};
+        return (order[u.item.category]||9)-(order[v.item.category]||9)||String(u.item.name||'').localeCompare(String(v.item.name||''));
+      });
+    const sapTotal=sapRows.reduce((sum,g)=>sum+g.shipValue-g.retValue,0);
+    const sapronakHtml=sapRows.length
+      ?'<div class="tablewrap estimate-sapronak-table"><table><thead><tr><th>Sapronak</th><th>Masuk</th><th>Retur</th><th>Bersih</th><th>Harga Kontrak</th><th>Nilai</th></tr></thead><tbody>'+
+        sapRows.map(g=>{
+          const netQty=g.shipQty-g.retQty;
+          const netValue=g.shipValue-g.retValue;
+          const price=netQty!==0?netValue/netQty:(g.shipQty?g.shipValue/g.shipQty:0);
+          const label=[g.item.name,g.item.category==='PAKAN'&&g.item.feed_phase?g.item.feed_phase:''].filter(Boolean).join(' · ');
+          return '<tr><td>'+esc(label)+'</td><td class="num">'+prodFmt(g.shipQty,2)+' '+esc(g.item.unit||'')+'</td><td class="num">'+prodFmt(g.retQty,2)+' '+esc(g.item.unit||'')+'</td><td class="num"><strong>'+prodFmt(netQty,2)+' '+esc(g.item.unit||'')+'</strong></td><td class="num">Rp '+prodFmt(price,0)+'/'+esc(g.item.unit||'satuan')+'</td><td class="num">Rp '+prodFmt(netValue,0)+'</td></tr>';
+        }).join('')+
+        '<tr class="estimate-sapronak-total"><td colspan="5"><strong>Total Sapronak Bersih</strong></td><td class="num"><strong>Rp '+prodFmt(sapTotal,0)+'</strong></td></tr>'+
+        '</tbody></table></div>'
+      :'<p class="muted">Belum ada transaksi sapronak Logistik untuk estimasi ini.</p>';
+
     const sizeHtml=sz.length?sz.map((v,i)=>'<div class="estimate-history-size"><span>Ukuran '+(i+1)+' · '+prodFmt(v.bw_kg,3)+' Kg</span><strong>'+prodFmt(v.birds,0)+' ekor</strong></div>').join(''):'<span class="muted">Tidak ada rincian ukuran.</span>';
     return '<article class="estimate-history-card">'+
       '<div class="estimate-history-head"><div><h4>'+esc(a?prodAssignmentOption(d,a):'-')+'</h4><p>'+prodDateId(x.estimated_on)+'</p></div><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></div>'+
@@ -3697,6 +3750,7 @@ async function productionEstimatePage(){
         '<div><span>IP</span><strong>'+prodFmt(ip,1)+'</strong></div>'+
         '<div class="estimate-history-total"><span>Pend./Ekor Kontrak</span><strong>Rp '+prodFmt(revenuePerBird,0)+'</strong></div>'+
       '</div>'+
+      '<div class="estimate-history-sapronak"><div class="estimate-history-subtitle">Rekap Sapronak · Harga Kontrak</div>'+sapronakHtml+'</div>'+
       '<div class="estimate-history-sizes"><div class="estimate-history-subtitle">Rincian Ukuran / BW</div>'+sizeHtml+'</div>'+
       (x.notes?'<div class="estimate-history-notes"><span>Catatan</span><p>'+esc(x.notes)+'</p></div>':'')+
     '</article>';
@@ -3710,7 +3764,7 @@ async function productionEstimatePage(){
     '<p class="muted estimate-history-foot">Rumus simulasi: setiap panen aktual dan proyeksi sisa dinilai per BW memakai range harga kontrak; bonus IP, FCR, dan deplesi ikut dihitung. Estimasi tidak mengubah RHPP.</p></section>';
 
   layout(html);
-  if(d.err||er.error||sr.error||rr.error||bonusR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error).message);
+  if(d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||returnR.error||returnItemR.error||itemR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||returnR.error||returnItemR.error||itemR.error).message);
 
   bindAdminTransactionDeletes(()=>productionEstimatePage());
 
