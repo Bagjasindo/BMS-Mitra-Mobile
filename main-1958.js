@@ -3607,7 +3607,6 @@ async function productionEstimatePage(){
     const sz=sizes.filter(s=>s.estimate_id===x.id);
     const estimateBirds=sz.reduce((s,v)=>s+prodNum(v.birds),0);
     const estimateBio=sz.reduce((s,v)=>s+prodNum(v.birds)*prodNum(v.bw_kg),0);
-    const age=ci?prodAge(ci.arrived_on,x.estimated_on):0;
     const initial=ci?Math.max(0,prodNum(ci.received)-prodNum(ci.doa)):0;
 
     const recToDate=recs.filter(r=>r.contract_assignment_id===x.contract_assignment_id&&String(r.recorded_on||'')<=String(x.estimated_on||''));
@@ -3627,6 +3626,9 @@ async function productionEstimatePage(){
     const mort=initial>0?mortalityBirds/initial*100:0;
     const fcr=totalProjectedKg>0?feedKg/totalProjectedKg:0;
     const survival=initial>0?Math.min(100,outBirds/initial*100):0;
+    const projectedAge=ci?prodAge(ci.arrived_on,x.estimated_on):0;
+    const harvestedAgeWeight=ci?priorHarvests.reduce((sum,h)=>sum+prodAge(ci.arrived_on,h.harvested_on)*prodNum(h.birds),0):0;
+    const age=outBirds>0?(harvestedAgeWeight+projectedAge*estimateBirds)/outBirds:projectedAge;
     const ip=age>0&&fcr>0?(survival*bw*100)/(age*fcr):0;
 
     const dyn=calcFinance(a,ci,sz);
@@ -3657,7 +3659,7 @@ async function productionEstimatePage(){
       '<div class="estimate-history-grid estimate-history-performance">'+
         '<div><span>IN</span><strong>'+prodFmt(initial,0)+'</strong></div>'+
         '<div><span>OUT</span><strong>'+prodFmt(outBirds,0)+'</strong></div>'+
-        '<div><span>Umur</span><strong>'+prodFmt(age,0)+' hari</strong></div>'+
+        '<div><span>Umur Rata2</span><strong>'+prodFmt(age,2)+' hari</strong></div>'+
         '<div><span>Mort</span><strong>'+prodFmt(mort,2)+'%</strong></div>'+
         '<div><span>Pakan</span><strong>'+prodFmt(feedKg,0)+' Kg</strong></div>'+
         '<div><span>BW</span><strong>'+prodFmt(bw,3)+' Kg</strong></div>'+
@@ -8736,7 +8738,9 @@ async function buildDashboardModel(){
     const fc=initial>0?feedKg*1000/initial:0;
     const mort=initial>0?mortalityBirds/initial*100:0;
     const survival=initial>0?Math.min(100,outBirds/initial*100):0;
-    const age=ci?prodAge(ci.arrived_on,e.estimated_on):0;
+    const projectedAge=ci?prodAge(ci.arrived_on,e.estimated_on):0;
+    const harvestedAgeWeight=ci?priorHarvests.reduce((sum,h)=>sum+prodAge(ci.arrived_on,h.harvested_on)*prodNum(h.birds),0):0;
+    const age=outBirds>0?(harvestedAgeWeight+projectedAge*estimateBirds)/outBirds:projectedAge;
     const ip=age>0&&fcr>0?(survival*avgProjectedBw*100)/(age*fcr):0;
 
     const std=d.standards.find(row=>
@@ -8765,7 +8769,7 @@ async function buildDashboardModel(){
     const estimatedFarmerProfit=totalProjection-sapronakCost+ipBonus+fcrBonus;
     const revenuePerBird=initial>0?estimatedFarmerProfit/initial:0;
 
-    return {e,a,b,ci,initial,outBirds,fc,fcStd,mort,ip,revenuePerBird,age};
+    return {e,a,b,ci,initial,outBirds,age,mort,feedKg,bw:avgProjectedBw,fc,fcStd,ip,revenuePerBird};
   });
 
   const estimateRows=estimateDashboardData.map(x=>{
@@ -8783,14 +8787,17 @@ async function buildDashboardModel(){
   }).join('');
 
   const estimateCards=estimateDashboardData.map(x=>{
-    return '<article class="owner-estimate-card"><div class="owner-estimate-head"><div><strong>'+esc(x.b?shortBarnLabel(x.b):'-')+'</strong><small>'+prodDateId(x.e.estimated_on)+'</small></div><span>'+x.age+' hari</span></div>'+
+    return '<article class="owner-estimate-card"><div class="owner-estimate-head"><div><strong>'+esc(x.b?shortBarnLabel(x.b):'-')+'</strong><small>'+prodDateId(x.e.estimated_on)+'</small></div><span>Estimasi</span></div>'+
       '<div class="owner-estimate-metrics">'+
         '<div><span>IN</span><b>'+prodFmt(x.initial,0)+'</b></div>'+
         '<div><span>OUT</span><b>'+prodFmt(x.outBirds,0)+'</b></div>'+
-        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</b></div>'+
+        '<div><span>Umur Rata2</span><b>'+prodFmt(x.age,2)+' hari</b></div>'+
         '<div><span>Mort</span><b>'+prodFmt(x.mort,2)+'%</b></div>'+
+        '<div><span>Pakan</span><b>'+prodFmt(x.feedKg,0)+' Kg</b></div>'+
+        '<div><span>BW</span><b>'+prodFmt(x.bw,3)+' Kg</b></div>'+
+        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</b></div>'+
         '<div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div>'+
-        '<div><span>Pend./Ekor Kontrak</span><b>Rp '+prodFmt(x.revenuePerBird,0)+'</b></div>'+
+        '<div><span>Pend./Ekor</span><b>Rp '+prodFmt(x.revenuePerBird,0)+'</b></div>'+
       '</div></article>';
   }).join('');
 
