@@ -3206,7 +3206,7 @@ async function recordingPplPage(){
     const cumFeed=prev.reduce((s,x)=>s+prodNum(x.feed_kg),0);
     const initial=prodNum(ci.received)-prodNum(ci.doa);
     const harvestedToDate=d.harvests
-      .filter(h=>h.contract_assignment_id===r.contract_assignment_id&&h.harvested_on<=r.recorded_on)
+      .filter(h=>h.contract_assignment_id===r.contract_assignment_id&&h.harvested_on<r.recorded_on)
       .reduce((s,h)=>s+prodNum(h.birds),0);
     const population=Math.max(0,initial-cumDead-harvestedToDate);
     const ws=samples.filter(s=>s.recording_id===r.id).map(s=>prodNum(s.weight_g));
