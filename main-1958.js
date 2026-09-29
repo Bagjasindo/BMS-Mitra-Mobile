@@ -3394,7 +3394,23 @@ async function recordingPplPage(){
     if(weights.some(x=>x<=0))return msg('Bobot sampel wajib diisi.');
     const feedUnits=prodNum(f.feed_units.value);
     if(feedUnits<=0)return msg('Jumlah pakan dipakai harus lebih dari 0.');
-    if(feedUnits>prodNum(stock.remaining_units))return msg('Pemakaian melebihi sisa stok. Sisa '+prodFmt(stock.remaining_units,2)+' '+(stock.unit||'Satuan')+'.');
+    const {data:latestStockRows,error:latestStockError}=await db.rpc('production_feed_stock',{p_contract_assignment_id:a.id});
+    if(latestStockError)return msg('Gagal mengecek stok pakan terbaru: '+latestStockError.message);
+    let latestStock=(latestStockRows||[]).find(x=>x.item_id===stock.item_id)||null;
+    if(editingId){
+      const editRec=recs.find(x=>x.id===editingId);
+      if(editRec&&editRec.feed_item_id===stock.item_id&&latestStock){
+        latestStock={...latestStock,remaining_units:prodNum(latestStock.remaining_units)+prodNum(editRec.feed_quantity_units)};
+      }
+    }
+    if(!latestStock||prodNum(latestStock.remaining_units)<=0){
+      await refreshFeedStock();
+      return msg('Stok pakan yang dipilih sudah habis. Pilih pakan lain yang masih tersedia.');
+    }
+    if(feedUnits>prodNum(latestStock.remaining_units)){
+      await refreshFeedStock(stock.item_id);
+      return msg('Pemakaian melebihi sisa stok terbaru. Sisa '+prodFmt(latestStock.remaining_units,2)+' '+(latestStock.unit||'Satuan')+'.');
+    }
     currentDay=editingId?editingDay:targetDayFor(a.id);
     if(!editingId&&recs.some(r=>r.contract_assignment_id===a.id&&prodNum(r.age_days)===currentDay)){
       return msg('Recording Hari '+currentDay+' sudah diisi. Gunakan tombol Edit pada riwayat recording.');
