@@ -3171,7 +3171,11 @@ async function recordingPplPage(){
   ]);
   const recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
   const recordingAssignmentId=window.__pplRecordingAssignment||'';
-  const historyRecs=recordingAssignmentId?recs.filter(r=>r.contract_assignment_id===recordingAssignmentId):[];
+  const historyAssignmentIds=[...new Set(recs.map(r=>r.contract_assignment_id).filter(Boolean))];
+  const historyAssignments=d.assignments.filter(a=>historyAssignmentIds.includes(a.id));
+  let historyAssignmentId=window.__pplRecordingHistoryAssignment||recordingAssignmentId||'';
+  if(historyAssignmentId&&!historyAssignmentIds.includes(historyAssignmentId))historyAssignmentId='';
+  const historyRecs=historyAssignmentId?recs.filter(r=>r.contract_assignment_id===historyAssignmentId):[];
   window.__bmsTxnList=window.__bmsTxnList||{};
   const oldRecordingPage=window.__bmsTxnList.pplRecording?.page||0;
   window.__bmsTxnList.pplRecording={from:'',to:'',barn:'',assignment:'',status:'',page:oldRecordingPage};
@@ -3222,9 +3226,13 @@ async function recordingPplPage(){
     metricRows.push({r,a,population,depl,bwg,cumFeed,fi,fcr,adg,ip,st,stdFeedTotalKg});
   }
 
-  const selectedHistoryAssignment=d.assignments.find(a=>a.id===recordingAssignmentId);
-  html+='<section class="panel"><h3>Riwayat Recording</h3>'+
-    '<p class="muted">'+(selectedHistoryAssignment?'Menampilkan riwayat kandang yang sedang dipilih. Pilih kandang lain di form atas untuk mengganti riwayat.':'Pilih kandang pada form di atas untuk menampilkan riwayat recording.')+'</p>'+
+  const selectedHistoryAssignment=d.assignments.find(a=>a.id===historyAssignmentId);
+  html+='<section class="panel"><h3>Riwayat Recording Harian</h3>'+
+    '<p class="muted">Pilih kandang / siklus untuk menampilkan seluruh history recording harian yang sudah tersimpan.</p>'+
+    '<label>Pilih Kandang / Siklus<select id="prodRecHistoryAssignment"><option value="">Pilih History Recording</option>'+
+      historyAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(historyAssignmentId===a.id?'selected':'')+'>'+esc(prodAssignmentOption(d,a)+(a.active?' · AKTIF':' · SELESAI'))+'</option>').join('')+
+    '</select></label>'+
+    (selectedHistoryAssignment?'<p class="muted" style="margin-top:8px">Menampilkan: <strong>'+esc(prodAssignmentOption(d,selectedHistoryAssignment))+'</strong></p>':'')+
     '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Populasi</th><th>Mati + Afkir</th><th>Bobot Rata2</th><th>Pakan Kumulatif</th><th>FCR</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
     '<div class="inline-actions" style="margin-top:10px"><button type="button" id="prodPerfPrev">Sebelumnya</button><span id="prodPerfPage" class="muted"></span><button type="button" id="prodPerfNext">Berikutnya</button></div>'+
     '<details style="margin-top:14px"><summary><strong>Lihat Detail Teknis (opsional)</strong></summary>'+
@@ -3260,6 +3268,13 @@ async function recordingPplPage(){
   };
   document.getElementById('prodPerfPrev').onclick=()=>{txnRecording.st.page=Math.max(0,txnRecording.st.page-1);recordingPplPage()};
   document.getElementById('prodPerfNext').onclick=()=>{txnRecording.st.page=Math.min(txnRecording.pages-1,txnRecording.st.page+1);recordingPplPage()};
+  const historySelect=document.getElementById('prodRecHistoryAssignment');
+  if(historySelect)historySelect.onchange=async()=>{
+    window.__pplRecordingHistoryAssignment=historySelect.value||'';
+    window.__bmsTxnList=window.__bmsTxnList||{};
+    window.__bmsTxnList.pplRecording={from:'',to:'',barn:'',assignment:'',status:'',page:0};
+    await recordingPplPage();
+  };
   bindTxnList(txnRecording,()=>recordingPplPage());
 
   const f=document.getElementById('prodRec'),wr=document.getElementById('weightRows'),saveBtn=document.getElementById('prodRecSave'),cancelBtn=document.getElementById('prodRecCancel');
@@ -3368,6 +3383,7 @@ async function recordingPplPage(){
 
   f.assignment.onchange=async()=>{
     window.__pplRecordingAssignment=f.assignment.value||'';
+    if(f.assignment.value)window.__pplRecordingHistoryAssignment=f.assignment.value;
     window.__bmsTxnList=window.__bmsTxnList||{};
     window.__bmsTxnList.pplRecording={from:'',to:'',barn:'',assignment:'',status:'',page:0};
     await recordingPplPage();
