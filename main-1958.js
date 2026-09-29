@@ -3560,13 +3560,14 @@ async function productionEstimatePage(){
     db.from('recordings').select('contract_assignment_id,recorded_on,mortality,culling').not('contract_assignment_id','is',null)
   ]);
   const rows=d.scopeRows(er.data||[]),sizes=sr.data||[],recs=d.scopeRows(rr.data||[]);
-  const estimateAssignmentId=window.__pplEstimateAssignment||'';
-  const historyEstimates=estimateAssignmentId?rows.filter(x=>x.contract_assignment_id===estimateAssignmentId):rows;
+  const eligibleAssignments=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
+  const estimateAssignmentId=window.__pplEstimateAssignment||(eligibleAssignments.length===1?eligibleAssignments[0].id:'');
+  if(estimateAssignmentId)window.__pplEstimateAssignment=estimateAssignmentId;
+  const historyEstimates=estimateAssignmentId?rows.filter(x=>x.contract_assignment_id===estimateAssignmentId):[];
   window.__bmsTxnList=window.__bmsTxnList||{};
   const oldEstimatePage=window.__bmsTxnList.pplEstimate?.page||0;
   window.__bmsTxnList.pplEstimate={from:'',to:'',barn:'',assignment:'',status:'',page:oldEstimatePage};
   const txnEstimate=txnListState(historyEstimates,'pplEstimate','estimated_on',5,null,'barn_id',{}),pageRows=txnEstimate.rows;
-  const eligibleAssignments=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
 
   const calcFinance=(a,ci,sz)=>{
     let revenue=0,totalBirds=0,totalBiomass=0;
@@ -3600,7 +3601,7 @@ async function productionEstimatePage(){
 
   const selectedEstimateAssignment=d.assignments.find(a=>a.id===estimateAssignmentId);
   html+='<section class="panel"><h3>Riwayat Estimasi</h3>'+
-    '<p class="muted">'+(selectedEstimateAssignment?'Menampilkan riwayat estimasi kandang yang sedang dipilih.':'Menampilkan seluruh riwayat estimasi yang dapat diakses akun ini.')+'</p>'+
+    '<p class="muted">'+(selectedEstimateAssignment?'Menampilkan riwayat estimasi kandang yang sedang dipilih.':'Pilih kandang aktif untuk menampilkan riwayat estimasi.')+'</p>'+
     '<div class="tablewrap"><table><thead><tr>'+
     '<th>Kandang</th><th>Tanggal</th><th>Umur</th><th>Sisa Ayam</th><th>BW Est.</th>'+
     '<th>Panen Aktual Marketing</th><th>Proyeksi Sisa Panen</th><th>Total Proyeksi</th><th>Aksi</th>'+
