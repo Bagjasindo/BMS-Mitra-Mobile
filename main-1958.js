@@ -2132,7 +2132,7 @@ async function marketingContractHarvestPage(editId=null,mode='MITRA'){
   const [br,ar,cr,hr,lpr,cur]=await Promise.all([
     db.from('barns').select('id,code,name,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
-    db.from('contracts').select('id,number').is('cycle_id',null),
+    db.from('contracts').select('id,number,doc_price,pre_starter_price,starter_price,finisher_price,ovk_price,ovk_price_basis,ovk_vat_percent').is('cycle_id',null),
     db.from('marketing_contract_harvests').select('*').order('harvested_on',{ascending:false}).order('created_at',{ascending:false}),
     db.from('contract_live_prices').select('contract_id,min_weight_kg,max_weight_kg,price_per_kg').order('min_weight_kg'),
     db.from('marketing_customers').select('id,name,address,phone,active').eq('active',true).order('name',{ascending:true})
@@ -3126,6 +3126,22 @@ function estimateStandardFcr(d,a,age){
   }
   return prodNum((lower||upper)?.std_fcr);
 }
+function estimateFeedPricePerKg(contract,item){
+  const phase=String(item?.feed_phase||'').toLowerCase();
+  if(phase.includes('pre'))return prodNum(contract?.pre_starter_price);
+  if(phase.includes('starter'))return prodNum(contract?.starter_price);
+  if(phase.includes('fin'))return prodNum(contract?.finisher_price);
+  return 0;
+}
+function estimateUsedFeedCost(d,a,recs){
+  const contract=d.masters.find(c=>c.id===a?.master_contract_id);
+  let cost=0;
+  for(const r of recs||[]){
+    const item=d.feedItems.find(i=>i.id===r.feed_item_id);
+    cost+=prodNum(r.feed_kg)*estimateFeedPricePerKg(contract,item);
+  }
+  return cost;
+}
 function prodAssignmentOption(d,a){
   return assignmentIdentity(d.assignments,d.barns,d.masters,a);
 }
@@ -3591,7 +3607,7 @@ async function productionEstimatePage(){
   const [er,sr,rr,bonusR,shipR,shipItemR,returnR,returnItemR,itemR]=await Promise.all([
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
     db.from('production_estimate_sizes').select('*'),
-    db.from('recordings').select('contract_assignment_id,recorded_on,mortality,culling,feed_kg').not('contract_assignment_id','is',null),
+    db.from('recordings').select('contract_assignment_id,recorded_on,mortality,culling,feed_kg,feed_item_id').not('contract_assignment_id','is',null),
     db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
     db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date'),
     db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
@@ -3681,7 +3697,11 @@ async function productionEstimatePage(){
       (v.min_value==null||value>=prodNum(v.min_value))&&
       (v.max_value==null||value<prodNum(v.max_value))
     )?.rupiah_per_kg);
-    const sapronakCost=prodNum(d.rhppCosts.find(v=>v.contract_assignment_id===x.contract_assignment_id)?.net_sapronak_cost);
+    const rhppCostRow=d.rhppCosts.find(v=>v.contract_assignment_id===x.contract_assignment_id);
+    const usedFeedCost=estimateUsedFeedCost(d,a,recToDate);
+    const sapronakCost=Math.max(0,
+      prodNum(rhppCostRow?.net_sapronak_cost)-prodNum(rhppCostRow?.feed_cost)+usedFeedCost
+    );
     const ipBonus=totalProjectedKg*matchBonus('IP',ip);
     const fcrDiff=fcrStd>0?fcrStd-fcr:0;
     const fcrBonus=fcrDiff>0?totalProjectedKg*matchBonus('FCR_DIFFERENCE',fcrDiff):0;
@@ -3723,15 +3743,24 @@ async function productionEstimatePage(){
       });
     const sapTotal=sapRows.reduce((sum,g)=>sum+g.shipValue-g.retValue,0);
     const sapronakHtml=sapRows.length
-      ?'<div class="tablewrap estimate-sapronak-table"><table><thead><tr><th>Sapronak</th><th>Masuk</th><th>Retur</th><th>Bersih</th><th>Harga Kontrak</th><th>Nilai</th></tr></thead><tbody>'+
+      ?'<div class="tablewrap estimate-sapronak-table"><table><thead><tr><th>Sapronak</th><th>Masuk</th><th>Terpakai / Retur</th><th>Sisa / Bersih</th><th>Harga Kontrak</th><th>Beban Estimasi</th></tr></thead><tbody>'+
         sapRows.map(g=>{
           const netQty=g.shipQty-g.retQty;
           const netValue=g.shipValue-g.retValue;
-          const price=netQty!==0?netValue/netQty:(g.shipQty?g.shipValue/g.shipQty:0);
           const label=[g.item.name,g.item.category==='PAKAN'&&g.item.feed_phase?g.item.feed_phase:''].filter(Boolean).join(' · ');
+          if(g.item.category==='PAKAN'){
+            const usedKg=recToDate.filter(r=>r.feed_item_id===g.item.id).reduce((sum,r)=>sum+prodNum(r.feed_kg),0);
+            const contract=d.masters.find(c=>c.id===a?.master_contract_id);
+            const priceKg=estimateFeedPricePerKg(contract,g.item);
+            const usedValue=usedKg*priceKg;
+            const incomingKg=g.shipKg-g.retKg;
+            const stockKg=Math.max(0,incomingKg-usedKg);
+            return '<tr><td>'+esc(label)+'</td><td class="num">'+prodFmt(incomingKg,0)+' Kg</td><td class="num">'+prodFmt(usedKg,0)+' Kg</td><td class="num"><strong>'+prodFmt(stockKg,0)+' Kg</strong></td><td class="num">Rp '+prodFmt(priceKg,0)+'/Kg</td><td class="num">Rp '+prodFmt(usedValue,0)+'</td></tr>';
+          }
+          const price=netQty!==0?netValue/netQty:(g.shipQty?g.shipValue/g.shipQty:0);
           return '<tr><td>'+esc(label)+'</td><td class="num">'+prodFmt(g.shipQty,2)+' '+esc(g.item.unit||'')+'</td><td class="num">'+prodFmt(g.retQty,2)+' '+esc(g.item.unit||'')+'</td><td class="num"><strong>'+prodFmt(netQty,2)+' '+esc(g.item.unit||'')+'</strong></td><td class="num">Rp '+prodFmt(price,0)+'/'+esc(g.item.unit||'satuan')+'</td><td class="num">Rp '+prodFmt(netValue,0)+'</td></tr>';
         }).join('')+
-        '<tr class="estimate-sapronak-total"><td colspan="5"><strong>Total Sapronak Bersih</strong></td><td class="num"><strong>Rp '+prodFmt(sapTotal,0)+'</strong></td></tr>'+
+        '<tr class="estimate-sapronak-total"><td colspan="5"><strong>Total Beban Sapronak Estimasi</strong></td><td class="num"><strong>Rp '+prodFmt(sapronakCost,0)+'</strong></td></tr>'+
         '</tbody></table></div>'
       :'<p class="muted">Belum ada transaksi sapronak Logistik untuk estimasi ini.</p>';
 
@@ -3761,7 +3790,7 @@ async function productionEstimatePage(){
     (selectedEstimateAssignment?'<span class="pill">'+historyEstimates.length+' estimasi</span>':'')+'</div>'+
     '<div class="estimate-history-list">'+(estimateHistoryCards||'<p class="muted">Belum ada riwayat estimasi untuk kandang ini.</p>')+'</div>'+
     txnEstimate.pager+
-    '<p class="muted estimate-history-foot">Rumus simulasi: setiap panen aktual dan proyeksi sisa dinilai per BW memakai range harga kontrak; bonus IP, FCR, dan deplesi ikut dihitung. Estimasi tidak mengubah RHPP.</p></section>';
+    '<p class="muted estimate-history-foot">Rumus simulasi: nilai panen memakai harga kontrak per BW; biaya pakan hanya yang TERPAKAI di Recording dan dinilai sesuai harga kontrak per fase. Stok pakan yang belum terpakai tidak dibebankan. Estimasi tidak mengubah RHPP.</p></section>';
 
   layout(html);
   if(d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||returnR.error||returnItemR.error||itemR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||returnR.error||returnItemR.error||itemR.error).message);
@@ -8844,7 +8873,11 @@ async function buildDashboardModel(){
     };
 
     const totalProjection=priorRevenue+projectedRemainingRevenue;
-    const sapronakCost=prodNum(d.rhppCosts.find(v=>v.contract_assignment_id===e.contract_assignment_id)?.net_sapronak_cost);
+    const rhppCostRow=d.rhppCosts.find(v=>v.contract_assignment_id===e.contract_assignment_id);
+    const usedFeedCost=estimateUsedFeedCost(d,a,recToDate);
+    const sapronakCost=Math.max(0,
+      prodNum(rhppCostRow?.net_sapronak_cost)-prodNum(rhppCostRow?.feed_cost)+usedFeedCost
+    );
     const ipBonus=totalProjectedKg*matchBonus('IP',ip);
     const fcrDiff=fcrStd>0?fcrStd-fcr:0;
     const fcrBonus=fcrDiff>0?totalProjectedKg*matchBonus('FCR_DIFFERENCE',fcrDiff):0;
