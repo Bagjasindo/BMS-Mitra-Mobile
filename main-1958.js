@@ -8542,9 +8542,18 @@ async function buildDashboardModel(){
   const avg=k=>valid.length?valid.reduce((s,x)=>s+prodNum(x[k]),0)/valid.length:0;
   const ownerActiveBarnIds=new Set(active.map(a=>a.barn_id));
   const ownerRestingBarnCount=d.barns.filter(b=>b.active!==false&&!ownerActiveBarnIds.has(b.id)).length;
-  const ownerRunningInitial=metrics.reduce((sum,x)=>sum+prodNum(x.initial),0);
-  const ownerRunningHarvested=metrics.reduce((sum,x)=>sum+prodNum(x.harvested),0);
-  const ownerRunningPopulation=metrics.reduce((sum,x)=>sum+prodNum(x.population),0);
+  const ownerToday=prodToday();
+  const ownerRunningInitial=active.reduce((sum,a)=>{
+    const ci=d.chicks.find(x=>x.contract_assignment_id===a.id);
+    return sum+Math.max(0,prodNum(ci?.received)-prodNum(ci?.doa));
+  },0);
+  const ownerRunningDead=recs
+    .filter(r=>active.some(a=>a.id===r.contract_assignment_id))
+    .reduce((sum,r)=>sum+prodNum(r.mortality)+prodNum(r.culling),0);
+  const ownerRunningHarvested=d.harvests
+    .filter(h=>active.some(a=>a.id===h.contract_assignment_id)&&String(h.harvested_on||'')<=ownerToday)
+    .reduce((sum,h)=>sum+prodNum(h.birds),0);
+  const ownerRunningPopulation=Math.max(0,ownerRunningInitial-ownerRunningDead-ownerRunningHarvested);
   const ownerClosedRhpp=rhppFinalRows.filter(x=>prodNum(x.total_harvest_birds)>0);
   const ownerClosedTotals=ownerClosedRhpp.reduce((o,x)=>{
     const birds=prodNum(x.total_harvest_birds);
@@ -8702,7 +8711,7 @@ async function buildDashboardModel(){
     kpis:[
       {label:'Kandang Aktif',value:String(active.length),small:'periode berjalan'},
       {label:'Kandang Rehat',value:String(ownerRestingBarnCount),small:'tidak ada periode aktif'},
-      {label:'Total Sisa Ayam Berjalan',value:prodFmt(ownerRunningPopulation,0)+' ekor',small:'Populasi awal '+prodFmt(ownerRunningInitial,0)+' · Terpanen '+prodFmt(ownerRunningHarvested,0)+' · seluruh kandang aktif'},
+      {label:'Total Sisa Ayam Berjalan',value:prodFmt(ownerRunningPopulation,0)+' ekor',small:'Populasi awal '+prodFmt(ownerRunningInitial,0)+' · Terpanen '+prodFmt(ownerRunningHarvested,0)+' · Deplesi '+prodFmt(ownerRunningDead,0)+' · update '+prodDateId(ownerToday)},
       {label:'IP Gabungan Produksi Closed',value:prodFmt(ownerClosedIpTotal,2),small:'gabungan seluruh snapshot produksi CLOSED'}
     ],
     mainTitle:'Performa Kandang Terbaru',
