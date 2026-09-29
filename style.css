@@ -1739,8 +1739,9 @@ main,.panel,.card,.tablewrap,form{min-width:0}
 .owner-alert-row.danger span{
   background:#fff0f0!important;color:#b42318!important;border-color:#efcaca!important;
 }
-.owner-alert-row.production span{
-  background:#eef7ff!important;color:#1769aa!important;border-color:#cfe2f3!important;
+.owner-alert-row.production span,
+.owner-alert-row.danger span{
+  background:#fff0f0!important;color:#b42318!important;border-color:#efcaca!important;
 }
 .owner-alert-panel .muted{margin-top:-3px;margin-bottom:8px;font-size:9px}
 
