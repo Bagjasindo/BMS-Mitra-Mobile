@@ -9019,7 +9019,10 @@ async function buildDashboardModel(){
   }).join('');
 
   const estimateCards=estimateDashboardData.map(x=>{
-    return '<article class="owner-estimate-card"><div class="owner-estimate-head"><div><strong>'+esc(x.b?shortBarnLabel(x.b):'-')+'</strong><small>'+prodDateId(x.e.estimated_on)+'</small></div><span>Estimasi</span></div>'+
+    const canOpenEstimate=canViewTab('estimasi');
+    return '<article class="owner-estimate-card'+(canOpenEstimate?' owner-estimate-link':'')+'"'+
+      (canOpenEstimate?' data-open-estimate="'+esc(x.e.contract_assignment_id)+'" role="button" tabindex="0" aria-label="Buka data estimasi '+esc(x.b?shortBarnLabel(x.b):'kandang')+'"':'')+'>'+
+      '<div class="owner-estimate-head"><div><strong>'+esc(x.b?shortBarnLabel(x.b):'-')+'</strong><small>'+prodDateId(x.e.estimated_on)+'</small></div><span>'+(canOpenEstimate?'Lihat Estimasi':'Estimasi')+'</span></div>'+
       '<div class="owner-estimate-metrics">'+
         '<div><span>IN</span><b>'+prodFmt(x.initial,0)+'</b></div>'+
         '<div><span>OUT</span><b>'+prodFmt(x.outBirds,0)+'</b></div>'+
@@ -9162,6 +9165,24 @@ async function dashboard(){
   if(tab!=='dashboard'||!model)return;
   model.eyebrow=profile.role==='OWNER'?'OWNER · PRODUKSI':profile.role;
   renderDashboardTemplate(model);
+  root.querySelectorAll('[data-open-estimate]').forEach(card=>{
+    const openEstimate=()=>{
+      if(!canViewTab('estimasi'))return;
+      window.__pplEstimateAssignment=card.dataset.openEstimate||'';
+      window.__bmsTxnList=window.__bmsTxnList||{};
+      window.__bmsTxnList.pplEstimate={from:'',to:'',barn:'',assignment:'',status:'',page:0};
+      tab='estimasi';
+      logAppActivity('MENU_OPEN','estimasi',{label:title.estimasi||'Estimasi',source:'dashboard_estimate_card'});
+      render();
+    };
+    card.onclick=openEstimate;
+    card.onkeydown=e=>{
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        openEstimate();
+      }
+    };
+  });
 }
 
 async function marketingReports(){
