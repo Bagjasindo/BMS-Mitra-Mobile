@@ -3735,8 +3735,12 @@ async function productionEstimatePage(){
       g.retKg+=prodNum(v.quantity_kg);
       g.retValue+=prodNum(v.quantity)*prodNum(v.unit_price);
     });
+    recToDate.filter(r=>r.feed_item_id&&prodNum(r.feed_kg)>0).forEach(r=>{
+      const g=ensureSap(r.feed_item_id);
+      if(g)g.usedKg=(g.usedKg||0)+prodNum(r.feed_kg);
+    });
     const sapRows=[...sapMap.values()]
-      .filter(g=>g.item&&(g.shipQty||g.retQty))
+      .filter(g=>g.item&&(g.shipQty||g.retQty||prodNum(g.usedKg)>0))
       .sort((u,v)=>{
         const order={DOC:1,PAKAN:2,OVK:3,LAINNYA:4};
         return (order[u.item.category]||9)-(order[v.item.category]||9)||String(u.item.name||'').localeCompare(String(v.item.name||''));
@@ -3749,7 +3753,7 @@ async function productionEstimatePage(){
           const netValue=g.shipValue-g.retValue;
           const label=[g.item.name,g.item.category==='PAKAN'&&g.item.feed_phase?g.item.feed_phase:''].filter(Boolean).join(' · ');
           if(g.item.category==='PAKAN'){
-            const usedKg=recToDate.filter(r=>r.feed_item_id===g.item.id).reduce((sum,r)=>sum+prodNum(r.feed_kg),0);
+            const usedKg=prodNum(g.usedKg);
             const contract=d.masters.find(c=>c.id===a?.master_contract_id);
             const priceKg=estimateFeedPricePerKg(contract,g.item);
             const usedValue=usedKg*priceKg;
