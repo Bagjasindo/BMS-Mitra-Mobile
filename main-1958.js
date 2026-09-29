@@ -3392,6 +3392,7 @@ async function recordingPplPage(){
     const a=d.assignments.find(x=>x.id===f.assignment.value),ci=a&&d.chicks.find(x=>x.contract_assignment_id===a.id),stock=feedStock.find(x=>x.item_id===f.feed_item.value);
     if(!a||!ci||!stock)return msg('Lengkapi kontrak, Chick-In dan pakan tersedia.');
     if(weights.some(x=>x<=0))return msg('Bobot sampel wajib diisi.');
+    if(weights.some(x=>x>10))return msg('Bobot sampel harus diisi dalam Kg. Contoh: 1.87 untuk 1.870 gram, bukan 1870.');
     const feedUnits=prodNum(f.feed_units.value);
     if(feedUnits<=0)return msg('Jumlah pakan dipakai harus lebih dari 0.');
     const {data:latestStockRows,error:latestStockError}=await db.rpc('production_feed_stock',{p_contract_assignment_id:a.id});
@@ -8512,14 +8513,15 @@ async function buildDashboardModel(){
     const dead=rows.reduce((s,x)=>s+prodNum(x.mortality)+prodNum(x.culling),0);
     const feed=rows.reduce((s,x)=>s+prodNum(x.feed_kg),0);
     const latestDate=latest?.recorded_on||prodToday();
-    const harvested=d.harvests
-      .filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<=latestDate)
-      .reduce((s,h)=>s+prodNum(h.birds),0);
+    const priorHarvests=d.harvests
+      .filter(h=>h.contract_assignment_id===a.id&&h.harvested_on<latestDate);
+    const harvested=priorHarvests.reduce((s,h)=>s+prodNum(h.birds),0);
+    const harvestedKg=priorHarvests.reduce((s,h)=>s+prodNum(h.net_weight_kg),0);
     const population=Math.max(0,initial-dead-harvested);
     const ws=latest?samples.filter(s=>s.recording_id===latest.id).map(s=>prodNum(s.weight_g)):[];
     const bwg=ws.length?ws.reduce((s,x)=>s+x,0)/ws.length:prodNum(latest?.avg_weight_kg)*1000;
-    const bw=bwg/1000,biomass=population*bw;
-    const fcr=biomass>0?feed/biomass:0;
+    const bw=bwg/1000,standingBiomass=population*bw,totalProducedKg=standingBiomass+harvestedKg;
+    const fcr=totalProducedKg>0?feed/totalProducedKg:0;
     const dep=initial>0?dead/initial*100:0;
     const age=prodNum(latest?.age_days);
     const ip=age>0&&fcr>0?((100-dep)*bw*100)/(age*fcr):0;
