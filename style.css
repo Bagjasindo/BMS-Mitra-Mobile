@@ -3204,3 +3204,19 @@ main select.app-select-native{
   .estimate-economy-grid{grid-template-columns:1fr}
   .estimate-economy-total{grid-column:auto}
 }
+
+
+/* dashboard-estimate-direct-link-20260929 */
+.owner-estimate-link{
+  cursor:pointer;
+  transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;
+}
+.owner-estimate-link:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 14px rgba(20,54,78,.08);
+  border-color:#b8dbe5;
+}
+.owner-estimate-link:focus-visible{
+  outline:2px solid #12a8c4;
+  outline-offset:2px;
+}
