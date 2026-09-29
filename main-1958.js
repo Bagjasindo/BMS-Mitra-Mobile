@@ -3764,7 +3764,36 @@ async function productionEstimatePage(){
         '</tbody></table></div>'
       :'<p class="muted">Belum ada transaksi sapronak Logistik untuk estimasi ini.</p>';
 
-    const sizeHtml=sz.length?sz.map((v,i)=>'<div class="estimate-history-size"><span>Ukuran '+(i+1)+' · '+prodFmt(v.bw_kg,3)+' Kg</span><strong>'+prodFmt(v.birds,0)+' ekor</strong></div>').join(''):'<span class="muted">Tidak ada rincian ukuran.</span>';
+    const harvestContractRows=[
+      ...priorHarvests.map((h,i)=>{
+        const birds=prodNum(h.birds),kg=prodNum(h.net_weight_kg);
+        const rowBw=prodNum(h.avg_weight_kg)||(birds>0?kg/birds:0);
+        const price=estimateContractLivePrice(d,a,rowBw);
+        return {label:'Aktual '+(i+1),birds,bw:rowBw,kg,price,value:kg*price};
+      }),
+      ...sz.map((v,i)=>{
+        const birds=prodNum(v.birds),rowBw=prodNum(v.bw_kg),kg=birds*rowBw;
+        const price=estimateContractLivePrice(d,a,rowBw);
+        return {label:'Proyeksi '+(i+1),birds,bw:rowBw,kg,price,value:kg*price};
+      })
+    ];
+    const harvestContractHtml=harvestContractRows.length
+      ?'<div class="tablewrap estimate-harvest-contract-table"><table><thead><tr><th>Jenis</th><th>Ekor</th><th>BW</th><th>Total Kg</th><th>Harga Kontrak/Kg</th><th>Nilai</th></tr></thead><tbody>'+
+        harvestContractRows.map(r=>'<tr><td>'+esc(r.label)+'</td><td class="num">'+prodFmt(r.birds,0)+'</td><td class="num">'+prodFmt(r.bw,3)+' Kg</td><td class="num">'+prodFmt(r.kg,2)+' Kg</td><td class="num">Rp '+prodFmt(r.price,0)+'</td><td class="num">Rp '+prodFmt(r.value,0)+'</td></tr>').join('')+
+        '<tr class="estimate-harvest-contract-total"><td colspan="3"><strong>Total Panen Kontrak</strong></td><td class="num"><strong>'+prodFmt(totalProjectedKg,2)+' Kg</strong></td><td></td><td class="num"><strong>Rp '+prodFmt(totalProjection,0)+'</strong></td></tr>'+
+        '</tbody></table></div>'
+      :'<p class="muted">Belum ada rincian panen kontrak.</p>';
+
+    const economicHtml=
+      '<div class="estimate-economy-grid">'+
+        '<div><span>Total Nilai Panen Kontrak</span><strong>Rp '+prodFmt(totalProjection,0)+'</strong></div>'+
+        '<div><span>Total Beban Sapronak Estimasi</span><strong>Rp '+prodFmt(sapronakCost,0)+'</strong></div>'+
+        '<div><span>Bonus IP</span><strong>Rp '+prodFmt(ipBonus,0)+'</strong></div>'+
+        '<div><span>Bonus FCR</span><strong>Rp '+prodFmt(fcrBonus,0)+'</strong></div>'+
+        '<div><span>Bonus Deplesi</span><strong>Rp '+prodFmt(depletionBonus,0)+'</strong></div>'+
+        '<div><span>Laba Estimasi</span><strong>Rp '+prodFmt(farmerProfit,0)+'</strong></div>'+
+        '<div class="estimate-economy-total"><span>Pend./Ekor</span><strong>Rp '+prodFmt(revenuePerBird,0)+'</strong></div>'+
+      '</div>';
     return '<article class="estimate-history-card">'+
       '<div class="estimate-history-head"><div><h4>'+esc(a?prodAssignmentOption(d,a):'-')+'</h4><p>'+prodDateId(x.estimated_on)+'</p></div><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></div>'+
       '<div class="estimate-history-grid estimate-history-performance">'+
@@ -3780,7 +3809,8 @@ async function productionEstimatePage(){
         '<div class="estimate-history-total"><span>Pend./Ekor Kontrak</span><strong>Rp '+prodFmt(revenuePerBird,0)+'</strong></div>'+
       '</div>'+
       '<div class="estimate-history-sapronak"><div class="estimate-history-subtitle">Rekap Sapronak · Harga Kontrak</div>'+sapronakHtml+'</div>'+
-      '<div class="estimate-history-sizes"><div class="estimate-history-subtitle">Rincian Ukuran / BW</div>'+sizeHtml+'</div>'+
+      '<div class="estimate-history-sizes"><div class="estimate-history-subtitle">Rincian Panen · Harga Kontrak per Kg</div>'+harvestContractHtml+'</div>'+
+      '<div class="estimate-history-sizes"><div class="estimate-history-subtitle">Ringkasan Ekonomi Estimasi</div>'+economicHtml+'</div>'+
       (x.notes?'<div class="estimate-history-notes"><span>Catatan</span><p>'+esc(x.notes)+'</p></div>':'')+
     '</article>';
   }).join('');
