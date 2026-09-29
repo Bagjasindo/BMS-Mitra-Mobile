@@ -3583,7 +3583,7 @@ async function productionEstimatePage(){
   };
 
   let html='<section class="panel"><h3>Estimasi</h3><p class="muted">Simulasi produksi memakai kematian/culling dari Recording sebagai acuan sisa ayam dan Panen aktual Marketing. Estimasi tidak memengaruhi RHPP.</p>'+
-    '<form id="prodEst" class="form-vertical">'+
+    '<form id="prodEst" class="form-vertical estimate-form">'+
     '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+eligibleAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(estimateAssignmentId===a.id?'selected':'')+'>'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
     '<input type="hidden" name="date">'+
     '<p id="estDate" class="muted">Tanggal Estimasi: -</p>'+
@@ -3680,8 +3680,8 @@ async function productionEstimatePage(){
     document.getElementById('estAge').textContent='Umur: '+(ci?age+' hari':'-');
     document.getElementById('estActualHarvest').textContent='Panen aktual sebelum tanggal estimasi: '+prodFmt(harvBirds,0)+' ekor';
     document.getElementById('estPreview').innerHTML=
-      '<div class="panel" style="margin:12px 0 0;padding:14px"><h4 style="margin-top:0">Ringkasan Estimasi</h4>'+
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'+
+      '<div class="panel estimate-summary-panel"><h4 style="margin-top:0">Ringkasan Estimasi</h4>'+
+        '<div class="estimate-summary-grid">'+
           '<div class="rhpp-summary-card"><span>BW Proyeksi Gabungan</span><strong>'+prodFmt(bw,3)+' Kg</strong></div>'+
           '<div class="rhpp-summary-card"><span>Panen Aktual Marketing</span><strong>Rp '+prodFmt(priorRevenue,0)+'</strong></div>'+
           '<div class="rhpp-summary-card"><span>Proyeksi Sisa Panen</span><strong>Rp '+prodFmt(fin.revenue,0)+'</strong></div>'+
