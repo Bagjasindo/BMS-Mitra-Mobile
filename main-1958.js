@@ -3177,9 +3177,6 @@ async function recordingPplPage(){
   if(historyAssignmentId&&!historyAssignmentIds.includes(historyAssignmentId))historyAssignmentId='';
   const historyRecs=historyAssignmentId?recs.filter(r=>r.contract_assignment_id===historyAssignmentId):[];
   window.__bmsTxnList=window.__bmsTxnList||{};
-  const oldRecordingPage=window.__bmsTxnList.pplRecording?.page||0;
-  window.__bmsTxnList.pplRecording={from:'',to:'',barn:'',assignment:'',status:'',page:oldRecordingPage};
-  const txnRecording=txnListState(historyRecs,'pplRecording','recorded_on',5,null,'barn_id',{});
   let html='<section class="panel"><h3>Recording Harian PPL</h3><p class="muted">Isi data lapangan saja. FCR, ADG, IP dan perbandingan standar dihitung otomatis oleh sistem.</p><form id="prodRec" class="form-vertical">'+
     '<div class="panel" style="padding:14px"><h4>1. Pilih Kandang</h4>'+
       '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih Kandang</option>'+d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'" '+(recordingAssignmentId===a.id?'selected':'')+'>'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
@@ -3234,7 +3231,7 @@ async function recordingPplPage(){
     '</select></label>'+
     (selectedHistoryAssignment?'<p class="muted" style="margin-top:8px">Menampilkan: <strong>'+esc(prodAssignmentOption(d,selectedHistoryAssignment))+'</strong></p>':'')+
     '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Populasi</th><th>Mati + Afkir</th><th>Bobot Rata2</th><th>Pakan Kumulatif</th><th>FCR</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
-    '<div class="inline-actions" style="margin-top:10px"><button type="button" id="prodPerfPrev">Sebelumnya</button><span id="prodPerfPage" class="muted"></span><button type="button" id="prodPerfNext">Berikutnya</button></div>'+
+    '<p id="prodPerfPage" class="muted" style="margin-top:10px"></p>'+
     '<details style="margin-top:14px"><summary><strong>Lihat Detail Teknis (opsional)</strong></summary>'+
       '<p class="muted">Deplesi, bobot vs standar, pakan vs standar, feed intake, FCR, ADG dan IP.</p>'+
       '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Deplesi</th><th>BW Aktual / Standar</th><th>Pakan Aktual / Standar</th><th>Feed Intake</th><th>FCR</th><th>ADG</th><th>IP</th></tr></thead><tbody id="prodPerfTechBody"></tbody></table></div>'+
@@ -3242,12 +3239,14 @@ async function recordingPplPage(){
   layout(html);
   if(d.err||rr.error||sr.error)msg((d.err||rr.error||sr.error).message);
 
-  const allowedRecordingIds=new Set(txnRecording.rows.map(x=>x.id));
-  const sortedRows=metricRows.filter(x=>allowedRecordingIds.has(x.r.id)).slice().sort((a,b)=>prodNum(b.r.age_days)-prodNum(a.r.age_days));
-  const pageSize=5,totalPages=1;
-  let page=1;
+  const selectedRecordingIds=new Set(historyRecs.map(x=>x.id));
+  const sortedRows=metricRows.filter(x=>selectedRecordingIds.has(x.r.id)).slice().sort((a,b)=>{
+    const dayDiff=prodNum(b.r.age_days)-prodNum(a.r.age_days);
+    if(dayDiff)return dayDiff;
+    return String(b.r.recorded_on||'').localeCompare(String(a.r.recorded_on||''));
+  });
   const renderPerf=()=>{
-    const rows=sortedRows.slice(0,pageSize);
+    const rows=sortedRows;
     document.getElementById('prodPerfBody').innerHTML=rows.map(x=>{
       const dead=prodNum(x.r.mortality)+prodNum(x.r.culling);
       return '<tr><td>'+esc(prodAssignmentOption(d,x.a))+'</td><td><strong>'+prodFmt(x.r.age_days,0)+'</strong></td><td>'+prodFmt(x.population,0)+'</td><td>'+prodFmt(dead,0)+'</td>'+
@@ -3260,22 +3259,15 @@ async function recordingPplPage(){
       '<td>'+prodFmt(x.cumFeed,2)+' / '+(x.stdFeedTotalKg!=null?prodFmt(x.stdFeedTotalKg,2):'-')+' Kg</td>'+
       '<td>'+prodFmt(x.fi,1)+' g/ekor</td><td>'+prodFmt(x.fcr,3)+'</td><td>'+prodFmt(x.adg,1)+' g</td><td>'+prodFmt(x.ip,1)+'</td></tr>'
     ).join('');
-    document.getElementById('prodPerfPage').textContent='Halaman '+(txnRecording.st.page+1)+' / '+txnRecording.pages+' · '+txnRecording.total+' data';
-    document.getElementById('prodPerfPrev').disabled=txnRecording.st.page<=0;
-    document.getElementById('prodPerfNext').disabled=txnRecording.st.page>=txnRecording.pages-1;
+    document.getElementById('prodPerfPage').textContent=historyAssignmentId?(sortedRows.length+' data recording · terbaru ke terlama'):'Pilih kandang / siklus untuk menampilkan history recording.';
     document.querySelectorAll('[data-edit-recording]').forEach(b=>b.onclick=()=>startEdit(b.dataset.editRecording));
     bindAdminTransactionDeletes(()=>recordingPplPage());
   };
-  document.getElementById('prodPerfPrev').onclick=()=>{txnRecording.st.page=Math.max(0,txnRecording.st.page-1);recordingPplPage()};
-  document.getElementById('prodPerfNext').onclick=()=>{txnRecording.st.page=Math.min(txnRecording.pages-1,txnRecording.st.page+1);recordingPplPage()};
   const historySelect=document.getElementById('prodRecHistoryAssignment');
   if(historySelect)historySelect.onchange=async()=>{
     window.__pplRecordingHistoryAssignment=historySelect.value||'';
-    window.__bmsTxnList=window.__bmsTxnList||{};
-    window.__bmsTxnList.pplRecording={from:'',to:'',barn:'',assignment:'',status:'',page:0};
     await recordingPplPage();
   };
-  bindTxnList(txnRecording,()=>recordingPplPage());
 
   const f=document.getElementById('prodRec'),wr=document.getElementById('weightRows'),saveBtn=document.getElementById('prodRecSave'),cancelBtn=document.getElementById('prodRecCancel');
   let weights=[0],editingId=null,editingDay=null,feedStock=[];
@@ -3384,8 +3376,6 @@ async function recordingPplPage(){
   f.assignment.onchange=async()=>{
     window.__pplRecordingAssignment=f.assignment.value||'';
     if(f.assignment.value)window.__pplRecordingHistoryAssignment=f.assignment.value;
-    window.__bmsTxnList=window.__bmsTxnList||{};
-    window.__bmsTxnList.pplRecording={from:'',to:'',barn:'',assignment:'',status:'',page:0};
     await recordingPplPage();
   };
   f.feed_item.onchange=calc;f.feed_units.oninput=calc;calc();renderPerf();
