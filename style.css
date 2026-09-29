@@ -3133,3 +3133,29 @@ main select.app-select-native{
   .estimate-history-head .inline-actions{justify-content:flex-start}
   .estimate-history-grid{grid-template-columns:1fr 1fr}
 }
+
+
+/* estimate-sapronak-recap-20260929 */
+.estimate-history-sapronak{
+  margin-top:10px;
+  padding:9px;
+  border:1px solid #e7edf1;
+  border-radius:8px;
+  background:#fbfcfd;
+}
+.estimate-sapronak-table{margin-top:5px}
+.estimate-sapronak-table table{min-width:680px}
+.estimate-sapronak-table th,
+.estimate-sapronak-table td{
+  padding:6px 7px;
+  font-size:9.5px;
+}
+.estimate-sapronak-table th{white-space:nowrap}
+.estimate-sapronak-table .num{text-align:right;white-space:nowrap}
+.estimate-sapronak-total td{
+  background:#f2f7fa;
+  border-top:2px solid #d5e2e9;
+}
+@media(max-width:520px){
+  .estimate-history-sapronak{padding:7px}
+}
