@@ -8736,15 +8736,15 @@ async function buildDashboardModel(){
   }).join('');
 
   const estimateCards=estimateDashboardData.map(x=>{
-    return '<article class="owner-mobile-card"><div class="owner-mobile-card-head"><strong>'+esc(x.b?shortBarnLabel(x.b):'-')+'</strong><span>'+x.age+' hari</span></div>'+
-      '<div class="owner-mobile-metrics">'+
+    return '<article class="owner-estimate-card"><div class="owner-estimate-head"><div><strong>'+esc(x.b?shortBarnLabel(x.b):'-')+'</strong><small>'+prodDateId(x.e.estimated_on)+'</small></div><span>'+x.age+' hari</span></div>'+
+      '<div class="owner-estimate-metrics">'+
         '<div><span>IN</span><b>'+prodFmt(x.initial,0)+'</b></div>'+
         '<div><span>OUT</span><b>'+prodFmt(x.outBirds,0)+'</b></div>'+
-        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+(x.fcStd>0?' / '+prodFmt(x.fcStd,0):'')+'</b></div>'+
+        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</b></div>'+
         '<div><span>Mort</span><b>'+prodFmt(x.mort,2)+'%</b></div>'+
         '<div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div>'+
         '<div><span>Pend./Ekor Kontrak</span><b>Rp '+prodFmt(x.revenuePerBird,0)+'</b></div>'+
-      '</div><small>'+prodDateId(x.e.estimated_on)+'</small></article>';
+      '</div></article>';
   }).join('');
 
   const leagueRaw=abkResults.map(x=>{
@@ -8850,7 +8850,7 @@ async function buildDashboardModel(){
     detailTitle:'Estimasi per Kandang',
     detailSubtitle:'Estimasi produksi terakhir yang tersimpan.',
     detailBadge:'<span class="pill">'+latestEst.length+' estimasi</span>',
-    detailHtml:'<div class="owner-desktop-only tablewrap owner-estimate-scroll"><table class="owner-table"><thead><tr><th>Kandang</th><th>Tanggal</th><th>Umur</th><th class="num">IN</th><th class="num">OUT</th><th class="num">FC</th><th class="num">Mort</th><th class="num">IP</th><th class="num">Pend./Ekor Kontrak</th></tr></thead><tbody>'+estimateRows+'</tbody></table></div><div class="owner-mobile-only owner-mobile-list">'+estimateCards+'</div>'+(latestEst.length?'':'<p class="muted">Belum ada estimasi aktif.</p>'),
+    detailHtml:'<div class="owner-estimate-grid">'+estimateCards+'</div>'+(latestEst.length?'':'<p class="muted">Belum ada estimasi aktif.</p>'),
     bottomTitle:'Klasemen Performa ABK',
     bottomSubtitle:'Musim sejak '+prodDateId(leagueSetting.data?.season_start||'')+' · Bobot: Pendapatan/Ekor 50% · FCR 30% · IP 20%',
     bottomBadge:'<span class="owner-trophy">🏆</span>',
