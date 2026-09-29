@@ -3553,13 +3553,14 @@ async function productionVisitPage(){
   };
 }
 async function productionEstimatePage(){
-  const d=await productionBase({includeRhppCosts:false});
-  const [er,sr,rr]=await Promise.all([
+  const d=await productionBase();
+  const [er,sr,rr,bonusR]=await Promise.all([
     db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
     db.from('production_estimate_sizes').select('*'),
-    db.from('recordings').select('contract_assignment_id,recorded_on,mortality,culling').not('contract_assignment_id','is',null)
+    db.from('recordings').select('contract_assignment_id,recorded_on,mortality,culling,feed_kg').not('contract_assignment_id','is',null),
+    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg')
   ]);
-  const rows=d.scopeRows(er.data||[]),sizes=sr.data||[],recs=d.scopeRows(rr.data||[]);
+  const rows=d.scopeRows(er.data||[]),sizes=sr.data||[],recs=d.scopeRows(rr.data||[]),bonusRows=bonusR.data||[];
   const eligibleAssignments=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
   const estimateAssignmentId=window.__pplEstimateAssignment||(eligibleAssignments.length===1?eligibleAssignments[0].id:'');
   if(estimateAssignmentId)window.__pplEstimateAssignment=estimateAssignmentId;
@@ -3604,25 +3605,65 @@ async function productionEstimatePage(){
     const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
     const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
     const sz=sizes.filter(s=>s.estimate_id===x.id);
-    const birds=sz.reduce((s,v)=>s+prodNum(v.birds),0);
-    const bio=sz.reduce((s,v)=>s+prodNum(v.birds)*prodNum(v.bw_kg),0);
-    const bw=birds?bio/birds:0;
+    const estimateBirds=sz.reduce((s,v)=>s+prodNum(v.birds),0);
+    const estimateBio=sz.reduce((s,v)=>s+prodNum(v.birds)*prodNum(v.bw_kg),0);
     const age=ci?prodAge(ci.arrived_on,x.estimated_on):0;
+    const initial=ci?Math.max(0,prodNum(ci.received)-prodNum(ci.doa)):0;
+
+    const recToDate=recs.filter(r=>r.contract_assignment_id===x.contract_assignment_id&&String(r.recorded_on||'')<=String(x.estimated_on||''));
+    const mortalityBirds=recToDate.reduce((sum,r)=>sum+prodNum(r.mortality)+prodNum(r.culling),0);
+    const feedKg=recToDate.reduce((sum,r)=>sum+prodNum(r.feed_kg),0);
+
     // Estimasi dibuat sebelum panen Marketing pada tanggal yang sama.
     const priorHarvests=d.harvests.filter(h=>h.contract_assignment_id===x.contract_assignment_id&&h.harvested_on<x.estimated_on);
+    const harvestedBirds=priorHarvests.reduce((sum,h)=>sum+prodNum(h.birds),0);
+    const harvestedKg=priorHarvests.reduce((sum,h)=>sum+prodNum(h.net_weight_kg),0);
     const priorRevenue=priorHarvests.reduce((sum,h)=>sum+prodNum(h.total_amount),0);
+
+    const outBirds=harvestedBirds+estimateBirds;
+    const totalProjectedKg=harvestedKg+estimateBio;
+    const bw=outBirds>0?totalProjectedKg/outBirds:0;
+    const fc=initial>0?feedKg*1000/initial:0;
+    const mort=initial>0?mortalityBirds/initial*100:0;
+    const fcr=totalProjectedKg>0?feedKg/totalProjectedKg:0;
+    const survival=initial>0?Math.min(100,outBirds/initial*100):0;
+    const ip=age>0&&fcr>0?(survival*bw*100)/(age*fcr):0;
+
     const dyn=calcFinance(a,ci,sz);
     const projectedRemainingRevenue=dyn.revenue;
     const totalProjection=priorRevenue+projectedRemainingRevenue;
+    const std=d.standards.find(row=>
+      row.contract_id===a?.master_contract_id&&
+      row.template_name===a?.performance_template_name&&
+      prodNum(row.age_days)===age
+    );
+    const fcrStd=prodNum(std?.std_fcr);
+    const matchBonus=(metric,value)=>prodNum(bonusRows.find(v=>
+      v.contract_id===a?.master_contract_id&&
+      v.metric===metric&&
+      (v.min_value==null||value>=prodNum(v.min_value))&&
+      (v.max_value==null||value<prodNum(v.max_value))
+    )?.rupiah_per_kg);
+    const sapronakCost=prodNum(d.rhppCosts.find(v=>v.contract_assignment_id===x.contract_assignment_id)?.net_sapronak_cost);
+    const ipBonus=totalProjectedKg*matchBonus('IP',ip);
+    const fcrDiff=fcrStd>0?fcrStd-fcr:0;
+    const fcrBonus=fcrDiff>0?totalProjectedKg*matchBonus('FCR_DIFFERENCE',fcrDiff):0;
+    const farmerProfit=totalProjection-sapronakCost+ipBonus+fcrBonus;
+    const revenuePerBird=initial>0?farmerProfit/initial:0;
+
     const sizeHtml=sz.length?sz.map((v,i)=>'<div class="estimate-history-size"><span>Ukuran '+(i+1)+' · '+prodFmt(v.bw_kg,3)+' Kg</span><strong>'+prodFmt(v.birds,0)+' ekor</strong></div>').join(''):'<span class="muted">Tidak ada rincian ukuran.</span>';
     return '<article class="estimate-history-card">'+
-      '<div class="estimate-history-head"><div><h4>'+esc(a?prodAssignmentOption(d,a):'-')+'</h4><p>'+prodDateId(x.estimated_on)+' · Umur '+age+' hari</p></div><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></div>'+
-      '<div class="estimate-history-grid">'+
-        '<div><span>Sisa Ayam</span><strong>'+prodFmt(x.remaining_birds,0)+' ekor</strong></div>'+
-        '<div><span>BW Estimasi</span><strong>'+prodFmt(bw,3)+' Kg</strong></div>'+
-        '<div><span>Panen Aktual Marketing</span><strong>Rp '+prodFmt(priorRevenue,0)+'</strong></div>'+
-        '<div><span>Proyeksi Sisa Panen</span><strong>Rp '+prodFmt(projectedRemainingRevenue,0)+'</strong></div>'+
-        '<div class="estimate-history-total"><span>Total Proyeksi Panen</span><strong>Rp '+prodFmt(totalProjection,0)+'</strong></div>'+
+      '<div class="estimate-history-head"><div><h4>'+esc(a?prodAssignmentOption(d,a):'-')+'</h4><p>'+prodDateId(x.estimated_on)+'</p></div><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></div>'+
+      '<div class="estimate-history-grid estimate-history-performance">'+
+        '<div><span>IN</span><strong>'+prodFmt(initial,0)+'</strong></div>'+
+        '<div><span>OUT</span><strong>'+prodFmt(outBirds,0)+'</strong></div>'+
+        '<div><span>Umur</span><strong>'+prodFmt(age,0)+' hari</strong></div>'+
+        '<div><span>Mort</span><strong>'+prodFmt(mort,2)+'%</strong></div>'+
+        '<div><span>Pakan</span><strong>'+prodFmt(feedKg,0)+' Kg</strong></div>'+
+        '<div><span>BW</span><strong>'+prodFmt(bw,3)+' Kg</strong></div>'+
+        '<div><span>FC</span><strong>'+prodFmt(fc,0)+' g/ekor</strong></div>'+
+        '<div><span>IP</span><strong>'+prodFmt(ip,1)+'</strong></div>'+
+        '<div class="estimate-history-total"><span>Pend./Ekor Kontrak</span><strong>Rp '+prodFmt(revenuePerBird,0)+'</strong></div>'+
       '</div>'+
       '<div class="estimate-history-sizes"><div class="estimate-history-subtitle">Rincian Ukuran / BW</div>'+sizeHtml+'</div>'+
       (x.notes?'<div class="estimate-history-notes"><span>Catatan</span><p>'+esc(x.notes)+'</p></div>':'')+
@@ -3637,7 +3678,7 @@ async function productionEstimatePage(){
     '<p class="muted estimate-history-foot">Rumus simulasi: Panen aktual Marketing + proyeksi sisa ayam berdasarkan jumlah ekor, BW, dan harga kontrak. Estimasi tidak mengubah RHPP.</p></section>';
 
   layout(html);
-  if(d.err||er.error||sr.error||rr.error)msg((d.err||er.error||sr.error||rr.error).message);
+  if(d.err||er.error||sr.error||rr.error||bonusR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error).message);
 
   bindAdminTransactionDeletes(()=>productionEstimatePage());
 
