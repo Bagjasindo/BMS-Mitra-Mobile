@@ -8566,9 +8566,10 @@ async function buildDashboardModel(){
 
   const performanceCards=metrics.map(x=>{
     const b=d.barns.find(v=>v.id===x.a.barn_id);
+    const currentAge=x.ci?.arrived_on?prodAge(x.ci.arrived_on,prodToday()):x.age;
     const trend=!x.latest?'':x.prevBwg?(x.bwg>x.prevBwg?'↑':x.bwg<x.prevBwg?'↓':'→'):'→';
     const isSim=String(x.latest?.notes||'').includes('SIMULASI DASHBOARD KPI'); const alert=isSim?'<span class="owner-sim">SIMULASI</span>':(x.alerts.length?'<span class="owner-alert">'+esc(x.alerts[0])+'</span>':'<span class="owner-ok">Normal</span>');
-    return '<article class="owner-barn-card"><div class="owner-barn-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+'</strong><small>Hari '+(x.age||'-')+' · '+(x.latest?prodDateId(x.latest.recorded_on):'-')+'</small></div>'+alert+'</div>'+
+    return '<article class="owner-barn-card"><div class="owner-barn-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+'</strong><small>Umur saat ini '+(currentAge||'-')+' hari · Update data umur '+(x.age||'-')+' hari · '+(x.latest?prodDateId(x.latest.recorded_on):'-')+'</small></div>'+alert+'</div>'+
       '<div class="owner-metrics"><div><span>Populasi</span><b>'+prodFmt(x.population,0)+'</b></div><div><span>BW</span><b>'+prodFmt(x.bw,3)+' kg '+trend+'</b></div><div><span>FCR</span><b>'+prodFmt(x.fcr,3)+'</b></div><div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div></div>'+
       '<div class="owner-card-foot">Deplesi '+prodFmt(x.dep,2)+'% · <span class="'+(x.fcLow?'owner-fc-low':'owner-fc-ok')+'">FC '+prodFmt(x.fc,0)+' g/ekor'+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</span> · Pakan '+prodFmt(x.feed,0)+' Kg</div></article>';
   }).join('');
