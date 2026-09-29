@@ -3600,35 +3600,41 @@ async function productionEstimatePage(){
     '</form></section>';
 
   const selectedEstimateAssignment=d.assignments.find(a=>a.id===estimateAssignmentId);
-  html+='<section class="panel"><h3>Riwayat Estimasi</h3>'+
-    '<p class="muted">'+(selectedEstimateAssignment?'Menampilkan riwayat estimasi kandang yang sedang dipilih.':'Pilih kandang aktif untuk menampilkan riwayat estimasi.')+'</p>'+
-    '<div class="tablewrap"><table><thead><tr>'+
-    '<th>Kandang</th><th>Tanggal</th><th>Umur</th><th>Sisa Ayam</th><th>BW Est.</th>'+
-    '<th>Panen Aktual Marketing</th><th>Proyeksi Sisa Panen</th><th>Total Proyeksi</th><th>Aksi</th>'+
-    '</tr></thead><tbody>'+
-    pageRows.map(x=>{
-      const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
-      const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
-      const sz=sizes.filter(s=>s.estimate_id===x.id);
-      const birds=sz.reduce((s,v)=>s+prodNum(v.birds),0);
-      const bio=sz.reduce((s,v)=>s+prodNum(v.birds)*prodNum(v.bw_kg),0);
-      const bw=birds?bio/birds:0;
-      const age=ci?prodAge(ci.arrived_on,x.estimated_on):0;
-      // Estimasi dibuat sebelum panen Marketing pada tanggal yang sama.
-      const priorHarvests=d.harvests.filter(h=>h.contract_assignment_id===x.contract_assignment_id&&h.harvested_on<x.estimated_on);
-      const harvBirds=priorHarvests.reduce((s,h)=>s+prodNum(h.birds),0);
-      const harvKg=priorHarvests.reduce((s,h)=>s+prodNum(h.net_weight_kg),0);
-      const priorRevenue=priorHarvests.reduce((sum,h)=>sum+prodNum(h.total_amount),0);
-      const dyn=calcFinance(a,ci,sz);
-      const projectedRemainingRevenue=dyn.revenue;
-      const totalProjection=priorRevenue+projectedRemainingRevenue;
-      return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodDateId(x.estimated_on)+'</td><td>'+age+'</td><td>'+prodFmt(x.remaining_birds,0)+'</td><td>'+prodFmt(bw,3)+'</td>'+
-        '<td>Rp '+prodFmt(priorRevenue,0)+'</td><td>Rp '+prodFmt(projectedRemainingRevenue,0)+'</td><td>Rp '+prodFmt(totalProjection,0)+'</td>'+
-        '<td><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></td></tr>';
-    }).join('')+
-    '</tbody></table></div>'+
+  const estimateHistoryCards=pageRows.map(x=>{
+    const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
+    const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
+    const sz=sizes.filter(s=>s.estimate_id===x.id);
+    const birds=sz.reduce((s,v)=>s+prodNum(v.birds),0);
+    const bio=sz.reduce((s,v)=>s+prodNum(v.birds)*prodNum(v.bw_kg),0);
+    const bw=birds?bio/birds:0;
+    const age=ci?prodAge(ci.arrived_on,x.estimated_on):0;
+    // Estimasi dibuat sebelum panen Marketing pada tanggal yang sama.
+    const priorHarvests=d.harvests.filter(h=>h.contract_assignment_id===x.contract_assignment_id&&h.harvested_on<x.estimated_on);
+    const priorRevenue=priorHarvests.reduce((sum,h)=>sum+prodNum(h.total_amount),0);
+    const dyn=calcFinance(a,ci,sz);
+    const projectedRemainingRevenue=dyn.revenue;
+    const totalProjection=priorRevenue+projectedRemainingRevenue;
+    const sizeHtml=sz.length?sz.map((v,i)=>'<div class="estimate-history-size"><span>Ukuran '+(i+1)+' · '+prodFmt(v.bw_kg,3)+' Kg</span><strong>'+prodFmt(v.birds,0)+' ekor</strong></div>').join(''):'<span class="muted">Tidak ada rincian ukuran.</span>';
+    return '<article class="estimate-history-card">'+
+      '<div class="estimate-history-head"><div><h4>'+esc(a?prodAssignmentOption(d,a):'-')+'</h4><p>'+prodDateId(x.estimated_on)+' · Umur '+age+' hari</p></div><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></div>'+
+      '<div class="estimate-history-grid">'+
+        '<div><span>Sisa Ayam</span><strong>'+prodFmt(x.remaining_birds,0)+' ekor</strong></div>'+
+        '<div><span>BW Estimasi</span><strong>'+prodFmt(bw,3)+' Kg</strong></div>'+
+        '<div><span>Panen Aktual Marketing</span><strong>Rp '+prodFmt(priorRevenue,0)+'</strong></div>'+
+        '<div><span>Proyeksi Sisa Panen</span><strong>Rp '+prodFmt(projectedRemainingRevenue,0)+'</strong></div>'+
+        '<div class="estimate-history-total"><span>Total Proyeksi Panen</span><strong>Rp '+prodFmt(totalProjection,0)+'</strong></div>'+
+      '</div>'+
+      '<div class="estimate-history-sizes"><div class="estimate-history-subtitle">Rincian Ukuran / BW</div>'+sizeHtml+'</div>'+
+      (x.notes?'<div class="estimate-history-notes"><span>Catatan</span><p>'+esc(x.notes)+'</p></div>':'')+
+    '</article>';
+  }).join('');
+
+  html+='<section class="panel"><div class="rhpp-section-head"><div><h3>Riwayat Estimasi</h3>'+
+    '<p class="muted">'+(selectedEstimateAssignment?'Menampilkan riwayat estimasi kandang yang sedang dipilih.':'Pilih kandang aktif untuk menampilkan riwayat estimasi.')+'</p></div>'+
+    (selectedEstimateAssignment?'<span class="pill">'+historyEstimates.length+' estimasi</span>':'')+'</div>'+
+    '<div class="estimate-history-list">'+(estimateHistoryCards||'<p class="muted">Belum ada riwayat estimasi untuk kandang ini.</p>')+'</div>'+
     txnEstimate.pager+
-    '<p class="muted">Rumus simulasi: Panen aktual Marketing + proyeksi sisa ayam berdasarkan jumlah ekor, BW, dan harga kontrak. Tidak ada nilai dari Recording atau RHPP.</p></section>';
+    '<p class="muted estimate-history-foot">Rumus simulasi: Panen aktual Marketing + proyeksi sisa ayam berdasarkan jumlah ekor, BW, dan harga kontrak. Estimasi tidak mengubah RHPP.</p></section>';
 
   layout(html);
   if(d.err||er.error||sr.error||rr.error)msg((d.err||er.error||sr.error||rr.error).message);
