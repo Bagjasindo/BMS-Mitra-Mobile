@@ -8825,7 +8825,7 @@ async function buildDashboardModel(){
         '<div><span>Mort</span><b>'+prodFmt(x.mort,2)+'%</b></div>'+
         '<div><span>Pakan</span><b>'+prodFmt(x.feedKg,0)+' Kg</b></div>'+
         '<div><span>BW</span><b>'+prodFmt(x.bw,3)+' Kg</b></div>'+
-        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</b></div>'+
+        '<div><span>FC</span><b>'+prodFmt(x.fc,0)+' g/ekor</b></div>'+
         '<div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div>'+
         '<div><span>Pend./Ekor</span><b>Rp '+prodFmt(x.revenuePerBird,0)+'</b></div>'+
       '</div></article>';
