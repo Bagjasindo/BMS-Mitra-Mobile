@@ -77,7 +77,7 @@ begin
          coalesce(b.reference,'')
   from public.finance_expedition_bop b;
 end
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.finance_cashflow_entries_v2()
  RETURNS TABLE(txn_date date, txn_type text, source text, amount numeric, barn_id uuid, contract_assignment_id uuid, detail text, reference text)
@@ -162,4 +162,4 @@ begin
          ''::text
   from public.finance_expedition_maintenance m;
 end
-$function$
+$function$;
