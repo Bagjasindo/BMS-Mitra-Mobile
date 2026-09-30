@@ -220,6 +220,25 @@ const submitButtonSet=(btn,label)=>{
   if(btn.tagName==='INPUT')btn.value=label;
   else btn.textContent=label;
 };
+const actionButtonStart=(btn,label='Memproses...')=>{
+  if(!btn||btn.dataset.bmsActionBusy==='1')return false;
+  btn.dataset.bmsActionBusy='1';
+  btn.dataset.bmsActionOriginal=btn.textContent||'Aksi';
+  btn.disabled=true;
+  btn.textContent=label;
+  return true;
+};
+const actionButtonFinish=async(btn,ok=true)=>{
+  if(!btn)return;
+  btn.textContent=ok?'Terhapus ✓':'Gagal — coba lagi';
+  await new Promise(resolve=>setTimeout(resolve,ok?850:1500));
+  if(!ok){
+    btn.disabled=false;
+    btn.textContent=btn.dataset.bmsActionOriginal||'Hapus';
+  }
+  delete btn.dataset.bmsActionBusy;
+  delete btn.dataset.bmsActionOriginal;
+};
 const releaseSubmitGuard=(form,feedback=null)=>{
   if(!form||form.dataset?.bmsSubmitting!=='1')return;
   form.dataset.bmsSubmitting='0';
@@ -312,10 +331,11 @@ const bindAdminTransactionDeletes=(rerender)=>{
     const impact=transactionDeleteImpact(table);
     const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nJika transaksi ini dihapus, '+impact+'.\n\nPenghapusan tidak boleh dilakukan hanya untuk merapikan tampilan. Pastikan data memang salah dan tidak lagi diperlukan.\n\nLanjutkan hapus?');
     if(!ok)return;
+    if(!actionButtonStart(btn,'Menghapus...'))return;
     const {error}=await db.rpc('admin_delete_transaction_v1',{p_table:table,p_id:String(id)});
-    if(error)return msg(error.message);
+    if(error){await actionButtonFinish(btn,false);return;}
+    await actionButtonFinish(btn,true);
     if(typeof rerender==='function')await rerender();
-    msg('Transaksi berhasil dihapus oleh ADMIN. Laporan terkait akan mengikuti data terbaru.',true);
   });
 };
 const appDeviceType=()=>/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'')?'HP':'DESKTOP';
@@ -844,17 +864,21 @@ function layout(content){
       if(btn.hasAttribute('data-delete-abk-harvest')){
         const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nPanen ABK ini memengaruhi klasemen/kinerja ABK dan rekap produksi. Pastikan transaksi memang salah.\n\nLanjutkan hapus?');
         if(!ok)return;
+        if(!actionButtonStart(btn,'Menghapus...'))return;
         const {error}=await db.rpc('delete_production_abk_harvest_atomic',{p_size_id:btn.getAttribute('data-delete-abk-harvest')});
-        if(error)return msg(error.message);
-        await render();msg('Transaksi Panen ABK berhasil dihapus oleh ADMIN.',true);return;
+        if(error){await actionButtonFinish(btn,false);return;}
+        await actionButtonFinish(btn,true);
+        await render();return;
       }
       if(!attr)return;
       const table=legacyTxnDeleteMap[attr],id=btn.getAttribute('data-'+attr);
       const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nJika transaksi ini dihapus, '+transactionDeleteImpact(table)+'.\n\nPastikan data memang salah dan tidak lagi diperlukan.\n\nLanjutkan hapus?');
       if(!ok)return;
+      if(!actionButtonStart(btn,'Menghapus...'))return;
       const {error}=await db.rpc('admin_delete_transaction_v1',{p_table:table,p_id:String(id||'')});
-      if(error)return msg(error.message);
-      await render();msg('Transaksi berhasil dihapus oleh ADMIN.',true);
+      if(error){await actionButtonFinish(btn,false);return;}
+      await actionButtonFinish(btn,true);
+      await render();
     };
     root.addEventListener('click',window.__legacyTxnDeleteCapture,true);
   }
