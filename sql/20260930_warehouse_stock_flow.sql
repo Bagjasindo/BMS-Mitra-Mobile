@@ -48,6 +48,11 @@ create table if not exists public.warehouse_stock_shipments (
 create index if not exists warehouse_stock_items_invoice_idx on public.warehouse_stock_items(invoice_id);
 create index if not exists warehouse_stock_shipments_item_idx on public.warehouse_stock_shipments(stock_item_id);
 create index if not exists warehouse_stock_shipments_date_idx on public.warehouse_stock_shipments(shipment_date);
+create index if not exists finance_stock_purchase_invoices_created_by_idx on public.finance_stock_purchase_invoices(created_by);
+create index if not exists warehouse_stock_items_created_by_idx on public.warehouse_stock_items(created_by);
+create index if not exists warehouse_stock_shipments_barn_idx on public.warehouse_stock_shipments(barn_id);
+create index if not exists warehouse_stock_shipments_asset_idx on public.warehouse_stock_shipments(asset_id);
+create index if not exists warehouse_stock_shipments_created_by_idx on public.warehouse_stock_shipments(created_by);
 
 alter table public.finance_stock_purchase_invoices enable row level security;
 alter table public.warehouse_stock_items enable row level security;
