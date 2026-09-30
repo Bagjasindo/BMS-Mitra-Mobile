@@ -721,6 +721,7 @@ function layout(content){
       '[data-delete-mandiri-purchase]',
       '[data-delete-exp-trip]',
       '[data-delete-exp-invoice]',
+      '[data-delete-abk-harvest]',
       '[data-remove-abk]',
       '#fxTripCorrectionDelete',
       '#fxInvoiceCorrectionDelete'
@@ -4281,13 +4282,13 @@ async function leagueAbkPage(editSizeId=null){
       '<label>ABK<select name="abk" required '+(selected?'disabled':'')+'><option value="">Pilih kontrak dulu</option></select></label>'+
       '<section class="panel" style="margin:0"><h4>Data ABK</h4>'+
         '<label>Populasi Awal ABK (ekor)<input name="initial_birds" data-number="1" inputmode="decimal" placeholder="Contoh: 8.250"></label>'+
-        (profile.role==='ADMIN'?'<button type="button" id="saveAbkPopulation">Simpan Populasi Awal</button>':'')+
+        (['ADMIN','PPL'].includes(profile.role)?'<button type="button" id="saveAbkPopulation">Simpan Populasi Awal</button>':'')+
         '<p class="muted">Populasi Awal adalah data dasar ABK dan tidak ikut kunci transaksi kontrak.</p>'+
         '<p class="muted">Penempatan Pakan mengikuti kontrak aktif. Input dalam zak, 1 zak = 50 kg.</p>'+
         '<label>Pre Starter (zak)<input name="pre_bags" data-number="1" inputmode="decimal" placeholder="Contoh: 24"></label>'+
         '<label>Starter (zak)<input name="starter_bags" data-number="1" inputmode="decimal" placeholder="Contoh: 70"></label>'+
         '<label>Finisher (zak)<input name="finisher_bags" data-number="1" inputmode="decimal" placeholder="Contoh: 96"></label>'+
-        (profile.role==='ADMIN'?'<button type="button" id="lockAbkBasics">Simpan & Kunci Pakan</button>':'')+
+        (['ADMIN','PPL'].includes(profile.role)?'<button type="button" id="lockAbkBasics">Simpan & Kunci Pakan</button>':'')+
         '<p class="muted">Pakan dan Panen ABK mengikuti kontrak aktif dan terkunci saat periode kontrak ditutup.</p>'+
         '<p id="abkBasicsStatus" class="muted">Pilih ABK untuk melihat status.</p>'+
       '</section>'+
@@ -4393,8 +4394,8 @@ async function leagueAbkPage(editSizeId=null){
     f.starter_bags.value=link?.feed_starter_bags!=null?prodFmt(link.feed_starter_bags,2):'';
     f.finisher_bags.value=link?.feed_finisher_bags!=null?prodFmt(link.feed_finisher_bags,2):'';
 
-    f.initial_birds.readOnly=profile.role!=='ADMIN';
-    [f.pre_bags,f.starter_bags,f.finisher_bags].forEach(inp=>inp.readOnly=locked||profile.role!=='ADMIN');
+    f.initial_birds.readOnly=!['ADMIN','PPL'].includes(profile.role);
+    [f.pre_bags,f.starter_bags,f.finisher_bags].forEach(inp=>inp.readOnly=locked||!['ADMIN','PPL'].includes(profile.role));
     if(savePopulationButton)savePopulationButton.disabled=!link;
     if(lockButton){
       lockButton.disabled=!link||locked||!prodNum(link?.initial_birds);
