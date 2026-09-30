@@ -3609,8 +3609,18 @@ const prodDateId=v=>{if(!v)return '-';const m=String(v).slice(0,10).match(/^(\d{
 const financeOriginalNoteDisplay=v=>{
   let s=String(v||'').trim();
   if(!s)return '-';
+  s=s.replace(/^\s*(?:Sumber\s+DATA\s+PETERNAKAN[^:]*:|Import\s+Excel\s+Operasional[^:]*:|Import\s+Excel[^:]*:|Upah\s+kerja\s+selama\s+periode\s*;\s*rincian\s+DATA\s+PETERNAKAN\s*:)[\s]*/is,'').trim();
   s=s.replace(/\s*(?:[.;]\s*)?(?:Sumber\s+(?:Excel\s+)?Data\s+Lama|Alokasi\s+upah|Ongkos\s+angkut\s+GROUP|GROUP\s+dibagi\s+rata|Nama\s+kandang\s+pada\s+uraian|Tujuan\s+[A-Za-z]|Perawatan\s+kandang\s+tanpa\s+siklus|Tanpa\s+siklus(?:\s+produksi)?|Keterangan\s+asli\s+BMS|sesuai\s+(?:arahan|instruksi|konfirmasi)).*$/is,'').trim();
   return s||'-';
+};
+const financeShortReferenceDisplay=v=>{
+  const s=String(v||'').trim();
+  if(!s)return '-';
+  if(/^IMP-/i.test(s)){
+    const last=s.split('-').filter(Boolean).pop();
+    return last||s;
+  }
+  return s;
 };
 const prodToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const prodAge=(a,b)=>Math.max(1,Math.floor((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000)+1);
