@@ -1488,6 +1488,15 @@ async function logisticsContractPage(){
   const allAssignments=ar.data||[];
   const activeAssignments=allAssignments.filter(x=>x.active);
   const closedAssignments=allAssignments.filter(x=>!x.active);
+  window.__closedCycleFilter=window.__closedCycleFilter||{barn:'',type:'',ppl:'',from:'',to:'',shown:false};
+  const closedFilter=window.__closedCycleFilter;
+  const closedHistoryRows=closedFilter.shown?closedAssignments.filter(a=>
+    (!closedFilter.barn||a.barn_id===closedFilter.barn)&&
+    (!closedFilter.type||(a.cycle_type||'MITRA')===closedFilter.type)&&
+    (!closedFilter.ppl||a.ppl_id===closedFilter.ppl)&&
+    (!closedFilter.from||String(a.start_date||'')>=closedFilter.from)&&
+    (!closedFilter.to||String(a.start_date||'')<=closedFilter.to)
+  ):[];
   const abks=er.data||[];
   const abkLinks=abr.data||[];
   const ppls=ppr.data||[];
@@ -1527,14 +1536,24 @@ async function logisticsContractPage(){
       return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td><strong>'+esc(a.cycle_type||'MITRA')+'</strong></td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">AKTIF</span></td><td><div class="table-actions"><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Edit</button>'+(hasAssignmentTransactions(a.id)?'':'<button type="button" class="btn-danger-soft" data-delete-cycle="'+esc(a.id)+'">Hapus</button>')+'</div></td></tr>';
     }).join('')+
     '</tbody></table></div>'+(!activeAssignments.length?'<p>Belum ada kontrak kandang aktif.</p>':'')+'</section>'+
-    '<section class="panel"><h3>Riwayat Siklus Closed</h3><p class="muted">Riwayat siklus yang sudah ditutup. ADMIN tetap dapat melakukan koreksi melalui tombol Edit bila diperlukan.</p><div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Siklus</th><th>Jenis</th><th>Kontrak</th><th>Performa</th><th>PPL</th><th>ABK</th><th>Tanggal Mulai</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
-    closedAssignments.map(a=>{
+    '<section class="panel"><h3>Riwayat Siklus Closed</h3><p class="muted">Pilih filter lalu klik Tampilkan. ADMIN tetap dapat melakukan koreksi melalui tombol Edit bila diperlukan.</p>'+
+    '<form id="closedCycleFilterForm" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(closedFilter.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Jenis Siklus<select name="type"><option value="">Semua Jenis</option><option value="MITRA" '+(closedFilter.type==='MITRA'?'selected':'')+'>MITRA</option><option value="MANDIRI" '+(closedFilter.type==='MANDIRI'?'selected':'')+'>MANDIRI</option></select></label>'+
+      '<label>PPL<select name="ppl"><option value="">Semua PPL</option>'+ppls.map(x=>'<option value="'+esc(x.user_id)+'" '+(closedFilter.ppl===x.user_id?'selected':'')+'>'+esc(x.full_name)+'</option>').join('')+'</select></label>'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(closedFilter.from||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(closedFilter.to||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="closedCycleFilterReset">Reset</button></div>'+
+    '</form>'+
+    (closedFilter.shown?'<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Siklus</th><th>Jenis</th><th>Kontrak</th><th>Performa</th><th>PPL</th><th>ABK</th><th>Tanggal Mulai</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    closedHistoryRows.map(a=>{
       const b=barns.find(x=>x.id===a.barn_id);
       const k=masters.find(x=>x.id===a.master_contract_id);
       const ls=linksFor(a.id);
-      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td>'+esc(a.cycle_type||'MITRA')+'</td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">'+(a.active?'AKTIF':'CLOSED')+'</span></td><td><div class="table-actions"><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Edit</button>'+(hasAssignmentTransactions(a.id)?'':'<button type="button" class="btn-danger-soft" data-delete-cycle="'+esc(a.id)+'">Hapus</button>')+'</div></td></tr>';
+      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td>'+esc(a.cycle_type||'MITRA')+'</td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">CLOSED</span></td><td><div class="table-actions"><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Edit</button>'+(hasAssignmentTransactions(a.id)?'':'<button type="button" class="btn-danger-soft" data-delete-cycle="'+esc(a.id)+'">Hapus</button>')+'</div></td></tr>';
     }).join('')+
-    '</tbody></table></div>'+(!closedAssignments.length?'<p>Belum ada siklus CLOSED.</p>':'')+'</section>'+
+    '</tbody></table></div>'+(closedHistoryRows.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>'+
     '<section class="panel" id="contractActiveDetail" hidden><h3>Detail Siklus</h3><div id="contractActiveDetailBody"></div></section>';
 
   layout(html);
@@ -1542,6 +1561,27 @@ async function logisticsContractPage(){
   const contractPageErrors=[br,cr,pr,ar,er,abr,ppr,txShip,txExtShip,txReturn,txChick,txRec,txVisit,txEstimate,txHarvest,txMeat,txBop,txAdvance,txSalary,txRhppReal,txRhppFinal,txMandiriAlloc,txFeedMove];
   const contractPageError=contractPageErrors.find(x=>x?.error)?.error;
   if(contractPageError)msg(contractPageError.message);
+
+  const closedCycleFilterForm=document.getElementById('closedCycleFilterForm');
+  const closedCycleFilterReset=document.getElementById('closedCycleFilterReset');
+  if(closedCycleFilterForm)closedCycleFilterForm.onsubmit=async ev=>{
+    ev.preventDefault();
+    const fd=new FormData(closedCycleFilterForm);
+    closedFilter.barn=String(fd.get('barn')||'');
+    closedFilter.type=String(fd.get('type')||'');
+    closedFilter.ppl=String(fd.get('ppl')||'');
+    closedFilter.from=String(fd.get('from')||'');
+    closedFilter.to=String(fd.get('to')||'');
+    if(closedFilter.from&&closedFilter.to&&closedFilter.from>closedFilter.to){
+      const t=closedFilter.from;closedFilter.from=closedFilter.to;closedFilter.to=t;
+    }
+    closedFilter.shown=true;
+    await logisticsContractPage();
+  };
+  if(closedCycleFilterReset)closedCycleFilterReset.onclick=async()=>{
+    window.__closedCycleFilter={barn:'',type:'',ppl:'',from:'',to:'',shown:false};
+    await logisticsContractPage();
+  };
 
   const contractSelect=document.getElementById('logisticsMasterContract');
   const perfSelect=document.getElementById('logisticsPerformance');
