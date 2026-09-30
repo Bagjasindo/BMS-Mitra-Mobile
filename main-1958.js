@@ -189,7 +189,7 @@ const visibleTabs={
 const canViewTab=k=>k==='profil'||(profile?.role&&visibleTabs[profile.role]?.includes(k));
 const modules={
   kandang:{table:'barns',fields:[['name','Nama'],['capacity','Kapasitas','number'],['kind','Jenis','select:OPEN_HOUSE,SEMI_CLOSE_HOUSE,CLOSE_HOUSE'],['location','Lokasi']]},
-  item:{table:'items',fields:[['name','Nama'],['category','Kategori','select:DOC,PAKAN,OVK,LAINNYA'],['feed_phase','Fase Pakan'],['unit','Satuan'],['supplier_id','Supplier','supplier'],['kg_per_unit','Kg / Satuan','number']]},
+  item:{table:'items',fields:[['name','Nama'],['category','Jenis','select:DOC,PAKAN,OVK1,OVK2,LAINNYA'],['feed_phase','Fase Pakan'],['unit','Satuan'],['supplier_id','Supplier','supplier'],['kg_per_unit','Kg / Satuan','number']]},
   supplier:{table:'suppliers',fields:[['name','Nama Supplier'],['address','Alamat'],['phone','Telepon/WhatsApp'],['contact_person','Kontak Person'],['bank_name','Bank'],['bank_account_number','No. Rekening'],['bank_account_name','Atas Nama Rekening'],['tax_number','NPWP'],['business_id','NIB/No. Usaha'],['notes','Catatan']]},
   kontrak:{table:'contracts',fields:[['number','Nomor Kontrak'],['contract_date','Tanggal','date'],['integrator','Perusahaan Inti'],['doc_price','Harga DOC (Rp/ekor)','number'],['pre_starter_price','Harga Pre Starter (Rp/kg)','number'],['starter_price','Harga Starter (Rp/kg)','number'],['finisher_price','Harga Finisher (Rp/kg)','number'],['ovk_price_basis','Dasar Harga OVK','select:FIXED,DISTRIBUTOR_PLUS_VAT'],['ovk_price','Harga OVK Tetap (Rp)','number'],['ovk_vat_percent','PPN OVK (%)','number'],['harvest_price','Harga Panen Dasar (Rp/kg)','number'],['signed_reference','Referensi Kontrak Ditandatangani']]},
   harga_hidup:{table:'contract_live_prices',fields:[['contract_id','Kontrak','contract'],['min_weight_kg','Bobot minimum (kg)','number'],['max_weight_kg','Batas atas bobot, tidak termasuk (kg)','number'],['price_per_kg','Harga per kg (Rp)','number']]},
@@ -7800,13 +7800,13 @@ async function itemMasterPage(){
     '<form id="itemMasterEntry" class="form-vertical">'+
       '<input type="hidden" name="id">'+
       m.fields.map(field).join('')+
-      '<label id="itemOvkTypeWrap">Jenis OVK<select name="ovk_type"><option value="">Pilih Jenis OVK</option><option value="OVK1">OVK1 / Obat</option><option value="OVK2">OVK2 / Peralatan</option></select></label>'+
+
       '<div class="report-actions"><button type="submit" id="itemMasterSave">Simpan</button><button type="button" id="itemMasterCancel" hidden>Batal Edit</button></div>'+
     '</form></section>'+
     '<section class="panel"><h3>Data '+title.item+'</h3>'+
       '<form id="itemMasterFilter" class="form-vertical">'+
         '<label>Kode<input name="code" placeholder="Contoh: SP-001"></label>'+
-        '<label>Nama<input name="name" placeholder="Nama sapronak / peralatan"></label>'+
+        '<label>Nama<input name="name" placeholder="Nama barang"></label>'+
         '<label>Kategori<select name="category"><option value="">Semua Kategori</option><option value="DOC">DOC</option><option value="PAKAN">PAKAN</option><option value="OVK">OVK</option><option value="LAINNYA">LAINNYA</option></select></label>'+
         '<label>Jenis OVK<select name="ovk_type"><option value="">Semua Jenis OVK</option><option value="OVK1">OVK1 / Obat</option><option value="OVK2">OVK2 / Peralatan</option></select></label>'+
         '<label>Fase Pakan<select name="feed_phase"><option value="">Semua Fase Pakan</option>'+phases.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')+'</select></label>'+
@@ -7829,8 +7829,6 @@ async function itemMasterPage(){
   const syncUnit=()=>{
     const cat=entry.elements.category;
     const unit=entry.elements.unit;
-    const ovkWrap=document.getElementById('itemOvkTypeWrap');
-    const ovkType=entry.elements.ovk_type;
     if(!cat||!unit)return;
     if(!document.getElementById('ovk-units')){
       const dl=document.createElement('datalist');
@@ -7843,11 +7841,9 @@ async function itemMasterPage(){
     const apply=()=>{
       unit.removeAttribute('list');
       unit.placeholder='';
-      if(ovkWrap)ovkWrap.hidden=cat.value!=='OVK';
-      if(cat.value!=='OVK'&&ovkType)ovkType.value='';
       if(cat.value==='DOC'){unit.value='EKOR';unit.readOnly=true;}
       else if(cat.value==='PAKAN'){unit.value='ZAK';unit.readOnly=true;}
-      else if(cat.value==='OVK'){
+      else if(cat.value==='OVK1'||cat.value==='OVK2'){
         if(unit.readOnly)unit.value='';
         unit.readOnly=false;unit.setAttribute('list','ovk-units');unit.placeholder='Pilih/ketik satuan OVK';
       }else{
@@ -7870,10 +7866,10 @@ async function itemMasterPage(){
 
   const renderRows=filtered=>{
     result.innerHTML=filtered.length
-      ?'<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th>Jenis OVK</th><th>Fase Pakan</th><th>Satuan</th><th>Supplier</th><th>Aksi</th></tr></thead><tbody>'+
+      ?'<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Nama</th><th>Jenis</th><th>Fase Pakan</th><th>Satuan</th><th>Supplier</th><th>Aksi</th></tr></thead><tbody>'+
         filtered.map(x=>{
           const sup=supplierRows.find(v=>v.id===x.supplier_id);
-          return '<tr><td>'+esc(x.code||'')+'</td><td>'+esc(x.name||'')+'</td><td>'+esc(x.category||'')+'</td><td>'+esc(x.ovk_type||'-')+'</td><td>'+esc(x.feed_phase||'-')+'</td><td>'+esc(x.unit||'')+'</td><td>'+esc(sup?.name||'-')+'</td><td><button type="button" data-edit-item="'+esc(x.id)+'">Edit</button></td></tr>';
+          const jenis=x.category==='OVK'?(x.ovk_type==='OVK2'?'OVK2 / Peralatan':'OVK1 / Obat'):(x.category||'-'); return '<tr><td>'+esc(x.code||'')+'</td><td>'+esc(x.name||'')+'</td><td>'+esc(jenis)+'</td><td>'+esc(x.feed_phase||'-')+'</td><td>'+esc(x.unit||'')+'</td><td>'+esc(sup?.name||'-')+'</td><td><button type="button" data-edit-item="'+esc(x.id)+'">Edit</button></td></tr>';
         }).join('')+
         '</tbody></table></div>'
       :'<p class="muted">Data tidak ditemukan.</p>';
@@ -7883,13 +7879,13 @@ async function itemMasterPage(){
       if(!x)return;
       entry.elements.id.value=x.id;
       for(const [key] of m.fields){
-        if(entry.elements[key])entry.elements[key].value=x[key]??'';
+        if(!entry.elements[key])continue;
+        if(key==='category')entry.elements[key].value=x.category==='OVK'?(x.ovk_type==='OVK2'?'OVK2':'OVK1'):(x[key]??'');
+        else entry.elements[key].value=x[key]??'';
       }
-      if(entry.elements.ovk_type)entry.elements.ovk_type.value=x.category==='OVK'?(x.ovk_type||'OVK1'):'';
       save.textContent='Simpan Perubahan';
       cancel.hidden=false;
       syncUnit();
-      if(entry.elements.ovk_type)entry.elements.ovk_type.value=x.category==='OVK'?(x.ovk_type||'OVK1'):'';
       entry.scrollIntoView({behavior:'smooth',block:'start'});
     });
   };
@@ -7900,15 +7896,13 @@ async function itemMasterPage(){
     const code=String(fd.get('code')||'').trim().toLowerCase();
     const name=String(fd.get('name')||'').trim().toLowerCase();
     const category=String(fd.get('category')||'');
-    const ovkType=String(fd.get('ovk_type')||'');
     const phase=String(fd.get('feed_phase')||'');
     const unit=String(fd.get('unit')||'');
     const supplierId=String(fd.get('supplier_id')||'');
     const filtered=rows.filter(x=>
       (!code||String(x.code||'').toLowerCase().includes(code))&&
       (!name||String(x.name||'').toLowerCase().includes(name))&&
-      (!category||String(x.category||'')===category)&&
-      (!ovkType||String(x.ovk_type||'')===ovkType)&&
+      (!category||(category==='OVK1'?x.category==='OVK'&&x.ovk_type!=='OVK2':category==='OVK2'?x.category==='OVK'&&x.ovk_type==='OVK2':String(x.category||'')===category))&&
       (!phase||String(x.feed_phase||'')===phase)&&
       (!unit||String(x.unit||'')===unit)&&
       (!supplierId||String(x.supplier_id||'')===supplierId)
@@ -7933,10 +7927,9 @@ async function itemMasterPage(){
         if(nv!==null)payload[k]=nv;
       }else payload[k]=null;
     }
-    if(payload.category==='OVK'){
-      const ovkType=String(fd.get('ovk_type')||'');
-      if(!['OVK1','OVK2'].includes(ovkType))return msg('Pilih Jenis OVK: OVK1 / Obat atau OVK2 / Peralatan.');
-      payload.ovk_type=ovkType;
+    if(payload.category==='OVK1'||payload.category==='OVK2'){
+      payload.ovk_type=payload.category;
+      payload.category='OVK';
     }else payload.ovk_type=null;
 
     const q=id
