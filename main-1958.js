@@ -9690,6 +9690,8 @@ async function financeRhppPage(){
     const ready=!fin&&!!x.active&&prodNum(x.chick_in_birds)>0&&prodNum(x.total_harvest_birds)>0&&prodNum(x.total_harvest_kg)>0&&prodNum(x.net_feed_kg)>0&&prodNum(x.sapronak_cost)>0;
     const status=fin?'CLOSED · RHPP SISTEM FINAL':ready?'SIAP DICEK & CLOSE':'BELUM SIAP';
     const hs=harvests.filter(h=>h.contract_assignment_id===x.contract_assignment_id);
+    const ci=chickIns.find(v=>v.contract_assignment_id===x.contract_assignment_id);
+    const effectiveDocPrice=prodNum(x.chick_in_birds)>0?prodNum(x.main_doc_cost)/prodNum(x.chick_in_birds):0;
 
     const shipIds=new Set(ships.filter(s=>s.contract_assignment_id===x.contract_assignment_id).map(s=>s.id));
     const retIds=new Set(returns.filter(r=>r.contract_assignment_id===x.contract_assignment_id).map(r=>r.id));
@@ -9734,9 +9736,23 @@ async function financeRhppPage(){
     });
     const feedRows=[...feedMap.values()];
 
-    html+='<section class="panel rhpp-panel rhpp-head"><h3>'+esc((x.barn_code||'')+' · '+(x.barn_name||''))+'</h3>'+
-      '<p class="muted">'+esc(x.contract_number||'')+' · Status: <strong>'+status+'</strong></p>'+
-      '</section>';
+    html+='<section class="panel rhpp-panel rhpp-head"><div class="rhpp-section-head"><div><h3>Identitas Siklus</h3><p class="muted">Ringkasan periode yang sedang diperiksa.</p></div><span class="rhpp-count">'+status+'</span></div>'+
+      '<div class="tablewrap"><table><tbody>'+
+        '<tr><td>Kandang / Peternak</td><td><strong>'+esc((x.barn_code||'')+' · '+(x.barn_name||''))+'</strong></td></tr>'+
+        '<tr><td>Kontrak</td><td>'+esc(x.contract_number||'-')+'</td></tr>'+
+        '<tr><td>Tanggal Chick-In</td><td>'+prodDateId(ci?.arrived_on)+'</td></tr>'+
+        '<tr><td>Populasi Chick-In</td><td>'+prodFmt(x.chick_in_birds,0)+' ekor</td></tr>'+
+        '<tr><td>Status RHPP</td><td><strong>'+status+'</strong></td></tr>'+
+      '</tbody></table></div></section>'+
+      '<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>Rincian DOC & Kontrak</h3><p class="muted">Acuan awal populasi dan biaya DOC yang sudah dipakai oleh perhitungan RHPP.</p></div></div>'+
+      '<div class="tablewrap"><table><tbody>'+
+        '<tr><td>Kontrak</td><td>'+esc(x.contract_number||'-')+'</td></tr>'+
+        '<tr><td>DOC Diterima</td><td>'+prodFmt(ci?.received,0)+' ekor</td></tr>'+
+        '<tr><td>DOA</td><td>'+prodFmt(ci?.doa,0)+' ekor</td></tr>'+
+        '<tr><td>Populasi Netto Chick-In</td><td><strong>'+prodFmt(x.chick_in_birds,0)+' ekor</strong></td></tr>'+
+        '<tr><td>Harga DOC / Ekor</td><td>Rp '+prodFmt(effectiveDocPrice,0)+'</td></tr>'+
+        '<tr><td>Total Nilai DOC</td><td><strong>Rp '+prodFmt(x.main_doc_cost,0)+'</strong></td></tr>'+
+      '</tbody></table></div></section>';
 
     html+='<section class="panel rhpp-panel rhpp-wide rhpp-harvest"><div class="rhpp-section-head"><div><h3>Rincian Panen</h3><p class="muted">Data panen Marketing yang menjadi sumber nilai produksi RHPP.</p></div><span class="rhpp-count">'+hs.length+' transaksi</span></div>'+
       '<div class="tablewrap rhpp-harvest-wrap"><table class="rhpp-harvest-table"><thead><tr>'+
@@ -9755,7 +9771,16 @@ async function financeRhppPage(){
       '<div class="rhpp-cost-line"><span>Tambah Daging Marketing</span><strong>Rp '+prodFmt(x.external_meat_cost,0)+'</strong></div>'+
       '</section>';
 
-    html+='<section class="panel rhpp-panel rhpp-wide rhpp-feed-panel"><h3>Pemakaian Pakan & Retur</h3><div class="tablewrap"><table class="rhpp-feed-table"><thead><tr>'+
+    html+='<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>Rincian Sapronak & OVK</h3><p class="muted">Nilai komponen yang masuk ke biaya RHPP, ditampilkan terpisah agar mudah dicocokkan.</p></div></div>'+
+      '<div class="tablewrap"><table><tbody>'+
+        '<tr><td>DOC Utama</td><td>Rp '+prodFmt(x.main_doc_cost,0)+'</td></tr>'+
+        '<tr><td>Pakan Utama</td><td>Rp '+prodFmt(x.main_feed_cost,0)+'</td></tr>'+
+        '<tr><td>OVK Utama</td><td>Rp '+prodFmt(x.main_ovk_cost,0)+'</td></tr>'+
+        '<tr><td>Retur RHPP</td><td>- Rp '+prodFmt(x.main_return_cost,0)+'</td></tr>'+
+        '<tr><td>Tambah Sapronak Netto</td><td>Rp '+prodFmt(x.external_sapronak_cost,0)+'</td></tr>'+
+        '<tr><td><strong>Total Sapronak</strong></td><td><strong>Rp '+prodFmt(x.sapronak_cost,0)+'</strong></td></tr>'+
+      '</tbody></table></div></section>'+
+      '<section class="panel rhpp-panel rhpp-wide rhpp-feed-panel"><h3>Pemakaian Pakan & Retur</h3><div class="tablewrap"><table class="rhpp-feed-table"><thead><tr>'+
       '<th>Jenis</th><th class="num">Masuk</th><th class="num">Retur</th><th class="num">Bersih</th><th class="num">Bersih Kg</th>'+
       '</tr></thead><tbody>'+
       feedRows.map(v=>{const parts=String(v.name||'').split(' · '),kind=parts[0]||'',item=parts.slice(1).join(' · ')||kind;return '<tr><td class="rhpp-feed-name"><span class="rhpp-feed-kind">'+esc(kind)+'</span><strong>'+esc(item)+'</strong></td><td class="num">'+prodFmt(v.inQty,2)+'</td><td class="num">'+prodFmt(v.retQty,2)+'</td><td class="num">'+prodFmt(v.inQty-v.retQty,2)+'</td><td class="num">'+prodFmt(v.inKg-v.retKg,2)+'</td></tr>';}).join('')+
@@ -9799,7 +9824,10 @@ async function financeRhppPage(){
         '<tr><td>Laba Dasar</td><td>Rp '+prodFmt(x.base_profit,0)+'</td></tr>'+
       '</tbody></table></div></section>'+
 
-      '<section class="panel rhpp-panel"><h3>Nilai RHPP</h3><div class="tablewrap"><table><tbody>'+
+      '<section class="panel rhpp-panel"><h3>Bonus Kontrak & Nilai RHPP</h3><div class="tablewrap"><table><tbody>'+
+        '<tr><td>IP Aktual</td><td>'+prodFmt(x.ip,2)+'</td></tr>'+
+        '<tr><td>DIFF FCR</td><td>'+prodFmt(x.diff_fcr,3)+'</td></tr>'+
+        '<tr><td>Deplesi / Mortalitas</td><td>'+prodFmt(x.mortality_pct,2)+'%</td></tr>'+
         '<tr><td>Bonus IP</td><td>Rp '+prodFmt(x.bonus_ip,0)+' ('+prodFmt(x.bonus_ip_rate,0)+'/kg)</td></tr>'+
         '<tr><td>Bonus FC</td><td>Rp '+prodFmt(x.bonus_fc,0)+' ('+prodFmt(x.bonus_fc_rate,0)+'/kg)</td></tr>'+
         '<tr><td>Bonus Deplesi</td><td>Rp '+prodFmt(x.bonus_mortality,0)+' ('+prodFmt(x.bonus_mortality_rate,0)+'/kg)</td></tr>'+
