@@ -5201,14 +5201,15 @@ async function productionRecapPage(){
 }
 async function pplRhppAbkViewPage(){
   const d=await productionBase({includeRhppCosts:false});
-  const [rr,sr,cr,br]=await Promise.all([
+  const [rr,sr,cr,br,cpr]=await Promise.all([
     db.from('production_abk_results').select('*'),
     db.from('production_abk_result_sizes').select('*').order('harvest_date',{ascending:true}).order('created_at',{ascending:true}),
     db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
-    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg')
+    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
+    db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle()
   ]);
-  const rows=rr.data||[],sizes=sr.data||[],leagueContracts=cr.data||[],leagueBonuses=br.data||[];
-  const err=[{error:d.err},rr,sr,cr,br].find(x=>x?.error)?.error;
+  const rows=rr.data||[],sizes=sr.data||[],leagueContracts=cr.data||[],leagueBonuses=br.data||[],company=cpr.data||{};
+  const err=[{error:d.err},rr,sr,cr,br,cpr].find(x=>x?.error)?.error;
   if(err)return layout('<section class="panel"><h3>Lihat RHPP ABK</h3><p class="error">'+esc(err.message)+'</p></section>');
 
   window.__pplRhppAbkViewState=window.__pplRhppAbkViewState||{barn:'',assignment:'',abk:''};
@@ -5217,7 +5218,7 @@ async function pplRhppAbkViewPage(){
   const barnRows=d.barns.filter(b=>assignmentRows.some(a=>a.barn_id===b.id));
   const barnAssignments=st.barn?assignmentRows.filter(a=>a.barn_id===st.barn):[];
   if(st.assignment&&!barnAssignments.some(a=>a.id===st.assignment))st.assignment='';
-  const assignmentAbkIds=st.assignment?new Set(d.links.filter(l=>l.contract_assignment_id===st.assignment).map(l=>l.abk_id)) : new Set();
+  const assignmentAbkIds=st.assignment?new Set(d.links.filter(l=>l.contract_assignment_id===st.assignment).map(l=>l.abk_id)):new Set();
   const abkRows=st.assignment?d.abks.filter(a=>assignmentAbkIds.has(a.id)):[];
   if(st.abk&&!abkRows.some(a=>a.id===st.abk))st.abk='';
 
@@ -5241,6 +5242,7 @@ async function pplRhppAbkViewPage(){
     const age=birds&&ci?sz.reduce((sum,v)=>sum+prodAge(ci.arrived_on,v.harvest_date)*prodNum(v.birds),0)/birds:0;
     const initial=prodNum(link?.initial_birds);
     const survival=initial?Math.min(100,birds/initial*100):0;
+    const mortality=Math.max(0,100-survival);
     const ip=initial&&age&&fcr?(survival*bw*100)/(age*fcr):0;
     let revenue=0;
     for(const z of sz){
@@ -5249,17 +5251,19 @@ async function pplRhppAbkViewPage(){
       revenue+=prodNum(z.weight_kg)*prodNum(p?.price_per_kg);
     }
     const contract=leagueContracts.find(c=>c.id===refContractId);
-    const sapronakCost=
-      initial*prodNum(contract?.doc_price)+
+    const docCost=initial*prodNum(contract?.doc_price);
+    const feedCost=
       prodNum(link?.feed_pre_bags)*50*prodNum(contract?.pre_starter_price)+
       prodNum(link?.feed_starter_bags)*50*prodNum(contract?.starter_price)+
       prodNum(link?.feed_finisher_bags)*50*prodNum(contract?.finisher_price);
+    const sapronakCost=docCost+feedCost;
     const matchBonus=(metric,value)=>prodNum(leagueBonuses.find(b=>
       b.contract_id===refContractId&&b.metric===metric&&
       (b.min_value==null||value>=prodNum(b.min_value))&&
       (b.max_value==null||value<prodNum(b.max_value))
     )?.rupiah_per_kg);
-    const ipBonus=kg*matchBonus('IP',ip);
+    const ipRate=matchBonus('IP',ip);
+    const ipBonus=kg*ipRate;
     const perfRows=d.standards
       .filter(v=>(a?.cycle_type==='MANDIRI'||v.contract_id===a?.master_contract_id)&&v.template_name===a?.performance_template_name&&v.std_fcr!=null)
       .sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
@@ -5277,45 +5281,141 @@ async function pplRhppAbkViewPage(){
       }
     }
     const fcrDiff=stdFcr?stdFcr-fcr:0;
-    const fcrBonus=fcrDiff>0?kg*matchBonus('FCR_DIFFERENCE',fcrDiff):0;
-    const profit=revenue-sapronakCost+ipBonus+fcrBonus;
+    const fcrRate=fcrDiff>0?matchBonus('FCR_DIFFERENCE',fcrDiff):0;
+    const fcrBonus=fcrDiff>0?kg*fcrRate:0;
+    const baseProfit=revenue-sapronakCost;
+    const profit=baseProfit+ipBonus+fcrBonus;
     const perBird=birds?profit/birds:0;
-    return {...x,a,link,birds,kg,bw,feed,fcr,stdFcr,age,initial,survival,ip,revenue,sapronakCost,ipBonus,fcrBonus,profit,perBird};
+    const avgLivePrice=kg?revenue/kg:0;
+    const feedPerBird=initial?feed*1000/initial:0;
+    return {...x,a,ci,link,birds,kg,bw,feed,fcr,stdFcr,age,initial,survival,mortality,ip,revenue,docCost,feedCost,sapronakCost,ipRate,ipBonus,fcrDiff,fcrRate,fcrBonus,baseProfit,profit,perBird,avgLivePrice};
   };
 
-  let calculated=rows.map(calcResult).filter(x=>x.a);
-  if(st.barn)calculated=calculated.filter(x=>x.a?.barn_id===st.barn);
-  if(st.assignment)calculated=calculated.filter(x=>x.contract_assignment_id===st.assignment);
-  if(st.abk)calculated=calculated.filter(x=>x.abk_id===st.abk);
+  const selectedResult=st.assignment&&st.abk
+    ?rows.map(calcResult).find(x=>x.contract_assignment_id===st.assignment&&x.abk_id===st.abk)
+    :null;
 
-  let html='<section class="panel"><h3>Lihat RHPP ABK</h3><p class="muted">Read-only. Sumber data tetap Liga ABK. Halaman ini hanya untuk melihat hasil per ABK tanpa mengubah input Liga ABK.</p>'+
+  let html='<section class="panel"><h3>Lihat RHPP ABK</h3><p class="muted">Pilih kandang, siklus, lalu ABK. Sumber data tetap dari Liga ABK.</p>'+
     '<form id="pplRhppAbkFilter" class="form-vertical" data-no-submit-guard="1">'+
-      '<label>Kandang<select id="pplRhppAbkBarn"><option value="">Semua Kandang</option>'+barnRows.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Siklus<select id="pplRhppAbkAssignment" '+(!st.barn?'disabled':'')+'><option value="">Semua Siklus</option>'+barnAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
-      '<label>ABK<select id="pplRhppAbkAbk" '+(!st.assignment?'disabled':'')+'><option value="">Semua ABK</option>'+abkRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.abk===a.id?'selected':'')+'>'+esc(leagueAbkName(a))+'</option>').join('')+'</select></label>'+
+      '<label>Kandang<select id="pplRhppAbkBarn" required><option value="">Pilih Kandang</option>'+barnRows.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Siklus<select id="pplRhppAbkAssignment" required '+(!st.barn?'disabled':'')+'><option value="">Pilih Siklus</option>'+barnAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
+      '<label>ABK<select id="pplRhppAbkAbk" required '+(!st.assignment?'disabled':'')+'><option value="">Pilih ABK</option>'+abkRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.abk===a.id?'selected':'')+'>'+esc(leagueAbkName(a))+'</option>').join('')+'</select></label>'+
       '<button type="submit">Tampilkan</button>'+
     '</form></section>';
 
-  html+='<section class="panel"><h3>RHPP ABK</h3><div class="tablewrap"><table><thead><tr>'+
-    '<th>ABK</th><th>Kandang</th><th>Siklus</th><th>Status</th><th>Populasi</th><th>Ekor Panen</th><th>Kg Panen</th><th>BW</th><th>FCR</th><th>IP</th><th>Pendapatan</th><th>Biaya Sapronak</th><th>Bonus IP</th><th>Bonus FCR</th><th>Hasil ABK</th><th>Rp/Ekor</th>'+
-    '</tr></thead><tbody>'+
-    calculated.map(x=>{
-      const e=d.abks.find(v=>v.id===x.abk_id),b=d.barns.find(v=>v.id===x.a?.barn_id);
-      return '<tr><td><strong>'+esc(leagueAbkName(e))+'</strong></td><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(assignmentCycleLabel(d.assignments,x.a))+'</td><td>'+(x.a?.active?'PROSES':'CLOSED')+'</td>'+
-        '<td class="num">'+prodFmt(x.initial,0)+'</td><td class="num">'+prodFmt(x.birds,0)+'</td><td class="num">'+prodFmt(x.kg,2)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td><td class="num">'+prodFmt(x.fcr,3)+'</td><td class="num">'+prodFmt(x.ip,2)+'</td>'+
-        '<td class="num">Rp '+prodFmt(x.revenue,0)+'</td><td class="num">Rp '+prodFmt(x.sapronakCost,0)+'</td><td class="num">Rp '+prodFmt(x.ipBonus,0)+'</td><td class="num">Rp '+prodFmt(x.fcrBonus,0)+'</td><td class="num"><strong>Rp '+prodFmt(x.profit,0)+'</strong></td><td class="num">Rp '+prodFmt(x.perBird,0)+'</td></tr>';
-    }).join('')+
-    '</tbody></table></div>'+(calculated.length?'':'<p class="muted">Belum ada data RHPP ABK sesuai filter.</p>')+'</section>';
+  if(st.assignment&&st.abk){
+    const a=d.assignments.find(x=>x.id===st.assignment);
+    const b=d.barns.find(x=>x.id===a?.barn_id);
+    const e=d.abks.find(x=>x.id===st.abk);
+    const link=d.links.find(x=>x.contract_assignment_id===st.assignment&&x.abk_id===st.abk);
+    const r=selectedResult;
+    const val=(label,value)=>'<div class="rhpp-mini-row"><span>'+esc(label)+'</span><strong>'+value+'</strong></div>';
+    const money=v=>'Rp '+prodFmt(v,0);
+
+    html+='<div id="pplRhppAbkExportArea"><section class="panel rhpp-mini-sheet">'+
+      '<div class="rhpp-section-head"><div><h3>'+esc(leagueAbkName(e))+' · '+esc(b?shortBarnLabel(b):'-')+'</h3>'+
+        '<p class="muted">'+esc(assignmentCycleLabel(d.assignments,a))+' · '+esc(a?.cycle_type||'MITRA')+' · '+(a?.active?'PROSES':'CLOSED')+'</p></div>'+
+        '<div class="report-actions"><button type="button" id="pplRhppAbkPrint">Print</button><button type="button" id="pplRhppAbkPdf">PDF</button><button type="button" id="pplRhppAbkExcel">Excel</button></div>'+
+      '</div>'+
+      '<div class="rhpp-mini-grid">'+
+        '<div class="rhpp-mini-block"><h4>INPUT WAJIB</h4>'+
+          val('Nama Kandang / Peternak',esc(b?shortBarnLabel(b):'-'))+
+          val('Nama ABK',esc(leagueAbkName(e)))+
+          val('Tanggal Chick-In',prodDateId(r?.ci?.arrived_on))+
+          val('Populasi Awal ABK',prodFmt(r?.initial??link?.initial_birds,0)+' Ekor')+
+          val('Pre Starter',prodFmt(link?.feed_pre_bags,0)+' Zak')+
+          val('Starter',prodFmt(link?.feed_starter_bags,0)+' Zak')+
+          val('Finisher',prodFmt(link?.feed_finisher_bags,0)+' Zak')+
+        '</div>'+
+        '<div class="rhpp-mini-block"><h4>KINERJA PRODUKSI</h4>'+
+          val('Mortalitas / Selisih Populasi',prodFmt(r?.mortality,2)+' %')+
+          val('Bobot Badan',prodFmt(r?.bw,3)+' Kg')+
+          val('Total Pakan',prodFmt(r?.feed,2)+' Kg')+
+          val('Pakan Per Ekor',prodFmt(r?.feedPerBird,0)+' gr/ekor')+
+          val('Umur Panen',prodFmt(r?.age,2)+' hari')+
+          val('FCR',prodFmt(r?.fcr,3))+
+          val('Indek Prestasi',prodFmt(r?.ip,2))+
+        '</div>'+
+        '<div class="rhpp-mini-block"><h4>RINGKASAN DATA</h4>'+
+          val('Total Panen (Ekor)',prodFmt(r?.birds,0))+
+          val('Total Berat (Kg)',prodFmt(r?.kg,2))+
+          val('Rata-rata BB (Kg/Ekor)',prodFmt(r?.bw,3))+
+          val('Pakan ABK (Kg)',prodFmt(r?.feed,2))+
+          val('FCR Standar',prodFmt(r?.stdFcr,3))+
+          val('Harga Bersih (Rp/Kg)',money(r?.avgLivePrice))+
+          val('Tarif Bonus IP (Rp/Kg)',money(r?.ipRate))+
+          val('Tarif Bonus FCR (Rp/Kg)',money(r?.fcrRate))+
+          val('FCR Final',prodFmt(r?.fcr,3))+
+        '</div>'+
+        '<div class="rhpp-mini-block rhpp-mini-value"><h4>NILAI RHPP ABK</h4>'+
+          val('Biaya DOC',money(r?.docCost))+
+          val('Biaya Pakan',money(r?.feedCost))+
+          val('Total Sapronak',money(r?.sapronakCost))+
+          val('Total Hasil Produksi',money(r?.revenue))+
+          val('Laba Dasar',money(r?.baseProfit))+
+          val('Bonus IP',money(r?.ipBonus))+
+          val('Bonus FCR',money(r?.fcrBonus))+
+          val('Hasil RHPP ABK',money(r?.profit))+
+          val('Hasil Per Ekor',money(r?.perBird))+
+        '</div>'+
+      '</div>'+
+      (!r?'<p class="muted">Data hasil Liga ABK untuk pilihan ini belum tersedia.</p>':'')+
+      (a?.active?'<p class="muted">Siklus masih PROSES. Nilai mengikuti data Liga ABK berjalan dan belum menjadi hasil CLOSED.</p>':'')+
+    '</section></div>';
+  }
+
   layout(html);
 
   const form=document.getElementById('pplRhppAbkFilter');
   const barn=document.getElementById('pplRhppAbkBarn');
   const assignment=document.getElementById('pplRhppAbkAssignment');
   const abk=document.getElementById('pplRhppAbkAbk');
-  barn.onchange=()=>{st.barn=barn.value;st.assignment='';st.abk='';pplRhppAbkViewPage();};
-  assignment.onchange=()=>{st.assignment=assignment.value;st.abk='';pplRhppAbkViewPage();};
-  abk.onchange=()=>{st.abk=abk.value;};
-  form.onsubmit=e=>{e.preventDefault();st.barn=barn.value;st.assignment=assignment.value;st.abk=abk.value;pplRhppAbkViewPage();};
+  if(barn)barn.onchange=()=>{st.barn=barn.value;st.assignment='';st.abk='';pplRhppAbkViewPage();};
+  if(assignment)assignment.onchange=()=>{st.assignment=assignment.value;st.abk='';pplRhppAbkViewPage();};
+  if(form)form.onsubmit=e=>{
+    e.preventDefault();
+    if(!barn?.value)return msg('Pilih kandang.');
+    if(!assignment?.value)return msg('Pilih siklus.');
+    if(!abk?.value)return msg('Pilih ABK.');
+    st.barn=barn.value;st.assignment=assignment.value;st.abk=abk.value;
+    pplRhppAbkViewPage();
+  };
+
+  if(st.assignment&&st.abk){
+    const exportArea=document.getElementById('pplRhppAbkExportArea');
+    const a=d.assignments.find(x=>x.id===st.assignment);
+    const b=d.barns.find(x=>x.id===a?.barn_id);
+    const e=d.abks.find(x=>x.id===st.abk);
+    const fileBase=('RHPP_ABK_'+(e?.code||e?.name||'ABK')+'_'+(b?.code||'Kandang')+'_'+String(a?.start_date||'Siklus')).replace(/[^A-Za-z0-9_-]+/g,'_');
+    const docHtml=()=>{
+      const clone=exportArea?.cloneNode(true);if(!clone)return '';
+      clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
+      return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(fileBase)+'</title>'+
+        '<style>@page{size:A4 landscape;margin:9mm}body{font-family:Arial,sans-serif;color:#111;font-size:9px}.head{border-bottom:2px solid #111;padding-bottom:7px;margin-bottom:10px}.head h2{margin:0 0 3px;font-size:15px}.panel{border:0!important;padding:0!important}.muted{color:#444}.rhpp-mini-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.rhpp-mini-block{border:1px solid #aaa}.rhpp-mini-block h4{margin:0;padding:5px 7px;background:#eee;font-size:10px}.rhpp-mini-row{display:grid;grid-template-columns:1.5fr 1fr;border-top:1px solid #ddd;padding:4px 6px;gap:6px}.rhpp-mini-row span{color:#333}.rhpp-mini-row strong{text-align:right}</style></head><body>'+
+        '<div class="head">'+(company.logo_url?'<img src="'+esc(company.logo_url)+'" style="max-height:38px;float:left;margin-right:10px">':'')+
+        '<h2>'+esc(company.company_name||company.legal_name||'BAGJASINDO MANDIRI SINDANGKASIH')+'</h2>'+
+        (company.address?'<div>'+esc(company.address)+'</div>':'')+
+        (company.phone?'<div>Tel/WA: '+esc(company.phone)+'</div>':'')+
+        '</div><h2>RHPP ABK</h2>'+clone.innerHTML+'</body></html>';
+    };
+    const openPrint=()=>{
+      const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
+      w.document.write(docHtml());w.document.close();setTimeout(()=>{w.focus();w.print();},450);
+    };
+    const pBtn=document.getElementById('pplRhppAbkPrint');
+    const pdfBtn=document.getElementById('pplRhppAbkPdf');
+    const xBtn=document.getElementById('pplRhppAbkExcel');
+    if(pBtn)pBtn.onclick=openPrint;
+    if(pdfBtn)pdfBtn.onclick=openPrint;
+    if(xBtn)xBtn.onclick=()=>{
+      const clone=exportArea?.cloneNode(true);if(!clone)return;
+      clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
+      const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(company.company_name||'BMS Mobile')+'</h2><h3>RHPP ABK</h3>'+clone.innerHTML+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download=fileBase+'.xls';document.body.appendChild(link);link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+  }
 }
 
 async function pplRhppViewPage(){
