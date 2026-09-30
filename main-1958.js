@@ -7849,7 +7849,7 @@ async function financeGlobalProfitLossPage(){
   const bopExp=prodNum(exp.operational_bop);
   const labaExp=prodNum(exp.operational_profit);
   const perawatanExp=prodNum(exp.maintenance_bop);
-  const isSalary=x=>x.category==='TENAGA_KERJA'&&/\b(gaji|salary)\b/i.test(String(x.notes||''));
+  const isSalary=x=>x.category==='GAJI'||(x.category==='TENAGA_KERJA'&&/\b(gaji|salary)\b/i.test(String(x.notes||'')));
   const gajiPerusahaan=bopUmumRows.filter(isSalary).reduce((n,x)=>n+prodNum(x.amount),0);
   const bopUmumSelainGaji=bopUmumRows.filter(x=>!isSalary(x)).reduce((n,x)=>n+prodNum(x.amount),0);
   const bopUmum=gajiPerusahaan+bopUmumSelainGaji;
