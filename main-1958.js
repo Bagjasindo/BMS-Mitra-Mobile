@@ -4541,13 +4541,15 @@ async function leagueAbkPage(editSizeId=null){
   window.__leagueAbkHistoryFilter=window.__leagueAbkHistoryFilter||{barn:'',assignment:'',abk:'',status:'',from:'',to:'',shown:false};
   const d=await productionBase({includeRhppCosts:false});
   const leagueSetting=await loadAbkLeagueSetting();
-  const [rr,sr,cr,br]=await Promise.all([
+  const [rr,sr,cr,br,finalR]=await Promise.all([
     db.from('production_abk_results').select('*'),
     db.from('production_abk_result_sizes').select('*').order('harvest_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
-    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg')
+    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
+    db.from('production_cycle_final_unified').select('contract_assignment_id')
   ]);
   const rows=rr.data||[],sizes=sr.data||[],leagueContracts=cr.data||[],leagueBonuses=br.data||[];
+  const closedFinalAssignmentIds=new Set((finalR.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
   const seasonStart=leagueSetting.data?.season_start||'0000-00-00';
   const abkReferenceContractId=a=>{
     if(a?.master_contract_id)return a.master_contract_id;
@@ -4626,7 +4628,7 @@ async function leagueAbkPage(editSizeId=null){
   };
 
   const calculated=rows.map(calcResult);
-  const seasonal=calculated.filter(x=>x.complete&&String(x.harvest_date||'')>=seasonStart);
+  const seasonal=calculated.filter(x=>x.complete&&x.a?.active===false&&closedFinalAssignmentIds.has(x.contract_assignment_id)&&String(x.harvest_date||'')>=seasonStart);
   const cumulativeMap=new Map();
   seasonal.forEach(x=>{
     if(!cumulativeMap.has(x.abk_id))cumulativeMap.set(x.abk_id,{...x,birds:0,kg:0,feed:0,profit:0,ipWeighted:0,periods:0});
@@ -9721,6 +9723,7 @@ async function buildDashboardModel(){
   const dashShipments=d.scopeRows(shipR.data||[]),dashShipmentItems=shipItemR.data||[];
   const dashExternalShipments=d.scopeRows(extShipR.data||[]),dashExternalShipmentItems=extShipItemR.data||[];
   const dashReturns=d.scopeRows(returnR.data||[]),dashReturnItems=returnItemR.data||[],dashItems=itemR.data||[];
+  const closedFinalAssignmentIds=new Set(rhppFinalRows.map(x=>x.contract_assignment_id).filter(Boolean));
   const abkReferenceContractId=a=>{
     if(a?.master_contract_id)return a.master_contract_id;
     if(a?.cycle_type!=='MANDIRI')return '';
@@ -9981,7 +9984,7 @@ async function buildDashboardModel(){
     const profit=revenue-cost+ipBonus;
     const perBird=birds?profit/birds:0;
     return {...x,a,birds,kg,bw,fcr,ip,perBird,feed,profit,initialPopulation:initial,complete:!!link?.basics_locked_at&&initial>0&&birds>0&&kg>0&&feed>0};
-  }).filter(x=>x.complete);
+  }).filter(x=>x.complete&&x.a?.active===false&&closedFinalAssignmentIds.has(x.contract_assignment_id));
   const abkChickInCycles=abkId=>{
     const refs=(d.links||[])
       .filter(l=>l.abk_id===abkId)
@@ -9990,7 +9993,7 @@ async function buildDashboardModel(){
         const ci=d.chicks.find(v=>v.contract_assignment_id===l.contract_assignment_id);
         return {link:l,a,ci,date:String(ci?.arrived_on||a?.start_date||'')};
       })
-      .filter(x=>x.a&&x.ci)
+      .filter(x=>x.a&&x.ci&&x.a.active===false&&closedFinalAssignmentIds.has(x.a.id))
       .sort((u,v)=>u.date.localeCompare(v.date)||String(u.a.created_at||'').localeCompare(String(v.a.created_at||'')));
     return refs;
   };
