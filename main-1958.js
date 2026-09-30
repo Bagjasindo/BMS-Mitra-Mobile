@@ -5453,7 +5453,7 @@ async function pplRhppAbkViewPage(){
     const perBird=birds?profit/birds:0;
     const avgLivePrice=kg?revenue/kg:0;
     const feedPerBird=initial?feed*1000/initial:0;
-    return {...x,a,ci,link,birds,kg,bw,feed,fcr,stdFcr,age,initial,survival,mortality,ip,revenue,docCost,feedCost,sapronakCost,ipRate,ipBonus,fcrDiff,fcrRate,fcrBonus,baseProfit,profit,perBird,avgLivePrice};
+    return {...x,a,ci,link,birds,kg,bw,feed,feedPerBird,fcr,stdFcr,age,initial,survival,mortality,ip,revenue,docCost,feedCost,sapronakCost,ipRate,ipBonus,fcrDiff,fcrRate,fcrBonus,baseProfit,profit,perBird,avgLivePrice};
   };
 
   const selectedResult=st.assignment&&st.abk
