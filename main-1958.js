@@ -3609,12 +3609,17 @@ const prodDateId=v=>{if(!v)return '-';const m=String(v).slice(0,10).match(/^(\d{
 const financeOriginalNoteDisplay=v=>{
   let s=String(v||'').trim();
   if(!s)return '-';
+  if(/^Reklasifikasi/i.test(s)&&/Sumber\s+sebelumnya\s*:/i.test(s)){
+    s=s.replace(/^.*Sumber\s+sebelumnya\s*:\s*/is,'').replace(/[ .;|-]+$/,'').trim();
+    return s||'-';
+  }
+  if(/^Sumber\s+Excel\s+lama\s+kategori/i.test(s))return '-';
   s=s.replace(/^\s*(?:Sumber\s+DATA\s+PETERNAKAN[^:]*:|Import\s+Excel\s+Operasional[^:]*:|Import\s+Excel[^:]*:|Import\s+Buku\s+Besar\s+BMS\s+Express\s*:|Buku\s+Besar\s+PT\s+BMS\s+baris[^:]*:|Upah\s+kerja\s+selama\s+periode\s*;\s*rincian\s+DATA\s+PETERNAKAN\s*:)[\s]*/is,'').trim();
   s=s.replace(/^\s*Alokasi\s+sumber\s+BB-[^ ]+\s+total\s+Rp[0-9.]+\.\s*/is,'').trim();
   s=s.replace(/^\s*Migrasi\s+data\s+lama\.\s*/is,'').trim();
   s=s.replace(/\s*\|\s*(?:Sesuai\s+arahan|Koreksi|Reklasifikasi)\s*:?.*$/is,'').trim();
   s=s.replace(/\s*[·|]\s*sumber\s+Excel\s+lama.*$/is,'').trim();
-  s=s.replace(/\.\s*(?:BMS\s+(?:GROUP|[1-4])(?:\s|\.|$)|Tujuan(?:\s+ditetapkan)?\s*:|Source\b|Qty\b|Nota\s+real\b|Aset\b|Barang\b|Seluruh\s+BB-|Alat\/peralatan\b|Kode\s+sumber\b).*$/is,'').trim();
+  s=s.replace(/\.\s*(?:BMS\s+(?:GROUP|[1-4])(?:\s|\.|$)|Tujuan(?:\s+ditetapkan)?\s*:|Source\s|Qty\s|Nota\s+real\s|Aset\s|Barang\s|Seluruh\s+BB-|Alat\/peralatan\s|Kode\s+sumber\s).*$/is,'').trim();
   s=s.replace(/\s*(?:[.;]\s*)?(?:Sumber\s+(?:Excel\s+)?Data\s+Lama|Sumber\s+Data\s+Lama|Alokasi\s+upah|Ongkos\s+angkut\s+GROUP|GROUP\s+dibagi\s+rata|Nama\s+kandang\s+pada\s+uraian|Tujuan\s+[A-Za-z]|Perawatan\s+kandang\s+tanpa\s+siklus|Tanpa\s+siklus(?:\s+produksi)?|Keterangan\s+asli\s+BMS|tanggal\s+asli|Kode\s+sumber|sesuai\s+(?:arahan|instruksi|konfirmasi)|Reklasifikasi).*$/is,'').trim();
   s=s.replace(/[ .;|-]+$/,'').trim();
   return s||'-';
