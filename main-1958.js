@@ -215,14 +215,27 @@ const submitGuardSkip=form=>{
   const id=String(form?.id||'');
   return form?.dataset?.noSubmitGuard==='1'||/(filter|search|history)/i.test(id);
 };
-const releaseSubmitGuard=form=>{
+const submitButtonSet=(btn,label)=>{
+  if(!btn)return;
+  if(btn.tagName==='INPUT')btn.value=label;
+  else btn.textContent=label;
+};
+const releaseSubmitGuard=(form,feedback=null)=>{
   if(!form||form.dataset?.bmsSubmitting!=='1')return;
   form.dataset.bmsSubmitting='0';
   const btn=form.__bmsSubmitButton;
-  if(btn){
+  const original=btn?.dataset?.bmsOriginalLabel||'Simpan';
+  if(btn&&feedback){
+    submitButtonSet(btn,feedback.ok?'Tersimpan ✓':'Gagal — coba lagi');
+    btn.disabled=true;
+    window.setTimeout(()=>{
+      btn.disabled=false;
+      submitButtonSet(btn,original);
+      delete btn.dataset.bmsOriginalLabel;
+    },feedback.ok?1200:1800);
+  }else if(btn){
     btn.disabled=false;
-    if(btn.tagName==='INPUT')btn.value=btn.dataset.bmsOriginalLabel||btn.value;
-    else btn.textContent=btn.dataset.bmsOriginalLabel||btn.textContent;
+    submitButtonSet(btn,original);
     delete btn.dataset.bmsOriginalLabel;
   }
   form.__bmsSubmitButton=null;
@@ -234,8 +247,8 @@ document.addEventListener('submit',ev=>{
   if(form.dataset.bmsSubmitting==='1'){
     ev.preventDefault();
     ev.stopImmediatePropagation();
-    const e=document.getElementById('message');
-    if(e){e.textContent='Data sedang diproses. Tunggu sampai proses pertama selesai.';e.className='error';}
+    const btn=form.__bmsSubmitButton;
+    if(btn)submitButtonSet(btn,'Sedang menyimpan...');
     return;
   }
   form.dataset.bmsSubmitting='1';
@@ -252,7 +265,11 @@ document.addEventListener('submit',ev=>{
 },true);
 window.addEventListener('unhandledrejection',()=>releaseSubmitGuard(window.__bmsSubmittingForm));
 const msg=(s,ok=false)=>{
-  releaseSubmitGuard(window.__bmsSubmittingForm);
+  const submitting=window.__bmsSubmittingForm;
+  if(submitting){
+    releaseSubmitGuard(submitting,{ok,message:s});
+    return;
+  }
   let e=document.getElementById('message');
   if(e){e.textContent=s;e.className=ok?'success':'error'}
 };
