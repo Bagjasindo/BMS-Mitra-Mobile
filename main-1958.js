@@ -4975,23 +4975,26 @@ async function leagueAbkPage(editSizeId=null){
 
   const syncAbkContext=()=>{
     const link=d.links.find(l=>l.contract_assignment_id===f.assignment.value&&l.abk_id===f.abk.value);
+    const a=d.assignments.find(x=>x.id===f.assignment.value);
     const locked=!!link?.basics_locked_at;
+    const cycleActive=!!a?.active;
     f.initial_birds.value=link?.initial_birds?fmtNumber(link.initial_birds):'';
     f.pre_bags.value=link?.feed_pre_bags!=null?prodFmt(link.feed_pre_bags,2):'';
     f.starter_bags.value=link?.feed_starter_bags!=null?prodFmt(link.feed_starter_bags,2):'';
     f.finisher_bags.value=link?.feed_finisher_bags!=null?prodFmt(link.feed_finisher_bags,2):'';
 
     f.initial_birds.readOnly=true;
-    [f.pre_bags,f.starter_bags,f.finisher_bags].forEach(inp=>inp.readOnly=locked||!['ADMIN','PPL'].includes(profile.role));
+    [f.pre_bags,f.starter_bags,f.finisher_bags].forEach(inp=>inp.readOnly=!cycleActive||!['ADMIN','PPL'].includes(profile.role));
     if(savePopulationButton)savePopulationButton.disabled=!link;
     if(lockButton){
-      lockButton.disabled=!link||locked||!prodNum(link?.initial_birds);
-      lockButton.textContent=locked?'Pakan Terkunci':'Simpan & Kunci Pakan';
+      lockButton.hidden=!cycleActive;
+      lockButton.disabled=!cycleActive||!link||!prodNum(link?.initial_birds);
+      lockButton.textContent=locked?'Simpan Perubahan Pakan':'Simpan & Kunci Pakan';
     }
     const status=document.getElementById('abkBasicsStatus');
     if(status)status.textContent=!link?'Pilih ABK untuk melihat status.':
       'Populasi '+(link.initial_birds?fmtNumber(link.initial_birds)+' ekor':'belum diisi')+
-      ' · Pakan '+(locked?'TERKUNCI '+prodFmt(prodNum(link.feed_pre_bags)+prodNum(link.feed_starter_bags)+prodNum(link.feed_finisher_bags),2)+' zak':'belum dikunci');
+      ' · Pakan '+(locked?(cycleActive?'TERSIMPAN · masih bisa dikoreksi selama PROSES · ':'TERKUNCI CLOSED · ')+prodFmt(prodNum(link.feed_pre_bags)+prodNum(link.feed_starter_bags)+prodNum(link.feed_finisher_bags),2)+' zak':'belum dikunci');
     harvestFields.disabled=!locked;
 
     const ci=d.chicks.find(c=>c.contract_assignment_id===f.assignment.value);
@@ -5059,7 +5062,7 @@ async function leagueAbkPage(editSizeId=null){
     window.__leagueAbkState.assignment=f.assignment.value||'';
     window.__leagueAbkState.abk=f.abk.value||'';
     await leagueAbkPage();
-    msg('Penempatan Pakan ABK tersimpan dan terkunci. Silakan lanjut ke Panen.',true);
+    msg(link.basics_locked_at?'Perubahan Pakan ABK tersimpan.':'Penempatan Pakan ABK tersimpan. Silakan lanjut ke Panen.',true);
   };
 
   f.onsubmit=async e=>{
