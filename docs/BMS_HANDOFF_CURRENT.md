@@ -17,6 +17,16 @@ Sumber lanjutan tunggal: source code live + file ini.
 
 
 
+
+## STANDAR TOMBOL SIMPAN / EDIT GLOBAL
+- Submit form tidak boleh menghasilkan double input: submit pertama langsung mengunci form/tombol, submit berikutnya diblok.
+- Saat proses: tombol menampilkan `Menyimpan…`.
+- Sukses: tombol menampilkan `✓ Tersimpan`.
+- Gagal/validasi gagal: tombol menampilkan `✕ Belum tersimpan`, lalu aktif kembali agar dapat dicoba ulang.
+- Selama submit, pesan sukses/gagal tidak ditampilkan di notifikasi atas; feedback diarahkan ke tombol.
+- Jika halaman re-render setelah save, feedback sukses diteruskan ke tombol form yang sama selama jeda singkat.
+- State warna tombol: proses abu-biru, sukses hijau, gagal merah-outline.
+
 ## STANDAR RIWAYAT GLOBAL
 - Riwayat tidak memakai pagination `Sebelumnya / Selanjutnya`.
 - Saat halaman pertama dibuka, daftar Riwayat tidak ditampilkan.
@@ -101,6 +111,9 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `b1c85d98bf77701cd7a594f610c51094379616e4` — Add visual states for save button feedback
+- `a983760e2b1994a3d527ae6d7500adde79ad9ba2` — Bump cache for button save feedback
+- `8f6541c6976b5c4d09ce34ffcb3f04b3c7e7946f` — Standardize save feedback on buttons and block duplicate submits
 - `1171330539f29a35c1cadceae0c1d7ff34981e87` — Bump cache for filter-first history standard
 - `68d0135f682b59da183b56b8e93709a82a55e874` — Standardize history as filter-first without pagination
 - `3427a6eaa6d7c5e53f71ae467b805b2853338578` — Bump cache for global BMS UI standard
@@ -122,7 +135,7 @@ Terdapat 5 halaman/menu RHPP:
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2294-history-filter-no-pagination`
+`main-1958.js?v=2295-button-save-feedback`
 Cache CSS aktif:
 `style.css?v=2219-global-ui-9point`
 
