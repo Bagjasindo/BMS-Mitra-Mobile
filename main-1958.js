@@ -1432,13 +1432,13 @@ async function logisticsContractPage(){
     detail+='<h4>ABK Kandang</h4>';
     detail+=ls.length?ls.map(x=>active
       ?'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div><input type="text" data-number="1" inputmode="decimal" data-abk-pop="'+esc(x.id)+'" value="'+(x.initial_birds?fmtNumber(x.initial_birds):'')+'" placeholder="Ekor"><div class="table-actions"><button type="button" data-save-abk-pop="'+esc(x.id)+'">Simpan</button><button type="button" class="btn-danger-soft" data-remove-abk="'+esc(x.id)+'">Hapus</button></div></div>'
-      :'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div><strong>'+(x.initial_birds==null?'-':fmtNumber(x.initial_birds))+' ekor</strong></div>'
+      :'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div>'+(profile.role==='ADMIN'?'<input type="text" data-number="1" inputmode="decimal" data-closed-abk-pop="'+esc(x.id)+'" value="'+(x.initial_birds?fmtNumber(x.initial_birds):'')+'" placeholder="Ekor"><div class="table-actions"><button type="button" data-save-closed-abk-pop="'+esc(x.id)+'">Simpan Koreksi</button></div>':'<strong>'+(x.initial_birds==null?'-':fmtNumber(x.initial_birds))+' ekor</strong>')+'</div>'
     ).join(''):'<p class="muted">Belum ada ABK.</p>';
     if(active&&a.cycle_type==='MANDIRI'&&profile.role==='ADMIN')detail+='<div class="inline-actions"><button type="button" class="btn-danger-soft" data-close-mandiri="'+esc(a.id)+'">Close Siklus Mandiri</button></div>';
     if(active)detail+='<div class="contract-abk-add"><select data-add-abk-select="'+esc(a.id)+'"><option value="">Tambah ABK...</option>'+abks.filter(x=>!ls.some(l=>l.abk_id===x.id)).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select><input type="text" data-number="1" inputmode="decimal" data-add-abk-pop="'+esc(a.id)+'" placeholder="Populasi Awal"><button type="button" data-add-abk="'+esc(a.id)+'">Tambah ABK</button></div>';
     detailBody.innerHTML=detail;
     detailPanel.hidden=false;
-    if(active){bindNumberInputs();bindContractDetailActions();}
+    if(active||profile.role==='ADMIN'){bindNumberInputs();bindContractDetailActions();}
     detailPanel.scrollIntoView({behavior:'smooth',block:'start'});
   };
 
@@ -1452,6 +1452,16 @@ async function logisticsContractPage(){
       const {error}=await db.from('logistics_contract_assignment_abks').insert({contract_assignment_id:btn.dataset.addAbk,abk_id:select.value,initial_birds:initial});
       if(error)return msg(error.message);
       await logisticsContractPage();msg('ABK dan Populasi Awal berhasil ditambahkan.',true);
+    });
+    detailBody.querySelectorAll('[data-save-closed-abk-pop]').forEach(btn=>btn.onclick=async()=>{
+      const input=detailBody.querySelector('[data-closed-abk-pop="'+btn.dataset.saveClosedAbkPop+'"]');
+      const initial=Math.trunc(normalizeInputID(input?.value)||0);
+      if(initial<=0)return msg('Populasi Awal ABK wajib lebih dari 0.');
+      if(!await appConfirm('Koreksi Populasi Awal ABK pada siklus CLOSED menjadi '+fmtNumber(initial)+' ekor?'))return;
+      const {error}=await db.rpc('admin_correct_closed_abk_population_v1',{p_link_id:btn.dataset.saveClosedAbkPop,p_initial_birds:initial});
+      if(error)return msg(error.message);
+      await logisticsContractPage();
+      msg('Populasi Awal ABK siklus CLOSED berhasil dikoreksi.',true);
     });
     detailBody.querySelectorAll('[data-save-abk-pop]').forEach(btn=>btn.onclick=async()=>{
       const input=detailBody.querySelector('[data-abk-pop="'+btn.dataset.saveAbkPop+'"]');
