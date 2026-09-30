@@ -3868,3 +3868,61 @@ main select.app-select-native{
     }
   }
 }
+
+
+/* bms-select-restore-professional-20261001 */
+@media screen{
+  /* Searchable select/dropdown is a choice list, not a primary action button. */
+  .shell main .mobile-select-picker,
+  .shell main .app-select-results{
+    background:#fff!important;
+    color:#172a35!important;
+    border:1px solid #cbd7de!important;
+    border-radius:8px!important;
+    box-shadow:0 6px 18px rgba(23,55,75,.10)!important;
+  }
+  .shell main .mobile-select-options button,
+  .shell main .app-select-results button{
+    width:100%!important;
+    min-height:34px!important;
+    margin:0!important;
+    padding:7px 10px!important;
+    border:0!important;
+    border-bottom:1px solid #e6edf1!important;
+    border-radius:0!important;
+    background:#fff!important;
+    color:#263b47!important;
+    box-shadow:none!important;
+    text-align:left!important;
+    font-size:13px!important;
+    font-weight:500!important;
+    line-height:1.25!important;
+  }
+  .shell main .mobile-select-options button:last-child,
+  .shell main .app-select-results button:last-child{
+    border-bottom:0!important;
+  }
+  .shell main .mobile-select-options button:hover,
+  .shell main .mobile-select-options button:focus-visible,
+  .shell main .app-select-results button:hover,
+  .shell main .app-select-results button:focus-visible{
+    background:#f2f8fa!important;
+    color:#0b6578!important;
+    outline:none!important;
+  }
+  .shell main .mobile-select-options button.selected,
+  .shell main .app-select-results button[aria-selected="true"]{
+    background:#e8f6f9!important;
+    color:#075369!important;
+    font-weight:700!important;
+    box-shadow:inset 3px 0 0 #16a9c3!important;
+  }
+  @media(max-width:900px){
+    .shell main .mobile-select-options button,
+    .shell main .app-select-results button{
+      min-height:38px!important;
+      padding:8px 10px!important;
+      font-size:13px!important;
+    }
+  }
+}
