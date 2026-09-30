@@ -1061,7 +1061,8 @@ async function contractMasterPage(){
   const contractLocked=!!selected?.frozen_at;
   const canEditContract=can&&!contractLocked;
 
-  let html='<section class="panel"><h3>Master Kontrak</h3><p class="muted">Master kontrak dipilih saat Logistik membuat Siklus Mitra per kandang.</p>'+\n    (selected?(contractLocked?'<p><strong>Status: TERKUNCI</strong> · '+esc(prodDateId(String(selected.frozen_at).slice(0,10)))+' · revisi wajib Buat Kontrak Baru.</p>':'<p><strong>Status: BELUM DIKUNCI</strong> · setelah final, tekan Kunci Kontrak agar historinya tidak dapat berubah.</p>'):'');
+  let html='<section class="panel"><h3>Master Kontrak</h3><p class="muted">Master kontrak dipilih saat Logistik membuat Siklus Mitra per kandang.</p>'+
+    (selected?(contractLocked?'<p><strong>Status: TERKUNCI</strong> · '+esc(prodDateId(String(selected.frozen_at).slice(0,10)))+' · revisi wajib Buat Kontrak Baru.</p>':'<p><strong>Status: BELUM DIKUNCI</strong> · setelah final, tekan Kunci Kontrak agar historinya tidak dapat berubah.</p>'):'');
 
   if(can){
     html+='<form id="contractInfoForm" class="form-vertical">'+
