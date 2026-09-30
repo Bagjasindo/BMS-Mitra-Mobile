@@ -9881,6 +9881,19 @@ async function buildDashboardModel(){
     const perBird=birds?profit/birds:0;
     return {...x,a,birds,kg,bw,fcr,ip,perBird,feed,profit,initialPopulation:initial,complete:!!link?.basics_locked_at&&initial>0&&birds>0&&kg>0&&feed>0};
   }).filter(x=>x.complete);
+  const abkChickInCycles=abkId=>{
+    const refs=(d.links||[])
+      .filter(l=>l.abk_id===abkId)
+      .map(l=>{
+        const a=d.assignments.find(v=>v.id===l.contract_assignment_id);
+        const ci=d.chicks.find(v=>v.contract_assignment_id===l.contract_assignment_id);
+        return {link:l,a,ci,date:String(ci?.arrived_on||a?.start_date||'')};
+      })
+      .filter(x=>x.a&&x.ci)
+      .sort((u,v)=>u.date.localeCompare(v.date)||String(u.a.created_at||'').localeCompare(String(v.a.created_at||'')));
+    return refs;
+  };
+
   const leagueMap=new Map();
   leagueRaw.forEach(x=>{
     const key=x.abk_id;
@@ -9894,15 +9907,20 @@ async function buildDashboardModel(){
     g.totalPopulation+=prodNum(x.initialPopulation);
     g.ipWeighted+=prodNum(x.ip)*prodNum(x.birds);
     g.periods+=1;
-    g.a=x.a;
   });
-  const league=[...leagueMap.values()].map(g=>({
-    ...g,
-    bw:g.birds?g.kg/g.birds:0,
-    fcr:g.kg?g.feed/g.kg:0,
-    ip:g.birds?g.ipWeighted/g.birds:0,
-    perBird:g.birds?g.profit/g.birds:0
-  })).filter(g=>d.abks.find(e=>e.id===g.abk_id)?.active!==false);
+  const league=[...leagueMap.values()].map(g=>{
+    const abkCycles=abkChickInCycles(g.abk_id);
+    const latestCycle=abkCycles[abkCycles.length-1]||null;
+    return {
+      ...g,
+      a:latestCycle?.a||g.a,
+      abkCycleNo:abkCycles.length||g.periods,
+      bw:g.birds?g.kg/g.birds:0,
+      fcr:g.kg?g.feed/g.kg:0,
+      ip:g.birds?g.ipWeighted/g.birds:0,
+      perBird:g.birds?g.profit/g.birds:0
+    };
+  }).filter(g=>d.abks.find(e=>e.id===g.abk_id)?.active!==false);
   const max=k=>Math.max(...league.map(x=>prodNum(x[k])),0),min=k=>Math.min(...league.map(x=>prodNum(x[k])).filter(v=>v>0),0);
   league.forEach(x=>{const hi=k=>max(k)?prodNum(x[k])/max(k):0,lo=k=>prodNum(x[k])>0&&min(k)>0?min(k)/prodNum(x[k]):0;x.score=hi('perBird')*.50+lo('fcr')*.30+hi('ip')*.20});
   league.sort((a,b)=>b.score-a.score);
@@ -9915,7 +9933,7 @@ async function buildDashboardModel(){
     const e=d.abks.find(v=>v.id===x.abk_id),b=d.barns.find(v=>v.id===x.a?.barn_id);
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
     return '<article class="owner-league-card"><div class="owner-league-rank">'+medal+'</div><div class="owner-league-main"><strong>'+esc(leagueAbkName(e))+'</strong><small>'+esc(b?shortBarnLabel(b):'-')+'</small></div>'+
-      '<div class="owner-league-stats"><div><span>Siklus</span><b>'+prodFmt(x.periods,0)+'</b></div><div><span>Populasi</span><b>'+prodFmt(x.totalPopulation,0)+'</b></div><div><span>Ekor Panen</span><b>'+prodFmt(x.harvestBirds,0)+'</b></div><div><span>Rp/Ekor</span><b>'+prodFmt(x.perBird,0)+'</b></div><div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div><div><span>FCR</span><b>'+prodFmt(x.fcr,3)+'</b></div><div><span>BW</span><b>'+prodFmt(x.bw,3)+'</b></div></div></article>';
+      '<div class="owner-league-stats"><div><span>Siklus ABK</span><b>'+prodFmt(x.abkCycleNo,0)+'</b></div><div><span>Populasi</span><b>'+prodFmt(x.totalPopulation,0)+'</b></div><div><span>Ekor Panen</span><b>'+prodFmt(x.harvestBirds,0)+'</b></div><div><span>Rp/Ekor</span><b>'+prodFmt(x.perBird,0)+'</b></div><div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div><div><span>FCR</span><b>'+prodFmt(x.fcr,3)+'</b></div><div><span>BW</span><b>'+prodFmt(x.bw,3)+'</b></div></div></article>';
   }).join('');
 
   const estimateAttention=[];
