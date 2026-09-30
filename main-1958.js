@@ -7915,7 +7915,7 @@ async function financeGlobalProfitLossPage(){
       '<tr><td>Perawatan Kandang</td><td>Rp '+prodFmt(perawatanKandang,0)+'</td></tr>'+
       '<tr><td>Perawatan Expedisi</td><td>Rp '+prodFmt(perawatanExp,0)+'</td></tr>'+
       '<tr><td>BOP Umum selain gaji</td><td>Rp '+prodFmt(bopUmumSelainGaji,0)+'</td></tr>'+
-      '<tr><td>Gaji Karyawan Perusahaan</td><td>Rp '+prodFmt(gajiPerusahaan,0)+'</td></tr>'+
+      (gajiPerusahaan>0?'<tr><td>Gaji Karyawan Perusahaan</td><td>Rp '+prodFmt(gajiPerusahaan,0)+'</td></tr>':'')+
       '<tr><td><strong>Total Biaya Global</strong></td><td><strong>Rp '+prodFmt(biayaGlobal,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
     (barnMaintGroup.length?'<h4>Rincian Perawatan Kandang</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+barnMaintGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
