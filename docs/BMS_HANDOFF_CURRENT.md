@@ -19,6 +19,17 @@ Sumber lanjutan tunggal: source code live + file ini.
 
 
 
+
+## STANDAR TIPOGRAFI RESPONSIF PROFESIONAL
+- PC dan HP tidak memakai ukuran font yang disamakan mentah.
+- Keluarga font dan hierarki visual sama; skala mengikuti fungsi komponen dan viewport.
+- Body tetap 14px di desktop dan HP untuk keterbacaan.
+- Heading/KPI memakai skala responsif (`clamp`) agar proporsional, bukan sekadar dikecilkan.
+- Tabel dibuat sedikit lebih padat di HP.
+- Input/select/textarea di HP tetap 16px untuk mencegah auto-zoom browser.
+- Tombol HP minimal 44px sebagai target sentuh; ukuran font tombol tetap konsisten.
+- Print/PDF tetap terpisah karena aturan ini hanya `@media screen`.
+
 ## STANDAR FONT & HP GLOBAL
 - Seluruh UI layar memakai satu font stack: Inter / system-ui / Segoe UI / Roboto / Arial.
 - Hierarki font dikunci global: body, heading, label, control, button, table, sidebar, KPI.
@@ -121,6 +132,8 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `a91d1019a7f491087b97d7e14c65bad91f566095` — Bump cache for professional responsive typography
+- `3e3a6d76a194bb2c190d311c80bfbd5266c185dd` — Correct typography to professional responsive scale
 - `0a0af4ad83ab90b3e58b0ac286ffa3b7880a8b09` — Bump cache for global typography mobile sync
 - `36a10061e3f5c848d8683a42750729634e5fe3c8` — Synchronize global typography and mobile UI
 - `b1c85d98bf77701cd7a594f610c51094379616e4` — Add visual states for save button feedback
@@ -149,7 +162,7 @@ Terdapat 5 halaman/menu RHPP:
 Cache aktif saat handoff ini dibuat:
 `main-1958.js?v=2295-button-save-feedback`
 Cache CSS aktif:
-`style.css?v=2220-global-font-mobile-sync`
+`style.css?v=2221-professional-responsive-type`
 
 ## TITIK BERHENTI
 STOP di sini.
