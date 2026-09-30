@@ -411,7 +411,8 @@ function appNav(){
         .filter(canViewTab);
       const umumItems=['bop','perawatan_kandang','kasbon','cicilan','bop_umum','arus_kas','laba_rugi_kandang','laporan_keuangan']
         .filter(canViewTab);
-      const allFinance=[...mitraItems,...mandiriItems,...umumItems];
+      const expedisiFinanceItems=['expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi'].filter(canViewTab);
+      const allFinance=[...mitraItems,...mandiriItems,...umumItems,...expedisiFinanceItems];
       if(allFinance.length){
         const subgroup=(label,items)=>{
           if(!items.length)return '';
@@ -422,6 +423,7 @@ function appNav(){
           subgroup('Mitra',mitraItems)+
           subgroup('Mandiri',mandiriItems)+
           subgroup('Umum / Operasional',umumItems)+
+          subgroup('Keuangan Expedisi',expedisiFinanceItems)+
           '</div></details>';
       }
       continue;
@@ -429,9 +431,9 @@ function appNav(){
 
     const items=section.items;
     const logisticsNested=['logistik_retur','logistik_retur_sebagian','logistik_retur_luar'];
-    const sectionActive=items.includes(tab)||(section.label==='Logistik'&&logisticsNested.includes(tab));
+    const sectionActive=items.includes(tab)||(section.label==='Logistik'&&(logisticsNested.includes(tab)||tab==='expedisi_usaha'));
     const open=sectionActive?' open':'';
-    const itemHtml=items.map(key=>{
+    let itemHtml=items.map(key=>{
       if(section.label==='Logistik'&&key==='logistik_pengiriman'){
         const shipOpen=(tab==='logistik_pengiriman'||tab==='logistik_retur'||tab==='logistik_retur_sebagian')?' open':'';
         return '<details class="nav-subgroup"'+shipOpen+'><summary>Pengiriman</summary><div class="nav-child-item">'+
@@ -450,25 +452,15 @@ function appNav(){
       if(section.label==='Logistik'&&key==='logistik_retur_luar')return '';
       return navButton(key);
     }).join('');
+    if(section.label==='Logistik'&&canViewTab('expedisi_usaha')){
+      const expOpen=tab==='expedisi_usaha'?' open':'';
+      itemHtml+='<details class="nav-subgroup"'+expOpen+'><summary>Expedisi</summary><div class="nav-child-item">'+
+        '<details class="nav-subgroup"'+expOpen+'><summary>Operasional</summary><div class="nav-child-item">'+
+        navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<')+
+        '</div></details></div></details>';
+    }
     html+='<details class="nav-group"'+open+'><summary>'+esc(section.label)+'</summary><div class="nav-sub">'+itemHtml+'</div></details>';
 
-    if(section.label==='Logistik'){
-      const expedisiItems=['expedisi_usaha','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi'].filter(canViewTab);
-      if(expedisiItems.length){
-        const expOpen=expedisiItems.includes(tab)?' open':'';
-        html+='<details class="nav-group"'+expOpen+'><summary>Expedisi</summary><div class="nav-sub">'+
-          '<details class="nav-subgroup"'+(tab==='expedisi_usaha'?' open':'')+'><summary>Operasional</summary><div class="nav-child-item">'+
-            (canViewTab('expedisi_usaha')?navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<'):'')+
-          '</div></details>'+
-          '<details class="nav-subgroup"'+(['expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi'].includes(tab)?' open':'')+'><summary>Keuangan Expedisi</summary><div class="nav-child-item">'+
-            (canViewTab('expedisi_pembayaran')?navButton('expedisi_pembayaran'):'')+
-            (canViewTab('bop_expedisi')?navButton('bop_expedisi'):'')+
-            (canViewTab('perawatan_expedisi')?navButton('perawatan_expedisi'):'')+
-            (canViewTab('laporan_expedisi')?navButton('laporan_expedisi'):'')+
-          '</div></details>'+
-          '</div></details>';
-      }
-    }
   }
 
   html+=navButton('profil');
