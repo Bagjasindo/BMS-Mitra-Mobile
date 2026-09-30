@@ -6010,7 +6010,7 @@ async function adminRhppHistoryPage(){
         '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
       '</div>'+
       '<div id="pplRhppExportArea" style="margin-top:12px">'+
-        '<iframe id="pplRhppPreview" title="Preview RHPP" style="width:100%;height:1180px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe>'+
+        '<iframe id="pplRhppPreview" title="Preview RHPP" style="width:100%;height:1040px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe>'+
       '</div>'+
       (!src?'<p class="muted">Ringkasan RHPP belum tersedia untuk siklus ini.</p>':'')+
       (!closed?'<p class="muted">Periode masih PROSES. Nilai FINAL tersedia setelah Administrator melakukan Close.</p>':'')+
@@ -6198,7 +6198,10 @@ async function adminRhppHistoryPage(){
         '</div></body></html>';
     };
     const previewFrame=document.getElementById('pplRhppPreview');
-    if(previewFrame)previewFrame.srcdoc=docHtml();
+    if(previewFrame){
+      const previewHtml=docHtml().replace('</style>','.sheet{transform:scale(1.5);transform-origin:top center}body{min-height:1050px}</style>');
+      previewFrame.srcdoc=previewHtml;
+    }
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
       w.document.write(docHtml());w.document.close();
