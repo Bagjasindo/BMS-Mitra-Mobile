@@ -73,6 +73,9 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `862ac2699270358e08dd3ef44f003306444d9154` — Bump cache for uniform RHPP submenu
+- `2d9c1b6f682299a059958fac7f241366d03ce86f` — Standardize Lihat RHPP submenu visual states
+- `978d55e030bed765108cce0d1f5fa1eab1687aee` — Unify Lihat RHPP submenu icon and structure
 - `a2e6fb1c0bfbb19fa92119fc3b87452529697a73` — Keep RHPP screen scope isolated to Cetak RHPP
 - `61ad66b8053865646895cdfdc99bf90d6b746802` — Bump cache for professional RHPP print UI
 - `124fa6dffa6bd3f573311359522cefa1071f865e` — Refine Cetak RHPP view and unify professional RHPP print UI
@@ -82,7 +85,7 @@ Terdapat 5 halaman/menu RHPP:
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2290-rhpp-professional-print`
+`main-1958.js?v=2291-rhpp-submenu-uniform`
 
 ## TITIK BERHENTI
 STOP di sini.
