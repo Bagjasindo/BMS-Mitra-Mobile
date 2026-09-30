@@ -287,3 +287,21 @@ Mulai titik ini, seluruh alur bisnis yang sudah PASS dianggap FROZEN:
 ### FILE / COMMIT
 - SQL re-audit hardening: sql/20260930_full_reaudit_hardening.sql
 - Commit SQL: 6284703b03481c2b178b5d7dea298b981240a4ab
+
+
+## REPO CLEANUP + PASS BASELINE LOCK — 30 SEPTEMBER 2026
+- Audit struktur repo main dilakukan setelah full re-audit PASS.
+- File dokumentasi lama yang sudah redundant dan tidak dipakai aplikasi dihapus:
+  - `AUDIT_ISOLASI_ESTIMASI_LIGA_ABK_20260929.md`
+- `docs/` tetap hanya berisi handoff tunggal `BMS_HANDOFF_CURRENT.md`.
+- File SQL di `sql/` dan `supabase/` dipertahankan karena merupakan jejak migrasi, guard, snapshot, recovery, dan audit database; jangan dianggap file sampah hanya karena tidak dipanggil frontend.
+- Source operasional utama tetap:
+  - `index.html`
+  - `main-1958.js`
+  - `style.css`
+  - `assets/`
+  - `docs/BMS_HANDOFF_CURRENT.md`
+  - SQL/migration history yang relevan.
+- Baseline PASS akan dikunci pada branch `locked-pass-2026-09-30`.
+- Branch baseline tersebut adalah titik rollback/freeze. Revisi berikutnya dilakukan di `main` dan tidak boleh memindahkan/mengubah branch baseline.
+- Alur bisnis FLOW FREEZE tetap berlaku. Revisi normal hanya UI/menu riwayat/filter/penyeragaman form/label tanpa mengubah backend PASS.
