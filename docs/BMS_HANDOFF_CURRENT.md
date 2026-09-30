@@ -15,6 +15,26 @@ Sumber lanjutan tunggal: source code live + file ini.
 - Fokus perubahan terakhir hanya UI RHPP.
 - Sampai titik ini user menyatakan cukup; jangan lanjut otomatis.
 
+
+## GLOBAL UI STANDARDIZATION — 9 POINT (1 OKTOBER 2026)
+Layer global screen-only sudah diterapkan di `style.css` dengan marker `bms-global-ui-standard-20261001`.
+Scope:
+1. Form global: width, gap, label, input/select/textarea, focus, disabled.
+2. Button global: ukuran, radius, warna, hover, focus, disabled, danger/delete.
+3. Table global: wrapper, header, row spacing, numeric alignment, total row.
+4. Panel/Card global: border, radius, shadow, heading, muted text.
+5. Filter global: layout, surface, spacing, action area.
+6. Sidebar/Submenu global: tinggi, padding, icon, active/hover, nested indentation.
+7. KPI/Summary global: card size, typography, spacing, highlight.
+8. Responsive/Mobile global: padding, grid collapse, button/action wrapping, mobile field font.
+9. Inline-style conflict normalization: semantic component classes menang atas inline spacing/sizing lama untuk komponen standar.
+
+Catatan:
+- Berlaku hanya `@media screen`; Print/PDF tidak disentuh oleh layer global ini.
+- Formula, database, source data, permission, status transaksi, dan flow bisnis tidak diubah.
+- Login tetap memakai style login khusus dan tidak termasuk normalisasi `.shell main`.
+- Validasi visual perlu dilakukan dari browser pada beberapa halaman per role setelah hard refresh.
+
 ## KONDISI RHPP TERKINI
 Terdapat 5 halaman/menu RHPP:
 1. Lihat RHPP
@@ -73,6 +93,8 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `3427a6eaa6d7c5e53f71ae467b805b2853338578` — Bump cache for global BMS UI standard
+- `1e4c45d06fd4e3df1c11f2463a0347effd3b0560` — Apply global 9-point BMS UI standardization
 - `cbf49dcbdddf17e9499505ce9d82289543014eec` — Bump cache for readable professional RHPP print
 - `e82173aabdd991a44e95c3ab830c8f1c98675bed` — Make shared RHPP print output readable and professional
 - `27af7e8636439995922032d4bd9b5da3a3271243` — Bump cache for exact Cetak RHPP submenu styling
@@ -91,6 +113,8 @@ Terdapat 5 halaman/menu RHPP:
 
 Cache aktif saat handoff ini dibuat:
 `main-1958.js?v=2293-rhpp-print-readable`
+Cache CSS aktif:
+`style.css?v=2219-global-ui-9point`
 
 ## TITIK BERHENTI
 STOP di sini.
