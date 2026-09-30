@@ -390,3 +390,25 @@ Status: FIXED / read-only, sumber Liga ABK.
 - Frontend commits: `8af710d6a7a7f5397830b25c1f2b7d6ee131e98f`, `8cacf5d8bf60eb7025a903b217f7242b32c5acac`.
 - Cache: `main-1958.js?v=2260-league-by-barn-cycle`.
 - Cache commit: `ddb247fad7a387c9430084cc4b8ef34995530711`.
+
+
+## MASTER KONTRAK — TOMBOL KUNCI KONTRAK — 30 SEPTEMBER 2026
+Status: FIXED / backend guard aktif.
+
+- Tombol **Kunci Kontrak** ditambahkan di halaman Master Kontrak, berdampingan dengan Simpan Kontrak / Buat Kontrak Baru.
+- Kolom existing `contracts.frozen_at` dipakai sebagai status lock.
+- Setelah dikunci:
+  - header kontrak tidak dapat diubah/dihapus,
+  - harga sapronak kontrak tidak dapat diubah,
+  - harga ayam hidup tidak dapat ditambah/diubah/dihapus,
+  - bonus IP/FCR/Deplesi tidak dapat ditambah/diubah/dihapus,
+  - performance_standards yang terkait contract_id tidak dapat ditambah/diubah/dihapus.
+- Revisi kontrak setelah lock wajib melalui **Buat Kontrak Baru**.
+- UI menampilkan Status BELUM DIKUNCI / TERKUNCI dan menyembunyikan form edit child saat locked.
+- Backend trigger guard sudah diterapkan ke Supabase.
+- Smoke-test dilakukan dengan transaksi rollback; child update berhasil diblokir dan jumlah kontrak locked tetap 0 setelah test, sehingga tidak ada data live yang berubah.
+- Frontend commits: `690262b3e673466bdab3fbd909580daca0b832ea`, `017e75d24e54684cab8f2cdc8aa4bab6bb9ff466`.
+- SQL: `sql/20260930_contract_template_lock.sql`.
+- SQL commit: `4216548f5837964b153b0db11151ebeef2bd9009`.
+- Cache: `main-1958.js?v=2264-contract-lock-button`.
+- Cache commit: `898abe88df05f9b9fc32c9ce0db046df66e96950`.
