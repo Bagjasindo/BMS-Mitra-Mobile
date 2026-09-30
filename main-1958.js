@@ -6153,7 +6153,7 @@ async function adminRhppHistoryPage(){
 
       const bmsLogo=new URL('./assets/bms_login_logo.jpg',location.href).href;
       const companyHeader=[
-        company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih',
+        'PT Bagjasindo Mandiri Sindangkasih',
         company.address||'',
         company.phone?('Tel/WA: '+company.phone):'',
         company.email||''
