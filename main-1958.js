@@ -5830,7 +5830,6 @@ async function pplRhppViewPage(){
       '<div class="ui-rhpp-grid">'+
         '<div class="ui-rhpp-card"><h3>Identitas Siklus</h3><table><tbody>'+
           '<tr><td>Kandang</td><td>'+esc(b?shortBarnLabel(b):'-')+'</td></tr>'+
-          '<tr><td>Siklus</td><td>'+esc(assignmentCycleLabel(d.assignments,a))+'</td></tr>'+
           '<tr><td>Tanggal Chick-In</td><td>'+prodDateId(closed?fin?.chick_in_date:ci?.arrived_on)+'</td></tr>'+
           '<tr><td>Harga DOC</td><td>'+money(docUnitPrice)+'</td></tr>'+
           '<tr><td>Harga Pakan Rata-rata</td><td>'+money(feedUnitPrice)+'</td></tr>'+
@@ -5840,7 +5839,6 @@ async function pplRhppViewPage(){
           '<tr><td>Total Pakan</td><td>'+prodFmt(feedKg,2)+' kg</td></tr>'+
           '<tr><td>Pakan / Ekor</td><td>'+prodFmt(feedPerBird,0)+' gr</td></tr>'+
           '<tr><td>Umur Panen</td><td>'+prodFmt(src?.weighted_age,2)+' hari</td></tr>'+
-          '<tr><td>FCR Aktual</td><td>'+prodFmt(src?.fcr_actual,3)+'</td></tr>'+
           '<tr><td>FCR Standar</td><td>'+prodFmt(src?.fcr_standard,3)+'</td></tr>'+
         '</tbody></table></div>'+
         '<div class="ui-rhpp-card"><h3>Biaya Sapronak</h3><table><tbody>'+
@@ -6045,6 +6043,7 @@ async function adminRhppHistoryPage(){
       '<div class="ui-rhpp-grid" style="margin-top:14px">'+
         '<div class="ui-rhpp-card"><h3>Identitas Siklus</h3><table><tbody>'+
           '<tr><td>Kandang</td><td>'+esc(b?shortBarnLabel(b):'-')+'</td></tr>'+
+          '<tr><td>Siklus</td><td>'+esc(assignmentCycleLabel(d.assignments,a))+'</td></tr>'+
           '<tr><td>Tanggal Chick-In</td><td>'+prodDateId(closed?fin?.chick_in_date:ci?.arrived_on)+'</td></tr>'+
           '<tr><td>DOC Masuk</td><td>'+prodFmt(chickIn,0)+' ekor</td></tr>'+
           '<tr><td>Harga DOC</td><td>'+screenMoney(docUnitPrice)+'</td></tr>'+
@@ -6055,6 +6054,7 @@ async function adminRhppHistoryPage(){
           '<tr><td>Total Pakan</td><td>'+prodFmt(feedKg,2)+' kg</td></tr>'+
           '<tr><td>Pakan / Ekor</td><td>'+prodFmt(feedPerBird,0)+' gr</td></tr>'+
           '<tr><td>Umur Panen</td><td>'+prodFmt(src?.weighted_age,2)+' hari</td></tr>'+
+          '<tr><td>FCR Aktual</td><td>'+prodFmt(src?.fcr_actual,3)+'</td></tr>'+
           '<tr><td>FCR Standar</td><td>'+prodFmt(src?.fcr_standard,3)+'</td></tr>'+
         '</tbody></table></div>'+
         '<div class="ui-rhpp-card"><h3>Biaya Sapronak</h3><table><tbody>'+
