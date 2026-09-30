@@ -5691,8 +5691,7 @@ async function financeDirectPurchasePage(){
     '<form id="financeDirectPurchaseForm" class="form-vertical">'+
       '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+today+'" required></label>'+
       '<label>Jenis<select name="purchase_type" id="directPurchaseType" required>'+
-        '<option value="OVK2">OVK2 / Peralatan</option>'+
-        '<option value="OVK1">OVK1 / Obat</option>'+
+        
         '<option value="BOP_UMUM">Biaya Umum</option>'+
         '<option value="PERAWATAN">Perawatan Kandang</option>'+
         '<option value="LAINNYA">Lainnya</option>'+
@@ -5744,23 +5743,15 @@ async function financeDirectPurchasePage(){
   const syncType=()=>{
     if(!type)return;
     const t=type.value;
-    const needsBarn=t==='OVK2'||t==='PERAWATAN';
-    const needsAssignment=t==='OVK1';
+    const needsBarn=t==='PERAWATAN';
     if(barnWrap)barnWrap.style.display=needsBarn?'':'none';
-    if(assignmentWrap)assignmentWrap.style.display=needsAssignment?'':'none';
+    if(assignmentWrap)assignmentWrap.style.display='none';
     if(barn)barn.required=needsBarn;
-    if(assignment)assignment.required=needsAssignment;
-    if(!needsAssignment&&assignment)assignment.value='';
+    if(assignment){assignment.required=false;assignment.value='';}
     if(!needsBarn&&barn)barn.value='';
   };
   if(type)type.onchange=syncType;
   syncType();
-
-  if(assignment)assignment.onchange=()=>{
-    const opt=assignment.selectedOptions?.[0];
-    const bid=opt?.dataset?.barn||'';
-    if(barn&&bid)barn.value=bid;
-  };
 
   const calc=()=>{
     const q=normalizeInputID(form.elements.quantity?.value);
@@ -5779,7 +5770,7 @@ async function financeDirectPurchasePage(){
     const t=String(fd.get('purchase_type')||'');
     const name=String(fd.get('standard_name')||'').trim();
     if(!name)return msg('Nama Standar wajib.');
-    const info=t==='OVK2'?'Aset per Kandang':t==='OVK1'?'RHPP · OVK Tambahan':t==='PERAWATAN'?'Perawatan Kandang':'BOP Umum';
+    const info=t==='PERAWATAN'?'Perawatan Kandang':'BOP Umum';
     if(!await appConfirm('Simpan '+name+' sebesar Rp '+prodFmt(q*price,0)+'? Sistem akan mengarahkan otomatis ke '+info+'.'))return;
     const {error}=await db.rpc('finance_save_direct_purchase_atomic',{
       p_purchase_date:String(fd.get('purchase_date')||''),
