@@ -323,3 +323,18 @@ Status: PASS / UI-only; tidak mengubah alur bisnis/backend.
 - Frontend commit feedback tombol: `56fbb4c09117f2dd61ed4b529c0ea96abb1f08a0`
 - Cache: `main-1958.js?v=2255-button-submit-feedback`
 - Cache commit: `46e05319a833a04f13f380e62a05573a57acf542`
+
+
+## UI FIX — RIWAYAT SIKLUS + FEEDBACK TOMBOL — 30 SEPTEMBER 2026
+Status: FIXED / UI-only; backend dan FLOW FREEZE tidak berubah.
+
+- Halaman Logistik/Admin → Buat Siklus sebelumnya menampilkan siklus AKTIF juga di bagian Riwayat Semua Siklus.
+- Riwayat sekarang hanya menampilkan assignment dengan `active = false` / status CLOSED.
+- Siklus AKTIF tetap hanya tampil di panel “Siklus Aktif per Kandang”.
+- Heading riwayat diubah menjadi “Riwayat Siklus Closed”.
+- Feedback aksi edit Tanggal Mulai / PPL ditampilkan langsung di tombol: `Menyimpan...` → `Tersimpan ✓`.
+- Feedback Hapus siklus kosong ditampilkan langsung di tombol: `Menghapus...` → `Terhapus ✓`.
+- Helper `actionButtonFinish` dibuat mendukung label sukses per aksi tanpa mengubah behavior delete yang sudah PASS.
+- Frontend commits: `4e7eb5175166d8d0548327935c16ee601ab303eb`, `90ed668ef3042a3ef8f99537da5a5c23f556c96a`.
+- Cache: `main-1958.js?v=2257-cycle-history-button-feedback`.
+- Cache commit: `e8db917006f2aa04e00276de12a56ca99a1650a6`.
