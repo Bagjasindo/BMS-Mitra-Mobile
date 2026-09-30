@@ -526,7 +526,7 @@ function appNav(){
       }
       if(section.label==='Produksi / PPL'&&key==='ppl_rhpp_view'){
         const rhppOpen=['ppl_rhpp_view','ppl_rhpp_abk_view'].includes(tab)?' open':'';
-        return '<details class="nav-subgroup nav-rhpp-subgroup"'+rhppOpen+'><summary>Lihat RHPP</summary><div class="nav-child-item">'+
+        return '<details class="nav-subgroup nav-rhpp-subgroup"'+rhppOpen+'><summary>Lihat RHPP</summary><div class="nav-rhpp-items">'+
           navButton('ppl_rhpp_view')+
           navButton('ppl_rhpp_abk_view')+
           '</div></details>';
