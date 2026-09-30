@@ -9700,15 +9700,15 @@ async function financeRhppPage(){
       const it=items.find(i=>i.id===v.item_id);
       if(it?.category!=='PAKAN')return;
       const key='MAIN:'+v.item_id;
-      const o=feedMap.get(key)||{name:'Utama · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0};
-      o.inQty+=prodNum(v.quantity);o.inKg+=prodNum(v.quantity_kg);feedMap.set(key,o);
+      const o=feedMap.get(key)||{name:'Utama · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0,inValue:0,retValue:0};
+      o.inQty+=prodNum(v.quantity);o.inKg+=prodNum(v.quantity_kg);o.inValue+=prodNum(v.quantity)*prodNum(v.unit_price);feedMap.set(key,o);
     });
     returnItems.filter(v=>retIds.has(v.return_id)).forEach(v=>{
       const it=items.find(i=>i.id===v.item_id);
       if(it?.category!=='PAKAN')return;
       const key='MAIN:'+v.item_id;
-      const o=feedMap.get(key)||{name:'Utama · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0};
-      o.retQty+=prodNum(v.quantity);o.retKg+=prodNum(v.quantity_kg);feedMap.set(key,o);
+      const o=feedMap.get(key)||{name:'Utama · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0,inValue:0,retValue:0};
+      o.retQty+=prodNum(v.quantity);o.retKg+=prodNum(v.quantity_kg);o.retValue+=prodNum(v.quantity)*prodNum(v.unit_price);feedMap.set(key,o);
     });
 
     const extShipIds=new Set(extShips.filter(s=>s.contract_assignment_id===x.contract_assignment_id).map(s=>s.id));
@@ -9717,24 +9717,25 @@ async function financeRhppPage(){
       const it=items.find(i=>i.id===v.item_id);
       if(it?.category!=='PAKAN')return;
       const key='EXT:'+v.item_id;
-      const o=feedMap.get(key)||{name:'Tambah Sapronak · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0};
-      o.inQty+=prodNum(v.quantity);o.inKg+=prodNum(v.quantity_kg);feedMap.set(key,o);
+      const o=feedMap.get(key)||{name:'Tambah Sapronak · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0,inValue:0,retValue:0};
+      o.inQty+=prodNum(v.quantity);o.inKg+=prodNum(v.quantity_kg);o.inValue+=prodNum(v.quantity)*prodNum(v.purchase_unit_price);feedMap.set(key,o);
     });
     extReturnItems.filter(v=>extRetIds.has(v.external_return_id)).forEach(v=>{
       const it=items.find(i=>i.id===v.item_id);
       if(it?.category!=='PAKAN')return;
       const key='EXT:'+v.item_id;
-      const o=feedMap.get(key)||{name:'Tambah Sapronak · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0};
-      o.retQty+=prodNum(v.quantity);o.retKg+=prodNum(v.quantity_kg);feedMap.set(key,o);
+      const o=feedMap.get(key)||{name:'Tambah Sapronak · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0,inValue:0,retValue:0};
+      o.retQty+=prodNum(v.quantity);o.retKg+=prodNum(v.quantity_kg);o.retValue+=prodNum(v.quantity)*prodNum(v.purchase_unit_price);feedMap.set(key,o);
     });
     transfersIn.filter(v=>v.target_contract_assignment_id===x.contract_assignment_id).forEach(v=>{
       const it=items.find(i=>i.id===v.item_id);
       if(it?.category!=='PAKAN')return;
       const key='TRANSFER:'+v.item_id;
-      const o=feedMap.get(key)||{name:'Alih Masuk · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0};
-      o.inQty+=prodNum(v.quantity);o.inKg+=prodNum(v.quantity_kg);feedMap.set(key,o);
+      const o=feedMap.get(key)||{name:'Alih Masuk · '+(it?.name||'-'),inQty:0,inKg:0,retQty:0,retKg:0,inValue:0,retValue:0};
+      o.inQty+=prodNum(v.quantity);o.inKg+=prodNum(v.quantity_kg);o.inValue+=prodNum(v.quantity)*prodNum(v.unit_price);feedMap.set(key,o);
     });
     const feedRows=[...feedMap.values()];
+    const feedNetValue=feedRows.reduce((sum,v)=>sum+prodNum(v.inValue)-prodNum(v.retValue),0);
 
     html+='<section class="panel rhpp-panel rhpp-head"><div class="rhpp-section-head"><div><h3>Identitas Siklus</h3><p class="muted">Ringkasan periode yang sedang diperiksa.</p></div><span class="rhpp-count">'+status+'</span></div>'+
       '<div class="tablewrap"><table><tbody>'+
@@ -9781,10 +9782,10 @@ async function financeRhppPage(){
         '<tr><td><strong>Total Sapronak</strong></td><td><strong>Rp '+prodFmt(x.sapronak_cost,0)+'</strong></td></tr>'+
       '</tbody></table></div></section>'+
       '<section class="panel rhpp-panel rhpp-wide rhpp-feed-panel"><h3>Pemakaian Pakan & Retur</h3><div class="tablewrap"><table class="rhpp-feed-table"><thead><tr>'+
-      '<th>Jenis</th><th class="num">Masuk</th><th class="num">Retur</th><th class="num">Bersih</th><th class="num">Bersih Kg</th>'+
+      '<th>Jenis</th><th class="num">Masuk</th><th class="num">Retur</th><th class="num">Bersih</th><th class="num">Bersih Kg</th><th class="num">Nilai Bersih</th>'+
       '</tr></thead><tbody>'+
-      feedRows.map(v=>{const parts=String(v.name||'').split(' · '),kind=parts[0]||'',item=parts.slice(1).join(' · ')||kind;return '<tr><td class="rhpp-feed-name"><span class="rhpp-feed-kind">'+esc(kind)+'</span><strong>'+esc(item)+'</strong></td><td class="num">'+prodFmt(v.inQty,2)+'</td><td class="num">'+prodFmt(v.retQty,2)+'</td><td class="num">'+prodFmt(v.inQty-v.retQty,2)+'</td><td class="num">'+prodFmt(v.inKg-v.retKg,2)+'</td></tr>';}).join('')+
-      '<tr class="rhpp-total-row"><th>TOTAL BERSIH</th><th></th><th></th><th></th><th class="num">'+prodFmt(x.net_feed_kg,2)+'</th></tr>'+
+      feedRows.map(v=>{const parts=String(v.name||'').split(' · '),kind=parts[0]||'',item=parts.slice(1).join(' · ')||kind;return '<tr><td class="rhpp-feed-name"><span class="rhpp-feed-kind">'+esc(kind)+'</span><strong>'+esc(item)+'</strong></td><td class="num">'+prodFmt(v.inQty,2)+'</td><td class="num">'+prodFmt(v.retQty,2)+'</td><td class="num">'+prodFmt(v.inQty-v.retQty,2)+'</td><td class="num">'+prodFmt(v.inKg-v.retKg,2)+'</td><td class="num">Rp '+prodFmt(prodNum(v.inValue)-prodNum(v.retValue),0)+'</td></tr>';}).join('')+
+      '<tr class="rhpp-total-row"><th>TOTAL BERSIH</th><th></th><th></th><th></th><th class="num">'+prodFmt(x.net_feed_kg,2)+'</th><th class="num">Rp '+prodFmt(feedNetValue,0)+'</th></tr>'+
       '</tbody></table></div></section>';
 
     html+='<div class="rhpp-grid">'+
