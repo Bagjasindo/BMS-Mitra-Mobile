@@ -1,7 +1,7 @@
 -- 2026-10-01
 -- Finance note cleanup only.
--- Keeps PASS transaction structure/amounts/dates/categories untouched.
--- Reporting shows original transaction wording and strips import/migration provenance.
+-- PASS transaction structure/amount/date/category/location/formulas remain untouched.
+-- Reports show original transaction wording only; import/migration provenance is hidden.
 
 CREATE OR REPLACE FUNCTION public.finance_original_note_v1(p_note text)
  RETURNS text
@@ -13,6 +13,16 @@ declare
   s text := btrim(coalesce(p_note,''));
 begin
   if s='' then return null; end if;
+
+  if lower(s) like 'reklasifikasi%' and lower(s) like '%sumber sebelumnya:%' then
+    s := regexp_replace(s,'(?is)^.*Sumber\s+sebelumnya\s*:\s*','');
+    s := btrim(s, ' .;|-');
+    return nullif(s,'');
+  end if;
+
+  if lower(s) like 'sumber excel lama kategori%' then
+    return null;
+  end if;
 
   s := regexp_replace(s,
     '(?is)^\s*(?:Sumber\s+DATA\s+PETERNAKAN[^:]*:|Import\s+Excel\s+Operasional[^:]*:|Import\s+Excel[^:]*:|Import\s+Buku\s+Besar\s+BMS\s+Express\s*:|Buku\s+Besar\s+PT\s+BMS\s+baris[^:]*:|Upah\s+kerja\s+selama\s+periode\s*;\s*rincian\s+DATA\s+PETERNAKAN\s*:)[[:space:]]*',
@@ -27,7 +37,7 @@ begin
   s := regexp_replace(s,'(?is)\s*[·|]\s*sumber\s+Excel\s+lama.*$','');
 
   s := regexp_replace(s,
-    '(?is)\.\s*(?:BMS\s+(?:GROUP|[1-4])(?:\s|\.|$)|Tujuan(?:\s+ditetapkan)?\s*:|Source\b|Qty\b|Nota\s+real\b|Aset\b|Barang\b|Seluruh\s+BB-|Alat/peralatan\b|Kode\s+sumber\b).*$',
+    '(?is)\.\s*(?:BMS\s+(?:GROUP|[1-4])(?:\s|\.|$)|Tujuan(?:\s+ditetapkan)?\s*:|Source\s|Qty\s|Nota\s+real\s|Aset\s|Barang\s|Seluruh\s+BB-|Alat/peralatan\s|Kode\s+sumber\s).*$',
     '');
 
   s := regexp_replace(s,
