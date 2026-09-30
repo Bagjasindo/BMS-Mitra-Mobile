@@ -16,6 +16,14 @@ Sumber lanjutan tunggal: source code live + file ini.
 - Sampai titik ini user menyatakan cukup; jangan lanjut otomatis.
 
 
+
+## STANDAR RIWAYAT GLOBAL
+- Riwayat tidak memakai pagination `Sebelumnya / Selanjutnya`.
+- Saat halaman pertama dibuka, daftar Riwayat tidak ditampilkan.
+- User pilih filter lalu klik `Tampilkan`; semua data yang cocok ditampilkan sekaligus.
+- Tombol `Reset` mengosongkan filter dan menyembunyikan Riwayat kembali.
+- Helper global `txnListState / bindTxnList` sudah diubah ke pola ini.
+
 ## GLOBAL UI STANDARDIZATION — 9 POINT (1 OKTOBER 2026)
 Layer global screen-only sudah diterapkan di `style.css` dengan marker `bms-global-ui-standard-20261001`.
 Scope:
@@ -93,6 +101,8 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `1171330539f29a35c1cadceae0c1d7ff34981e87` — Bump cache for filter-first history standard
+- `68d0135f682b59da183b56b8e93709a82a55e874` — Standardize history as filter-first without pagination
 - `3427a6eaa6d7c5e53f71ae467b805b2853338578` — Bump cache for global BMS UI standard
 - `1e4c45d06fd4e3df1c11f2463a0347effd3b0560` — Apply global 9-point BMS UI standardization
 - `cbf49dcbdddf17e9499505ce9d82289543014eec` — Bump cache for readable professional RHPP print
@@ -112,7 +122,7 @@ Terdapat 5 halaman/menu RHPP:
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2293-rhpp-print-readable`
+`main-1958.js?v=2294-history-filter-no-pagination`
 Cache CSS aktif:
 `style.css?v=2219-global-ui-9point`
 
