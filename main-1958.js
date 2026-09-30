@@ -1361,7 +1361,6 @@ async function logisticsContractPage(){
       '<label id="logisticsPerformanceWrap">Pilih Performa<select name="performance_template_name" id="logisticsPerformance" required><option value="">Pilih Performa</option></select></label>'+
       '<label>Tanggal Mulai<input type="date" name="start_date" id="logisticsStartDate" required></label>'+ 
       '<label>Pilih PPL<select name="ppl_id" id="logisticsPpl" required><option value="">Pilih PPL</option>'+ppls.map(x=>'<option value="'+esc(x.user_id)+'">'+esc(x.full_name)+'</option>').join('')+'</select></label>'+
-      '<section class="panel" style="margin:0"><h4>ABK Kandang</h4><div id="contractAbkRows"></div><button type="button" id="addContractAbk">+ Tambah ABK</button></section>'+
       '<button type="submit">Simpan</button>'+
     '</form>'+
     '<p class="muted">Mitra memakai Master Kontrak. Mandiri berjalan tanpa kontrak dan harga beli/jual aktual.</p>'+(!availableBarns.length?'<p class="muted">Semua kandang sedang memiliki siklus aktif.</p>':'')+
@@ -1416,34 +1415,6 @@ async function logisticsContractPage(){
   const barnSearch=document.getElementById('contractBarnSearch');
   const barnIdInput=document.getElementById('contractBarnId');
   const barnSuggestions=document.getElementById('contractBarnSuggestions');
-  const abkRows=document.getElementById('contractAbkRows');
-
-  const selectedAbks=[{id:'',initial_birds:0}];
-  const syncContractAbkRows=()=>{
-    abkRows.querySelectorAll('[data-contract-abk-index]').forEach(sel=>{const i=Number(sel.dataset.contractAbkIndex);if(selectedAbks[i])selectedAbks[i].id=sel.value});
-    abkRows.querySelectorAll('[data-contract-abk-pop]').forEach(inp=>{const i=Number(inp.dataset.contractAbkPop);if(selectedAbks[i])selectedAbks[i].initial_birds=Math.trunc(normalizeInputID(inp.value)||0)});
-  };
-  const renderAbkRows=()=>{
-    abkRows.innerHTML=selectedAbks.map((row,idx)=>{
-      const used=new Set(selectedAbks.filter((v,i)=>v.id&&i!==idx).map(v=>v.id));
-      return '<div class="form-vertical compact-form" style="margin-bottom:10px"><label>ABK<select data-contract-abk-index="'+idx+'" required><option value="">Pilih ABK</option>'+
-        abks.filter(x=>!used.has(x.id)||x.id===row.id).map(x=>'<option value="'+esc(x.id)+'" '+(x.id===row.id?'selected':'')+'>'+esc(x.code+' · '+x.name)+'</option>').join('')+
-        '</select></label><label>Populasi Awal ABK (ekor)<input type="text" data-number="1" inputmode="decimal" data-contract-abk-pop="'+idx+'" value="'+(row.initial_birds?fmtNumber(row.initial_birds):'')+'" placeholder="Contoh: 8.250" required></label>'+
-        (selectedAbks.length>1?'<button type="button" data-remove-contract-abk="'+idx+'">Hapus ABK</button>':'')+'</div>';
-    }).join('');
-    bindNumberInputs();
-    abkRows.querySelectorAll('[data-contract-abk-index]').forEach(sel=>sel.onchange=()=>{syncContractAbkRows();renderAbkRows()});
-    abkRows.querySelectorAll('[data-remove-contract-abk]').forEach(btn=>btn.onclick=()=>{syncContractAbkRows();selectedAbks.splice(Number(btn.dataset.removeContractAbk),1);renderAbkRows()});
-  };
-  document.getElementById('addContractAbk').onclick=()=>{
-    syncContractAbkRows();
-    const chosen=selectedAbks.filter(x=>x.id);
-    if(chosen.length>=abks.length)return msg('Semua ABK aktif sudah dipilih.');
-    selectedAbks.push({id:'',initial_birds:0});
-    renderAbkRows();
-  };
-  renderAbkRows();
-
   const refreshPerformance=()=>{
     const contractId=contractSelect.value;
     const names=[...new Set(perfRows.filter(x=>x.contract_id===contractId).map(x=>x.template_name).filter(Boolean))];
@@ -1475,10 +1446,6 @@ async function logisticsContractPage(){
     ev.preventDefault();
     const fd=new FormData(ev.currentTarget);
     if(!fd.get('barn_id'))return msg('Kandang wajib dipilih.');
-    syncContractAbkRows();
-    const chosenAbks=selectedAbks.filter(x=>x.id);
-    if(!chosenAbks.length)return msg('Pilih minimal 1 ABK untuk kandang ini.');
-    if(chosenAbks.some(x=>!Number.isInteger(x.initial_birds)||x.initial_birds<=0))return msg('Populasi Awal setiap ABK wajib diisi.');
     const cycleType=String(fd.get('cycle_type')||'MITRA');
     const payload={
       barn_id:fd.get('barn_id'),
@@ -1488,15 +1455,10 @@ async function logisticsContractPage(){
       start_date:fd.get('start_date'),
       ppl_id:fd.get('ppl_id')
     };
-    const {data:created,error}=await db.from('logistics_contract_assignments').insert(payload).select('id').single();
+    const {error}=await db.from('logistics_contract_assignments').insert(payload);
     if(error)return msg(error.message);
-    const {error:abkError}=await db.from('logistics_contract_assignment_abks').insert(chosenAbks.map(x=>({contract_assignment_id:created.id,abk_id:x.id,initial_birds:x.initial_birds})));
-    if(abkError){
-      await db.from('logistics_contract_assignments').delete().eq('id',created.id);
-      return msg(abkError.message);
-    }
     await logisticsContractPage();
-    msg((cycleType==='MANDIRI'?'Siklus Mandiri':'Siklus Mitra')+' dan ABK berhasil disimpan.',true);
+    msg((cycleType==='MANDIRI'?'Siklus Mandiri':'Siklus Mitra')+' berhasil dibuat. ABK dipilih oleh PPL saat Chick-In / DOC Masuk.',true);
   };
 
   const detailPanel=document.getElementById('contractActiveDetail');
@@ -1516,12 +1478,11 @@ async function logisticsContractPage(){
       detail+='<div class="tablewrap"><table><tbody><tr><td>Tanggal Mulai</td><td>'+esc(a.start_date||'-')+'</td></tr><tr><td>PPL</td><td>'+esc(pplName(a.ppl_id))+'</td></tr><tr><td>Status</td><td>CLOSED · read-only</td></tr></tbody></table></div>';
     }
     detail+='<h4>ABK Kandang</h4>';
-    detail+=ls.length?ls.map(x=>active
-      ?'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div><input type="text" data-number="1" inputmode="decimal" data-abk-pop="'+esc(x.id)+'" value="'+(x.initial_birds?fmtNumber(x.initial_birds):'')+'" placeholder="Ekor"><div class="table-actions"><button type="button" data-save-abk-pop="'+esc(x.id)+'">Simpan</button><button type="button" class="btn-danger-soft" data-remove-abk="'+esc(x.id)+'">Hapus</button></div></div>'
-      :'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div>'+(profile.role==='ADMIN'?'<input type="text" data-number="1" inputmode="decimal" data-closed-abk-pop="'+esc(x.id)+'" value="'+(x.initial_birds?fmtNumber(x.initial_birds):'')+'" placeholder="Ekor"><div class="table-actions"><button type="button" data-save-closed-abk-pop="'+esc(x.id)+'">Simpan Koreksi</button></div>':'<strong>'+(x.initial_birds==null?'-':fmtNumber(x.initial_birds))+' ekor</strong>')+'</div>'
-    ).join(''):'<p class="muted">Belum ada ABK.</p>';
+    detail+=ls.length
+      ?ls.map(x=>'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div><strong>'+(x.initial_birds==null?'-':fmtNumber(x.initial_birds))+' ekor</strong></div>').join('')
+      :'<p class="muted">Belum ada ABK. ABK dipilih oleh PPL saat Chick-In / DOC Masuk.</p>';
+    detail+='<p class="muted">Pengelolaan ABK dan Populasi Awal dilakukan dari Produksi / PPL → Chick-In / DOC Masuk agar menjadi sumber yang sama untuk Liga ABK.</p>';
     if(active&&a.cycle_type==='MANDIRI'&&profile.role==='ADMIN')detail+='<div class="inline-actions"><button type="button" class="btn-danger-soft" data-close-mandiri="'+esc(a.id)+'">Close Siklus Mandiri</button></div>';
-    if(active)detail+='<div class="contract-abk-add"><select data-add-abk-select="'+esc(a.id)+'"><option value="">Tambah ABK...</option>'+abks.filter(x=>!ls.some(l=>l.abk_id===x.id)).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select><input type="text" data-number="1" inputmode="decimal" data-add-abk-pop="'+esc(a.id)+'" placeholder="Populasi Awal"><button type="button" data-add-abk="'+esc(a.id)+'">Tambah ABK</button></div>';
     detailBody.innerHTML=detail;
     detailPanel.hidden=false;
     if(active||profile.role==='ADMIN'){bindNumberInputs();bindContractDetailActions();}
@@ -3478,17 +3439,23 @@ async function chickInPage(){
   const optionHtml=d.assignments.filter(a=>a.active).map(a=>'<option value="'+esc(a.id)+'" '+(editRow?.contract_assignment_id===a.id?'selected':'')+'>'+esc(prodAssignmentOption(d,a))+'</option>').join('');
 
   let html='<section class="panel"><h3>'+(editRow?'Edit Chick-In / DOC Masuk':'Chick-In / DOC Masuk')+'</h3><form id="prodChick" class="form-vertical">'+
-    '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+optionHtml+'</select></label>'+
+    '<label>Kandang Aktif<select name="assignment" required '+(editRow?'disabled':'')+'><option value="">Pilih</option>'+optionHtml+'</select></label>'+
     '<input type="hidden" name="date" value="'+esc(editRow?.arrived_on||prodToday())+'">'+
     '<label>DOC In<input type="text" inputmode="numeric" data-number="1" name="received" value="'+(editRow?fmtNumber(editRow.received):'')+'" required></label>'+
     '<label>DOC Mati Box<input type="text" inputmode="numeric" data-number="1" name="doa" value="'+(editRow?fmtNumber(editRow.doa||0):'0')+'" required></label>'+
     '<label>Bobot Rata2<input type="text" inputmode="decimal" data-number="1" name="avg_weight" value="'+(editRow&&prodNum(editRow.avg_weight)>0?fmtNumber(editRow.avg_weight):'')+'" placeholder="Opsional, gram"></label>'+
     '<label>Nomor DO<input name="delivery_number" value="'+esc(editRow&&String(editRow.delivery_number||'').match(/^DOC-PLACEHOLDER-/i)?'':(editRow?.delivery_number||''))+'" placeholder="Opsional"></label>'+
     '<p id="prodChickNet" class="muted">Populasi awal bersih: 0 ekor</p>'+
+    '<section class="panel" style="margin:0"><h4>Pembagian ABK</h4>'+
+      '<p class="muted">Pilih ABK kandang dan bagi Populasi Awal. Total ABK wajib sama dengan Populasi Awal Bersih. Data ini langsung menjadi dasar Liga ABK.</p>'+
+      '<div id="chickAbkRows"></div>'+
+      '<button type="button" id="addChickAbk">+ Tambah ABK</button>'+
+      '<p id="chickAbkTotal" class="muted">Pembagian ABK: 0 / 0 ekor</p>'+
+    '</section>'+
     '<div class="inline-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan Chick-In')+'</button>'+(editRow?'<button type="button" id="chickEditCancel">Batal Edit</button>':'')+'</div></form></section>';
 
   html+='<section class="panel"><h3>Data Chick-In</h3><div class="tablewrap"><table><thead><tr>'+
-    '<th>Kandang / Kontrak</th><th>DOC In</th><th>DOC Mati Box</th><th>Populasi Awal Bersih</th><th>Bobot Rata2</th><th>Nomor DO</th><th>Aksi</th>'+
+    '<th>Kandang / Kontrak</th><th>DOC In</th><th>DOC Mati Box</th><th>Populasi Awal Bersih</th><th>ABK</th><th>Bobot Rata2</th><th>Nomor DO</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     d.chicks.filter(x=>x.contract_assignment_id).map(x=>{
       const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
@@ -3496,62 +3463,167 @@ async function chickInPage(){
       const weight=prodNum(x.avg_weight)>0?prodFmt(x.avg_weight,2)+' g':'-';
       const rawDo=String(x.delivery_number||'').trim();
       const doText=(!rawDo||/^DOC-PLACEHOLDER-/i.test(rawDo))?'-':rawDo;
-      return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodFmt(x.received,0)+'</td><td>'+prodFmt(x.doa,0)+'</td><td><strong>'+prodFmt(net,0)+'</strong></td><td>'+weight+'</td><td>'+esc(doText)+'</td><td><div class="inline-actions"><button type="button" data-edit-chick="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('chick_ins',x.id)+'</div></td></tr>';
+      const links=d.links.filter(l=>l.contract_assignment_id===x.contract_assignment_id);
+      const abkText=links.length?links.map(l=>{
+        const e=d.abks.find(v=>v.id===l.abk_id);
+        return (e?.name||e?.code||'ABK')+' '+prodFmt(l.initial_birds,0);
+      }).join(' · '):'-';
+      return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodFmt(x.received,0)+'</td><td>'+prodFmt(x.doa,0)+'</td><td><strong>'+prodFmt(net,0)+'</strong></td><td>'+esc(abkText)+'</td><td>'+weight+'</td><td>'+esc(doText)+'</td><td><div class="inline-actions"><button type="button" data-edit-chick="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('chick_ins',x.id)+'</div></td></tr>';
     }).join('')+
     '</tbody></table></div></section>';
 
-  layout(html);bindNumberInputs();if(d.err)msg(d.err.message);
-  const f=document.getElementById('prodChick'),net=document.getElementById('prodChickNet');
-  const calc=()=>{
-    f.received.value=formatInputID(f.received.value);
-    f.doa.value=formatInputID(f.doa.value);
-    if(f.avg_weight.value)f.avg_weight.value=formatInputID(f.avg_weight.value);
-    net.textContent='Populasi awal bersih: '+Math.max(0,(normalizeInputID(f.received.value)||0)-(normalizeInputID(f.doa.value)||0)).toLocaleString('id-ID')+' ekor';
+  layout(html);
+  bindNumberInputs();
+  if(d.err)msg(d.err.message);
+
+  const form=document.getElementById('prodChick');
+  const netEl=document.getElementById('prodChickNet');
+  const abkRowsEl=document.getElementById('chickAbkRows');
+  const abkTotalEl=document.getElementById('chickAbkTotal');
+  const addAbkBtn=document.getElementById('addChickAbk');
+  let chickAbks=[];
+
+  const currentAssignmentId=()=>editRow?.contract_assignment_id||form.assignment.value||'';
+  const activeAbks=d.abks.filter(e=>e.active);
+
+  const syncAbkRows=()=>{
+    abkRowsEl.querySelectorAll('[data-chick-abk-id]').forEach(sel=>{
+      const idx=Number(sel.dataset.chickAbkId);
+      if(chickAbks[idx])chickAbks[idx].abk_id=sel.value;
+    });
+    abkRowsEl.querySelectorAll('[data-chick-abk-pop]').forEach(inp=>{
+      const idx=Number(inp.dataset.chickAbkPop);
+      if(chickAbks[idx])chickAbks[idx].initial_birds=Math.trunc(normalizeInputID(inp.value)||0);
+    });
   };
+
+  const netPopulation=()=>Math.max(0,(normalizeInputID(form.received.value)||0)-(normalizeInputID(form.doa.value)||0));
+
+  const updateTotals=()=>{
+    const net=netPopulation();
+    const total=chickAbks.reduce((s,x)=>s+Math.max(0,Math.trunc(prodNum(x.initial_birds))),0);
+    netEl.textContent='Populasi awal bersih: '+net.toLocaleString('id-ID')+' ekor';
+    const diff=net-total;
+    abkTotalEl.innerHTML='Pembagian ABK: <strong>'+total.toLocaleString('id-ID')+' / '+net.toLocaleString('id-ID')+' ekor</strong>'+(diff===0&&net>0?' · SESUAI':(' · Sisa '+diff.toLocaleString('id-ID')+' ekor'));
+  };
+
+  const renderAbkRows=()=>{
+    abkRowsEl.innerHTML=chickAbks.map((row,idx)=>{
+      const used=new Set(chickAbks.filter((x,i)=>i!==idx&&x.abk_id).map(x=>x.abk_id));
+      const choices=activeAbks.filter(e=>!used.has(e.id)||e.id===row.abk_id);
+      return '<div class="form-vertical compact-form" style="margin-bottom:10px">'+
+        '<label>ABK<select data-chick-abk-id="'+idx+'" required><option value="">Pilih ABK</option>'+
+          choices.map(e=>'<option value="'+esc(e.id)+'" '+(e.id===row.abk_id?'selected':'')+'>'+esc((e.code?e.code+' · ':'')+e.name)+'</option>').join('')+
+        '</select></label>'+
+        '<label>Populasi Awal ABK (ekor)<input type="text" data-number="1" inputmode="numeric" data-chick-abk-pop="'+idx+'" value="'+(row.initial_birds?fmtNumber(row.initial_birds):'')+'" placeholder="Contoh: 8.250" required></label>'+
+        (chickAbks.length>1?'<button type="button" data-remove-chick-abk="'+idx+'">Hapus ABK</button>':'')+
+      '</div>';
+    }).join('');
+    bindNumberInputs();
+    abkRowsEl.querySelectorAll('[data-chick-abk-id]').forEach(sel=>sel.onchange=()=>{
+      syncAbkRows();renderAbkRows();updateTotals();
+    });
+    abkRowsEl.querySelectorAll('[data-chick-abk-pop]').forEach(inp=>inp.oninput=()=>{
+      const idx=Number(inp.dataset.chickAbkPop);
+      if(chickAbks[idx])chickAbks[idx].initial_birds=Math.trunc(normalizeInputID(inp.value)||0);
+      updateTotals();
+    });
+    abkRowsEl.querySelectorAll('[data-remove-chick-abk]').forEach(btn=>btn.onclick=()=>{
+      syncAbkRows();
+      chickAbks.splice(Number(btn.dataset.removeChickAbk),1);
+      renderAbkRows();
+      updateTotals();
+    });
+  };
+
+  const loadAssignmentAbks=(assignmentId)=>{
+    const existing=d.links.filter(l=>l.contract_assignment_id===assignmentId);
+    chickAbks=existing.length
+      ?existing.map(l=>({abk_id:l.abk_id,initial_birds:Math.trunc(prodNum(l.initial_birds))}))
+      :[{abk_id:'',initial_birds:0}];
+    renderAbkRows();
+    updateTotals();
+  };
+
+  addAbkBtn.onclick=()=>{
+    syncAbkRows();
+    if(chickAbks.filter(x=>x.abk_id).length>=activeAbks.length)return msg('Semua ABK aktif sudah dipilih.');
+    chickAbks.push({abk_id:'',initial_birds:0});
+    renderAbkRows();
+    updateTotals();
+  };
+
+  const calc=()=>{
+    form.received.value=formatInputID(form.received.value);
+    form.doa.value=formatInputID(form.doa.value);
+    if(form.avg_weight.value)form.avg_weight.value=formatInputID(form.avg_weight.value);
+    updateTotals();
+  };
+
+  if(editRow)loadAssignmentAbks(editRow.contract_assignment_id);
+  else loadAssignmentAbks(form.assignment.value);
+
+  if(!editRow)form.assignment.onchange=()=>loadAssignmentAbks(form.assignment.value);
+  form.received.oninput=calc;
+  form.doa.oninput=calc;
+  form.avg_weight.oninput=calc;
   calc();
-  f.received.oninput=calc;f.doa.oninput=calc;f.avg_weight.oninput=calc;
 
   root.querySelectorAll('[data-edit-chick]').forEach(btn=>btn.onclick=async()=>{
     window.__chickInEdit=btn.dataset.editChick||'';
     await chickInPage();
     document.getElementById('prodChick')?.scrollIntoView({behavior:'smooth',block:'start'});
   });
+
   const cancel=document.getElementById('chickEditCancel');
   if(cancel)cancel.onclick=async()=>{window.__chickInEdit='';await chickInPage();};
   bindAdminTransactionDeletes(()=>{window.__chickInEdit='';return chickInPage();});
 
-  f.onsubmit=async e=>{
+  form.onsubmit=async e=>{
     e.preventDefault();
-    const a=d.assignments.find(x=>x.id===f.assignment.value);
-    if(!a)return msg('Pilih kontrak aktif dari Logistik.');
-    const received=normalizeInputID(f.received.value);
-    const doa=normalizeInputID(f.doa.value);
-    const avgWeight=f.avg_weight.value?normalizeInputID(f.avg_weight.value):null;
-    if(received===null||received<=0)return msg('Jumlah DOC Masuk harus lebih dari 0 ekor.');
-    if(doa===null||doa<0)return msg('DOC Mati Box harus 0 atau lebih.');
-    if(doa>=received)return msg('DOC Mati Box harus lebih kecil dari DOC In. Populasi awal bersih harus lebih dari 0 ekor.');
+    syncAbkRows();
+    const assignmentId=currentAssignmentId();
+    const a=d.assignments.find(x=>x.id===assignmentId);
+    if(!a)return msg('Pilih kandang/siklus aktif dari Logistik.');
+
+    const received=Math.trunc(normalizeInputID(form.received.value)||0);
+    const doa=Math.trunc(normalizeInputID(form.doa.value)||0);
+    const avgWeight=form.avg_weight.value?normalizeInputID(form.avg_weight.value):null;
+    if(received<=0)return msg('Jumlah DOC Masuk harus lebih dari 0 ekor.');
+    if(doa<0||doa>=received)return msg('DOC Mati Box harus lebih kecil dari DOC In.');
     if(avgWeight!==null&&avgWeight<=0)return msg('Bobot Rata2 harus lebih dari 0 gram atau dikosongkan.');
 
-    const rawDo=String(f.delivery_number.value||'').trim();
-    const payload={
-      contract_assignment_id:a.id,barn_id:a.barn_id,arrived_on:f.date.value,
-      received,shipped:received,doa,strain:null,avg_weight:avgWeight,
-      delivery_number:rawDo&&!/^DOC-PLACEHOLDER-/i.test(rawDo)?rawDo:null
-    };
+    const allocations=chickAbks.filter(x=>x.abk_id).map(x=>({
+      abk_id:x.abk_id,
+      initial_birds:Math.trunc(prodNum(x.initial_birds))
+    }));
+    if(!allocations.length)return msg('Pilih minimal 1 ABK.');
+    if(allocations.some(x=>x.initial_birds<=0))return msg('Populasi Awal setiap ABK wajib lebih dari 0.');
+    if(new Set(allocations.map(x=>x.abk_id)).size!==allocations.length)return msg('ABK tidak boleh dipilih dua kali.');
 
-    const duplicate=d.chicks.find(x=>x.contract_assignment_id===a.id&&x.id!==editRow?.id);
-    if(duplicate)return msg('Kandang/siklus ini sudah memiliki Chick-In. Gunakan Edit pada data yang sudah ada.');
+    const net=received-doa;
+    const total=allocations.reduce((s,x)=>s+x.initial_birds,0);
+    if(total!==net)return msg('Total Populasi Awal ABK '+fmtNumber(total)+' harus sama dengan Populasi Awal Bersih '+fmtNumber(net)+' ekor.');
 
-    const q=editRow
-      ?db.from('chick_ins').update(payload).eq('id',editRow.id)
-      :db.from('chick_ins').insert(payload);
-    const {error}=await q;
+    const rawDo=String(form.delivery_number.value||'').trim();
+    const {error}=await db.rpc('save_chick_in_with_abks_v1',{
+      p_chick_id:editRow?.id||null,
+      p_assignment_id:a.id,
+      p_arrived_on:form.date.value,
+      p_received:received,
+      p_doa:doa,
+      p_avg_weight:avgWeight,
+      p_delivery_number:rawDo&&!/^DOC-PLACEHOLDER-/i.test(rawDo)?rawDo:null,
+      p_abks:allocations
+    });
     if(error)return msg('Gagal menyimpan Chick-In: '+error.message);
+
     window.__chickInEdit='';
     await chickInPage();
-    msg(editRow?'Chick-In berhasil diperbarui.':'Chick-In berhasil disimpan.',true);
+    msg(editRow?'Chick-In dan pembagian ABK berhasil diperbarui.':'Chick-In dan pembagian ABK berhasil disimpan ke Liga ABK.',true);
   };
 }
+
 async function recordingPplPage(){
   const d=await productionBase();
   const [rr,sr]=await Promise.all([
