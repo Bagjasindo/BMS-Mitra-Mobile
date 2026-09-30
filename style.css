@@ -3666,3 +3666,27 @@ main select.app-select-native{
     margin-top:12px!important;
   }
 }
+
+
+/* bms-button-save-feedback-20261001 */
+@media screen{
+  .shell main button[data-bms-feedback-state="saving"],
+  .shell main input[type="submit"][data-bms-feedback-state="saving"]{
+    background:#607d8b!important;
+    color:#fff!important;
+    border-color:#607d8b!important;
+    cursor:wait!important;
+  }
+  .shell main button[data-bms-feedback-state="saved"],
+  .shell main input[type="submit"][data-bms-feedback-state="saved"]{
+    background:#2f855a!important;
+    color:#fff!important;
+    border-color:#2f855a!important;
+  }
+  .shell main button[data-bms-feedback-state="failed"],
+  .shell main input[type="submit"][data-bms-feedback-state="failed"]{
+    background:#fff!important;
+    color:#c93737!important;
+    border-color:#e6aaaa!important;
+  }
+}
