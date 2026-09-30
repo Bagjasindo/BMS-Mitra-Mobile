@@ -532,14 +532,29 @@ function appNav(){
 
   for(const section of NAV_SECTIONS){
     if(section.label==='Keuangan'){
-      const mitraItems=['rhpp','rhpp_history','finance_rhpp_real','hutang_supplier']
-        .filter(key=>canViewTab(key)&&!(profile?.role==='ADMIN'&&(key==='rhpp'||key==='rhpp_history')));
-      const mandiriItems=['finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan']
-        .filter(canViewTab);
-      const umumItems=['finance_pembelian_langsung','finance_beli_stok','bop','perawatan_kandang','aset_kandang','kasbon','cicilan','gaji_abk','bop_umum','arus_kas','laba_rugi_kandang','laporan_keuangan']
-        .filter(canViewTab);
-      const expedisiFinanceItems=['expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi'].filter(canViewTab);
-      const allFinance=[...mitraItems,...mandiriItems,...umumItems,...expedisiFinanceItems];
+      // Navigasi Keuangan diringkas hanya pada level UI.
+      // Halaman, tabel, RPC, rumus, dan alur transaksi tetap memakai fungsi lama.
+      const transactionItems=[
+        'bop','bop_umum','perawatan_kandang','gaji_abk','kasbon','cicilan',
+        'finance_beli_stok','finance_pembelian_langsung','aset_kandang'
+      ].filter(canViewTab);
+      const billingItems=[
+        'finance_rhpp_real','hutang_supplier',
+        'finance_mandiri_piutang','finance_mandiri_penerimaan',
+        'finance_mandiri_hutang','finance_mandiri_pembayaran'
+      ].filter(canViewTab);
+      const expeditionItems=[
+        'expedisi_pembayaran','bop_expedisi','perawatan_expedisi'
+      ].filter(canViewTab);
+      const reportItems=[
+        'arus_kas','laba_rugi_kandang','finance_mandiri_laporan',
+        'laporan_expedisi','laporan_keuangan'
+      ].filter(canViewTab);
+      const legacyFinanceItems=['rhpp','rhpp_history']
+        .filter(key=>canViewTab(key)&&profile?.role!=='ADMIN');
+      const allFinance=[
+        ...transactionItems,...billingItems,...expeditionItems,...reportItems,...legacyFinanceItems
+      ];
       if(allFinance.length){
         const subgroup=(label,items)=>{
           if(!items.length)return '';
@@ -547,10 +562,11 @@ function appNav(){
           return '<details class="nav-subgroup"'+opened+'><summary>'+esc(label)+'</summary><div class="nav-child-item">'+items.map(navButton).join('')+'</div></details>';
         };
         html+='<details class="nav-group"'+(allFinance.includes(tab)?' open':'')+'><summary>Keuangan</summary><div class="nav-sub">'+
-          subgroup('Mitra',mitraItems)+
-          subgroup('Mandiri',mandiriItems)+
-          subgroup('Umum / Operasional',umumItems)+
-          subgroup('Keuangan Expedisi',expedisiFinanceItems)+
+          subgroup('Transaksi',transactionItems)+
+          subgroup('Tagihan & Pembayaran',billingItems)+
+          subgroup('Expedisi',expeditionItems)+
+          subgroup('Laporan',reportItems)+
+          (legacyFinanceItems.length?subgroup('RHPP',legacyFinanceItems):'')+
           '</div></details>';
       }
       continue;
