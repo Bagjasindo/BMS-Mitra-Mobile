@@ -210,7 +210,7 @@ const modules={
   ,kasbon:{table:'advances',fields:[['employee_id','Karyawan','employee'],['advanced_on','Tanggal Kasbon','date'],['amount','Nominal','number'],['description','Keterangan'],['reference','Referensi']]}
   ,cicilan:{table:'advance_payments',fields:[['advance_id','Kasbon','advance'],['paid_on','Tanggal Bayar','date'],['amount','Nominal','number'],['method','Metode'],['reference','Referensi'],['notes','Catatan']]}
 };
-const title={finance_mandiri_piutang:'Piutang Penjualan',finance_mandiri_penerimaan:'Penerimaan Penjualan',finance_mandiri_hutang:'Hutang Supplier',finance_mandiri_pembayaran:'Pembayaran Supplier',finance_mandiri_laporan:'Laporan Mandiri',dashboard:'Dashboard',reset_klasemen:'Reset Klasemen ABK',owner_logistics_report:'Laporan Logistik',owner_marketing_report:'Laporan Marketing',owner_finance_report:'Laporan Keuangan',owner_production_report:'Laporan Produksi',owner_ppl_report:'Laporan PPL',supplier_sapronak:'Master Supplier Sapronak',supplier_daging:'Master Supplier Daging',logistik_kontrak:'Buat Siklus',logistik_pembelian_mandiri:'Pembelian Mandiri',logistik_pengiriman:'Pengiriman',logistik_kiriman_luar:'Sapronak Luar',logistik_pakan_luar:'Pakan Luar',logistik_doc_luar:'DOC Luar',logistik_ovk1_luar:'OVK1 / Obat Luar',logistik_beli_peralatan:'Beli Peralatan',logistik_retur:'Retur RHPP',logistik_retur_sebagian:'Retur Bermasalah',logistik_retur_luar:'Retur Tambah Sapronak',logistik_laporan:'Laporan Logistik',marketing_pelanggan:'Master Pelanggan',marketing_panen_kontrak:'Panen Mitra',marketing_panen_mandiri:'Panen Mandiri',marketing_tambah_daging:'Tambah Daging',marketing_laporan:'Laporan Marketing',kandang:'Master Kandang',item:'Master Sapronak',supplier:'Master Supplier',kontrak:'Master Kontrak',harga_hidup:'Harga Ayam Hidup',bonus_kontrak:'Bonus Kontrak',standar_performa:'Master Performa',chick_in:'Chick-In / DOC Masuk',sapronak:'Sapronak',recording:'Recording PPL',kunjungan:'Kunjungan PPL',panen:'Panen',ekspedisi:'Ekspedisi',estimasi:'Estimasi',liga_abk:'Liga ABK',rekap_produksi:'Rekap Produksi PPL',ppl_rhpp_view:'Lihat RHPP',rhpp:'CEK RHPP',rhpp_history:'Cetak RHPP',finance_rhpp_real:'RHPP Real',bop:'BOP Produksi',laba_rugi_kandang:'Laba/Rugi Kandang',laba_rugi_global:'Laba/Rugi Global',perawatan_kandang:'Perawatan Kandang',aset_kandang:'Aset per Kandang',hutang_supplier:'Hutang Supplier',finance_pembelian_langsung:'Pembelian Operasional',bop_umum:'BOP Umum',expedisi_master:'Master Data Expedisi',expedisi_usaha:'Expedisi',expedisi_pembayaran:'Penerimaan Expedisi',bop_expedisi:'BOP Expedisi',perawatan_expedisi:'Perawatan Expedisi',laporan_expedisi:'Laporan Expedisi',arus_kas:'Arus Kas',laporan_keuangan:'Laporan Keuangan',perusahaan:'Data Perusahaan',karyawan:'Master Karyawan',kasbon:'Kasbon',cicilan:'Bayar Kasbon',laporan:'Laporan',pengguna:'Master Pengguna',admin_log_aktivitas:'Log Aktivitas Pengguna',arsip_data:'Arsip Data',profil:'Profil'};
+const title={finance_mandiri_piutang:'Piutang Penjualan',finance_mandiri_penerimaan:'Penerimaan Penjualan',finance_mandiri_hutang:'Hutang Supplier',finance_mandiri_pembayaran:'Pembayaran Supplier',finance_mandiri_laporan:'Laporan Mandiri',dashboard:'Dashboard',reset_klasemen:'Reset Klasemen ABK',owner_logistics_report:'Laporan Logistik',owner_marketing_report:'Laporan Marketing',owner_finance_report:'Laporan Keuangan',owner_production_report:'Laporan Produksi',owner_ppl_report:'Laporan PPL',supplier_sapronak:'Master Supplier Sapronak',supplier_daging:'Master Supplier Daging',logistik_kontrak:'Buat Siklus',logistik_pembelian_mandiri:'Pembelian Mandiri',logistik_pengiriman:'Pengiriman',logistik_kiriman_luar:'Sapronak Luar',logistik_pakan_luar:'Pakan Luar',logistik_doc_luar:'DOC Luar',logistik_ovk1_luar:'OVK1 / Obat Luar',logistik_beli_peralatan:'Beli Peralatan',logistik_retur:'Retur RHPP',logistik_retur_sebagian:'Retur Bermasalah',logistik_retur_luar:'Retur Tambah Sapronak',logistik_laporan:'Laporan Logistik',marketing_pelanggan:'Master Pelanggan',marketing_panen_kontrak:'Panen Mitra',marketing_panen_mandiri:'Panen Mandiri',marketing_tambah_daging:'Tambah Daging',marketing_laporan:'Laporan Marketing',kandang:'Master Kandang',item:'Master Sapronak',supplier:'Master Supplier',kontrak:'Master Kontrak',harga_hidup:'Harga Ayam Hidup',bonus_kontrak:'Bonus Kontrak',standar_performa:'Master Performa',chick_in:'Chick-In / DOC Masuk',sapronak:'Sapronak',recording:'Recording PPL',kunjungan:'Kunjungan PPL',panen:'Panen',ekspedisi:'Ekspedisi',estimasi:'Estimasi',liga_abk:'Liga ABK',rekap_produksi:'Rekap Produksi PPL',ppl_rhpp_view:'Lihat RHPP',rhpp:'CEK RHPP',rhpp_history:'Cetak RHPP',finance_rhpp_real:'RHPP Real',bop:'BOP Produksi',laba_rugi_kandang:'Laba/Rugi Kandang',laba_rugi_global:'Laba/Rugi Global',perawatan_kandang:'Perawatan Kandang',aset_kandang:'Aset per Kandang',hutang_supplier:'Hutang Supplier',finance_pembelian_langsung:'Beli Aset',bop_umum:'BOP Umum',expedisi_master:'Master Data Expedisi',expedisi_usaha:'Expedisi',expedisi_pembayaran:'Penerimaan Expedisi',bop_expedisi:'BOP Expedisi',perawatan_expedisi:'Perawatan Expedisi',laporan_expedisi:'Laporan Expedisi',arus_kas:'Arus Kas',laporan_keuangan:'Laporan Keuangan',perusahaan:'Data Perusahaan',karyawan:'Master Karyawan',kasbon:'Kasbon',cicilan:'Bayar Kasbon',laporan:'Laporan',pengguna:'Master Pengguna',admin_log_aktivitas:'Log Aktivitas Pengguna',arsip_data:'Arsip Data',profil:'Profil'};
 const msg=(s,ok=false)=>{let e=document.getElementById('message');if(e){e.textContent=s;e.className=ok?'success':'error'}};
 const transactionDeleteImpact=(table)=>{
   const impacts={
@@ -5686,16 +5686,11 @@ async function financeDirectPurchasePage(){
   const barnLabel=id=>{const x=barns.find(b=>b.id===id);return x?shortBarnLabel(x):'-'};
   const assignmentLabelLocal=a=>{const b=barns.find(x=>x.id===a.barn_id);return (b?shortBarnLabel(b):'-')+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED');};
 
-  let html='<section class="panel"><h3>Pembelian Operasional Keuangan</h3>'+
-    '<p class="muted">Untuk pembelian yang dilakukan langsung oleh Keuangan. Nama standar dipakai kembali agar pembelian pada tanggal berbeda dapat direkap kumulatif, sedangkan deskripsi/catatan transaksi tetap boleh berbeda.</p>'+
+  let html='<section class="panel"><h3>Beli Aset</h3>'+
+    '<p class="muted">Khusus pembelian aset oleh Keuangan yang bukan wilayah Logistik. Nama standar dipakai kembali agar pembelian pada tanggal berbeda dapat direkap kumulatif, sedangkan catatan transaksi tetap tersimpan per nota.</p>'+
     '<form id="financeDirectPurchaseForm" class="form-vertical">'+
       '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+today+'" required></label>'+
-      '<label>Jenis<select name="purchase_type" id="directPurchaseType" required>'+
-        
-        '<option value="BOP_UMUM">Biaya Umum</option>'+
-        '<option value="PERAWATAN">Perawatan Kandang</option>'+
-        '<option value="LAINNYA">Lainnya</option>'+
-      '</select></label>'+
+      '<input type="hidden" name="purchase_type" id="directPurchaseType" value="ASSET">'+
       '<label>Nama Standar<input name="standard_name" id="directStandardName" list="directStandardNames" autocomplete="off" placeholder="Contoh: Pompa Air" required></label>'+
       '<datalist id="directStandardNames">'+standardNames.map(x=>'<option value="'+esc(x)+'"></option>').join('')+'</datalist>'+
       '<label>Deskripsi / Catatan Nota<input name="description" placeholder="Boleh berbeda tiap pembelian"></label>'+
@@ -5710,13 +5705,13 @@ async function financeDirectPurchasePage(){
       '<label>Metode Pembayaran<select name="payment_method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option></select></label>'+
       '<label>Referensi / No. Nota<input name="reference"></label>'+
       '<label>Catatan Tambahan<textarea name="notes"></textarea></label>'+
-      '<button type="submit">Simpan Pembelian Operasional</button>'+
+      '<button type="submit">Simpan Beli Aset</button>'+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Pembelian Operasional</h3><div class="tablewrap"><table><thead><tr>'+
+  html+='<section class="panel"><h3>Riwayat Pembelian Aset</h3><div class="tablewrap"><table><thead><tr>'+
     '<th>Tanggal</th><th>Jenis</th><th>Nama Standar</th><th>Deskripsi</th><th>Kandang</th><th>Jumlah</th><th>Harga/Satuan</th><th>Total</th><th>Metode</th><th>Supplier</th>'+
     '</tr></thead><tbody>'+
-    purchases.map(x=>'<tr><td>'+prodDateId(x.purchase_date)+'</td><td>'+esc(x.purchase_type==='OVK1'?'OVK1 / Obat':x.purchase_type==='OVK2'?'OVK2 / Peralatan':String(x.purchase_type||'').replaceAll('_',' '))+'</td><td><strong>'+esc(x.standard_name||'-')+'</strong></td><td>'+esc(x.description||'-')+'</td><td>'+esc(barnLabel(x.barn_id))+'</td><td>'+prodFmt(x.quantity,2)+' '+esc(x.unit||'')+'</td><td>Rp '+prodFmt(x.unit_price,0)+'</td><td><strong>Rp '+prodFmt(x.total_amount,0)+'</strong></td><td>'+esc(x.payment_method||'-')+'</td><td>'+esc(x.supplier_id?supplierLabel(x.supplier_id):(x.supplier_name||'-'))+'</td></tr>').join('')+
+    purchases.map(x=>'<tr><td>'+prodDateId(x.purchase_date)+'</td><td>'+esc('ASET')+'</td><td><strong>'+esc(x.standard_name||'-')+'</strong></td><td>'+esc(x.description||'-')+'</td><td>'+esc(barnLabel(x.barn_id))+'</td><td>'+prodFmt(x.quantity,2)+' '+esc(x.unit||'')+'</td><td>Rp '+prodFmt(x.unit_price,0)+'</td><td><strong>Rp '+prodFmt(x.total_amount,0)+'</strong></td><td>'+esc(x.payment_method||'-')+'</td><td>'+esc(x.supplier_id?supplierLabel(x.supplier_id):(x.supplier_name||'-'))+'</td></tr>').join('')+
     '</tbody></table></div>'+(purchases.length?'':'<p class="muted">Belum ada pembelian langsung.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
@@ -5741,16 +5736,12 @@ async function financeDirectPurchasePage(){
   if(standard){standard.onchange=canon;standard.onblur=canon;}
 
   const syncType=()=>{
-    if(!type)return;
-    const t=type.value;
-    const needsBarn=t==='PERAWATAN';
-    if(barnWrap)barnWrap.style.display=needsBarn?'':'none';
+    if(barnWrap)barnWrap.style.display='';
     if(assignmentWrap)assignmentWrap.style.display='none';
-    if(barn)barn.required=needsBarn;
+    if(barn)barn.required=true;
     if(assignment){assignment.required=false;assignment.value='';}
-    if(!needsBarn&&barn)barn.value='';
   };
-  if(type)type.onchange=syncType;
+  syncType();
   syncType();
 
   const calc=()=>{
@@ -5767,14 +5758,13 @@ async function financeDirectPurchasePage(){
     const q=normalizeInputID(fd.get('quantity')),price=normalizeInputID(fd.get('unit_price'));
     if(q===null||q<=0)return msg('Jumlah tidak valid.');
     if(price===null||price<0)return msg('Harga per satuan tidak valid.');
-    const t=String(fd.get('purchase_type')||'');
     const name=String(fd.get('standard_name')||'').trim();
     if(!name)return msg('Nama Standar wajib.');
-    const info=t==='PERAWATAN'?'Perawatan Kandang':'BOP Umum';
+    const info='Aset per Kandang';
     if(!await appConfirm('Simpan '+name+' sebesar Rp '+prodFmt(q*price,0)+'? Sistem akan mengarahkan otomatis ke '+info+'.'))return;
     const {error}=await db.rpc('finance_save_direct_purchase_atomic',{
       p_purchase_date:String(fd.get('purchase_date')||''),
-      p_purchase_type:t,
+      p_purchase_type:'ASSET',
       p_standard_name:name,
       p_description:String(fd.get('description')||'')||null,
       p_supplier_id:String(fd.get('supplier_id')||'')||null,
