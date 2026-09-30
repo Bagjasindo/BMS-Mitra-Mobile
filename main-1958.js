@@ -3609,8 +3609,10 @@ const prodDateId=v=>{if(!v)return '-';const m=String(v).slice(0,10).match(/^(\d{
 const financeOriginalNoteDisplay=v=>{
   let s=String(v||'').trim();
   if(!s)return '-';
+  if(/^\s*(?:Migrasi\s+data\s+lama|Seluruh\s+BB[-\s])/i.test(s))return '-';
   s=s.replace(/^\s*(?:Sumber\s+DATA\s+PETERNAKAN[^:]*:|Import\s+Excel\s+Operasional[^:]*:|Import\s+Excel[^:]*:|Upah\s+kerja\s+selama\s+periode\s*;\s*rincian\s+DATA\s+PETERNAKAN\s*:)[\s]*/is,'').trim();
-  s=s.replace(/\s*(?:[.;]\s*)?(?:Sumber\s+(?:Excel\s+)?Data\s+Lama|Alokasi\s+upah|Ongkos\s+angkut\s+GROUP|GROUP\s+dibagi\s+rata|Nama\s+kandang\s+pada\s+uraian|Tujuan\s+[A-Za-z]|Perawatan\s+kandang\s+tanpa\s+siklus|Tanpa\s+siklus(?:\s+produksi)?|Keterangan\s+asli\s+BMS|sesuai\s+(?:arahan|instruksi|konfirmasi)).*$/is,'').trim();
+  s=s.replace(/\s*\|\s*(?:Sesuai\s+arahan|Koreksi)\s*:.*$/is,'').trim();
+  s=s.replace(/\s*(?:[.;]\s*)?(?:Sumber\s+(?:Excel\s+)?Data\s+Lama|Alokasi\s+upah|Ongkos\s+angkut\s+GROUP|GROUP\s+dibagi\s+rata|Nama\s+kandang\s+pada\s+uraian|Tujuan\s+[A-Za-z]|Perawatan\s+kandang\s+tanpa\s+siklus|Tanpa\s+siklus(?:\s+produksi)?|Keterangan\s+asli\s+BMS|sesuai\s+(?:arahan|instruksi|konfirmasi)|Migrasi\s+data\s+lama|Seluruh\s+BB[-\s]).*$/is,'').trim();
   return s||'-';
 };
 const financeShortReferenceDisplay=v=>{
@@ -9184,7 +9186,7 @@ async function financeCashflowPage(){
     '</tbody></table></div>'+
     '<h4>Rincian Transaksi</h4>'+
     '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Kandang / Siklus</th><th>Keterangan / Catatan</th><th>Referensi</th><th>Masuk</th><th>Keluar</th></tr></thead><tbody>'+
-    visible.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.source)+'</td><td>'+esc(txnLocation(x))+'</td><td>'+esc(x.detail||'-')+'</td><td>'+esc(x.reference||'-')+'</td><td>'+(x.type==='MASUK'?'Rp '+prodFmt(x.amount,0):'-')+'</td><td>'+(x.type==='KELUAR'?'Rp '+prodFmt(x.amount,0):'-')+'</td></tr>').join('')+
+    visible.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.source)+'</td><td>'+esc(txnLocation(x))+'</td><td>'+esc(financeOriginalNoteDisplay(x.detail))+'</td><td>'+esc(financeShortReferenceDisplay(x.reference))+'</td><td>'+(x.type==='MASUK'?'Rp '+prodFmt(x.amount,0):'-')+'</td><td>'+(x.type==='KELUAR'?'Rp '+prodFmt(x.amount,0):'-')+'</td></tr>').join('')+
     '</tbody></table></div>'+
     (visible.length?'':'<p class="muted">Tidak ada transaksi sesuai filter.</p>')+
   '</section>';
