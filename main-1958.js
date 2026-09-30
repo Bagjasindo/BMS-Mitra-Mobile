@@ -5610,6 +5610,67 @@ async function financeMaintenancePage(){
   if(print)print.onclick=()=>printFinanceDocument('maintenancePrintArea','Laporan Perawatan Kandang');
 }
 
+async function logisticsEquipmentPurchasePage(){
+  const [br,sr,ir,pr,ar]=await Promise.all([
+    db.from('barns').select('id,code,name,active').order('code',{ascending:true}),
+    db.from('suppliers').select('id,code,name,active,supplier_type').eq('active',true).order('code',{ascending:true}),
+    db.from('items').select('id,code,name,category,ovk_type,unit,active').eq('active',true).eq('category','OVK').eq('ovk_type','OVK2').order('code',{ascending:true}),
+    db.from('logistics_equipment_purchases').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('barn_assets').select('id,reference')
+  ]);
+  const barns=br.data||[],suppliers=sr.data||[],equipment=ir.data||[],purchases=pr.data||[],assets=ar.data||[];
+  const err=[br,sr,ir,pr,ar].find(x=>x.error)?.error;
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const itemName=id=>{const x=equipment.find(v=>v.id===id);return x?x.code+' · '+x.name:'-'};
+  const supplierName=id=>{const x=suppliers.find(v=>v.id===id);return x?((x.code||'')+' · '+x.name):'-'};
+  const barnName=id=>{const x=barns.find(v=>v.id===id);return x?shortBarnLabel(x):'-'};
+  const assetRef=id=>assets.find(x=>x.id===id)?.reference||'-';
+
+  let html='<section class="panel"><h3>Beli Peralatan · OVK2</h3>'+
+    '<p class="muted">Khusus barang Master Data berjenis <strong>OVK2 / Peralatan</strong>. Saat disimpan, sistem otomatis membuat Aset per Kandang dan Hutang Supplier. Tidak masuk BOP atau RHPP.</p>'+
+    '<form id="equipmentPurchaseForm" class="form-vertical">'+
+      '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+today+'" required></label>'+
+      '<label>Supplier<select name="supplier_id" required><option value="">Pilih Supplier</option>'+suppliers.map(s=>'<option value="'+esc(s.id)+'">'+esc((s.code||'')+' · '+s.name)+'</option>').join('')+'</select></label>'+
+      '<label>Peralatan OVK2<select name="item_id" required><option value="">Pilih Peralatan</option>'+equipment.map(i=>'<option value="'+esc(i.id)+'">'+esc(i.code+' · '+i.name+' · '+(i.unit||'-'))+'</option>').join('')+'</select></label>'+
+      '<label>Kandang Tujuan<select name="barn_id" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Jumlah<input type="text" name="quantity" data-number="1" inputmode="decimal" required></label>'+
+      '<label>Harga Beli / Satuan<input type="text" name="purchase_unit_price" data-number="1" inputmode="decimal" required></label>'+
+      '<label>No. Nota / Referensi<input name="reference_number"></label>'+
+      '<label>Catatan<textarea name="notes"></textarea></label>'+
+      '<button type="submit">Simpan Pembelian Peralatan</button>'+
+    '</form>'+
+    (!equipment.length?'<p class="error">Belum ada barang OVK2 di Master Sapronak. Tambahkan/ubah barang menjadi Kategori OVK · Jenis OVK2 terlebih dahulu.</p>':'')+
+    '</section>';
+
+  html+='<section class="panel"><h3>Riwayat Beli Peralatan</h3><div class="tablewrap"><table><thead><tr>'+
+    '<th>Tanggal</th><th>Supplier</th><th>Peralatan</th><th>Kandang</th><th>Jumlah</th><th>Harga/Satuan</th><th>Total</th><th>Aset</th><th>Referensi</th>'+
+    '</tr></thead><tbody>'+
+    purchases.map(p=>'<tr><td>'+esc(p.purchase_date||'')+'</td><td>'+esc(supplierName(p.supplier_id))+'</td><td>'+esc(itemName(p.item_id))+'</td><td>'+esc(barnName(p.barn_id))+'</td><td>'+fmtNumber(p.quantity)+'</td><td>Rp '+fmtNumber(p.purchase_unit_price)+'</td><td><strong>Rp '+fmtNumber(prodNum(p.quantity)*prodNum(p.purchase_unit_price))+'</strong></td><td>'+esc(assetRef(p.asset_id))+'</td><td>'+esc(p.reference_number||'-')+'</td></tr>').join('')+
+    '</tbody></table></div>'+(purchases.length?'':'<p class="muted">Belum ada pembelian peralatan.</p>')+'</section>';
+
+  layout(html);bindNumberInputs();if(err)msg(err.message);
+  const form=document.getElementById('equipmentPurchaseForm');
+  if(form)form.onsubmit=async ev=>{
+    ev.preventDefault();
+    if(!equipment.length)return msg('Belum ada barang OVK2 di Master Data.');
+    const fd=new FormData(form);
+    const quantity=normalizeInputID(fd.get('quantity')),price=normalizeInputID(fd.get('purchase_unit_price'));
+    if(quantity===null||quantity<=0)return msg('Jumlah pembelian tidak valid.');
+    if(price===null||price<0)return msg('Harga pembelian tidak valid.');
+    const item=equipment.find(x=>x.id===String(fd.get('item_id')||''));
+    if(!item)return msg('Pilih peralatan OVK2 dari Master Data.');
+    if(!await appConfirm('Simpan pembelian '+item.name+' dan otomatis buat Aset per Kandang serta Hutang Supplier?'))return;
+    const {error}=await db.rpc('save_logistics_equipment_purchase_atomic',{
+      p_id:null,p_supplier_id:String(fd.get('supplier_id')||''),p_item_id:item.id,p_barn_id:String(fd.get('barn_id')||''),
+      p_purchase_date:String(fd.get('purchase_date')||''),p_quantity:quantity,p_purchase_unit_price:price,
+      p_reference_number:String(fd.get('reference_number')||'')||null,p_notes:String(fd.get('notes')||'')||null
+    });
+    if(error)return msg(error.message);
+    await logisticsEquipmentPurchasePage();
+    msg('Pembelian peralatan tersimpan. Aset dan Hutang Supplier dibuat otomatis tanpa masuk BOP/RHPP.',true);
+  };
+}
+
 async function financeSupplierPayablesPage(){
   const [pr,ar,br,cr,pyr]=await Promise.all([
     db.rpc('finance_supplier_payables_v1'),
@@ -5634,10 +5695,12 @@ async function financeSupplierPayablesPage(){
   const totalBayar=visible.reduce((n,x)=>n+prodNum(x.paid_amount),0);
   const totalSisa=visible.reduce((n,x)=>n+prodNum(x.balance),0);
   const identity=id=>{const a=assignments.find(x=>x.id===id);return a?assignmentIdentity(assignments,barns,contractsRows,a):'-';};
+  const sourceLabel=t=>t==='SAPRONAK_LUAR'?'Sapronak Tambahan':t==='TAMBAH_DAGING'?'Tambah Daging':t==='BELI_PERALATAN'?'Beli Peralatan':'-';
+  const payableLocation=x=>x.source_type==='BELI_PERALATAN'?([x.barn_code,x.barn_name].filter(Boolean).join(' · ')||'-'):identity(x.contract_assignment_id);
   const selected=rows.find(x=>x.source_type+':'+x.source_id===st.selected);
 
   let html='<section class="panel"><h3>Hutang Supplier</h3>'+
-    '<p class="muted"><strong>OTOMATIS.</strong> Hutang muncul dari Sapronak Tambahan Logistik dan Tambah Daging Marketing. Keuangan tidak membuat tagihan ulang.</p>'+
+    '<p class="muted"><strong>OTOMATIS.</strong> Hutang muncul dari Sapronak Tambahan Logistik, Beli Peralatan Logistik, dan Tambah Daging Marketing. Keuangan tidak membuat tagihan atau nama barang ulang.</p>'+
     '<form id="supplierPayableFilter" class="form-vertical">'+
       '<label>Supplier<select name="supplier"><option value="">Semua Supplier</option>'+suppliers.map(x=>'<option value="'+esc(x.id)+'" '+(st.supplier===x.id?'selected':'')+'>'+esc((x.code||'')+' · '+x.name)+'</option>').join('')+'</select></label>'+
       '<label>Status<select name="status"><option value="OPEN" '+(st.status==='OPEN'?'selected':'')+'>Belum Lunas + Sebagian</option><option value="BELUM_LUNAS" '+(st.status==='BELUM_LUNAS'?'selected':'')+'>Belum Lunas</option><option value="SEBAGIAN" '+(st.status==='SEBAGIAN'?'selected':'')+'>Sebagian</option><option value="LUNAS" '+(st.status==='LUNAS'?'selected':'')+'>Lunas</option><option value="ALL" '+(st.status==='ALL'?'selected':'')+'>Semua</option></select></label>'+
@@ -5645,13 +5708,13 @@ async function financeSupplierPayablesPage(){
     '<section class="panel" id="supplierPayablePrintArea"><div class="rhpp-section-head"><div><h3>Daftar Hutang Supplier</h3></div><div class="report-actions"><button type="button" id="supplierPayablePrint">Cetak / PDF</button></div></div>'+
       '<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Tagihan</span><strong>Rp '+prodFmt(totalTagihan,0)+'</strong></div><div class="rhpp-summary-card"><span>Sudah Dibayar</span><strong>Rp '+prodFmt(totalBayar,0)+'</strong></div><div class="rhpp-summary-card"><span>Sisa Hutang</span><strong>Rp '+prodFmt(totalSisa,0)+'</strong></div></div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Sumber</th><th>Kandang / Siklus</th><th>Referensi</th><th>Tagihan</th><th>Dibayar</th><th>Sisa</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
-      visible.map(x=>'<tr><td>'+prodDateId(x.transaction_date)+'</td><td>'+esc((x.supplier_code||'')+' · '+x.supplier_name)+'</td><td>'+(x.source_type==='SAPRONAK_LUAR'?'Sapronak Tambahan':'Tambah Daging')+'</td><td>'+esc(identity(x.contract_assignment_id))+'</td><td>'+esc(x.reference||'-')+'</td><td>Rp '+prodFmt(x.total_amount,0)+'</td><td>Rp '+prodFmt(x.paid_amount,0)+'</td><td><strong>Rp '+prodFmt(x.balance,0)+'</strong></td><td><strong>'+esc(String(x.status||'').replaceAll('_',' '))+'</strong></td><td>'+(x.status!=='LUNAS'?'<button type="button" data-pay-supplier="'+esc(x.source_type+':'+x.source_id)+'">Bayar</button>':'-')+'</td></tr>').join('')+
+      visible.map(x=>'<tr><td>'+prodDateId(x.transaction_date)+'</td><td>'+esc((x.supplier_code||'')+' · '+x.supplier_name)+'</td><td>'+esc(sourceLabel(x.source_type))+'</td><td>'+esc(payableLocation(x))+'</td><td>'+esc(x.reference||'-')+'</td><td>Rp '+prodFmt(x.total_amount,0)+'</td><td>Rp '+prodFmt(x.paid_amount,0)+'</td><td><strong>Rp '+prodFmt(x.balance,0)+'</strong></td><td><strong>'+esc(String(x.status||'').replaceAll('_',' '))+'</strong></td><td>'+(x.status!=='LUNAS'?'<button type="button" data-pay-supplier="'+esc(x.source_type+':'+x.source_id)+'">Bayar</button>':'-')+'</td></tr>').join('')+
       '</tbody></table></div>'+(visible.length?'':'<p class="muted">Tidak ada hutang supplier sesuai filter.</p>')+'</section>';
 
   if(selected&&(selected.status!=='LUNAS'||editPayment)){
     const bank=[selected.supplier_bank_name,selected.supplier_bank_account_number,selected.supplier_bank_account_name].filter(Boolean).join(' · ');
     html+='<section class="panel"><h3>'+(editPayment?'Edit Pembayaran Supplier':'Bayar Hutang Supplier')+'</h3>'+
-      '<p><strong>'+esc(selected.supplier_name)+'</strong> · '+(selected.source_type==='SAPRONAK_LUAR'?'Sapronak Tambahan':'Tambah Daging')+'</p>'+
+      '<p><strong>'+esc(selected.supplier_name)+'</strong> · '+esc(sourceLabel(selected.source_type))+'</p>'+
       '<p class="muted">Sisa hutang: <strong>Rp '+prodFmt(selected.balance,0)+'</strong>'+(bank?' · Rekening: '+esc(bank):'')+'</p>'+
       '<form id="supplierPaymentForm" class="form-vertical">'+
         '<label>Tanggal Bayar<input name="paid_on" type="date" value="'+esc(editPayment?.paid_on||today)+'" required></label>'+
@@ -5665,7 +5728,7 @@ async function financeSupplierPayablesPage(){
 
   if(payments.length){
     html+='<section class="panel"><h3>Riwayat Pembayaran Supplier</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Sumber</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
-      payments.map(p=>{const row=rows.find(x=>x.source_type===p.source_type&&x.source_id===p.source_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(row?.supplier_name||'-')+'</td><td>'+esc(p.source_type==='SAPRONAK_LUAR'?'Sapronak Tambahan':'Tambah Daging')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method||'-')+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('supplier_payments',p.id)+'</div></td></tr>';}).join('')+
+      payments.map(p=>{const row=rows.find(x=>x.source_type===p.source_type&&x.source_id===p.source_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(row?.supplier_name||'-')+'</td><td>'+esc(sourceLabel(p.source_type))+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method||'-')+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('supplier_payments',p.id)+'</div></td></tr>';}).join('')+
       '</tbody></table></div></section>';
   }
 
@@ -7737,13 +7800,15 @@ async function itemMasterPage(){
     '<form id="itemMasterEntry" class="form-vertical">'+
       '<input type="hidden" name="id">'+
       m.fields.map(field).join('')+
+      '<label id="itemOvkTypeWrap">Jenis OVK<select name="ovk_type"><option value="">Pilih Jenis OVK</option><option value="OVK1">OVK1 / Obat</option><option value="OVK2">OVK2 / Peralatan</option></select></label>'+
       '<div class="report-actions"><button type="submit" id="itemMasterSave">Simpan</button><button type="button" id="itemMasterCancel" hidden>Batal Edit</button></div>'+
     '</form></section>'+
     '<section class="panel"><h3>Data '+title.item+'</h3>'+
       '<form id="itemMasterFilter" class="form-vertical">'+
         '<label>Kode<input name="code" placeholder="Contoh: SP-001"></label>'+
-        '<label>Nama<input name="name" placeholder="Nama sapronak"></label>'+
+        '<label>Nama<input name="name" placeholder="Nama sapronak / peralatan"></label>'+
         '<label>Kategori<select name="category"><option value="">Semua Kategori</option><option value="DOC">DOC</option><option value="PAKAN">PAKAN</option><option value="OVK">OVK</option><option value="LAINNYA">LAINNYA</option></select></label>'+
+        '<label>Jenis OVK<select name="ovk_type"><option value="">Semua Jenis OVK</option><option value="OVK1">OVK1 / Obat</option><option value="OVK2">OVK2 / Peralatan</option></select></label>'+
         '<label>Fase Pakan<select name="feed_phase"><option value="">Semua Fase Pakan</option>'+phases.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')+'</select></label>'+
         '<label>Satuan<select name="unit"><option value="">Semua Satuan</option>'+units.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')+'</select></label>'+
         '<label>Supplier<select name="supplier_id"><option value="">Semua Supplier</option>'+supplierRows.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name||x.code||'-')+'</option>').join('')+'</select></label>'+
@@ -7764,11 +7829,13 @@ async function itemMasterPage(){
   const syncUnit=()=>{
     const cat=entry.elements.category;
     const unit=entry.elements.unit;
+    const ovkWrap=document.getElementById('itemOvkTypeWrap');
+    const ovkType=entry.elements.ovk_type;
     if(!cat||!unit)return;
     if(!document.getElementById('ovk-units')){
       const dl=document.createElement('datalist');
       dl.id='ovk-units';
-      ['BOTOL','SACHET','LITER','ML','GRAM','KG','VIAL','AMPUL','TABLET','DOS'].forEach(v=>{
+      ['BOTOL','SACHET','LITER','ML','GRAM','KG','VIAL','AMPUL','TABLET','DOS','PCS','UNIT'].forEach(v=>{
         const o=document.createElement('option');o.value=v;dl.appendChild(o);
       });
       entry.appendChild(dl);
@@ -7776,6 +7843,8 @@ async function itemMasterPage(){
     const apply=()=>{
       unit.removeAttribute('list');
       unit.placeholder='';
+      if(ovkWrap)ovkWrap.hidden=cat.value!=='OVK';
+      if(cat.value!=='OVK'&&ovkType)ovkType.value='';
       if(cat.value==='DOC'){unit.value='EKOR';unit.readOnly=true;}
       else if(cat.value==='PAKAN'){unit.value='ZAK';unit.readOnly=true;}
       else if(cat.value==='OVK'){
@@ -7786,7 +7855,7 @@ async function itemMasterPage(){
         unit.readOnly=false;unit.placeholder='Masukkan satuan';
       }
     };
-    cat.addEventListener('change',apply);apply();
+    cat.onchange=apply;apply();
   };
   syncUnit();
 
@@ -7801,10 +7870,10 @@ async function itemMasterPage(){
 
   const renderRows=filtered=>{
     result.innerHTML=filtered.length
-      ?'<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th>Fase Pakan</th><th>Satuan</th><th>Supplier</th><th>Aksi</th></tr></thead><tbody>'+
+      ?'<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th>Jenis OVK</th><th>Fase Pakan</th><th>Satuan</th><th>Supplier</th><th>Aksi</th></tr></thead><tbody>'+
         filtered.map(x=>{
           const sup=supplierRows.find(v=>v.id===x.supplier_id);
-          return '<tr><td>'+esc(x.code||'')+'</td><td>'+esc(x.name||'')+'</td><td>'+esc(x.category||'')+'</td><td>'+esc(x.feed_phase||'-')+'</td><td>'+esc(x.unit||'')+'</td><td>'+esc(sup?.name||'-')+'</td><td><button type="button" data-edit-item="'+esc(x.id)+'">Edit</button></td></tr>';
+          return '<tr><td>'+esc(x.code||'')+'</td><td>'+esc(x.name||'')+'</td><td>'+esc(x.category||'')+'</td><td>'+esc(x.ovk_type||'-')+'</td><td>'+esc(x.feed_phase||'-')+'</td><td>'+esc(x.unit||'')+'</td><td>'+esc(sup?.name||'-')+'</td><td><button type="button" data-edit-item="'+esc(x.id)+'">Edit</button></td></tr>';
         }).join('')+
         '</tbody></table></div>'
       :'<p class="muted">Data tidak ditemukan.</p>';
@@ -7816,9 +7885,11 @@ async function itemMasterPage(){
       for(const [key] of m.fields){
         if(entry.elements[key])entry.elements[key].value=x[key]??'';
       }
+      if(entry.elements.ovk_type)entry.elements.ovk_type.value=x.category==='OVK'?(x.ovk_type||'OVK1'):'';
       save.textContent='Simpan Perubahan';
       cancel.hidden=false;
       syncUnit();
+      if(entry.elements.ovk_type)entry.elements.ovk_type.value=x.category==='OVK'?(x.ovk_type||'OVK1'):'';
       entry.scrollIntoView({behavior:'smooth',block:'start'});
     });
   };
@@ -7829,6 +7900,7 @@ async function itemMasterPage(){
     const code=String(fd.get('code')||'').trim().toLowerCase();
     const name=String(fd.get('name')||'').trim().toLowerCase();
     const category=String(fd.get('category')||'');
+    const ovkType=String(fd.get('ovk_type')||'');
     const phase=String(fd.get('feed_phase')||'');
     const unit=String(fd.get('unit')||'');
     const supplierId=String(fd.get('supplier_id')||'');
@@ -7836,6 +7908,7 @@ async function itemMasterPage(){
       (!code||String(x.code||'').toLowerCase().includes(code))&&
       (!name||String(x.name||'').toLowerCase().includes(name))&&
       (!category||String(x.category||'')===category)&&
+      (!ovkType||String(x.ovk_type||'')===ovkType)&&
       (!phase||String(x.feed_phase||'')===phase)&&
       (!unit||String(x.unit||'')===unit)&&
       (!supplierId||String(x.supplier_id||'')===supplierId)
@@ -7860,6 +7933,12 @@ async function itemMasterPage(){
         if(nv!==null)payload[k]=nv;
       }else payload[k]=null;
     }
+    if(payload.category==='OVK'){
+      const ovkType=String(fd.get('ovk_type')||'');
+      if(!['OVK1','OVK2'].includes(ovkType))return msg('Pilih Jenis OVK: OVK1 / Obat atau OVK2 / Peralatan.');
+      payload.ovk_type=ovkType;
+    }else payload.ovk_type=null;
+
     const q=id
       ?db.from('items').update(payload).eq('id',id)
       :db.from('items').insert(payload);
@@ -7872,7 +7951,6 @@ async function itemMasterPage(){
 
   if(error)msg(error.message);
 }
-
 
 async function adminUserActivityLogPage(){
   if(profile?.role!=='ADMIN')return layout('<section class="panel"><h3>Akses Dikunci</h3><p class="muted">Hanya Administrator yang dapat melihat Log Aktivitas Pengguna.</p></section>');
@@ -8017,7 +8095,7 @@ async function adminDataArchivePage(){
   };
 }
 
-async function render(){if(!canViewTab(tab))return layout('<section class="panel"><h3>Akses Dikunci</h3><p class="muted">Menu ini terlihat pada semua akun, tetapi akun '+esc(profile.role)+' tidak memiliki hak akses untuk membukanya.</p></section>');if(['owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report'].includes(tab)&&['OWNER','ADMIN'].includes(profile.role))return ownerReportPendingPage();if(tab==='dashboard')return dashboard();if(tab==='finance_mandiri_piutang')return financeMandiriReceivablePage();if(tab==='finance_mandiri_penerimaan')return financeMandiriReceiptsPage();if(tab==='finance_mandiri_hutang')return financeMandiriSupplierDebtPage();if(tab==='finance_mandiri_pembayaran')return financeMandiriSupplierPaymentPage();if(tab==='finance_mandiri_laporan')return financeMandiriReportPage();if(tab==='kandang')return barnMasterPage();if(tab==='item')return itemMasterPage();if(tab==='supplier_sapronak')return supplierMasterPage('SAPRONAK');if(tab==='supplier_daging')return supplierMasterPage('DAGING');if(tab==='logistik_kontrak')return logisticsContractPage();if(tab==='logistik_pembelian_mandiri')return logisticsMandiriPurchasePage();if(tab==='logistik_pengiriman')return logisticsShippingPage();if(['logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar'].includes(tab))return logisticsExternalShippingPage();if(tab==='logistik_beli_peralatan')return layout('<section class="panel"><h3>Beli Peralatan</h3><p class="muted"><strong>OVK2 / Peralatan.</strong> Menu sudah disiapkan. Alur transaksi belum diaktifkan pada tahap ini agar alur yang sudah PASS tidak berubah.</p></section>');if(tab==='marketing_pelanggan')return marketingCustomerPage();if(tab==='marketing_panen_kontrak')return marketingContractHarvestPage(null,'MITRA');if(tab==='marketing_panen_mandiri')return marketingContractHarvestPage(null,'MANDIRI');if(tab==='marketing_tambah_daging')return marketingExternalMeatPage();if(tab==='marketing_laporan')return marketingReports();if(tab==='logistik_retur')return logisticsReturnPage();if(tab==='logistik_retur_sebagian')return logisticsPartialReturnPage();if(tab==='logistik_retur_luar')return logisticsExternalReturnPage();if(tab==='kontrak')return contractMasterPage();if(tab==='standar_performa')return performanceMasterPage();if(tab==='reset_klasemen')return resetKlasemenAbkPage();if(tab==='karyawan')return employeeMasterPage();if(tab==='profil')return profilePage();if(tab==='perusahaan')return companyProfilePage();if(tab==='admin_log_aktivitas')return adminUserActivityLogPage();if(tab==='arsip_data')return adminDataArchivePage();if(tab==='logistik_laporan')return logisticsReports();if(tab==='chick_in')return chickInPage();if(tab==='recording')return recordingPplPage();if(tab==='kunjungan')return productionVisitPage();if(tab==='estimasi')return productionEstimatePage();if(tab==='liga_abk')return leagueAbkPage();if(tab==='rekap_produksi')return productionRecapPage();if(tab==='ppl_rhpp_view')return pplRhppViewPage();if(tab==='rhpp_history')return adminRhppHistoryPage();if(tab==='rhpp')return profile.role==='ADMIN'?financeRhppPage():profile.role==='OWNER'?ownerProfitLossPage():financeRhppRealPage();if(tab==='finance_rhpp_real')return financeRhppRealPage();if(tab==='bop')return financeBopPage();if(tab==='laba_rugi_kandang')return financeBarnProfitLossPage();if(tab==='laba_rugi_global')return financeGlobalProfitLossPage();if(tab==='perawatan_kandang')return financeMaintenancePage();if(tab==='hutang_supplier')return financeSupplierPayablesPage();if(tab==='bop_umum')return financeBopGeneralPage();if(tab==='expedisi_master')return financeExpeditionMasterPage();if(tab==='expedisi_usaha')return financeExpeditionBusinessPage();if(tab==='expedisi_pembayaran')return financeExpeditionPaymentPage();if(tab==='bop_expedisi')return financeExpeditionBopPage();if(tab==='perawatan_expedisi')return financeExpeditionMaintenancePage();if(tab==='laporan_expedisi')return financeExpeditionProfitLossPage();if(tab==='kasbon')return financeAdvancePage();if(tab==='cicilan')return financeAdvancePaymentPage();if(tab==='arus_kas')return financeCashflowPage();if(tab==='laporan_keuangan')return financeReportPage();if(tab==='laporan'&&profile.role==='LOGISTIK')return logisticsReports();if(tab==='laporan')return reports();if(tab==='pengguna')return users();await ensureLegacyData();const m=modules[tab],can=roles[tab].includes(profile.role);const {data,error}=await db.from(m.table).select('*').limit(1000).order(tab==='kandang'?'created_at':tab==='siklus'?'created_at':tab==='sapronak'?'created_at':tab==='rhpp'?'created_at':'id',{ascending:false});const rows=data||[];const dateField=(m.fields.find(f=>f[2]==='date')||[])[0]||null;const genericBarnField=m.fields.some(f=>f[2]==='barn');const txnGeneric=dateField?txnListState(rows,'generic_'+tab,dateField,5,genericBarnField?barns:null,'barn_id'):null;const displayRows=txnGeneric?txnGeneric.rows:rows;let html=['kontrak','harga_hidup','bonus_kontrak','standar_performa'].includes(tab)?'<p>Masukkan angka dari kontrak yang ditandatangani. Periksa ulang foto acuan sebelum menyimpan harga atau ambang performa.</p>':tab==='aset_kandang'?'<p><strong>Aset melekat langsung ke kandang dan tidak memakai siklus.</strong> Nilai perolehan aset tidak otomatis masuk BOP, Perawatan, atau memotong laba/rugi kandang.</p>':'';html+=can?'<section class="panel"><h3>Tambah '+title[tab]+'</h3><form id="entry">'+m.fields.map(field).join('')+(tab==='kontrak'?'<button type="button" id="fillPhoto">Isi harga sapronak dari foto</button>':'')+'<button>Simpan</button></form></section>':'';if(tab==='kontrak'){html+='<section class="panel"><h3>Status Kelengkapan Kontrak</h3><div class="tablewrap"><table><tr><th>Kontrak</th><th>Status</th><th>Komponen kurang</th></tr>'+contractReadiness.map(x=>'<tr><td>'+esc(x.number)+'</td><td>'+(x.is_complete?'Lengkap':'Belum Lengkap')+'</td><td>'+esc((x.missing_components||[]).join(', ')||'-')+'</td></tr>').join('')+'</table></div>'+(!contractReadiness.length?'<p>Belum ada kontrak.</p>':'')+'</section>';}{const displayFields=(autoCodeTabs.has(tab)?[['code','Kode'],...m.fields]:m.fields).slice(0,6);html+='<section class="panel"><h3>Data '+title[tab]+'</h3>'+(txnGeneric?txnGeneric.controls:'')+'<div class="tablewrap"><table><thead><tr>'+displayFields.map(f=>'<th>'+f[1]+'</th>').join('')+'</tr></thead><tbody>'+displayRows.map(row=>'<tr>'+displayFields.map(f=>'<td>'+cellValue(row,f)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'+(!(txnGeneric?txnGeneric.total:rows.length)?'<p>Belum ada data.</p>':'')+(txnGeneric?txnGeneric.pager:'')+'</section>';}layout(html);bindNumberInputs();bindComputedWeights();bindItemUnit();if(txnGeneric)bindTxnList(txnGeneric,()=>render());if(error)msg(error.message);if(tab==='kontrak'&&can)document.getElementById('fillPhoto').onclick=()=>{const f=document.getElementById('entry');for(const [k,v] of Object.entries({doc_price:9000,pre_starter_price:10350,starter_price:10100,finisher_price:10000,ovk_price_basis:'DISTRIBUTOR_PLUS_VAT'}))f.elements[k].value=v;msg('Harga sapronak dari foto terisi. Verifikasi kontrak dan isi persentase PPN sebelum menyimpan.',true)};if(can)document.getElementById('entry').onsubmit=async e=>{e.preventDefault();let o={};for(const [k,,t] of m.fields){let v=new FormData(e.target).get(k);if(v!==''&&v!=null){const nv=t==='number'?normalizeInputID(v):v;if(nv!==null)o[k]=nv}}const {error}=tab==='perusahaan'?await db.from(m.table).upsert({id:true,...o}):await db.from(m.table).insert(o);if(error)msg(error.message);else {await load();msg('Data tersimpan.',true)}}}
+async function render(){if(!canViewTab(tab))return layout('<section class="panel"><h3>Akses Dikunci</h3><p class="muted">Menu ini terlihat pada semua akun, tetapi akun '+esc(profile.role)+' tidak memiliki hak akses untuk membukanya.</p></section>');if(['owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report'].includes(tab)&&['OWNER','ADMIN'].includes(profile.role))return ownerReportPendingPage();if(tab==='dashboard')return dashboard();if(tab==='finance_mandiri_piutang')return financeMandiriReceivablePage();if(tab==='finance_mandiri_penerimaan')return financeMandiriReceiptsPage();if(tab==='finance_mandiri_hutang')return financeMandiriSupplierDebtPage();if(tab==='finance_mandiri_pembayaran')return financeMandiriSupplierPaymentPage();if(tab==='finance_mandiri_laporan')return financeMandiriReportPage();if(tab==='kandang')return barnMasterPage();if(tab==='item')return itemMasterPage();if(tab==='supplier_sapronak')return supplierMasterPage('SAPRONAK');if(tab==='supplier_daging')return supplierMasterPage('DAGING');if(tab==='logistik_kontrak')return logisticsContractPage();if(tab==='logistik_pembelian_mandiri')return logisticsMandiriPurchasePage();if(tab==='logistik_pengiriman')return logisticsShippingPage();if(['logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar'].includes(tab))return logisticsExternalShippingPage();if(tab==='logistik_beli_peralatan')return logisticsEquipmentPurchasePage();if(tab==='marketing_pelanggan')return marketingCustomerPage();if(tab==='marketing_panen_kontrak')return marketingContractHarvestPage(null,'MITRA');if(tab==='marketing_panen_mandiri')return marketingContractHarvestPage(null,'MANDIRI');if(tab==='marketing_tambah_daging')return marketingExternalMeatPage();if(tab==='marketing_laporan')return marketingReports();if(tab==='logistik_retur')return logisticsReturnPage();if(tab==='logistik_retur_sebagian')return logisticsPartialReturnPage();if(tab==='logistik_retur_luar')return logisticsExternalReturnPage();if(tab==='kontrak')return contractMasterPage();if(tab==='standar_performa')return performanceMasterPage();if(tab==='reset_klasemen')return resetKlasemenAbkPage();if(tab==='karyawan')return employeeMasterPage();if(tab==='profil')return profilePage();if(tab==='perusahaan')return companyProfilePage();if(tab==='admin_log_aktivitas')return adminUserActivityLogPage();if(tab==='arsip_data')return adminDataArchivePage();if(tab==='logistik_laporan')return logisticsReports();if(tab==='chick_in')return chickInPage();if(tab==='recording')return recordingPplPage();if(tab==='kunjungan')return productionVisitPage();if(tab==='estimasi')return productionEstimatePage();if(tab==='liga_abk')return leagueAbkPage();if(tab==='rekap_produksi')return productionRecapPage();if(tab==='ppl_rhpp_view')return pplRhppViewPage();if(tab==='rhpp_history')return adminRhppHistoryPage();if(tab==='rhpp')return profile.role==='ADMIN'?financeRhppPage():profile.role==='OWNER'?ownerProfitLossPage():financeRhppRealPage();if(tab==='finance_rhpp_real')return financeRhppRealPage();if(tab==='bop')return financeBopPage();if(tab==='laba_rugi_kandang')return financeBarnProfitLossPage();if(tab==='laba_rugi_global')return financeGlobalProfitLossPage();if(tab==='perawatan_kandang')return financeMaintenancePage();if(tab==='hutang_supplier')return financeSupplierPayablesPage();if(tab==='bop_umum')return financeBopGeneralPage();if(tab==='expedisi_master')return financeExpeditionMasterPage();if(tab==='expedisi_usaha')return financeExpeditionBusinessPage();if(tab==='expedisi_pembayaran')return financeExpeditionPaymentPage();if(tab==='bop_expedisi')return financeExpeditionBopPage();if(tab==='perawatan_expedisi')return financeExpeditionMaintenancePage();if(tab==='laporan_expedisi')return financeExpeditionProfitLossPage();if(tab==='kasbon')return financeAdvancePage();if(tab==='cicilan')return financeAdvancePaymentPage();if(tab==='arus_kas')return financeCashflowPage();if(tab==='laporan_keuangan')return financeReportPage();if(tab==='laporan'&&profile.role==='LOGISTIK')return logisticsReports();if(tab==='laporan')return reports();if(tab==='pengguna')return users();await ensureLegacyData();const m=modules[tab],can=roles[tab].includes(profile.role);const {data,error}=await db.from(m.table).select('*').limit(1000).order(tab==='kandang'?'created_at':tab==='siklus'?'created_at':tab==='sapronak'?'created_at':tab==='rhpp'?'created_at':'id',{ascending:false});const rows=data||[];const dateField=(m.fields.find(f=>f[2]==='date')||[])[0]||null;const genericBarnField=m.fields.some(f=>f[2]==='barn');const txnGeneric=dateField?txnListState(rows,'generic_'+tab,dateField,5,genericBarnField?barns:null,'barn_id'):null;const displayRows=txnGeneric?txnGeneric.rows:rows;let html=['kontrak','harga_hidup','bonus_kontrak','standar_performa'].includes(tab)?'<p>Masukkan angka dari kontrak yang ditandatangani. Periksa ulang foto acuan sebelum menyimpan harga atau ambang performa.</p>':tab==='aset_kandang'?'<p><strong>Aset melekat langsung ke kandang dan tidak memakai siklus.</strong> Nilai perolehan aset tidak otomatis masuk BOP, Perawatan, atau memotong laba/rugi kandang.</p>':'';html+=can?'<section class="panel"><h3>Tambah '+title[tab]+'</h3><form id="entry">'+m.fields.map(field).join('')+(tab==='kontrak'?'<button type="button" id="fillPhoto">Isi harga sapronak dari foto</button>':'')+'<button>Simpan</button></form></section>':'';if(tab==='kontrak'){html+='<section class="panel"><h3>Status Kelengkapan Kontrak</h3><div class="tablewrap"><table><tr><th>Kontrak</th><th>Status</th><th>Komponen kurang</th></tr>'+contractReadiness.map(x=>'<tr><td>'+esc(x.number)+'</td><td>'+(x.is_complete?'Lengkap':'Belum Lengkap')+'</td><td>'+esc((x.missing_components||[]).join(', ')||'-')+'</td></tr>').join('')+'</table></div>'+(!contractReadiness.length?'<p>Belum ada kontrak.</p>':'')+'</section>';}{const displayFields=(autoCodeTabs.has(tab)?[['code','Kode'],...m.fields]:m.fields).slice(0,6);html+='<section class="panel"><h3>Data '+title[tab]+'</h3>'+(txnGeneric?txnGeneric.controls:'')+'<div class="tablewrap"><table><thead><tr>'+displayFields.map(f=>'<th>'+f[1]+'</th>').join('')+'</tr></thead><tbody>'+displayRows.map(row=>'<tr>'+displayFields.map(f=>'<td>'+cellValue(row,f)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'+(!(txnGeneric?txnGeneric.total:rows.length)?'<p>Belum ada data.</p>':'')+(txnGeneric?txnGeneric.pager:'')+'</section>';}layout(html);bindNumberInputs();bindComputedWeights();bindItemUnit();if(txnGeneric)bindTxnList(txnGeneric,()=>render());if(error)msg(error.message);if(tab==='kontrak'&&can)document.getElementById('fillPhoto').onclick=()=>{const f=document.getElementById('entry');for(const [k,v] of Object.entries({doc_price:9000,pre_starter_price:10350,starter_price:10100,finisher_price:10000,ovk_price_basis:'DISTRIBUTOR_PLUS_VAT'}))f.elements[k].value=v;msg('Harga sapronak dari foto terisi. Verifikasi kontrak dan isi persentase PPN sebelum menyimpan.',true)};if(can)document.getElementById('entry').onsubmit=async e=>{e.preventDefault();let o={};for(const [k,,t] of m.fields){let v=new FormData(e.target).get(k);if(v!==''&&v!=null){const nv=t==='number'?normalizeInputID(v):v;if(nv!==null)o[k]=nv}}const {error}=tab==='perusahaan'?await db.from(m.table).upsert({id:true,...o}):await db.from(m.table).insert(o);if(error)msg(error.message);else {await load();msg('Data tersimpan.',true)}}}
 async function financeRhppRealPage(){
   const [sr,rr,ar,br,cr]=await Promise.all([
     db.from('rhpp_system_final').select('*').order('created_at',{ascending:false}),
