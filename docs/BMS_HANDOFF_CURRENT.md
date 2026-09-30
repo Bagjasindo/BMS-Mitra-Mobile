@@ -73,6 +73,8 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `cbf49dcbdddf17e9499505ce9d82289543014eec` — Bump cache for readable professional RHPP print
+- `e82173aabdd991a44e95c3ab830c8f1c98675bed` — Make shared RHPP print output readable and professional
 - `27af7e8636439995922032d4bd9b5da3a3271243` — Bump cache for exact Cetak RHPP submenu styling
 - `08d2b08c48930e2f3143b430c809e8ca05136cd8` — Remove custom RHPP child styling and inherit Cetak RHPP UI
 - `ad192086f5cd49762efcad63d0b64f961a1e4f63` — Make Lihat RHPP children use exact Cetak RHPP nav component
@@ -88,7 +90,7 @@ Terdapat 5 halaman/menu RHPP:
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2292-rhpp-exact-cetak`
+`main-1958.js?v=2293-rhpp-print-readable`
 
 ## TITIK BERHENTI
 STOP di sini.
