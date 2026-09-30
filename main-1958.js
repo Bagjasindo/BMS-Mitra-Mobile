@@ -712,6 +712,20 @@ function layout(content){
     root.addEventListener('click',window.__legacyTxnDeleteCapture,true);
   }
   decorateNavigation(root);
+  if(profile?.role!=='ADMIN'){
+    root.querySelectorAll([
+      '[data-delete-shipment]',
+      '[data-delete-return]',
+      '[data-delete-external-shipment]',
+      '[data-delete-external-return]',
+      '[data-delete-mandiri-purchase]',
+      '[data-delete-exp-trip]',
+      '[data-delete-exp-invoice]',
+      '[data-remove-abk]',
+      '#fxTripCorrectionDelete',
+      '#fxInvoiceCorrectionDelete'
+    ].join(',')).forEach(el=>el.remove());
+  }
   enhanceSearchableSelects();
   requestAnimationFrame(updateTableScrollHints);
   if(navInitialCollapsePending){root.querySelectorAll('details.nav-group').forEach(d=>d.open=false);navInitialCollapsePending=false;}
