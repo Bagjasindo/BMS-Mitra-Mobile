@@ -5515,7 +5515,8 @@ async function pplRhppAbkViewPage(){
     const r=selectedResult;
     const money=v=>'Rp '+prodFmt(v,0);
 
-    html+='<div class="rhpp-page" id="pplRhppAbkExportArea">'+
+    html+='<section class="panel"><div class="rhpp-section-head"><div><h3>RHPP ABK</h3><p class="muted">Format tampilan disamakan dengan dokumen RHPP BMS.</p></div><div class="report-actions"><button type="button" id="pplRhppAbkPrintTop">Print</button><button type="button" id="pplRhppAbkPdfTop">PDF</button><button type="button" id="pplRhppAbkExcelTop">Excel</button></div></div><div style="margin-top:12px"><iframe id="pplRhppAbkPreview" title="Preview RHPP ABK" style="width:100%;height:1040px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe></div></section>'+
+      '<div class="rhpp-page" id="pplRhppAbkExportArea" style="display:none">'+
       '<section class="panel rhpp-panel rhpp-head"><h3>'+esc(leagueAbkName(e))+' · '+esc(b?shortBarnLabel(b):'-')+'</h3>'+
         '<p class="muted">'+esc(selectedContract?.number||'-')+' · '+esc(assignmentCycleLabel(d.assignments,a))+' · Status: <strong>'+(a?.active?'PROSES':'CLOSED')+'</strong></p>'+
       '</section>';
@@ -5650,13 +5651,18 @@ async function pplRhppAbkViewPage(){
       const clone=exportArea?.cloneNode(true);if(!clone)return '';
       clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
       return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(fileBase)+'</title>'+
-        '<style>@page{size:A4 landscape;margin:9mm}body{font-family:Arial,sans-serif;color:#111;font-size:9px}.head{border-bottom:2px solid #111;padding-bottom:7px;margin-bottom:10px}.head h2{margin:0 0 3px;font-size:15px}.panel{border:0!important;padding:0!important}.muted{color:#444}.rhpp-mini-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.rhpp-mini-block{border:1px solid #aaa}.rhpp-mini-block h4{margin:0;padding:5px 7px;background:#eee;font-size:10px}.rhpp-mini-row{display:grid;grid-template-columns:1.5fr 1fr;border-top:1px solid #ddd;padding:4px 6px;gap:6px}.rhpp-mini-row span{color:#333}.rhpp-mini-row strong{text-align:right}</style></head><body>'+
+        '<style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,sans-serif;color:#111;font-size:7px;background:#fff}.head{border-bottom:2px solid #0b5f8f;padding-bottom:7px;margin-bottom:10px}.head h2{margin:0 0 3px;font-size:14px;color:#0b5f8f}.panel{border:0!important;padding:0!important;margin:0 0 8px!important}.muted{color:#445}.rhpp-page{width:178mm;margin:0 auto}.rhpp-section-head h3,.rhpp-panel h3{color:#0b5f8f}.tablewrap table{width:100%;border-collapse:collapse}.tablewrap th,.tablewrap td{border:1px solid #a9bcc6;padding:3px 4px}.tablewrap thead th{background:#12a8d4;color:#fff}.num{text-align:right}.rhpp-summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.rhpp-summary-card{border:1px solid #a9bcc6;padding:6px}.rhpp-summary-card strong{display:block;margin-top:2px}.rhpp-total-row th,.rhpp-total-row td{font-weight:700;background:#eef7fb}.rhpp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}</style></head><body>'+
         '<div class="head">'+(company.logo_url?'<img src="'+esc(company.logo_url)+'" style="max-height:38px;float:left;margin-right:10px">':'')+
         '<h2>'+esc(company.company_name||company.legal_name||'BAGJASINDO MANDIRI SINDANGKASIH')+'</h2>'+
         (company.address?'<div>'+esc(company.address)+'</div>':'')+
         (company.phone?'<div>Tel/WA: '+esc(company.phone)+'</div>':'')+
         '</div><h2>RHPP ABK</h2>'+clone.innerHTML+'</body></html>';
     };
+    const previewFrame=document.getElementById('pplRhppAbkPreview');
+    if(previewFrame){
+      const previewHtml=docHtml().replace('</style>','.rhpp-page{transform:scale(1.15);transform-origin:top center}body{min-height:1000px}</style>');
+      previewFrame.srcdoc=previewHtml;
+    }
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
       w.document.write(docHtml());w.document.close();setTimeout(()=>{w.focus();w.print();},450);
@@ -5664,16 +5670,23 @@ async function pplRhppAbkViewPage(){
     const pBtn=document.getElementById('pplRhppAbkPrint');
     const pdfBtn=document.getElementById('pplRhppAbkPdf');
     const xBtn=document.getElementById('pplRhppAbkExcel');
+    const pBtnTop=document.getElementById('pplRhppAbkPrintTop');
+    const pdfBtnTop=document.getElementById('pplRhppAbkPdfTop');
+    const xBtnTop=document.getElementById('pplRhppAbkExcelTop');
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
-    if(xBtn)xBtn.onclick=()=>{
+    if(pBtnTop)pBtnTop.onclick=openPrint;
+    if(pdfBtnTop)pdfBtnTop.onclick=openPrint;
+    const exportAbkExcel=()=>{
       const clone=exportArea?.cloneNode(true);if(!clone)return;
       clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-      const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(company.company_name||'BMS Mobile')+'</h2><h3>RHPP ABK</h3>'+clone.innerHTML+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>PT Bagjasindo Mandiri Sindangkasih</h2><h3>RHPP ABK</h3>'+clone.innerHTML+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xls';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
     };
+    if(xBtn)xBtn.onclick=exportAbkExcel;
+    if(xBtnTop)xBtnTop.onclick=exportAbkExcel;
   }
 }
 
