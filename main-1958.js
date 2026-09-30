@@ -6161,19 +6161,26 @@ async function adminRhppHistoryPage(){
         '<tr><th>PPL</th><td>'+esc(pplName)+'</td></tr>'+
       '</tbody></table>';
 
-      const docRows='<tr><td>'+prodDateId(fin?.chick_in_date||ci?.arrived_on)+'</td><td>'+esc(ci?.hatchery||ci?.strain||'DOC')+'</td><td>'+esc(ci?.delivery_number||'-')+'</td><td class="n">'+prodFmt(chickIn,0)+'</td><td>Ekor</td><td class="n">'+money(docPrice)+'</td><td class="n">('+money(src.main_doc_cost)+')</td></tr>'+
-        '<tr><td></td><td>KOMPLAIN DOC</td><td></td><td class="n">0</td><td>Ekor</td><td></td><td class="n">(0)</td></tr>'+
-        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(chickIn,0)+'</td><td></td><td></td><td class="n">('+money(src.main_doc_cost)+')</td></tr>';
+      const docRows='<tr><td>'+prodDateId(fin?.chick_in_date||ci?.arrived_on)+'</td><td>'+esc(ci?.hatchery||ci?.strain||'DOC')+'</td><td>'+esc(ci?.delivery_number||'-')+'</td><td class="n">'+prodFmt(chickIn,0)+'</td><td>Ekor</td><td class="n">'+money(docPrice)+'</td><td class="n">'+money(src.main_doc_cost)+'</td></tr>'+
+        '<tr><td></td><td>KOMPLAIN DOC</td><td></td><td class="n">0</td><td>Ekor</td><td></td><td class="n">0</td></tr>'+
+        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(chickIn,0)+'</td><td></td><td></td><td class="n">'+money(src.main_doc_cost)+'</td></tr>';
 
-      const feedRowsHtml=(feedTxnRows.length?feedTxnRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.sj)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.dir)+'</td><td class="n">'+n2(x.mut)+'</td><td class="n">'+money(x.price)+'</td><td class="n">('+money(x.total)+')</td></tr>').join(''):'<tr><td colspan="8" class="c">Tidak ada rincian pakan.</td></tr>')+
-        '<tr class="total"><td colspan="3"></td><td class="n">'+n2(totalFeedQty)+'</td><td></td><td class="n">'+n2(totalFeedMut)+'</td><td></td><td class="n">('+money(src.main_feed_cost)+')</td></tr>'+
+      const feedRowsHtml=(feedTxnRows.length?feedTxnRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.sj)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.dir)+'</td><td class="n">'+n2(x.mut)+'</td><td class="n">'+money(x.price)+'</td><td class="n">'+money(x.total)+'</td></tr>').join(''):'<tr><td colspan="8" class="c">Tidak ada rincian pakan.</td></tr>')+
+        '<tr class="total"><td colspan="3"></td><td class="n">'+n2(totalFeedQty)+'</td><td></td><td class="n">'+n2(totalFeedMut)+'</td><td></td><td class="n">'+money(src.main_feed_cost)+'</td></tr>'+
         '<tr class="total"><td colspan="5"></td><td class="n">'+n2(feedKg)+'</td><td class="n">'+money(avgFeedPrice)+'</td><td></td></tr>';
 
-      const ovkRowsHtml=ovkRows.length?ovkRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.unit)+'</td><td>'+esc(x.sj)+'</td><td>'+esc(x.supplier)+'</td><td class="n">('+money(x.price)+')</td><td class="n">'+money(x.total)+'</td></tr>').join('')+'<tr class="total"><td colspan="2"></td><td class="n">'+n2(ovkRows.reduce((n,x)=>n+x.qty,0))+'</td><td colspan="4"></td><td class="n">'+money(ovkTotal)+'</td></tr>':
+      const ovkRowsHtml=ovkRows.length?ovkRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.unit)+'</td><td>'+esc(x.sj)+'</td><td>'+esc(x.supplier)+'</td><td class="n">'+money(x.price)+'</td><td class="n">'+money(x.total)+'</td></tr>').join('')+'<tr class="total"><td colspan="2"></td><td class="n">'+n2(ovkRows.reduce((n,x)=>n+x.qty,0))+'</td><td colspan="4"></td><td class="n">'+money(ovkTotal)+'</td></tr>':
         '<tr><td>-</td><td>OVK</td><td class="n">-</td><td>-</td><td>-</td><td>-</td><td class="n">-</td><td class="n">'+money(ovkTotal)+'</td></tr>';
 
-      const harvestRowsHtml=hs.map(h=>'<tr><td>'+prodDateId(h.harvested_on)+'</td><td>'+esc(h.id?String(h.id).slice(0,6).toUpperCase():'-')+'</td><td>'+esc(h.buyer_name||'-')+'</td><td class="n">'+prodFmt(h.birds,0)+'</td><td class="n">'+n2(h.net_weight_kg)+'</td><td class="n">'+n2(h.avg_weight_kg)+'</td><td class="n">'+prodFmt(src.weighted_age,0)+'</td><td class="n">'+money(h.price_per_kg)+'</td><td class="n">('+money(h.total_amount)+')</td></tr>').join('')+
-        '<tr class="total"><td colspan="3"></td><td class="n">('+prodFmt(harvestBirds,0)+')</td><td class="n">('+n2(harvestKg)+')</td><td class="n">'+n2(avgBw)+'</td><td class="n">'+n2(src.weighted_age)+'</td><td class="n">'+money(avgLivePrice)+'</td><td class="n">('+money(src.harvest_value)+')</td></tr>';
+      const chickInDate=String(fin?.chick_in_date||ci?.arrived_on||'');
+      const ageAtHarvest=date=>{
+        if(!chickInDate||!date)return '';
+        const a0=new Date(chickInDate+'T00:00:00'),b0=new Date(String(date).slice(0,10)+'T00:00:00');
+        const days=Math.round((b0-a0)/86400000);
+        return Number.isFinite(days)?days:'';
+      };
+      const harvestRowsHtml=hs.map(h=>'<tr><td>'+prodDateId(h.harvested_on)+'</td><td>'+esc(h.id?String(h.id).slice(0,6).toUpperCase():'-')+'</td><td>'+esc(h.buyer_name||'-')+'</td><td class="n">'+prodFmt(h.birds,0)+'</td><td class="n">'+n2(h.net_weight_kg)+'</td><td class="n">'+n2(h.avg_weight_kg)+'</td><td class="n">'+prodFmt(ageAtHarvest(h.harvested_on),0)+'</td><td class="n">'+money(h.price_per_kg)+'</td><td class="n">'+money(h.total_amount)+'</td></tr>').join('')+
+        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(harvestBirds,0)+'</td><td class="n">'+n2(harvestKg)+'</td><td class="n">'+n2(avgBw)+'</td><td class="n">'+n2(src.weighted_age)+'</td><td class="n">'+money(avgLivePrice)+'</td><td class="n">'+money(src.harvest_value)+'</td></tr>';
 
       const bonusDepletion=prodNum(src.bonus_depletion||src.bonus_mortality);
       const bonusDepletionRate=prodNum(src.bonus_depletion_rate||src.bonus_mortality_rate);
