@@ -203,3 +203,87 @@ Status: PASS setelah hardening.
 - Cache commit: 26075b0f90fc0f07f5c7f156556c894eeb9a5011
 - SQL hardening: sql/20260930_logistics_ppl_form_hardening.sql
 - SQL commit: 7c7d6389e269fb168a82fef6cbbf3a4d22acd4c9
+
+
+## AUDIT ULANG PENUH HULU → HILIR + FLOW FREEZE — 30 SEPTEMBER 2026
+Tujuan: verifikasi ulang kesiapan operasi tanpa mengubah alur bisnis yang sudah PASS.
+
+### HASIL AUDIT DATA LIVE
+- 21 pemeriksaan integritas utama: seluruhnya 0 masalah.
+- Assignment missing barn: 0.
+- MITRA missing contract: 0.
+- Multiple active cycle per barn: 0.
+- Duplicate Chick-In per assignment: 0.
+- Chick-In barn mismatch: 0.
+- Duplicate ABK link: 0.
+- ABK vs Chick-In mismatch: 0.
+- Shipment/Recording/Harvest/Marketing barn mismatch: 0.
+- Invalid shipment/harvest quantity: 0.
+- Recording sebelum Chick-In: 0.
+- Marketing amount mismatch: 0.
+- Stock invoice vs item mismatch: 0.
+- Direct purchase barn mismatch: 0.
+- Asset KANDANG missing barn: 0.
+- Supplier/Expedition/Mandiri nonpositive payment: 0.
+
+### RHPP / KEUANGAN / HILIR
+- Closed missing RHPP snapshot: 0.
+- RHPP snapshot drift: 0.
+- RHPP Chick-In drift: 0.
+- RHPP harvest drift: 0.
+- RHPP population unbalanced: 0.
+- Formula Laba/Rugi kandang mismatch: 0.
+- Formula Laba/Rugi Global diff: Rp0.
+- Tambah Daging yang terduplikasi ke BOP: 0.
+- Cashflow audit tetap: masuk Rp1.982.526.613; keluar Rp855.777.277; net Rp1.126.749.336.
+- Hutang supplier terbuka: 5 transaksi; Rp36.440.000.
+- Company P/L saat audit: Rp402.091.109.
+
+### ROLE / WRITE / DELETE SMOKE TEST — SELURUHNYA ROLLBACK
+- LOGISTIK: Edit berhasil, Delete 0.
+- PPL: Edit berhasil, Delete 0.
+- MARKETING: Edit berhasil, Delete 0.
+- KEUANGAN: Edit berhasil, Delete 0.
+- OWNER: Edit 0, Delete 0 (read-only).
+- Tidak ada residue transaksi test.
+
+### BUG DITEMUKAN DAN FIXED SAAT AUDIT ULANG
+Policy DELETE lama masih membolehkan role operasional menghapus beberapa transaksi utama. Diperketat ADMIN-only tanpa mengubah jalur input/edit:
+- BOP
+- Sapronak Luar
+- Retur Mitra / Retur Luar
+- Panen Marketing
+- Tambah Daging
+- Panen ABK
+- Estimasi
+- Recording
+- Kunjungan
+Policy Chick-In / Pengiriman utama / ABK link sudah lebih dulu diperketat pada audit khusus LOGISTIK+PPL.
+
+### HARDENING RPC ANON
+- finance_pay_mandiri_supplier_atomic
+- log_user_activity
+- production_feed_stock_as_of
+Akses EXECUTE dari PUBLIC/anon dicabut; authenticated tetap diizinkan.
+Advisor setelah hardening tidak lagi menunjukkan warning anon SECURITY DEFINER untuk fungsi tersebut.
+
+### SECURITY ADVISOR YANG TERSISA
+- 69 warning generic authenticated SECURITY DEFINER: RPC aplikasi memang digunakan oleh user login; audit definisi menunjukkan terdapat mekanisme pemeriksaan auth/user/role.
+- 2 tabel internal RLS tanpa policy: langsung tidak dapat diakses lewat Data API; dipakai sebagai internal state.
+- Leaked Password Protection Supabase masih disabled; ini setting keamanan Auth, bukan alur bisnis aplikasi.
+
+### FLOW FREEZE — DIKUNCI
+Mulai titik ini, seluruh alur bisnis yang sudah PASS dianggap FROZEN:
+- Master → Siklus → Logistik → Chick-In/ABK → Produksi/PPL → Marketing → RHPP → Keuangan → Laba/Rugi → Dashboard/Laporan.
+- Jangan mengubah formula, sumber data, relasi, snapshot, trigger, RPC, tabel tujuan, atau hak role yang sudah PASS tanpa temuan BUG nyata dari data live.
+- Revisi normal berikutnya dibatasi pada:
+  1. tampilan/UI/tema,
+  2. menu riwayat/filter/pencarian,
+  3. penyeragaman layout/form input,
+  4. label/keterangan/UX,
+  selama tidak mengubah sumber data dan alur bisnis yang sudah PASS.
+- Jika revisi UI/form menyentuh submit handler, wajib smoke-test rollback agar alur backend tidak berubah.
+
+### FILE / COMMIT
+- SQL re-audit hardening: sql/20260930_full_reaudit_hardening.sql
+- Commit SQL: 6284703b03481c2b178b5d7dea298b981240a4ab
