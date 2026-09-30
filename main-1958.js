@@ -3606,6 +3606,12 @@ async function supplierMasterPage(type){
 const prodNum=v=>Number(v||0);
 const prodFmt=(v,d=2)=>{const n=Number(v||0);const dec=d===0?0:2;return n.toLocaleString('id-ID',{minimumFractionDigits:dec,maximumFractionDigits:dec})};
 const prodDateId=v=>{if(!v)return '-';const m=String(v).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?m[3]+'/'+m[2]+'/'+m[1]:String(v)};
+const financeOriginalNoteDisplay=v=>{
+  let s=String(v||'').trim();
+  if(!s)return '-';
+  s=s.replace(/\s*(?:[.;]\s*)?(?:Sumber\s+(?:Excel\s+)?Data\s+Lama|Alokasi\s+upah|Ongkos\s+angkut\s+GROUP|GROUP\s+dibagi\s+rata|Nama\s+kandang\s+pada\s+uraian|Tujuan\s+[A-Za-z]|Perawatan\s+kandang\s+tanpa\s+siklus|Tanpa\s+siklus(?:\s+produksi)?|Keterangan\s+asli\s+BMS|sesuai\s+(?:arahan|instruksi|konfirmasi)).*$/is,'').trim();
+  return s||'-';
+};
 const prodToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const prodAge=(a,b)=>Math.max(1,Math.floor((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000)+1);
 const prodDateAdd=(iso,days)=>{const d=new Date(String(iso).slice(0,10)+'T00:00:00');d.setDate(d.getDate()+Number(days||0));return d.toISOString().slice(0,10)};
@@ -6654,7 +6660,7 @@ async function financeBopPage(){
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total BOP</span><strong>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</strong></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop',x.id)+'</div></td></tr>';}).join('')+
+          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop',x.id)+'</div></td></tr>';}).join('')+
         '</tbody><tfoot><tr><th colspan="3">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
@@ -6789,7 +6795,7 @@ async function financeMaintenancePage(){
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total Perawatan</span><strong>Rp '+prodFmt(totalVisible,0)+'</strong></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang</th><th>Jenis</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-          visible.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.notes||'-')+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-maintenance="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('barn_maintenance_costs',x.id)+'</div></td></tr>').join('')+
+          visible.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-maintenance="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('barn_maintenance_costs',x.id)+'</div></td></tr>').join('')+
         '</tbody><tfoot><tr><th colspan="3">TOTAL</th><th>Rp '+prodFmt(totalVisible,0)+'</th><th></th><th></th></tr></tfoot></table></div>'+
         (visible.length?'':'<p class="muted">Belum ada perawatan sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
@@ -7509,7 +7515,7 @@ async function financeBopGeneralPage(){
     '</form></section>'+
     '<section class="panel" id="bopUmumPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Umum</h3></div><div class="report-actions"><button type="button" id="bopUmumPrint">Cetak / PDF</button></div></div>'+'<label>Jenis laporan<select id="bopGeneralScopeFilter"><option value="">Semua</option><option value="KANTOR" '+(scopeFilter==='KANTOR'?'selected':'')+'>Kantor</option><option value="LUAR_KANTOR" '+(scopeFilter==='LUAR_KANTOR'?'selected':'')+'>Luar Kantor</option></select></label>'+txn.controls+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(x.expense_scope==='KANTOR'?'Kantor':x.expense_scope==='LUAR_KANTOR'?'Luar Kantor':'Belum ditentukan')+'</td><td>'+esc(bopUmumLabels[x.category]||String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
+      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(x.expense_scope==='KANTOR'?'Kantor':x.expense_scope==='LUAR_KANTOR'?'Luar Kantor':'Belum ditentukan')+'</td><td>'+esc(bopUmumLabels[x.category]||String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
       '</tbody></table></div>'+
       (!txn.total?'<p>Belum ada data.</p>':'')+txn.pager+
     '</section>';
@@ -8364,7 +8370,7 @@ async function financeExpeditionProfitLossPage(){
       (rows.length?'<div class="rhpp-summary-cards" style="margin-top:14px"><div class="rhpp-summary-card"><span>Total Piutang</span><strong>Rp '+prodFmt(receivableTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Invoice</span><strong>'+rows.length+'</strong></div></div>':'<p class="muted">Tidak ada piutang pada filter ini.</p>');
   }else if(st.view==='BOP'){
     body='<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>SJ</th><th>Rute</th><th>Kendaraan</th><th>Kategori</th><th>Nominal</th><th>Sumber</th><th>Catatan</th></tr></thead><tbody>'+
-      reportBops.map(x=>{const t=tripById(x.trip_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(t?.mts_sj||'-')+'</td><td>'+esc(x.route||t?.zone||'-')+'</td><td>'+esc(x.vehicle||t?.vehicle||'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference==='AUTO_TRIP'?'Input OP per Trip':(x.reference||'Manual'))+'</td><td>'+esc(x.notes||'-')+'</td></tr>';}).join('')+
+      reportBops.map(x=>{const t=tripById(x.trip_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(t?.mts_sj||'-')+'</td><td>'+esc(x.route||t?.zone||'-')+'</td><td>'+esc(x.vehicle||t?.vehicle||'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference==='AUTO_TRIP'?'Input OP per Trip':(x.reference||'Manual'))+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+'</td></tr>';}).join('')+
       '</tbody></table></div>'+
       (reportBops.length?'<div class="rhpp-summary-cards" style="margin-top:14px"><div class="rhpp-summary-card"><span>Total Kas Jalan / BOP</span><strong>Rp '+prodFmt(bopTotal,0)+'</strong></div><div class="rhpp-summary-card"><span>Jumlah Transaksi</span><strong>'+reportBops.length+'</strong></div></div>':'<p class="muted">Tidak ada BOP pada filter ini.</p>');
   }else if(st.view==='PERAWATAN'){
@@ -8819,7 +8825,7 @@ async function financeMandiriReceiptsPage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(st.historyTo||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="mandiriReceiptHistoryReset">Reset</button></div>'+
     '</form>'+
-    (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+selectedReceiptRows.map(r=>'<tr><td>'+prodDateId(r.received_on)+'</td><td>'+esc(r.method)+'</td><td>Rp '+prodFmt(r.amount,0)+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-receipt="'+esc(r.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_sales_receipts',r.id)+'</div></td></tr>').join('')+
+    (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+selectedReceiptRows.map(r=>'<tr><td>'+prodDateId(r.received_on)+'</td><td>'+esc(r.method)+'</td><td>Rp '+prodFmt(r.amount,0)+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(r.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-receipt="'+esc(r.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_sales_receipts',r.id)+'</div></td></tr>').join('')+
     '</tbody></table></div>'+(selectedReceiptRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
@@ -9011,7 +9017,7 @@ async function financeMandiriSupplierPaymentPage(){
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="mandiriSupplierHistoryReset">Reset</button></div>'+
     '</form>'+
     (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-      history.map(p=>{const pur=purchases.find(x=>x.id===p.purchase_id),s=suppliers.find(x=>x.id===pur?.supplier_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(s?.name||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method)+'</td><td>'+esc(p.reference||'-')+'</td><td>'+esc(p.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_supplier_payments',p.id)+'</div></td></tr>';}).join('')+
+      history.map(p=>{const pur=purchases.find(x=>x.id===p.purchase_id),s=suppliers.find(x=>x.id===pur?.supplier_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(s?.name||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method)+'</td><td>'+esc(p.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(p.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_supplier_payments',p.id)+'</div></td></tr>';}).join('')+
       '</tbody></table></div>'+(history.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
     '</section>';
 
@@ -9081,7 +9087,7 @@ async function financeMandiriReportPage(){
 
 async function financeCashflowPage(){
   const [xr,bar,assr,cr,cpr,obr,ogr,omr]=await Promise.all([
-    db.rpc('finance_cashflow_entries_v4'),
+    db.rpc('finance_cashflow_entries_v5'),
     db.from('barns').select('id,code,name'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('contracts').select('id,number').is('cycle_id',null),
