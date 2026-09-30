@@ -5694,8 +5694,7 @@ async function financeDirectPurchasePage(){
       '<label>Nama Standar<input name="standard_name" id="directStandardName" list="directStandardNames" autocomplete="off" placeholder="Contoh: Pompa Air" required></label>'+
       '<datalist id="directStandardNames">'+standardNames.map(x=>'<option value="'+esc(x)+'"></option>').join('')+'</datalist>'+
       '<label>Deskripsi / Catatan Nota<input name="description" placeholder="Boleh berbeda tiap pembelian"></label>'+
-      '<label>Supplier<select name="supplier_choice" id="assetSupplierChoice"><option value="">Pilih Supplier</option>'+suppliers.map(s=>'<option value="'+esc(s.id)+'">'+esc((s.code||'')+' · '+s.name)+'</option>').join('')+'<option value="__MANUAL__">Supplier Baru / Manual</option></select></label>'+
-      '<label id="assetSupplierManualWrap" style="display:none">Nama Supplier Baru<input name="supplier_name" id="assetSupplierManual" placeholder="Masukkan nama supplier"></label>'+
+      '<label>Supplier<input name="supplier_name" placeholder="Masukkan nama supplier"></label>'+
       '<label id="directBarnWrap">Kandang<select name="barn_id" id="directBarn"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label id="directAssignmentWrap">Siklus MITRA<select name="contract_assignment_id" id="directAssignment"><option value="">Pilih Siklus MITRA</option>'+assignments.map(a=>'<option value="'+esc(a.id)+'" data-barn="'+esc(a.barn_id)+'">'+esc(assignmentLabelLocal(a))+'</option>').join('')+'</select></label>'+
       '<label>Jumlah<input type="text" name="quantity" data-number="1" inputmode="decimal" required></label>'+
@@ -5721,21 +5720,9 @@ async function financeDirectPurchasePage(){
   const unit=form?.elements.unit;
   const barn=form?.elements.barn_id;
   const assignment=form?.elements.contract_assignment_id;
-  const supplierChoice=document.getElementById('assetSupplierChoice');
-  const supplierManualWrap=document.getElementById('assetSupplierManualWrap');
-  const supplierManual=document.getElementById('assetSupplierManual');
   const barnWrap=document.getElementById('directBarnWrap');
   const assignmentWrap=document.getElementById('directAssignmentWrap');
   const total=document.getElementById('directTotal');
-
-  const syncSupplier=()=>{
-    const manual=supplierChoice?.value==='__MANUAL__';
-    if(supplierManualWrap)supplierManualWrap.style.display=manual?'':'none';
-    if(supplierManual)supplierManual.required=!!manual;
-    if(!manual&&supplierManual)supplierManual.value='';
-  };
-  if(supplierChoice)supplierChoice.onchange=syncSupplier;
-  syncSupplier();
 
   const latestByName=name=>purchases.find(x=>String(x.standard_name||'').trim().toLowerCase()===String(name||'').trim().toLowerCase());
   const canon=()=>{
@@ -5779,8 +5766,8 @@ async function financeDirectPurchasePage(){
       p_purchase_type:'ASSET',
       p_standard_name:name,
       p_description:String(fd.get('description')||'')||null,
-      p_supplier_id:(String(fd.get('supplier_choice')||'')&&String(fd.get('supplier_choice'))!=='__MANUAL__')?String(fd.get('supplier_choice')):null,
-      p_supplier_name:String(fd.get('supplier_choice')||'')==='__MANUAL__'?(String(fd.get('supplier_name')||'')||null):null,
+      p_supplier_id:null,
+      p_supplier_name:String(fd.get('supplier_name')||'')||null,
       p_barn_id:String(fd.get('barn_id')||'')||null,
       p_contract_assignment_id:String(fd.get('contract_assignment_id')||'')||null,
       p_quantity:q,p_unit:String(fd.get('unit')||''),p_unit_price:price,
