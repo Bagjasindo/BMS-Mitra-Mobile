@@ -2840,6 +2840,8 @@ async function logisticsExternalReturnPage(editId=null){
     db.from('logistics_external_return_transfers').select('*').order('created_at',{ascending:false})
   ]);
   const barns=br.data||[],assignments=ar.data||[],items=ir.data||[],heads=sr.data||[],suppliers=supr.data||[],details=er.data||[],returns=rr.data||[],returnItems=rir.data||[],transfers=tr.data||[];
+  window.__externalReturnTransferHistoryFilter=window.__externalReturnTransferHistoryFilter||{source:'',target:'',from:'',to:'',shown:false};
+  const extTransferHistoryFilter=window.__externalReturnTransferHistoryFilter;
   const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA'),activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const selected=editId?returns.find(r=>r.id===editId):null;
   const selectedItem=selected?returnItems.find(x=>x.external_return_id===selected.id):null;
@@ -2891,7 +2893,12 @@ async function logisticsExternalReturnPage(editId=null){
     const ri=returnItems.find(x=>x.external_return_id===r.id);
     return ri&&transferableQty(ri)>0;
   });
-  const sentRows=transfers.map(t=>{
+  const sentRows=(extTransferHistoryFilter.shown?transfers.filter(t=>
+    (!extTransferHistoryFilter.source||t.source_barn_id===extTransferHistoryFilter.source)&&
+    (!extTransferHistoryFilter.target||t.target_barn_id===extTransferHistoryFilter.target)&&
+    (!extTransferHistoryFilter.from||String(t.transferred_on||'')>=extTransferHistoryFilter.from)&&
+    (!extTransferHistoryFilter.to||String(t.transferred_on||'')<=extTransferHistoryFilter.to)
+  ):[]).map(t=>{
     const ri=returnItems.find(x=>x.id===t.external_return_item_id),r=returns.find(x=>x.id===ri?.external_return_id),it=items.find(x=>x.id===t.item_id),src=barns.find(x=>x.id===t.source_barn_id),dst=barns.find(x=>x.id===t.target_barn_id);
     return {t,ri,r,it,src,dst};
   });
@@ -2911,13 +2918,31 @@ async function logisticsExternalReturnPage(editId=null){
       return '<tr><td>'+esc(r.return_date||'-')+'</td><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(sup?.name||'-')+'</td><td>'+esc(it?it.code+' · '+it.name:'-')+'</td><td>'+fmtNumber(ri?.quantity)+'</td><td><strong>'+fmtNumber(leftTransfer)+'</strong></td><td>'+esc(it?.unit||'-')+'</td><td><span class="pill">'+statusLabel+'</span></td><td>'+sendButton+' '+(canEdit?'<button type="button" data-edit-ext-return="'+esc(r.id)+'">Edit Draft</button> <button type="button" data-delete-ext-return="'+esc(r.id)+'">Hapus Draft</button>':'')+'</td></tr>';
     }).join('')+
     '</tbody></table></div>'+(!draftReturns.length?'<p>Tidak ada stok retur yang menunggu dikirim.</p>':'')+'</section>'+
-    '<section class="panel"><h3>Riwayat Pengiriman Stok Retur</h3><div class="tablewrap compact-table"><table><thead><tr><th>Tanggal</th><th>Dari</th><th>Ke</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Status</th></tr></thead><tbody>'+
-    sentRows.map(x=>'<tr><td>'+esc(x.t.transferred_on||'-')+'</td><td>'+esc(x.src?shortBarnLabel(x.src):'-')+'</td><td>'+esc(x.dst?shortBarnLabel(x.dst):'-')+'</td><td>'+esc(x.it?x.it.code+' · '+x.it.name:'-')+'</td><td>'+fmtNumber(x.t.quantity)+'</td><td>'+esc(x.it?.unit||'-')+'</td><td><span class="pill">TERKIRIM</span></td></tr>').join('')+
-    '</tbody></table></div>'+(!sentRows.length?'<p>Belum ada pengiriman stok retur.</p>':'')+'</section>';
+    '<section class="panel"><h3>Riwayat Pengiriman Stok Retur</h3>'+
+      '<form id="externalReturnTransferHistoryForm" class="form-vertical compact-form" data-no-submit-guard="1">'+
+        '<label>Dari Kandang<select name="source"><option value="">Semua Kandang Asal</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(extTransferHistoryFilter.source===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+        '<label>Ke Kandang<select name="target"><option value="">Semua Kandang Tujuan</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(extTransferHistoryFilter.target===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+        '<label>Tanggal Dari<input type="date" name="from" value="'+esc(extTransferHistoryFilter.from||'')+'"></label>'+
+        '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(extTransferHistoryFilter.to||'')+'"></label>'+
+        '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="externalReturnTransferHistoryReset">Reset</button></div>'+
+      '</form>'+
+      (extTransferHistoryFilter.shown?'<div class="tablewrap compact-table"><table><thead><tr><th>Tanggal</th><th>Dari</th><th>Ke</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Status</th></tr></thead><tbody>'+
+      sentRows.map(x=>'<tr><td>'+esc(x.t.transferred_on||'-')+'</td><td>'+esc(x.src?shortBarnLabel(x.src):'-')+'</td><td>'+esc(x.dst?shortBarnLabel(x.dst):'-')+'</td><td>'+esc(x.it?x.it.code+' · '+x.it.name:'-')+'</td><td>'+fmtNumber(x.t.quantity)+'</td><td>'+esc(x.it?.unit||'-')+'</td><td><span class="pill">TERKIRIM</span></td></tr>').join('')+
+      '</tbody></table></div>'+(sentRows.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>';
 
   layout(html);
   bindNumberInputs();
   const err=[br,ar,ir,sr,supr,er,rr,rir,tr].find(x=>x?.error)?.error;if(err)msg(err.message);
+  const extTransferHistoryForm=document.getElementById('externalReturnTransferHistoryForm');
+  const extTransferHistoryReset=document.getElementById('externalReturnTransferHistoryReset');
+  if(extTransferHistoryForm)extTransferHistoryForm.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(extTransferHistoryForm);
+    extTransferHistoryFilter.source=String(fd.get('source')||'');extTransferHistoryFilter.target=String(fd.get('target')||'');extTransferHistoryFilter.from=String(fd.get('from')||'');extTransferHistoryFilter.to=String(fd.get('to')||'');
+    if(extTransferHistoryFilter.from&&extTransferHistoryFilter.to&&extTransferHistoryFilter.from>extTransferHistoryFilter.to){const t=extTransferHistoryFilter.from;extTransferHistoryFilter.from=extTransferHistoryFilter.to;extTransferHistoryFilter.to=t}
+    extTransferHistoryFilter.shown=true;await logisticsExternalReturnPage();
+  };
+  if(extTransferHistoryReset)extTransferHistoryReset.onclick=async()=>{window.__externalReturnTransferHistoryFilter={source:'',target:'',from:'',to:'',shown:false};await logisticsExternalReturnPage();};
 
   const barnSearch=document.getElementById('extReturnBarnSearch'),barnId=document.getElementById('extReturnBarnId'),barnSugs=document.getElementById('extReturnBarnSuggestions');
   const itemSearch=document.getElementById('extReturnItemSearch'),sourceInput=document.getElementById('extReturnSourceItem'),itemSugs=document.getElementById('extReturnItemSuggestions'),info=document.getElementById('extReturnInfo');
@@ -3289,6 +3314,22 @@ async function logisticsPartialReturnPage(){
     db.from('logistics_company_feed_movements').select('*').order('created_at',{ascending:false})
   ]);
   const barns=br.data||[],items=ir.data||[],assignments=ar.data||[],returns=rr.data||[],returnItems=rir.data||[],lots=lr.data||[],moves=mr.data||[];
+  window.__partialReturnHistoryFilter=window.__partialReturnHistoryFilter||{barn:'',from:'',to:'',shown:false};
+  window.__companyFeedMoveHistoryFilter=window.__companyFeedMoveHistoryFilter||{barn:'',from:'',to:'',shown:false};
+  const partialHistoryFilter=window.__partialReturnHistoryFilter;
+  const moveHistoryFilter=window.__companyFeedMoveHistoryFilter;
+  const partialHistoryRows=partialHistoryFilter.shown?lots.filter(l=>{
+    const a=assignments.find(x=>x.id===l.source_assignment_id),r=returns.find(x=>x.id===l.return_id);
+    return (!partialHistoryFilter.barn||a?.barn_id===partialHistoryFilter.barn)&&
+      (!partialHistoryFilter.from||String(r?.return_date||'')>=partialHistoryFilter.from)&&
+      (!partialHistoryFilter.to||String(r?.return_date||'')<=partialHistoryFilter.to);
+  }):[];
+  const moveHistoryRows=moveHistoryFilter.shown?moves.filter(m=>{
+    const a=assignments.find(x=>x.id===m.contract_assignment_id);
+    return (!moveHistoryFilter.barn||a?.barn_id===moveHistoryFilter.barn)&&
+      (!moveHistoryFilter.from||String(m.transferred_on||'')>=moveHistoryFilter.from)&&
+      (!moveHistoryFilter.to||String(m.transferred_on||'')<=moveHistoryFilter.to);
+  }):[];
   const mitra=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const targets=assignments.filter(a=>a.active);
   const label=a=>{const b=barns.find(x=>x.id===a?.barn_id);return (b?.code||'-')+' · '+(b?.name||'-')+' · '+(a?.cycle_type||'MITRA');};
@@ -3328,15 +3369,49 @@ async function logisticsPartialReturnPage(){
       '<label>Referensi<input name="reference" value="'+esc(editMove?.reference||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">'+(editMove?'Simpan Perubahan':'Catat Pemindahan')+'</button>'+(editMove?'<button type="button" id="companyFeedMoveEditCancel">Batal Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" id="companyFeedMoveDelete" class="btn-danger">Hapus</button>':''):'')+'</div>'+
     '</form></section>'+
-    '<section class="panel"><h3>Riwayat Retur Sebagian</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal</th><th>Pakan</th><th>Fisik</th><th>Diterima Inti</th><th>Stok BMS</th><th>Harga/Zak</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
-      lots.map(l=>{const r=returns.find(x=>x.id===l.return_id),ri=returnItems.find(x=>x.id===l.return_item_id);return '<tr><td>'+esc(r?.return_date||'-')+'</td><td>'+esc(label(assignments.find(a=>a.id===l.source_assignment_id)))+'</td><td>'+esc(items.find(i=>i.id===l.item_id)?.name||'-')+'</td><td>'+fmtNumber(Number(ri?.quantity||0)+Number(l.quantity))+'</td><td>'+fmtNumber(ri?.quantity||0)+'</td><td>'+fmtNumber(l.quantity)+'</td><td>Rp '+fmtNumber(l.unit_price)+'</td><td>'+esc(r?.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-partial-return="'+esc(l.id)+'">Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-partial-return="'+esc(l.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
-      '</tbody></table></div></section>'+
-    '<section class="panel"><h3>Riwayat Pemindahan Stok BMS</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal Pakan</th><th>Kandang</th><th>Arah</th><th>Zak</th><th>Nilai</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
-      moves.map(m=>{const l=lots.find(x=>x.id===m.retained_feed_id);return '<tr><td>'+esc(m.transferred_on)+'</td><td>'+esc(l?lotLabel(l):'-')+'</td><td>'+esc(label(assignments.find(a=>a.id===m.contract_assignment_id)))+'</td><td>'+esc(m.direction==='IN'?'Ke kandang':'Kembali ke BMS')+'</td><td>'+fmtNumber(m.quantity)+'</td><td>Rp '+fmtNumber(Number(m.quantity)*Number(l?.unit_price||0))+'</td><td>'+esc(m.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-company-feed-move="'+esc(m.id)+'">Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-company-feed-move="'+esc(m.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
-      '</tbody></table></div></section>';
+    '<section class="panel"><h3>Riwayat Retur Sebagian</h3>'+
+      '<form id="partialReturnHistoryForm" class="form-vertical compact-form" data-no-submit-guard="1">'+
+        '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(partialHistoryFilter.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+        '<label>Tanggal Dari<input type="date" name="from" value="'+esc(partialHistoryFilter.from||'')+'"></label>'+
+        '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(partialHistoryFilter.to||'')+'"></label>'+
+        '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="partialReturnHistoryReset">Reset</button></div>'+
+      '</form>'+
+      (partialHistoryFilter.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal</th><th>Pakan</th><th>Fisik</th><th>Diterima Inti</th><th>Stok BMS</th><th>Harga/Zak</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
+      partialHistoryRows.map(l=>{const r=returns.find(x=>x.id===l.return_id),ri=returnItems.find(x=>x.id===l.return_item_id);return '<tr><td>'+esc(r?.return_date||'-')+'</td><td>'+esc(label(assignments.find(a=>a.id===l.source_assignment_id)))+'</td><td>'+esc(items.find(i=>i.id===l.item_id)?.name||'-')+'</td><td>'+fmtNumber(Number(ri?.quantity||0)+Number(l.quantity))+'</td><td>'+fmtNumber(ri?.quantity||0)+'</td><td>'+fmtNumber(l.quantity)+'</td><td>Rp '+fmtNumber(l.unit_price)+'</td><td>'+esc(r?.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-partial-return="'+esc(l.id)+'">Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-partial-return="'+esc(l.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
+      '</tbody></table></div>'+(partialHistoryRows.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>'+
+    '<section class="panel"><h3>Riwayat Pemindahan Stok BMS</h3>'+
+      '<form id="companyFeedMoveHistoryForm" class="form-vertical compact-form" data-no-submit-guard="1">'+
+        '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(moveHistoryFilter.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+        '<label>Tanggal Dari<input type="date" name="from" value="'+esc(moveHistoryFilter.from||'')+'"></label>'+
+        '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(moveHistoryFilter.to||'')+'"></label>'+
+        '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="companyFeedMoveHistoryReset">Reset</button></div>'+
+      '</form>'+
+      (moveHistoryFilter.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Asal Pakan</th><th>Kandang</th><th>Arah</th><th>Zak</th><th>Nilai</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
+      moveHistoryRows.map(m=>{const l=lots.find(x=>x.id===m.retained_feed_id);return '<tr><td>'+esc(m.transferred_on)+'</td><td>'+esc(l?lotLabel(l):'-')+'</td><td>'+esc(label(assignments.find(a=>a.id===m.contract_assignment_id)))+'</td><td>'+esc(m.direction==='IN'?'Ke kandang':'Kembali ke BMS')+'</td><td>'+fmtNumber(m.quantity)+'</td><td>Rp '+fmtNumber(Number(m.quantity)*Number(l?.unit_price||0))+'</td><td>'+esc(m.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-company-feed-move="'+esc(m.id)+'">Edit</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-company-feed-move="'+esc(m.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
+      '</tbody></table></div>'+(moveHistoryRows.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>';
 
   layout(html);bindNumberInputs();
   const error=[br,ir,ar,rr,rir,lr,mr].find(x=>x.error)?.error;if(error)msg(error.message);
+  const partialHistoryForm=document.getElementById('partialReturnHistoryForm');
+  const partialHistoryReset=document.getElementById('partialReturnHistoryReset');
+  if(partialHistoryForm)partialHistoryForm.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(partialHistoryForm);
+    partialHistoryFilter.barn=String(fd.get('barn')||'');partialHistoryFilter.from=String(fd.get('from')||'');partialHistoryFilter.to=String(fd.get('to')||'');
+    if(partialHistoryFilter.from&&partialHistoryFilter.to&&partialHistoryFilter.from>partialHistoryFilter.to){const t=partialHistoryFilter.from;partialHistoryFilter.from=partialHistoryFilter.to;partialHistoryFilter.to=t}
+    partialHistoryFilter.shown=true;await logisticsPartialReturnPage();
+  };
+  if(partialHistoryReset)partialHistoryReset.onclick=async()=>{window.__partialReturnHistoryFilter={barn:'',from:'',to:'',shown:false};await logisticsPartialReturnPage();};
+  const moveHistoryForm=document.getElementById('companyFeedMoveHistoryForm');
+  const moveHistoryReset=document.getElementById('companyFeedMoveHistoryReset');
+  if(moveHistoryForm)moveHistoryForm.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(moveHistoryForm);
+    moveHistoryFilter.barn=String(fd.get('barn')||'');moveHistoryFilter.from=String(fd.get('from')||'');moveHistoryFilter.to=String(fd.get('to')||'');
+    if(moveHistoryFilter.from&&moveHistoryFilter.to&&moveHistoryFilter.from>moveHistoryFilter.to){const t=moveHistoryFilter.from;moveHistoryFilter.from=moveHistoryFilter.to;moveHistoryFilter.to=t}
+    moveHistoryFilter.shown=true;await logisticsPartialReturnPage();
+  };
+  if(moveHistoryReset)moveHistoryReset.onclick=async()=>{window.__companyFeedMoveHistoryFilter={barn:'',from:'',to:'',shown:false};await logisticsPartialReturnPage();};
 
   root.querySelectorAll('[data-edit-partial-return]').forEach(btn=>btn.onclick=async()=>{window.__partialReturnEdit=btn.dataset.editPartialReturn||'';window.__companyFeedMoveEdit='';await logisticsPartialReturnPage();document.getElementById('partialReturnForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
   const partialCancel=document.getElementById('partialReturnEditCancel');if(partialCancel)partialCancel.onclick=async()=>{window.__partialReturnEdit='';await logisticsPartialReturnPage();};
@@ -6751,6 +6826,14 @@ async function logisticsEquipmentPurchasePage(){
     db.from('barn_assets').select('id,reference')
   ]);
   const barns=br.data||[],suppliers=sr.data||[],equipment=ir.data||[],purchases=pr.data||[],assets=ar.data||[];
+  window.__equipmentPurchaseHistoryFilter=window.__equipmentPurchaseHistoryFilter||{supplier:'',barn:'',from:'',to:'',shown:false};
+  const equipmentHistoryFilter=window.__equipmentPurchaseHistoryFilter;
+  const equipmentHistoryRows=equipmentHistoryFilter.shown?purchases.filter(p=>
+    (!equipmentHistoryFilter.supplier||p.supplier_id===equipmentHistoryFilter.supplier)&&
+    (!equipmentHistoryFilter.barn||p.barn_id===equipmentHistoryFilter.barn)&&
+    (!equipmentHistoryFilter.from||String(p.purchase_date||'')>=equipmentHistoryFilter.from)&&
+    (!equipmentHistoryFilter.to||String(p.purchase_date||'')<=equipmentHistoryFilter.to)
+  ):[];
   const err=[br,sr,ir,pr,ar].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const itemName=id=>{const x=equipment.find(v=>v.id===id);return x?x.code+' · '+x.name:'-'};
@@ -6774,13 +6857,32 @@ async function logisticsEquipmentPurchasePage(){
     (!equipment.length?'<p class="error">Belum ada barang OVK2 di Master Sapronak. Tambahkan/ubah barang menjadi Kategori OVK · Jenis OVK2 terlebih dahulu.</p>':'')+
     '</section>';
 
-  html+='<section class="panel"><h3>Riwayat Beli Peralatan</h3><div class="tablewrap"><table><thead><tr>'+
+  html+='<section class="panel"><h3>Riwayat Beli Peralatan</h3>'+
+    '<form id="equipmentPurchaseHistoryForm" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Supplier<select name="supplier"><option value="">Semua Supplier</option>'+suppliers.map(s=>'<option value="'+esc(s.id)+'" '+(equipmentHistoryFilter.supplier===s.id?'selected':'')+'>'+esc((s.code||'')+' · '+s.name)+'</option>').join('')+'</select></label>'+
+      '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(equipmentHistoryFilter.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(equipmentHistoryFilter.from||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(equipmentHistoryFilter.to||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="equipmentPurchaseHistoryReset">Reset</button></div>'+
+    '</form>'+
+    (equipmentHistoryFilter.shown?'<div class="tablewrap"><table><thead><tr>'+
     '<th>Tanggal</th><th>Supplier</th><th>Peralatan</th><th>Kandang</th><th>Jumlah</th><th>Harga/Satuan</th><th>Total</th><th>Aset</th><th>Referensi</th>'+
     '</tr></thead><tbody>'+
-    purchases.map(p=>'<tr><td>'+esc(p.purchase_date||'')+'</td><td>'+esc(supplierName(p.supplier_id))+'</td><td>'+esc(itemName(p.item_id))+'</td><td>'+esc(barnName(p.barn_id))+'</td><td>'+fmtNumber(p.quantity)+'</td><td>Rp '+fmtNumber(p.purchase_unit_price)+'</td><td><strong>Rp '+fmtNumber(prodNum(p.quantity)*prodNum(p.purchase_unit_price))+'</strong></td><td>'+esc(assetRef(p.asset_id))+'</td><td>'+esc(p.reference_number||'-')+'</td></tr>').join('')+
-    '</tbody></table></div>'+(purchases.length?'':'<p class="muted">Belum ada pembelian peralatan.</p>')+'</section>';
+    equipmentHistoryRows.map(p=>'<tr><td>'+esc(p.purchase_date||'')+'</td><td>'+esc(supplierName(p.supplier_id))+'</td><td>'+esc(itemName(p.item_id))+'</td><td>'+esc(barnName(p.barn_id))+'</td><td>'+fmtNumber(p.quantity)+'</td><td>Rp '+fmtNumber(p.purchase_unit_price)+'</td><td><strong>Rp '+fmtNumber(prodNum(p.quantity)*prodNum(p.purchase_unit_price))+'</strong></td><td>'+esc(assetRef(p.asset_id))+'</td><td>'+esc(p.reference_number||'-')+'</td></tr>').join('')+
+    '</tbody></table></div>'+(equipmentHistoryRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  const equipmentHistoryForm=document.getElementById('equipmentPurchaseHistoryForm');
+  const equipmentHistoryReset=document.getElementById('equipmentPurchaseHistoryReset');
+  if(equipmentHistoryForm)equipmentHistoryForm.onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(equipmentHistoryForm);
+    equipmentHistoryFilter.supplier=String(fd.get('supplier')||'');equipmentHistoryFilter.barn=String(fd.get('barn')||'');equipmentHistoryFilter.from=String(fd.get('from')||'');equipmentHistoryFilter.to=String(fd.get('to')||'');
+    if(equipmentHistoryFilter.from&&equipmentHistoryFilter.to&&equipmentHistoryFilter.from>equipmentHistoryFilter.to){const t=equipmentHistoryFilter.from;equipmentHistoryFilter.from=equipmentHistoryFilter.to;equipmentHistoryFilter.to=t}
+    equipmentHistoryFilter.shown=true;await logisticsEquipmentPurchasePage();
+  };
+  if(equipmentHistoryReset)equipmentHistoryReset.onclick=async()=>{window.__equipmentPurchaseHistoryFilter={supplier:'',barn:'',from:'',to:'',shown:false};await logisticsEquipmentPurchasePage();};
+
   const form=document.getElementById('equipmentPurchaseForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
