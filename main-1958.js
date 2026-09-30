@@ -9762,12 +9762,7 @@ async function financeRhppPage(){
       hs.map(h=>'<tr><td class="rhpp-sticky-col">'+prodDateId(h.harvested_on)+'</td><td>'+esc(h.buyer_name||'-')+'</td><td>'+esc(h.vehicle_number||'-')+'</td><td class="num">'+prodFmt(h.birds,0)+'</td><td class="num">'+prodFmt(h.net_weight_kg,2)+'</td><td class="num">'+prodFmt(h.avg_weight_kg,3)+'</td><td class="num">Rp '+prodFmt(h.price_per_kg,0)+'</td><td class="num rhpp-money-col">Rp '+prodFmt(h.total_amount,0)+'</td></tr>').join('')+
       '<tr class="rhpp-total-row"><th colspan="3">TOTAL PANEN</th><th class="num">'+prodFmt(x.total_harvest_birds,0)+'</th><th class="num">'+prodFmt(x.total_harvest_kg,2)+'</th><th class="num">'+prodFmt(x.avg_bw_kg,3)+'</th><th></th><th class="num">Rp '+prodFmt(x.harvest_value,0)+'</th></tr>'+
       '</tbody></table></div>'+
-      '<div class="rhpp-summary-cards">'+
-        '<div class="rhpp-summary-card"><span>Total Ekor</span><strong>'+prodFmt(x.total_harvest_birds,0)+'</strong></div>'+
-        '<div class="rhpp-summary-card"><span>Total Berat</span><strong>'+prodFmt(x.total_harvest_kg,2)+' Kg</strong></div>'+
-        '<div class="rhpp-summary-card"><span>BW Rata-rata</span><strong>'+prodFmt(x.avg_bw_kg,3)+' Kg</strong></div>'+
-        '<div class="rhpp-summary-card rhpp-summary-value"><span>Nilai Produksi</span><strong>Rp '+prodFmt(x.harvest_value,0)+'</strong></div>'+
-      '</div></section>'+
+      '</section>'+
       '<section class="panel rhpp-panel rhpp-wide rhpp-extra-cost"><div class="rhpp-section-head"><div><h3>Biaya Tambahan Marketing</h3><p class="muted">Dipisahkan dari rincian panen agar sumber pendapatan dan biaya tidak tercampur.</p></div></div>'+
       '<div class="rhpp-cost-line"><span>Tambah Daging Marketing</span><strong>Rp '+prodFmt(x.external_meat_cost,0)+'</strong></div>'+
       '</section>';
