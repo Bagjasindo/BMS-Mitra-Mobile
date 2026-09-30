@@ -5902,9 +5902,7 @@ async function pplRhppViewPage(){
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
     if(xBtn)xBtn.onclick=()=>{
-      const clone=exportArea?.cloneNode(true);if(!clone)return;
-      clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-      const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(company.company_name||'BMS Mobile')+'</h2><h3>RHPP Sistem</h3>'+clone.innerHTML+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob(['\ufeff'+docHtml()],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xls';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -6006,62 +6004,17 @@ async function adminRhppHistoryPage(){
     const avgLivePrice=harvestKg>0?prodNum(src?.harvest_value)/harvestKg:0;
     const docUnitPrice=chickIn>0?prodNum(src?.main_doc_cost)/chickIn:prodNum(contract?.doc_price);
     const feedUnitPrice=feedKg>0?prodNum(src?.main_feed_cost)/feedKg:0;
-    const val=(label,value)=>'<div class="rhpp-mini-row"><span>'+esc(label)+'</span><strong>'+value+'</strong></div>';
-    const money=v=>'Rp '+prodFmt(v,0);
-
-    html+='<div id="pplRhppExportArea">'+
-      '<section class="panel rhpp-mini-sheet">'+
-        '<div class="rhpp-section-head"><div><h3>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,a))+'</h3>'+
-          '<p class="muted">'+assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+(closed?'CLOSED / FINAL':'PROSES')+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</p></div>'+
-          '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
-        '</div>'+
-        '<div class="rhpp-mini-grid">'+
-          '<div class="rhpp-mini-block"><h4>IDENTITAS & DOC</h4>'+
-            val('Nama Kandang / Peternak',esc(b?shortBarnLabel(b):'-'))+
-            val('Tanggal Chick-In',prodDateId(closed?fin?.chick_in_date:ci?.arrived_on))+
-            val('DOC Masuk (Ekor)',prodFmt(chickIn,0))+
-            val('FCR Standar',prodFmt(src?.fcr_standard,3))+
-            val('BW Standar (Kg)',src?.std_bw_kg!=null?prodFmt(src.std_bw_kg,3):'-')+
-            val('Tarif Bonus Mortalitas (Rp/Kg)',money(src?.bonus_mortality_rate))+
-            val('Status Bonus FC',prodNum(src?.bonus_fc)>0?'DAPAT BONUS':'TIDAK ADA BONUS')+
-          '</div>'+
-          '<div class="rhpp-mini-block"><h4>KETERANGAN PRODUKSI</h4>'+
-            val('Mortalitas',prodFmt(src?.mortality_pct,2)+' %')+
-            val('Bobot Badan',prodFmt(avgBw,3)+' Kg')+
-            val('Total Pakan',prodFmt(feedKg,2)+' Kg')+
-            val('Pakan Per Ekor',prodFmt(feedPerBird,0)+' gr/ekor')+
-            val('Umur Panen',prodFmt(src?.weighted_age,2)+' hari')+
-            val('FCR',prodFmt(src?.fcr_actual,3))+
-            val('Indek Prestasi',prodFmt(src?.ip,2))+
-          '</div>'+
-          '<div class="rhpp-mini-block"><h4>DATA KONTRAK & PANEN</h4>'+
-            val('Total Panen (Ekor)',prodFmt(harvestBirds,0))+
-            val('Total Berat (Kg)',prodFmt(harvestKg,2))+
-            val('Rata-rata BB (Kg/Ekor)',prodFmt(avgBw,3))+
-            val('Pakan Bersih (Kg)',prodFmt(feedKg,2))+
-            val('Harga DOC (Rp/Ekor)',money(docUnitPrice))+
-            val('Harga Pakan (Rp/Kg)',money(feedUnitPrice))+
-            val('Harga Bersih (Rp/Kg)',money(avgLivePrice))+
-            val('Tarif Bonus IP (Rp/Kg)',money(src?.bonus_ip_rate))+
-            val('Tarif Bonus FC (Rp/Kg)',money(src?.bonus_fc_rate))+
-            val('FCR Final',prodFmt(src?.fcr_actual,3))+
-          '</div>'+
-          '<div class="rhpp-mini-block rhpp-mini-value"><h4>REKAPITULASI HASIL</h4>'+
-            val('Jml. Sapronak',money(src?.sapronak_cost))+
-            val('Jml. Retur',money(src?.main_return_cost))+
-            val('Total Sapronak',money(src?.sapronak_cost))+
-            val('Total Hasil Produksi',money(src?.harvest_value))+
-            val('Laba',money(src?.base_profit))+
-            val('Bonus IP',money(src?.bonus_ip))+
-            val('Bonus FC',money(src?.bonus_fc))+
-            val('Bonus Mortalitas',money(src?.bonus_mortality))+
-            val('Laba Peternak',money(src?.farmer_profit))+
-            val('Laba Per Ekor',money(src?.profit_per_chick_in))+
-          '</div>'+
-        '</div>'+
-        (!src?'<p class="muted">Ringkasan RHPP belum tersedia untuk siklus ini.</p>':'')+
-        (!closed?'<p class="muted">Periode masih PROSES. Nilai FINAL tersedia setelah Administrator melakukan Close.</p>':'')+
-      '</section></div>';
+    html+='<section class="panel">'+
+      '<div class="rhpp-section-head"><div><h3>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,a))+'</h3>'+
+        '<p class="muted">'+assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+(closed?'CLOSED / FINAL':'PROSES')+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</p></div>'+
+        '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
+      '</div>'+
+      '<div id="pplRhppExportArea" style="margin-top:12px">'+
+        '<iframe id="pplRhppPreview" title="Preview RHPP" style="width:100%;height:1180px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe>'+
+      '</div>'+
+      (!src?'<p class="muted">Ringkasan RHPP belum tersedia untuk siklus ini.</p>':'')+
+      (!closed?'<p class="muted">Periode masih PROSES. Nilai FINAL tersedia setelah Administrator melakukan Close.</p>':'')+
+    '</section>';
   }
 
   layout(html);
@@ -6244,7 +6197,9 @@ async function adminRhppHistoryPage(){
         '</div></div>'+
         '</div></body></html>';
     };
-        const openPrint=()=>{
+    const previewFrame=document.getElementById('pplRhppPreview');
+    if(previewFrame)previewFrame.srcdoc=docHtml();
+    const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
       w.document.write(docHtml());w.document.close();
       setTimeout(()=>{w.focus();w.print();},450);
