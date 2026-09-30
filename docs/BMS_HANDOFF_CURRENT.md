@@ -16,6 +16,15 @@ Sumber lanjutan tunggal: source code live + file ini.
 - Sampai titik ini user menyatakan cukup; jangan lanjut otomatis.
 
 
+
+## STANDAR RIWAYAT FILTER-FIRST
+- Riwayat transaksi yang memakai helper bersama tidak lagi memakai pagination Sebelumnya/Selanjutnya.
+- Awal buka: riwayat belum ditampilkan.
+- Pilih filter lalu klik Tampilkan: semua hasil yang cocok tampil sekaligus.
+- Reset: filter kosong dan riwayat kembali tersembunyi.
+- Diterapkan pada pola helper transaksi (termasuk Panen Mitra, Panen Mandiri, Tambah Daging, Tambah Sapronak) dan filter lokal untuk Retur Sebagian, Pemindahan Stok BMS, Pengiriman Stok Retur, Beli Peralatan, Pengiriman Kontrak, Pengiriman Gudang, Pembelian Mandiri, serta Riwayat Siklus Closed.
+- Form input utama dan CSS tidak diubah.
+
 ## STANDAR TOMBOL SIMPAN / EDIT
 - Menggunakan helper submit yang sudah ada; tidak mengubah CSS/layout global.
 - Klik pertama mengunci tombol dan form untuk mencegah double input.
@@ -84,6 +93,10 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `01e18f1120b6dc8675a3928d6b8a649d7da97eb0` — Bump cache for remaining history filters
+- `bb077f7e54b9394347c8897fa3ea775c5aa00c4e` — Add filter-first controls to remaining logistics histories
+- `91665be19ecc1785c4e658d08420e78d539aa1ce` — Bump cache for filter-first transaction histories
+- `76b45f2ddcba80742607a4e1f139395c56438aec` — Make shared transaction histories filter-first without pagination
 - `17be3829358ed96d9a9ce05d6948ab2d835b5d89` — Bump cache for stable save button feedback
 - `ec110af91c9579036857a2fc1b7953a178813826` — Refine stable save buttons with inline feedback and duplicate guard
 - `cbf49dcbdddf17e9499505ce9d82289543014eec` — Bump cache for readable professional RHPP print
@@ -103,7 +116,7 @@ Terdapat 5 halaman/menu RHPP:
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2294-save-button-feedback-stable`
+`main-1958.js?v=2300-history-local-filters`
 
 ## TITIK BERHENTI
 STOP di sini.
