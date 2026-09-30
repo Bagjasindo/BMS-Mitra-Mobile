@@ -372,3 +372,21 @@ Status: FIXED / UI + read-only view.
 - Frontend commit: `ce4e9c0049078feb880c9b229a4ad1d3f097de5e`.
 - Cache: `main-1958.js?v=2259-rhpp-abk-production-menu`.
 - Cache commit: `c5d07ea0925bc3bbb92a264b2d6ba739f8f8173c`.
+
+
+## UI — LIHAT LIGA PER KANDANG + SIKLUS — 30 SEPTEMBER 2026
+Status: FIXED / read-only, sumber Liga ABK.
+
+- Penambahan hanya di Produksi / PPL, sebagai submenu Liga ABK:
+  - Liga ABK
+  - Lihat Liga per Kandang
+- Alur Lihat Liga per Kandang:
+  1. Pilih Kandang
+  2. Pilih Siklus
+  3. Tampilkan
+- Hanya siklus CLOSED + snapshot final resmi yang tersedia untuk dipilih/dihitung.
+- Ranking memakai sumber dan formula Liga ABK yang sama: Pendapatan/Ekor 50% + FCR 30% + IP 20%.
+- Tidak mengubah input/riwayat Liga ABK yang sudah PASS.
+- Frontend commits: `8af710d6a7a7f5397830b25c1f2b7d6ee131e98f`, `8cacf5d8bf60eb7025a903b217f7242b32c5acac`.
+- Cache: `main-1958.js?v=2260-league-by-barn-cycle`.
+- Cache commit: `ddb247fad7a387c9430084cc4b8ef34995530711`.
