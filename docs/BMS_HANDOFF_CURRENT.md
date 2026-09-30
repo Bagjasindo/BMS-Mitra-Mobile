@@ -15,65 +15,6 @@ Sumber lanjutan tunggal: source code live + file ini.
 - Fokus perubahan terakhir hanya UI RHPP.
 - Sampai titik ini user menyatakan cukup; jangan lanjut otomatis.
 
-
-
-
-
-
-## STANDAR TIPOGRAFI RESPONSIF PROFESIONAL
-- PC dan HP tidak memakai ukuran font yang disamakan mentah.
-- Keluarga font dan hierarki visual sama; skala mengikuti fungsi komponen dan viewport.
-- Body tetap 14px di desktop dan HP untuk keterbacaan.
-- Heading/KPI memakai skala responsif (`clamp`) agar proporsional, bukan sekadar dikecilkan.
-- Tabel dibuat sedikit lebih padat di HP.
-- Input/select/textarea di HP tetap 16px untuk mencegah auto-zoom browser.
-- Tombol HP minimal 44px sebagai target sentuh; ukuran font tombol tetap konsisten.
-- Print/PDF tetap terpisah karena aturan ini hanya `@media screen`.
-
-## STANDAR FONT & HP GLOBAL
-- Seluruh UI layar memakai satu font stack: Inter / system-ui / Segoe UI / Roboto / Arial.
-- Hierarki font dikunci global: body, heading, label, control, button, table, sidebar, KPI.
-- Desktop dan HP memakai hierarchy yang sama; ukuran HP dibuat responsif tanpa mengubah bahasa visual.
-- Field input/select/textarea di HP memakai 16px untuk keterbacaan dan mencegah zoom otomatis browser.
-- Tombol Simpan/Edit feedback (`Menyimpan…`, `✓ Tersimpan`, `✕ Belum tersimpan`) memakai ukuran dan font yang sama di desktop dan HP.
-- Mobile touch target tombol minimal 44px.
-- Layer ini hanya `@media screen`; Print/PDF tidak diubah.
-
-## STANDAR TOMBOL SIMPAN / EDIT GLOBAL
-- Submit form tidak boleh menghasilkan double input: submit pertama langsung mengunci form/tombol, submit berikutnya diblok.
-- Saat proses: tombol menampilkan `Menyimpan…`.
-- Sukses: tombol menampilkan `✓ Tersimpan`.
-- Gagal/validasi gagal: tombol menampilkan `✕ Belum tersimpan`, lalu aktif kembali agar dapat dicoba ulang.
-- Selama submit, pesan sukses/gagal tidak ditampilkan di notifikasi atas; feedback diarahkan ke tombol.
-- Jika halaman re-render setelah save, feedback sukses diteruskan ke tombol form yang sama selama jeda singkat.
-- State warna tombol: proses abu-biru, sukses hijau, gagal merah-outline.
-
-## STANDAR RIWAYAT GLOBAL
-- Riwayat tidak memakai pagination `Sebelumnya / Selanjutnya`.
-- Saat halaman pertama dibuka, daftar Riwayat tidak ditampilkan.
-- User pilih filter lalu klik `Tampilkan`; semua data yang cocok ditampilkan sekaligus.
-- Tombol `Reset` mengosongkan filter dan menyembunyikan Riwayat kembali.
-- Helper global `txnListState / bindTxnList` sudah diubah ke pola ini.
-
-## GLOBAL UI STANDARDIZATION — 9 POINT (1 OKTOBER 2026)
-Layer global screen-only sudah diterapkan di `style.css` dengan marker `bms-global-ui-standard-20261001`.
-Scope:
-1. Form global: width, gap, label, input/select/textarea, focus, disabled.
-2. Button global: ukuran, radius, warna, hover, focus, disabled, danger/delete.
-3. Table global: wrapper, header, row spacing, numeric alignment, total row.
-4. Panel/Card global: border, radius, shadow, heading, muted text.
-5. Filter global: layout, surface, spacing, action area.
-6. Sidebar/Submenu global: tinggi, padding, icon, active/hover, nested indentation.
-7. KPI/Summary global: card size, typography, spacing, highlight.
-8. Responsive/Mobile global: padding, grid collapse, button/action wrapping, mobile field font.
-9. Inline-style conflict normalization: semantic component classes menang atas inline spacing/sizing lama untuk komponen standar.
-
-Catatan:
-- Berlaku hanya `@media screen`; Print/PDF tidak disentuh oleh layer global ini.
-- Formula, database, source data, permission, status transaksi, dan flow bisnis tidak diubah.
-- Login tetap memakai style login khusus dan tidak termasuk normalisasi `.shell main`.
-- Validasi visual perlu dilakukan dari browser pada beberapa halaman per role setelah hard refresh.
-
 ## KONDISI RHPP TERKINI
 Terdapat 5 halaman/menu RHPP:
 1. Lihat RHPP
@@ -132,17 +73,6 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
-- `a91d1019a7f491087b97d7e14c65bad91f566095` — Bump cache for professional responsive typography
-- `3e3a6d76a194bb2c190d311c80bfbd5266c185dd` — Correct typography to professional responsive scale
-- `0a0af4ad83ab90b3e58b0ac286ffa3b7880a8b09` — Bump cache for global typography mobile sync
-- `36a10061e3f5c848d8683a42750729634e5fe3c8` — Synchronize global typography and mobile UI
-- `b1c85d98bf77701cd7a594f610c51094379616e4` — Add visual states for save button feedback
-- `a983760e2b1994a3d527ae6d7500adde79ad9ba2` — Bump cache for button save feedback
-- `8f6541c6976b5c4d09ce34ffcb3f04b3c7e7946f` — Standardize save feedback on buttons and block duplicate submits
-- `1171330539f29a35c1cadceae0c1d7ff34981e87` — Bump cache for filter-first history standard
-- `68d0135f682b59da183b56b8e93709a82a55e874` — Standardize history as filter-first without pagination
-- `3427a6eaa6d7c5e53f71ae467b805b2853338578` — Bump cache for global BMS UI standard
-- `1e4c45d06fd4e3df1c11f2463a0347effd3b0560` — Apply global 9-point BMS UI standardization
 - `cbf49dcbdddf17e9499505ce9d82289543014eec` — Bump cache for readable professional RHPP print
 - `e82173aabdd991a44e95c3ab830c8f1c98675bed` — Make shared RHPP print output readable and professional
 - `27af7e8636439995922032d4bd9b5da3a3271243` — Bump cache for exact Cetak RHPP submenu styling
@@ -160,9 +90,7 @@ Terdapat 5 halaman/menu RHPP:
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2295-button-save-feedback`
-Cache CSS aktif:
-`style.css?v=2221-professional-responsive-type`
+`main-1958.js?v=2293-rhpp-print-readable`
 
 ## TITIK BERHENTI
 STOP di sini.
