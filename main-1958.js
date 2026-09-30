@@ -5515,7 +5515,7 @@ async function pplRhppAbkViewPage(){
     const r=selectedResult;
     const money=v=>'Rp '+prodFmt(v,0);
 
-    html+='<section class="panel"><div class="rhpp-section-head"><div><h3>RHPP ABK</h3><p class="muted">Format tampilan disamakan dengan dokumen RHPP BMS.</p></div><div class="report-actions"><button type="button" id="pplRhppAbkPrintTop">Print</button><button type="button" id="pplRhppAbkPdfTop">PDF</button><button type="button" id="pplRhppAbkExcelTop">Excel</button></div></div><div style="margin-top:12px"><iframe id="pplRhppAbkPreview" title="Preview RHPP ABK" style="width:100%;height:1040px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe></div></section>'+
+    html+='<section class="panel"><div class="rhpp-section-head"><div><h3>RHPP ABK</h3><p class="muted">Format tampilan disamakan dengan dokumen RHPP BMS.</p></div><div class="report-actions"><button type="button" id="pplRhppAbkPrintTop">Print</button><button type="button" id="pplRhppAbkPdfTop">PDF</button><button type="button" id="pplRhppAbkExcelTop">Excel</button></div></div><div style="margin-top:12px"><iframe id="pplRhppAbkPreview" title="Preview RHPP ABK" style="width:100%;height:1220px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe></div></section>'+
       '<div class="rhpp-page" id="pplRhppAbkExportArea" style="display:none">'+
       '<section class="panel rhpp-panel rhpp-head"><h3>'+esc(leagueAbkName(e))+' · '+esc(b?shortBarnLabel(b):'-')+'</h3>'+
         '<p class="muted">'+esc(selectedContract?.number||'-')+' · '+esc(assignmentCycleLabel(d.assignments,a))+' · Status: <strong>'+(a?.active?'PROSES':'CLOSED')+'</strong></p>'+
@@ -5660,7 +5660,7 @@ async function pplRhppAbkViewPage(){
     };
     const previewFrame=document.getElementById('pplRhppAbkPreview');
     if(previewFrame){
-      const previewHtml=docHtml().replace('</style>','.rhpp-page{transform:scale(1.15);transform-origin:top center}body{min-height:1000px}</style>');
+      const previewHtml=docHtml().replace('</style>','.rhpp-page{transform:scale(1.6);transform-origin:top center}body{min-height:1180px}</style>');
       previewFrame.srcdoc=previewHtml;
     }
     const openPrint=()=>{
@@ -5784,7 +5784,7 @@ async function pplRhppViewPage(){
       '<div class="rhpp-section-head"><div><h3>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,a))+'</h3>'+
       '<p class="muted">'+assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+(closed?'CLOSED / FINAL':'PROSES')+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</p></div>'+
       '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div></div>'+
-      '<div id="pplRhppExportArea" style="margin-top:12px"><iframe id="pplRhppMainPreview" title="Preview RHPP" style="width:100%;height:1040px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe></div>'+
+      '<div id="pplRhppExportArea" style="margin-top:12px"><iframe id="pplRhppMainPreview" title="Preview RHPP" style="width:100%;height:1220px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe></div>'+
       (!src?'<p class="muted">Ringkasan RHPP belum tersedia untuk siklus ini.</p>':'')+
       (!closed?'<p class="muted">Periode masih PROSES. Nilai final tersedia setelah siklus ditutup.</p>':'')+
     '</section>';
@@ -5825,7 +5825,7 @@ async function pplRhppViewPage(){
     };
     const previewFrame=document.getElementById('pplRhppMainPreview');
     if(previewFrame){
-      const previewHtml=docHtml().replace('@page{size:A4 landscape;margin:9mm}','@page{size:A4 portrait;margin:8mm}').replace('</style>','.head{border-bottom-color:#0b5f8f!important}.head h2{color:#0b5f8f!important}.rhpp-mini-block h4{background:#12a8d4!important;color:#fff!important}.rhpp-mini-block{border-color:#8fb8ca!important}body{background:#fff}.panel{max-width:178mm;margin:0 auto}</style>');
+      const previewHtml=docHtml().replace('@page{size:A4 landscape;margin:9mm}','@page{size:A4 portrait;margin:8mm}').replace('</style>','.head{border-bottom-color:#0b5f8f!important}.head h2{color:#0b5f8f!important}.rhpp-mini-block h4{background:#12a8d4!important;color:#fff!important}.rhpp-mini-block{border-color:#8fb8ca!important}body{background:#fff;min-height:1180px}.panel{max-width:178mm;margin:0 auto;transform:scale(1.6);transform-origin:top center}</style>');
       previewFrame.srcdoc=previewHtml;
     }
     const openPrint=()=>{
@@ -5947,7 +5947,7 @@ async function adminRhppHistoryPage(){
         '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
       '</div>'+
       '<div id="pplRhppExportArea" style="margin-top:12px">'+
-        '<iframe id="pplRhppPreview" title="Preview RHPP" style="width:100%;height:1040px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe>'+
+        '<iframe id="pplRhppPreview" title="Preview RHPP" style="width:100%;height:1220px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe>'+
       '</div>'+
       (!src?'<p class="muted">Ringkasan RHPP belum tersedia untuk siklus ini.</p>':'')+
       (!closed?'<p class="muted">Periode masih PROSES. Nilai FINAL tersedia setelah Administrator melakukan Close.</p>':'')+
@@ -6136,7 +6136,7 @@ async function adminRhppHistoryPage(){
     };
     const previewFrame=document.getElementById('pplRhppPreview');
     if(previewFrame){
-      const previewHtml=docHtml().replace('</style>','.sheet{transform:scale(1.5);transform-origin:top center}body{min-height:1050px}</style>');
+      const previewHtml=docHtml().replace('</style>','.sheet{transform:scale(1.6);transform-origin:top center}body{min-height:1180px}</style>');
       previewFrame.srcdoc=previewHtml;
     }
     const openPrint=()=>{
