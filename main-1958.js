@@ -5634,14 +5634,8 @@ async function pplRhppAbkViewPage(){
     const fileBase=('RHPP_ABK_'+(e?.code||e?.name||'ABK')+'_'+(b?.code||'Kandang')+'_'+String(a?.start_date||'Siklus')).replace(/[^A-Za-z0-9_-]+/g,'_');
     const docHtml=()=>{
       const clone=exportArea?.cloneNode(true);if(!clone)return '';
-      clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-      return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(fileBase)+'</title>'+
-        '<style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,sans-serif;color:#111;font-size:7px;background:#fff}.head{border-bottom:2px solid #0b5f8f;padding-bottom:7px;margin-bottom:10px}.head h2{margin:0 0 3px;font-size:14px;color:#0b5f8f}.panel{border:0!important;padding:0!important;margin:0 0 8px!important}.muted{color:#445}.rhpp-page{width:178mm;margin:0 auto}.rhpp-section-head h3,.rhpp-panel h3{color:#0b5f8f}.tablewrap table{width:100%;border-collapse:collapse}.tablewrap th,.tablewrap td{border:1px solid #a9bcc6;padding:3px 4px}.tablewrap thead th{background:#12a8d4;color:#fff}.num{text-align:right}.rhpp-summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.rhpp-summary-card{border:1px solid #a9bcc6;padding:6px}.rhpp-summary-card strong{display:block;margin-top:2px}.rhpp-total-row th,.rhpp-total-row td{font-weight:700;background:#eef7fb}.rhpp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}</style></head><body>'+
-        '<div class="head">'+(company.logo_url?'<img src="'+esc(company.logo_url)+'" style="max-height:38px;float:left;margin-right:10px">':'')+
-        '<h2>'+esc(company.company_name||company.legal_name||'BAGJASINDO MANDIRI SINDANGKASIH')+'</h2>'+
-        (company.address?'<div>'+esc(company.address)+'</div>':'')+
-        (company.phone?'<div>Tel/WA: '+esc(company.phone)+'</div>':'')+
-        '</div><h2>RHPP ABK</h2>'+clone.innerHTML+'</body></html>';
+      clone.querySelectorAll('button,.report-actions,style').forEach(x=>x.remove());
+      return rhppPrintShell('RHPP ABK',company,clone.outerHTML);
     };
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
@@ -5711,6 +5705,21 @@ const RHPP_SCREEN_STYLE='<style>'+
 '@media(max-width:900px){.rhpp-ui .rhpp-summary-cards,.rhpp-page .rhpp-summary-cards{grid-template-columns:repeat(2,1fr)}}'+
 '@media(max-width:600px){.rhpp-ui .ui-rhpp-kpis,.rhpp-page .ui-rhpp-kpis{grid-template-columns:repeat(2,1fr)}}'+
 '</style>';
+const RHPP_PRINT_STYLE='<style>'+
+'@page{size:A4 portrait;margin:8mm}*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#111;font-size:7px;line-height:1.18;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.print-sheet{width:178mm;max-width:178mm;margin:0 auto}.print-head{display:grid;grid-template-columns:28mm 1fr;gap:8mm;align-items:center;border-bottom:1.5px solid #0b5f8f;padding-bottom:3mm;margin-bottom:3mm}.print-logo{width:26mm;height:18mm;object-fit:contain}.print-company{text-align:left}.print-company strong{display:block;color:#0b5f8f;font-size:10px;margin-bottom:1mm}.print-company div{font-size:6.5px;color:#334155}.print-title{text-align:center;color:#0b5f8f;font-size:11px;font-weight:800;margin:0 0 3mm}.panel{border:1px solid #d7e5ec!important;border-radius:0!important;box-shadow:none!important;background:#fff!important;padding:0!important;margin:0 0 2.5mm!important}.report-actions,button{display:none!important}.muted{color:#64748b}.ui-rhpp-head,.ui-abk-head,.rhpp-section-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.ui-rhpp-kpis,.rhpp-summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm;margin:0 0 2.5mm}.ui-rhpp-kpi,.rhpp-summary-card{border:1px solid #cbdbe4;padding:2mm;background:#fff}.ui-rhpp-kpi span,.rhpp-summary-card span{display:block;color:#64748b;font-size:6px}.ui-rhpp-kpi strong,.rhpp-summary-card strong{display:block;color:#102a43;font-size:8px;margin-top:.7mm}.ui-rhpp-grid,.rhpp-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5mm}.ui-rhpp-card,.rhpp-panel{border:1px solid #cbdbe4!important;padding:0!important;margin:0!important;background:#fff!important}.ui-rhpp-card h3,.rhpp-panel h3{margin:0;padding:1.6mm 2mm;background:#0b5f8f!important;color:#fff!important;font-size:7px}.ui-rhpp-card table,.tablewrap table,.rhpp-panel table{width:100%;border-collapse:collapse}.ui-rhpp-card th,.ui-rhpp-card td,.tablewrap th,.tablewrap td,.rhpp-panel th,.rhpp-panel td{border:.35px solid #8fa6b2;padding:1.25mm 1.5mm;font-size:6.5px;vertical-align:middle}.ui-rhpp-card thead th,.tablewrap thead th,.rhpp-panel thead th{background:#12a8d4!important;color:#fff!important;font-weight:700}.num{text-align:right}.ui-rhpp-wide,.rhpp-wide{grid-column:1/-1}.rhpp-total-row th,.rhpp-total-row td{background:#eef8fc!important;font-weight:800}.ui-rhpp-profit{color:#111!important;font-weight:800!important}.ui-rhpp-loss{color:#d9272e!important;font-weight:800!important}.tablewrap{overflow:visible!important;border:0!important}.rhpp-page{display:grid;gap:2.5mm}.rhpp-control{display:none!important}'+
+'</style>';
+const rhppPrintShell=(title,company,body)=>{
+  const logo=new URL('./assets/bms_login_logo.jpg',location.href).href;
+  const companyName='PT Bagjasindo Mandiri Sindangkasih';
+  const addr=company?.address||'';
+  const phone=company?.phone?('Tel/WA: '+company.phone):'';
+  const email=company?.email||'';
+  return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title>'+RHPP_PRINT_STYLE+'</head><body><div class="print-sheet">'+
+    '<div class="print-head"><img class="print-logo" src="'+esc(logo)+'" alt="BMS"><div class="print-company"><strong>'+esc(companyName)+'</strong>'+
+    (addr?'<div>'+esc(addr)+'</div>':'')+(phone?'<div>'+esc(phone)+'</div>':'')+(email?'<div>'+esc(email)+'</div>':'')+'</div></div>'+
+    '<div class="print-title">'+esc(title)+'</div>'+body+'</div></body></html>';
+};
+
 async function pplRhppViewPage(){
   const d=await productionBase();
   const [fr,cpr,sr,cr,br]=await Promise.all([
@@ -5882,14 +5891,8 @@ async function pplRhppViewPage(){
     const fileBase=('RHPP_'+(b?.code||'Kandang')+'_'+String(a?.start_date||'Siklus')).replace(/[^A-Za-z0-9_-]+/g,'_');
     const docHtml=()=>{
       const clone=exportArea?.cloneNode(true);if(!clone)return '';
-      clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-      return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(fileBase)+'</title>'+
-        '<style>@page{size:A4 landscape;margin:9mm}body{font-family:Arial,sans-serif;color:#111;font-size:9px}.head{border-bottom:2px solid #111;padding-bottom:7px;margin-bottom:10px}.head h2{margin:0 0 3px;font-size:15px}.head div{font-size:9px}.panel{border:0!important;padding:0!important}.muted{color:#444}.rhpp-mini-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.rhpp-mini-block{border:1px solid #aaa}.rhpp-mini-block h4{margin:0;padding:5px 7px;background:#eee;font-size:10px}.rhpp-mini-row{display:grid;grid-template-columns:1.5fr 1fr;border-top:1px solid #ddd;padding:4px 6px;gap:6px}.rhpp-mini-row span{color:#333}.rhpp-mini-row strong{text-align:right}</style></head><body>'+
-        '<div class="head">'+(company.logo_url?'<img src="'+esc(company.logo_url)+'" style="max-height:38px;float:left;margin-right:10px">':'')+
-        '<h2>'+esc(company.company_name||company.legal_name||'BAGJASINDO MANDIRI SINDANGKASIH')+'</h2>'+
-        (company.address?'<div>'+esc(company.address)+'</div>':'')+
-        (company.phone?'<div>Tel/WA: '+esc(company.phone)+'</div>':'')+
-        '</div><h2>RHPP Sistem</h2>'+clone.innerHTML+'</body></html>';
+      clone.querySelectorAll('button,.report-actions,style').forEach(x=>x.remove());
+      return rhppPrintShell('RHPP',company,clone.outerHTML);
     };
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
