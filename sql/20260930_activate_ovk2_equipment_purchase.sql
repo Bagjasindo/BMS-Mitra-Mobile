@@ -141,3 +141,6 @@ grant execute on function public.save_logistics_equipment_purchase_atomic(uuid,u
 -- finance_correct_supplier_payment_v1 were extended in the live DB to support
 -- source_type='BELI_PERALATAN' while preserving SAPRONAK_LUAR and TAMBAH_DAGING.
 -- Their current canonical definitions can be pulled with pg_get_functiondef().
+
+-- finance_cashflow_entries_v2 was also updated live so supplier payments with
+-- source_type='BELI_PERALATAN' appear in Arus Kas as "Beli Peralatan".
