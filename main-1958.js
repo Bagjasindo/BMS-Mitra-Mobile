@@ -1771,15 +1771,15 @@ async function logisticsShippingPage(editId=null){
   ]);
 
   const barns=br.data||[], itemsAll=ir.data||[], shipments=sr.data||[], shipmentItems=sir.data||[], assignments=ar.data||[], masters=kr.data||[];
-  const shippingHistoryState=window.__shippingHistoryFilter||{barn_id:'',assignment_id:'',date_from:'',date_to:''};
+  const shippingHistoryState=window.__shippingHistoryFilter||{barn_id:'',assignment_id:'',date_from:'',date_to:'',shown:false};
   window.__shippingHistoryFilter=shippingHistoryState;
   const historyAssignments=assignments.filter(a=>(a.cycle_type||'MITRA')==='MITRA'&&(!shippingHistoryState.barn_id||a.barn_id===shippingHistoryState.barn_id));
-  const shownShipments=shipments.filter(s=>
+  const shownShipments=shippingHistoryState.shown?shipments.filter(s=>
     (!shippingHistoryState.barn_id||s.barn_id===shippingHistoryState.barn_id)&&
     (!shippingHistoryState.assignment_id||s.contract_assignment_id===shippingHistoryState.assignment_id)&&
     (!shippingHistoryState.date_from||String(s.shipment_date||'')>=shippingHistoryState.date_from)&&
     (!shippingHistoryState.date_to||String(s.shipment_date||'')<=shippingHistoryState.date_to)
-  );
+  ):[];
   const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const selectableBarns=barns.filter(b=>activeByBarn.has(b.id));
@@ -1831,10 +1831,10 @@ async function logisticsShippingPage(editId=null){
       '<label>Pilih Siklus<select id="shippingHistoryCycle"><option value="">Semua Siklus</option>'+historyAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(shippingHistoryState.assignment_id===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+(a.start_date||'-')+' · '+(a.active?'AKTIF':'CLOSED'))+'</option>').join('')+'</select></label>'+
       '<label>Tanggal Dari<input type="date" id="shippingHistoryDateFrom" value="'+esc(shippingHistoryState.date_from||'')+'"></label>'+
       '<label>Tanggal Sampai<input type="date" id="shippingHistoryDateTo" value="'+esc(shippingHistoryState.date_to||'')+'"></label>'+
-      '<div class="inline-actions"><button type="button" id="shippingHistoryApply">Cari</button><button type="button" id="shippingHistoryReset">Reset</button></div>'+
+      '<div class="inline-actions"><button type="button" id="shippingHistoryApply">Tampilkan</button><button type="button" id="shippingHistoryReset">Reset</button></div>'+
       '<p class="muted">Semua kiriman sesuai kandang, siklus, dan tanggal ditampilkan sekaligus tanpa pagination.</p>'+
     '</div>'+
-    '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>No. SJ</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    (shippingHistoryState.shown?'<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>No. SJ</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
     shownShipments.flatMap(s=>{
       const b=barns.find(x=>x.id===s.barn_id), a=assignments.find(x=>x.id===s.contract_assignment_id);
       const isLocked=a?.active===false;
@@ -1848,7 +1848,7 @@ async function logisticsShippingPage(editId=null){
         return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(s.shipment_date||'-')+'</td><td>'+esc(s.shipping_note_number||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(d.quantity)+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td><td>'+fmtNumber(d.unit_price)+'</td><td>'+fmtNumber(Number(d.quantity||0)*Number(d.unit_price||0))+'</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(idx===0?(isLocked?'<button type="button" data-view-shipment="'+esc(s.id)+'">Lihat</button>':'<button type="button" data-view-shipment="'+esc(s.id)+'">Edit</button>'+(profile.role==='ADMIN'?' <button type="button" data-delete-shipment="'+esc(s.id)+'">Hapus</button>':'')):'')+'</td></tr>';
       });
     }).join('')+
-    '</tbody></table></div>'+(!shownShipments.length?'<p>Data pengiriman tidak ditemukan.</p>':'')+'<p class="muted">Riwayat lengkap tersedia di Laporan Logistik.</p></section>';
+    '</tbody></table></div>'+(!shownShipments.length?'<p>Data pengiriman tidak ditemukan.</p>':''):'<p class="muted">Riwayat belum ditampilkan.</p>')+'<p class="muted">Riwayat lengkap tersedia di Laporan Logistik.</p></section>';
 
   layout(html);
   bindNumberInputs();
@@ -1865,7 +1865,8 @@ async function logisticsShippingPage(editId=null){
       barn_id:shippingHistoryBarn.value,
       assignment_id:'',
       date_from:shippingHistoryDateFrom?.value||'',
-      date_to:shippingHistoryDateTo?.value||''
+      date_to:shippingHistoryDateTo?.value||'',
+      shown:false
     };
     logisticsShippingPage();
   };
@@ -1875,7 +1876,8 @@ async function logisticsShippingPage(editId=null){
       barn_id:shippingHistoryBarn?.value||'',
       assignment_id:shippingHistoryCycle.value,
       date_from:shippingHistoryDateFrom?.value||'',
-      date_to:shippingHistoryDateTo?.value||''
+      date_to:shippingHistoryDateTo?.value||'',
+      shown:false
     };
   };
 
@@ -1884,13 +1886,14 @@ async function logisticsShippingPage(editId=null){
       barn_id:shippingHistoryBarn?.value||'',
       assignment_id:shippingHistoryCycle?.value||'',
       date_from:shippingHistoryDateFrom?.value||'',
-      date_to:shippingHistoryDateTo?.value||''
+      date_to:shippingHistoryDateTo?.value||'',
+      shown:true
     };
     logisticsShippingPage();
   };
 
   if(shippingHistoryReset)shippingHistoryReset.onclick=()=>{
-    window.__shippingHistoryFilter={barn_id:'',assignment_id:'',date_from:'',date_to:''};
+    window.__shippingHistoryFilter={barn_id:'',assignment_id:'',date_from:'',date_to:'',shown:false};
     logisticsShippingPage();
   };
 
@@ -6954,6 +6957,15 @@ async function logisticsWarehouseSendPage(){
     db.from('barns').select('id,code,name,active').eq('active',true).order('code')
   ]);
   const items=ir.data||[],headers=hr.data||[],ships=sr.data||[],barns=br.data||[];
+  window.__warehouseSendHistoryFilter=window.__warehouseSendHistoryFilter||{item:'',destination:'',barn:'',from:'',to:'',shown:false};
+  const warehouseHistoryFilter=window.__warehouseSendHistoryFilter;
+  const warehouseHistoryRows=warehouseHistoryFilter.shown?ships.filter(s=>
+    (!warehouseHistoryFilter.item||s.stock_item_id===warehouseHistoryFilter.item)&&
+    (!warehouseHistoryFilter.destination||s.destination_type===warehouseHistoryFilter.destination)&&
+    (!warehouseHistoryFilter.barn||s.barn_id===warehouseHistoryFilter.barn)&&
+    (!warehouseHistoryFilter.from||String(s.shipment_date||'')>=warehouseHistoryFilter.from)&&
+    (!warehouseHistoryFilter.to||String(s.shipment_date||'')<=warehouseHistoryFilter.to)
+  ):[];
   const err=[ir,hr,sr,br].find(x=>x.error)?.error;
   const sent=id=>ships.filter(x=>x.stock_item_id===id).reduce((n,x)=>n+prodNum(x.quantity),0);
   const remain=x=>Math.max(0,prodNum(x.quantity)-sent(x.id));
@@ -6968,10 +6980,42 @@ async function logisticsWarehouseSendPage(){
 
     '<label>Referensi<input name="reference"></label><label>Catatan<textarea name="notes"></textarea></label>'+
     '<button type="submit">Kirim Barang</button></form></section>';
-  html+='<section class="panel"><h3>Riwayat Pengiriman Gudang</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Barang</th><th>Jumlah</th><th>Tujuan</th><th>Status</th><th>Referensi</th></tr></thead><tbody>'+
-    ships.map(s=>{const x=items.find(v=>v.id===s.stock_item_id),b=barns.find(v=>v.id===s.barn_id);return '<tr><td>'+prodDateId(s.shipment_date)+'</td><td>'+esc(x?.standard_name||'-')+'</td><td>'+prodFmt(s.quantity,2)+' '+esc(x?.unit||'')+'</td><td>'+esc(s.destination_type==='KANTOR'?'Kantor':shortBarnLabel(b))+'</td><td>'+(s.make_asset?'Menjadi Aset':'Distribusi / Pemakaian')+'</td><td>'+esc(s.reference||'-')+'</td></tr>';}).join('')+
-    '</tbody></table></div>'+(ships.length?'':'<p>Belum ada pengiriman gudang.</p>')+'</section>';
+  html+='<section class="panel"><h3>Riwayat Pengiriman Gudang</h3>'+
+    '<p class="muted">Pilih filter lalu klik Tampilkan untuk melihat riwayat distribusi stok.</p>'+
+    '<form id="warehouseSendHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Barang<select name="item"><option value="">Semua Barang</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(warehouseHistoryFilter.item===x.id?'selected':'')+'>'+esc(x.standard_name)+'</option>').join('')+'</select></label>'+
+      '<label>Tujuan<select name="destination"><option value="">Semua Tujuan</option><option value="KANDANG" '+(warehouseHistoryFilter.destination==='KANDANG'?'selected':'')+'>Kandang</option><option value="KANTOR" '+(warehouseHistoryFilter.destination==='KANTOR'?'selected':'')+'>Kantor</option></select></label>'+
+      '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(warehouseHistoryFilter.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(warehouseHistoryFilter.from||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(warehouseHistoryFilter.to||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="warehouseSendHistoryReset">Reset</button></div>'+
+    '</form>'+
+    (warehouseHistoryFilter.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Barang</th><th>Jumlah</th><th>Tujuan</th><th>Status</th><th>Referensi</th></tr></thead><tbody>'+
+      warehouseHistoryRows.map(s=>{const x=items.find(v=>v.id===s.stock_item_id),b=barns.find(v=>v.id===s.barn_id);return '<tr><td>'+prodDateId(s.shipment_date)+'</td><td>'+esc(x?.standard_name||'-')+'</td><td>'+prodFmt(s.quantity,2)+' '+esc(x?.unit||'')+'</td><td>'+esc(s.destination_type==='KANTOR'?'Kantor':shortBarnLabel(b))+'</td><td>'+(s.make_asset?'Menjadi Aset':'Distribusi / Pemakaian')+'</td><td>'+esc(s.reference||'-')+'</td></tr>';}).join('')+
+      '</tbody></table></div>'+(warehouseHistoryRows.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>';
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  const warehouseSendHistoryForm=document.getElementById('warehouseSendHistoryFilter');
+  const warehouseSendHistoryReset=document.getElementById('warehouseSendHistoryReset');
+  if(warehouseSendHistoryForm)warehouseSendHistoryForm.onsubmit=async ev=>{
+    ev.preventDefault();
+    const fd=new FormData(warehouseSendHistoryForm);
+    warehouseHistoryFilter.item=String(fd.get('item')||'');
+    warehouseHistoryFilter.destination=String(fd.get('destination')||'');
+    warehouseHistoryFilter.barn=String(fd.get('barn')||'');
+    warehouseHistoryFilter.from=String(fd.get('from')||'');
+    warehouseHistoryFilter.to=String(fd.get('to')||'');
+    if(warehouseHistoryFilter.from&&warehouseHistoryFilter.to&&warehouseHistoryFilter.from>warehouseHistoryFilter.to){
+      const t=warehouseHistoryFilter.from;warehouseHistoryFilter.from=warehouseHistoryFilter.to;warehouseHistoryFilter.to=t;
+    }
+    warehouseHistoryFilter.shown=true;
+    await logisticsWarehouseSendPage();
+  };
+  if(warehouseSendHistoryReset)warehouseSendHistoryReset.onclick=async()=>{
+    window.__warehouseSendHistoryFilter={item:'',destination:'',barn:'',from:'',to:'',shown:false};
+    await logisticsWarehouseSendPage();
+  };
+
   const dest=document.getElementById('warehouseDestination'),wrap=document.getElementById('warehouseBarnWrap');
   const sync=()=>{wrap.style.display=dest.value==='KANDANG'?'':'none';if(dest.value==='KANTOR')wrap.querySelector('select').value='';};dest.onchange=sync;sync();
   document.getElementById('warehouseSendForm').onsubmit=async e=>{
