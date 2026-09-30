@@ -109,3 +109,14 @@ Perintah:
 - Uji ADMIN buka→tutup dilakukan dengan transaksi rollback; data asli tetap CLOSED dan snapshot final tetap ada setelah rollback.
 - Uji akses non-ADMIN: ditolak.
 - Cache web saat ini: `main-1958.js?v=2248-admin-cycle-open-close`.
+
+
+## PERUBAHAN TERBARU — ABK DIPINDAH KE CHICK-IN
+- Buat Siklus tidak lagi meminta ABK/Populasi Awal.
+- PPL memilih ABK dan membagi Populasi Awal saat Produksi/PPL → Chick-In / DOC Masuk.
+- Total Populasi Awal ABK wajib sama dengan DOC In - DOC Mati Box.
+- Penyimpanan Chick-In + pembagian ABK menggunakan RPC atomik `save_chick_in_with_abks_v1`.
+- Relasi ABK tetap disimpan di `logistics_contract_assignment_abks`, yaitu sumber yang dibaca Liga ABK.
+- Liga ABK tetap memakai `initial_birds` dari relasi tersebut untuk survival, IP, biaya DOC, dan perhitungan ABK.
+- Uji rollback pada Baturuyuk: Chick-In 14.800, dua ABK @7.400, total relasi 14.800 PASS.
+- Cache web: `main-1958.js?v=2251-chickin-abk-to-league`.
