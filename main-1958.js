@@ -4566,7 +4566,7 @@ async function leagueByBarnViewPage(){
   const err=[{error:d.err},leagueSetting,rr,sr,cr,br,finalR].find(x=>x?.error)?.error;
   if(err)return layout('<section class="panel"><h3>Lihat Liga per Kandang</h3><p class="error">'+esc(err.message)+'</p></section>');
 
-  window.__leagueByBarnState=window.__leagueByBarnState||{barn:''};
+  window.__leagueByBarnState=window.__leagueByBarnState||{barn:'',assignment:''};
   const st=window.__leagueByBarnState;
   const abkReferenceContractId=a=>{
     if(a?.master_contract_id)return a.master_contract_id;
@@ -4638,9 +4638,12 @@ async function leagueByBarnViewPage(){
   );
   const barnIds=[...new Set(closedSeasonal.map(x=>x.a?.barn_id).filter(Boolean))];
   const barnRows=d.barns.filter(b=>barnIds.includes(b.id)).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
-  if(st.barn&&!barnRows.some(b=>b.id===st.barn))st.barn='';
+  if(st.barn&&!barnRows.some(b=>b.id===st.barn)){st.barn='';st.assignment='';}
+  const assignmentIdsForBarn=st.barn?[...new Set(closedSeasonal.filter(x=>x.a?.barn_id===st.barn).map(x=>x.contract_assignment_id))]:[];
+  const assignmentRows=st.barn?d.assignments.filter(a=>assignmentIdsForBarn.includes(a.id)).sort((u,v)=>String(v.start_date||'').localeCompare(String(u.start_date||''))):[];
+  if(st.assignment&&!assignmentRows.some(a=>a.id===st.assignment))st.assignment='';
 
-  const scoped=st.barn?closedSeasonal.filter(x=>x.a?.barn_id===st.barn):[];
+  const scoped=st.assignment?closedSeasonal.filter(x=>x.contract_assignment_id===st.assignment):[];
   const map=new Map();
   scoped.forEach(x=>{
     if(!map.has(x.abk_id))map.set(x.abk_id,{...x,birds:0,kg:0,feed:0,profit:0,ipWeighted:0,totalPopulation:0,periods:0});
@@ -4672,7 +4675,8 @@ async function leagueByBarnViewPage(){
   league.sort((a,b)=>b.score-a.score);
 
   const selectedBarn=d.barns.find(b=>b.id===st.barn);
-  let html='<section class="panel"><h3>Lihat Liga per Kandang</h3><p class="muted">Ranking khusus per kandang. Sumber dan bobot sama dengan Liga ABK utama. Hanya siklus CLOSED + final yang dihitung.</p>'+
+  const selectedAssignment=d.assignments.find(a=>a.id===st.assignment);
+  let html='<section class="panel"><h3>Lihat Liga per Kandang</h3><p class="muted">Pilih kandang, lalu pilih siklus CLOSED. Sumber dan bobot sama dengan Liga ABK utama.</p>'+
     '<form id="leagueByBarnFilter" class="form-vertical" data-no-submit-guard="1">'+
       '<label>Kandang<select id="leagueByBarnSelect" required><option value="">Pilih Kandang</option>'+
         barnRows.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
@@ -4680,8 +4684,8 @@ async function leagueByBarnViewPage(){
       '<button type="submit">Tampilkan</button>'+
     '</form></section>';
 
-  if(st.barn){
-    html+='<section class="panel"><div class="owner-section-title"><div><h3>Liga ABK · '+esc(selectedBarn?shortBarnLabel(selectedBarn):'-')+'</h3>'+
+  if(st.assignment){
+    html+='<section class="panel"><div class="owner-section-title"><div><h3>Liga ABK · '+esc(selectedBarn?shortBarnLabel(selectedBarn):'-')+' · '+esc(assignmentCycleLabel(d.assignments,selectedAssignment))+'</h3>'+
       '<p class="muted">Musim sejak '+prodDateId(seasonStart)+' · Pendapatan/Ekor 50% · FCR 30% · IP 20%</p></div><span class="owner-trophy">🏆</span></div>'+
       '<div class="tablewrap"><table class="owner-table"><thead><tr><th>Peringkat</th><th>ABK</th><th class="num">Siklus</th><th class="num">Total Populasi</th><th class="num">Total Ekor Panen</th><th class="num">Pendapatan/Ekor</th><th class="num">IP</th><th class="num">FCR</th><th class="num">BW</th></tr></thead><tbody>'+
       league.map((x,i)=>{
@@ -4689,14 +4693,15 @@ async function leagueByBarnViewPage(){
         const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
         return '<tr><td class="owner-rank">'+medal+'</td><td><strong>'+esc(leagueAbkName(e))+'</strong></td><td class="num">'+prodFmt(x.periods,0)+'</td><td class="num">'+prodFmt(x.totalPopulation,0)+'</td><td class="num">'+prodFmt(x.birds,0)+'</td><td class="num">Rp '+prodFmt(x.perBird,0)+'</td><td class="num">'+prodFmt(x.ip,2)+'</td><td class="num">'+prodFmt(x.fcr,3)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td></tr>';
       }).join('')+
-      '</tbody></table></div>'+(league.length?'':'<p class="muted">Belum ada hasil Liga ABK CLOSED untuk kandang ini pada musim aktif.</p>')+'</section>';
+      '</tbody></table></div>'+(league.length?'':'<p class="muted">Belum ada hasil Liga ABK untuk siklus CLOSED ini.</p>')+'</section>';
   }
 
   layout(html);
   const form=document.getElementById('leagueByBarnFilter');
   const select=document.getElementById('leagueByBarnSelect');
-  if(form)form.onsubmit=e=>{e.preventDefault();st.barn=select?.value||'';leagueByBarnViewPage();};
-  if(select)select.onchange=()=>{st.barn=select.value||'';leagueByBarnViewPage();};
+  const assignment=document.getElementById('leagueByBarnAssignment');
+  if(form)form.onsubmit=e=>{e.preventDefault();if(!select?.value)return msg('Pilih kandang.');if(!assignment?.value)return msg('Pilih siklus.');st.barn=select.value;st.assignment=assignment.value;leagueByBarnViewPage();};
+  if(select)select.onchange=()=>{st.barn=select.value||'';st.assignment='';leagueByBarnViewPage();};
 }
 
 async function leagueAbkPage(editSizeId=null){
