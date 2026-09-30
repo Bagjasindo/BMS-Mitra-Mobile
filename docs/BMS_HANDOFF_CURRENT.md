@@ -15,6 +15,17 @@ Sumber lanjutan tunggal: source code live + file ini.
 - Fokus perubahan terakhir hanya UI RHPP.
 - Sampai titik ini user menyatakan cukup; jangan lanjut otomatis.
 
+
+## STANDAR TOMBOL SIMPAN / EDIT
+- Menggunakan helper submit yang sudah ada; tidak mengubah CSS/layout global.
+- Klik pertama mengunci tombol dan form untuk mencegah double input.
+- Saat proses: `Menyimpan…`.
+- Sukses: `✓ Tersimpan`.
+- Gagal: `✕ Belum tersimpan`, lalu tombol aktif kembali.
+- Feedback simpan/edit diarahkan ke tombol, bukan notifikasi atas selama submit.
+- Jika halaman re-render setelah simpan, status tombol diterapkan kembali sebentar pada form yang sama.
+- Berlaku sama di desktop dan HP karena memakai mekanisme submit yang sama, tanpa style mobile khusus baru.
+
 ## KONDISI RHPP TERKINI
 Terdapat 5 halaman/menu RHPP:
 1. Lihat RHPP
@@ -73,6 +84,8 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `17be3829358ed96d9a9ce05d6948ab2d835b5d89` — Bump cache for stable save button feedback
+- `ec110af91c9579036857a2fc1b7953a178813826` — Refine stable save buttons with inline feedback and duplicate guard
 - `cbf49dcbdddf17e9499505ce9d82289543014eec` — Bump cache for readable professional RHPP print
 - `e82173aabdd991a44e95c3ab830c8f1c98675bed` — Make shared RHPP print output readable and professional
 - `27af7e8636439995922032d4bd9b5da3a3271243` — Bump cache for exact Cetak RHPP submenu styling
@@ -90,7 +103,7 @@ Terdapat 5 halaman/menu RHPP:
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2293-rhpp-print-readable`
+`main-1958.js?v=2294-save-button-feedback-stable`
 
 ## TITIK BERHENTI
 STOP di sini.
