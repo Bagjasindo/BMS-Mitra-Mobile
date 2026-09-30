@@ -228,9 +228,9 @@ const actionButtonStart=(btn,label='Memproses...')=>{
   btn.textContent=label;
   return true;
 };
-const actionButtonFinish=async(btn,ok=true)=>{
+const actionButtonFinish=async(btn,ok=true,successLabel='Terhapus ✓',failureLabel='Gagal — coba lagi')=>{
   if(!btn)return;
-  btn.textContent=ok?'Terhapus ✓':'Gagal — coba lagi';
+  btn.textContent=ok?successLabel:failureLabel;
   await new Promise(resolve=>setTimeout(resolve,ok?850:1500));
   if(!ok){
     btn.disabled=false;
@@ -1420,6 +1420,7 @@ async function logisticsContractPage(){
   const perfRows=pr.data||[];
   const allAssignments=ar.data||[];
   const activeAssignments=allAssignments.filter(x=>x.active);
+  const closedAssignments=allAssignments.filter(x=>!x.active);
   const abks=er.data||[];
   const abkLinks=abr.data||[];
   const ppls=ppr.data||[];
@@ -1466,7 +1467,7 @@ async function logisticsContractPage(){
       const ls=linksFor(a.id);
       return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td>'+esc(a.cycle_type||'MITRA')+'</td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">'+(a.active?'AKTIF':'CLOSED')+'</span></td><td><div class="table-actions"><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Edit</button>'+(hasAssignmentTransactions(a.id)?'':'<button type="button" class="btn-danger-soft" data-delete-cycle="'+esc(a.id)+'">Hapus</button>')+'</div></td></tr>';
     }).join('')+
-    '</tbody></table></div>'+(!allAssignments.length?'<p>Belum ada riwayat siklus.</p>':'')+'</section>'+
+    '</tbody></table></div>'+(!closedAssignments.length?'<p>Belum ada siklus CLOSED.</p>':'')+'</section>'+
     '<section class="panel" id="contractActiveDetail" hidden><h3>Detail Siklus</h3><div id="contractActiveDetailBody"></div></section>';
 
   layout(html);
@@ -1611,9 +1612,11 @@ async function logisticsContractPage(){
     detailBody.querySelectorAll('[data-save-ppl]').forEach(btn=>btn.onclick=async()=>{
       const select=detailBody.querySelector('[data-ppl-id="'+btn.dataset.savePpl+'"]');
       if(!select?.value)return msg('PPL penanggung jawab wajib dipilih.');
+      if(!actionButtonStart(btn,'Menyimpan...'))return;
       const {error}=await db.from('logistics_contract_assignments').update({ppl_id:select.value}).eq('id',btn.dataset.savePpl);
-      if(error)return msg(error.message);
-      await logisticsContractPage();msg('PPL penanggung jawab diperbarui.',true);
+      if(error){await actionButtonFinish(btn,false,'Tersimpan ✓');return;}
+      await actionButtonFinish(btn,true,'Tersimpan ✓');
+      await logisticsContractPage();
     });
     detailBody.querySelectorAll('[data-close-mandiri]').forEach(btn=>btn.onclick=async()=>{
       if(!await appConfirm('Close Siklus Mandiri? Pastikan Chick-In dan Panen Mandiri sudah lengkap. Setelah Close transaksi periode terkunci.'))return;
@@ -1625,9 +1628,11 @@ async function logisticsContractPage(){
       const input=detailBody.querySelector('[data-start-date="'+btn.dataset.saveLogisticsStart+'"]');
       const value=input?.value||'';
       if(!value)return msg('Tanggal mulai wajib diisi.');
+      if(!actionButtonStart(btn,'Menyimpan...'))return;
       const {error}=await db.from('logistics_contract_assignments').update({start_date:value}).eq('id',btn.dataset.saveLogisticsStart);
-      if(error)return msg(error.message);
-      await logisticsContractPage();msg('Tanggal mulai diperbarui.',true);
+      if(error){await actionButtonFinish(btn,false,'Tersimpan ✓');return;}
+      await actionButtonFinish(btn,true,'Tersimpan ✓');
+      await logisticsContractPage();
     });
   };
 
@@ -1639,10 +1644,11 @@ async function logisticsContractPage(){
     if(hasAssignmentTransactions(id))return msg('Siklus sudah memiliki transaksi. Hanya dapat diedit, tidak dapat dihapus.');
     if(profile.role!=='ADMIN')return msg('Hanya Administrator yang dapat menghapus siklus.');
     if(!await appConfirm('Hapus siklus kosong ini? Data ABK yang hanya terikat ke siklus ini juga akan dilepas.'))return;
+    if(!actionButtonStart(btn,'Menghapus...'))return;
     const {error}=await db.from('logistics_contract_assignments').delete().eq('id',id);
-    if(error)return msg(error.message);
+    if(error){await actionButtonFinish(btn,false);return;}
+    await actionButtonFinish(btn,true);
     await logisticsContractPage();
-    msg('Siklus kosong berhasil dihapus.',true);
   });
 
 }
