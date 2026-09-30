@@ -6921,6 +6921,8 @@ async function financeStockPurchasePage(){
   const assetLines=id=>assetDetails.filter(x=>x.invoice_id===id);
   const barnLabel=id=>{const x=barns.find(b=>b.id===id);return x?shortBarnLabel(x):'-';};
 
+  window.__financeGoodsHistory=window.__financeGoodsHistory||{from:'',to:'',shown:false};
+  const goodsHistoryState=window.__financeGoodsHistory;
   const history=[
     ...stockInvoices.map(h=>({
       date:h.purchase_date,created_at:h.created_at||'',reference:h.reference||'',supplier:h.supplier_name||'',
@@ -6933,6 +6935,10 @@ async function financeStockPurchasePage(){
       items:assetLines(h.id).map(x=>x.standard_name+' ('+prodFmt(x.quantity,2)+' '+x.unit+')').join(', ')
     }))
   ].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  const visibleHistory=goodsHistoryState.shown?history.filter(h=>
+    (!goodsHistoryState.from||String(h.date||'')>=goodsHistoryState.from)&&
+    (!goodsHistoryState.to||String(h.date||'')<=goodsHistoryState.to)
+  ):[];
 
   let html='<section class="panel"><h3>Pembelian Barang</h3>'+
     '<p class="muted"><strong>Satu pintu pembelian.</strong> Pilih tujuan <strong>Gudang</strong> jika barang belum dipakai. Pilih <strong>Kandang/Kantor</strong> jika barang langsung ditempatkan sebagai aset. Aset Kandang/Kantor akan dibuat otomatis.</p>'+
@@ -6949,11 +6955,22 @@ async function financeStockPurchasePage(){
       '<button type="submit">Simpan Pembelian</button>'+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Pembelian Barang</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Tujuan</th><th>Barang</th><th>Total</th><th>Metode</th></tr></thead><tbody>'+
-    history.map(h=>'<tr><td>'+prodDateId(h.date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier||'-')+'</td><td>'+esc(h.destination)+'</td><td>'+esc(h.items||'-')+'</td><td>Rp '+prodFmt(h.total,0)+'</td><td>'+esc(h.method||'-')+'</td></tr>').join('')+
-    '</tbody></table></div>'+(history.length?'':'<p>Belum ada pembelian barang.</p>')+'</section>';
+  html+='<section class="panel"><h3>Riwayat Pembelian Barang</h3>'+
+    '<form id="financeGoodsHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(goodsHistoryState.from||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(goodsHistoryState.to||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="financeGoodsHistoryReset">Reset</button></div>'+
+    '</form>'+
+    (goodsHistoryState.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Tujuan</th><th>Barang</th><th>Total</th><th>Metode</th></tr></thead><tbody>'+
+    visibleHistory.map(h=>'<tr><td>'+prodDateId(h.date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier||'-')+'</td><td>'+esc(h.destination)+'</td><td>'+esc(h.items||'-')+'</td><td>Rp '+prodFmt(h.total,0)+'</td><td>'+esc(h.method||'-')+'</td></tr>').join('')+
+    '</tbody></table></div>'+(visibleHistory.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+
+  const goodsHistoryFilter=document.getElementById('financeGoodsHistoryFilter');
+  const goodsHistoryReset=document.getElementById('financeGoodsHistoryReset');
+  if(goodsHistoryFilter)goodsHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(goodsHistoryFilter);goodsHistoryState.from=String(fd.get('from')||'');goodsHistoryState.to=String(fd.get('to')||'');if(goodsHistoryState.from&&goodsHistoryState.to&&goodsHistoryState.from>goodsHistoryState.to){const t=goodsHistoryState.from;goodsHistoryState.from=goodsHistoryState.to;goodsHistoryState.to=t}goodsHistoryState.shown=true;await financeStockPurchasePage();};
+  if(goodsHistoryReset)goodsHistoryReset.onclick=async()=>{window.__financeGoodsHistory={from:'',to:'',shown:false};await financeStockPurchasePage();};
 
   const form=document.getElementById('financeGoodsPurchaseForm');
   const tbody=document.getElementById('goodsPurchaseRows');
@@ -7149,6 +7166,12 @@ async function financeDirectPurchasePage(){
     db.from('barns').select('id,code,name,active').order('code',{ascending:true})
   ]);
   const invoices=hr.data||[],details=dr.data||[],barns=br.data||[];
+  window.__financeAssetHistory=window.__financeAssetHistory||{from:'',to:'',shown:false};
+  const assetHistoryState=window.__financeAssetHistory;
+  const visibleAssetInvoices=assetHistoryState.shown?invoices.filter(h=>
+    (!assetHistoryState.from||String(h.purchase_date||'')>=assetHistoryState.from)&&
+    (!assetHistoryState.to||String(h.purchase_date||'')<=assetHistoryState.to)
+  ):[];
   const err=[hr,dr,br].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const standardNames=[...new Map(details.filter(x=>x.standard_name).map(x=>[String(x.standard_name).trim().toLowerCase(),x.standard_name])).values()];
@@ -7172,18 +7195,29 @@ async function financeDirectPurchasePage(){
       '<button type="submit">Simpan Nota Aset</button>'+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Nota Aset</h3><div class="tablewrap"><table><thead><tr>'+
+  html+='<section class="panel"><h3>Riwayat Nota Aset</h3>'+
+    '<form id="financeAssetHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(assetHistoryState.from||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(assetHistoryState.to||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="financeAssetHistoryReset">Reset</button></div>'+
+    '</form>'+
+    (assetHistoryState.shown?'<div class="tablewrap"><table><thead><tr>'+
     '<th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Lokasi</th><th>Barang</th><th>Jumlah Jenis</th><th>Total Nota</th><th>Metode</th>'+
     '</tr></thead><tbody>'+
-    invoices.map(h=>{
+    visibleAssetInvoices.map(h=>{
       const lines=invoiceItems(h.id);
       const names=lines.map(x=>x.standard_name+' ('+prodFmt(x.quantity,2)+' '+(x.unit||'')+')').join(', ');
       const loc=h.asset_location_type==='KANTOR'?'Kantor':barnLabel(h.barn_id);
       return '<tr><td>'+prodDateId(h.purchase_date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier_name||'-')+'</td><td>'+esc(loc)+'</td><td>'+esc(names||'-')+'</td><td>'+lines.length+'</td><td><strong>Rp '+prodFmt(h.total_amount,0)+'</strong></td><td>'+esc(h.payment_method||'-')+'</td></tr>';
     }).join('')+
-    '</tbody></table></div>'+(invoices.length?'':'<p class="muted">Belum ada nota pembelian aset.</p>')+'</section>';
+    '</tbody></table></div>'+(visibleAssetInvoices.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
 
   layout(html);if(err)msg(err.message);
+  const assetHistoryFilter=document.getElementById('financeAssetHistoryFilter');
+  const assetHistoryReset=document.getElementById('financeAssetHistoryReset');
+  if(assetHistoryFilter)assetHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(assetHistoryFilter);assetHistoryState.from=String(fd.get('from')||'');assetHistoryState.to=String(fd.get('to')||'');if(assetHistoryState.from&&assetHistoryState.to&&assetHistoryState.from>assetHistoryState.to){const t=assetHistoryState.from;assetHistoryState.from=assetHistoryState.to;assetHistoryState.to=t}assetHistoryState.shown=true;await financeDirectPurchasePage();};
+  if(assetHistoryReset)assetHistoryReset.onclick=async()=>{window.__financeAssetHistory={from:'',to:'',shown:false};await financeDirectPurchasePage();};
+
   const form=document.getElementById('financeAssetInvoiceForm');
   const locationType=document.getElementById('assetLocationType');
   const barn=form?.elements.barn_id;
@@ -7303,7 +7337,7 @@ async function financeSupplierPayablesPage(){
   const rows=pr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[],payments=pyr.data||[];
   const err=[pr,ar,br,cr,pyr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  window.__supplierPayableState=window.__supplierPayableState||{status:'OPEN',supplier:'',selected:'',editPaymentId:''};
+  window.__supplierPayableState=window.__supplierPayableState||{status:'OPEN',supplier:'',selected:'',editPaymentId:'',historyFrom:'',historyTo:'',historyShown:false};
   const st=window.__supplierPayableState;
   const editPayment=payments.find(x=>x.id===st.editPaymentId)||null;
   if(editPayment)st.selected=editPayment.source_type+':'+editPayment.source_id;
@@ -7319,6 +7353,10 @@ async function financeSupplierPayablesPage(){
   const sourceLabel=t=>t==='SAPRONAK_LUAR'?'Sapronak Tambahan':t==='TAMBAH_DAGING'?'Tambah Daging':t==='BELI_PERALATAN'?'Beli Peralatan':'-';
   const payableLocation=x=>x.source_type==='BELI_PERALATAN'?([x.barn_code,x.barn_name].filter(Boolean).join(' · ')||'-'):identity(x.contract_assignment_id);
   const selected=rows.find(x=>x.source_type+':'+x.source_id===st.selected);
+  const visiblePayments=st.historyShown?payments.filter(p=>
+    (!st.historyFrom||String(p.paid_on||'')>=st.historyFrom)&&
+    (!st.historyTo||String(p.paid_on||'')<=st.historyTo)
+  ):[];
 
   let html='<section class="panel"><h3>Hutang Supplier</h3>'+
     '<p class="muted"><strong>OTOMATIS.</strong> Hutang muncul dari Sapronak Tambahan Logistik, Beli Peralatan Logistik, dan Tambah Daging Marketing. Keuangan tidak membuat tagihan atau nama barang ulang.</p>'+
@@ -7347,13 +7385,23 @@ async function financeSupplierPayablesPage(){
       '</form></section>';
   }
 
-  if(payments.length){
-    html+='<section class="panel"><h3>Riwayat Pembayaran Supplier</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Sumber</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
-      payments.map(p=>{const row=rows.find(x=>x.source_type===p.source_type&&x.source_id===p.source_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(row?.supplier_name||'-')+'</td><td>'+esc(sourceLabel(p.source_type))+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method||'-')+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('supplier_payments',p.id)+'</div></td></tr>';}).join('')+
-      '</tbody></table></div></section>';
-  }
+  html+='<section class="panel"><h3>Riwayat Pembayaran Supplier</h3>'+
+    '<form id="supplierPaymentHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(st.historyFrom||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(st.historyTo||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="supplierPaymentHistoryReset">Reset</button></div>'+
+    '</form>'+
+    (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Sumber</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
+      visiblePayments.map(p=>{const row=rows.find(x=>x.source_type===p.source_type&&x.source_id===p.source_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(row?.supplier_name||'-')+'</td><td>'+esc(sourceLabel(p.source_type))+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method||'-')+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('supplier_payments',p.id)+'</div></td></tr>';}).join('')+
+      '</tbody></table></div>'+(visiblePayments.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  const supplierPaymentHistoryFilter=document.getElementById('supplierPaymentHistoryFilter');
+  const supplierPaymentHistoryReset=document.getElementById('supplierPaymentHistoryReset');
+  if(supplierPaymentHistoryFilter)supplierPaymentHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(supplierPaymentHistoryFilter);st.historyFrom=String(fd.get('from')||'');st.historyTo=String(fd.get('to')||'');if(st.historyFrom&&st.historyTo&&st.historyFrom>st.historyTo){const t=st.historyFrom;st.historyFrom=st.historyTo;st.historyTo=t}st.historyShown=true;await financeSupplierPayablesPage();};
+  if(supplierPaymentHistoryReset)supplierPaymentHistoryReset.onclick=async()=>{st.historyFrom='';st.historyTo='';st.historyShown=false;await financeSupplierPayablesPage();};
+
   const filter=document.getElementById('supplierPayableFilter');
   if(filter)filter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(filter);st.supplier=String(fd.get('supplier')||'');st.status=String(fd.get('status')||'OPEN');st.selected='';await financeSupplierPayablesPage();};
   root.querySelectorAll('[data-pay-supplier]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.paySupplier||'';st.editPaymentId='';await financeSupplierPayablesPage();});
@@ -7640,6 +7688,12 @@ async function financeExpeditionPaymentPage(){
   const totalPaid=summaries.reduce((n,x)=>n+prodNum(x.paid_total),0);
   const totalReceivable=summaries.reduce((n,x)=>n+prodNum(x.receivable),0);
   window.__fxPaymentEdit=window.__fxPaymentEdit||'';
+  window.__fxPaymentHistory=window.__fxPaymentHistory||{from:'',to:'',shown:false};
+  const fxHistoryState=window.__fxPaymentHistory;
+  const fxHistoryRows=fxHistoryState.shown?payments.filter(p=>
+    (!fxHistoryState.from||String(p.paid_on||'')>=fxHistoryState.from)&&
+    (!fxHistoryState.to||String(p.paid_on||'')<=fxHistoryState.to)
+  ):[];
   const editPayment=payments.find(x=>x.id===window.__fxPaymentEdit)||null;
 
   let html='<section class="panel"><h3>Penerimaan Expedisi</h3><p class="muted">Khusus Keuangan / Administrator. Pembayaran otomatis mengurangi piutang invoice Expedisi.</p>'+
@@ -7661,9 +7715,22 @@ async function financeExpeditionPaymentPage(){
     '</form></section>'+
     '<section class="panel"><h3>Piutang Invoice Expedisi</h3><div class="tablewrap"><table><thead><tr><th>No Invoice</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Sisa</th><th>Status</th></tr></thead><tbody>'+
       summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td></tr>').join('')+
-    '</tbody></table></div></section>'+    '<section class="panel"><h3>Riwayat Penerimaan Expedisi</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Invoice</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+payments.map(p=>{const i=invoices.find(x=>x.id===p.invoice_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(i?.invoice_number||'-')+'</td><td>'+esc(p.method||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-exp-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_expedition_payments',p.id)+'</div></td></tr>';}).join('')+'</tbody></table></div>'+(payments.length?'':'<p class="muted">Belum ada penerimaan.</p>')+'</section>';
+    '</tbody></table></div></section>'+
+    '<section class="panel"><h3>Riwayat Penerimaan Expedisi</h3>'+
+      '<form id="fxPaymentHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+        '<label>Tanggal Dari<input type="date" name="from" value="'+esc(fxHistoryState.from||'')+'"></label>'+
+        '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(fxHistoryState.to||'')+'"></label>'+
+        '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="fxPaymentHistoryReset">Reset</button></div>'+
+      '</form>'+
+      (fxHistoryState.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Invoice</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+fxHistoryRows.map(p=>{const i=invoices.find(x=>x.id===p.invoice_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(i?.invoice_number||'-')+'</td><td>'+esc(p.method||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-exp-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_expedition_payments',p.id)+'</div></td></tr>';}).join('')+'</tbody></table></div>'+(fxHistoryRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+
+  const fxPaymentHistoryFilter=document.getElementById('fxPaymentHistoryFilter');
+  const fxPaymentHistoryReset=document.getElementById('fxPaymentHistoryReset');
+  if(fxPaymentHistoryFilter)fxPaymentHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(fxPaymentHistoryFilter);fxHistoryState.from=String(fd.get('from')||'');fxHistoryState.to=String(fd.get('to')||'');if(fxHistoryState.from&&fxHistoryState.to&&fxHistoryState.from>fxHistoryState.to){const t=fxHistoryState.from;fxHistoryState.from=fxHistoryState.to;fxHistoryState.to=t}fxHistoryState.shown=true;await financeExpeditionPaymentPage();};
+  if(fxPaymentHistoryReset)fxPaymentHistoryReset.onclick=async()=>{window.__fxPaymentHistory={from:'',to:'',shown:false};await financeExpeditionPaymentPage();};
 
   root.querySelectorAll('[data-edit-exp-payment]').forEach(btn=>btn.onclick=async()=>{window.__fxPaymentEdit=btn.dataset.editExpPayment||'';await financeExpeditionPaymentPage();document.getElementById('fxPaymentForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
   const cancelEdit=document.getElementById('fxPaymentCancelEdit');if(cancelEdit)cancelEdit.onclick=async()=>{window.__fxPaymentEdit='';await financeExpeditionPaymentPage();};
@@ -8579,7 +8646,7 @@ async function financeSalaryPage(){
   const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],links=lr.data||[],employees=er.data||[],advances=vr.data||[],payments=pr.data||[],salaries=sr.data||[];
   const err=[br,ar,cr,lr,er,vr,pr,sr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  window.__financeSalaryState=window.__financeSalaryState||{barn:'',assignment:'',abk:'',editId:''};
+  window.__financeSalaryState=window.__financeSalaryState||{barn:'',assignment:'',abk:'',editId:'',historyFrom:'',historyTo:'',historyShown:false};
   const st=window.__financeSalaryState;
   const editSalary=salaries.find(x=>x.id===st.editId)||null;
   if(editSalary){const a=assignments.find(x=>x.id===editSalary.contract_assignment_id);if(a){st.barn=a.barn_id;st.assignment=a.id;st.abk=editSalary.abk_id;}}
@@ -8589,6 +8656,10 @@ async function financeSalaryPage(){
   const paid=id=>payments.filter(x=>x.advance_id===id).reduce((n,x)=>n+prodNum(x.amount),0);
   const balance=(abkId,assignmentId)=>advances.filter(a=>a.employee_id===abkId&&a.contract_assignment_id===assignmentId).reduce((n,a)=>n+Math.max(0,prodNum(a.amount)-paid(a.id)),0);
   const currentBalance=st.abk&&st.assignment?balance(st.abk,st.assignment):0;
+  const salaryHistoryRows=st.historyShown?salaries.filter(s=>
+    (!st.historyFrom||String(s.paid_on||'')>=st.historyFrom)&&
+    (!st.historyTo||String(s.paid_on||'')<=st.historyTo)
+  ):[];
   const emp=id=>{const e=employees.find(x=>x.id===id);return e?e.code+' · '+e.name:'-'};
   const ident=id=>{const a=assignments.find(x=>x.id===id);return a?assignmentIdentity(assignments,barns,contractsRows,a):'-';};
 
@@ -8604,10 +8675,21 @@ async function financeSalaryPage(){
       '<label>Catatan<input name="notes" value="'+esc(editSalary?.notes||'')+'"></label>'+
       '<div class="report-actions"><button type="submit">'+(editSalary?'Simpan Koreksi':'Simpan Gaji Siklus')+'</button>'+(editSalary?'<button type="button" id="salaryEditCancel">Batal Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" id="salaryAdminDelete" class="btn-danger">Hapus</button>':''):'')+'</div>'+
     '</form></section>'+
-    '<section class="panel" id="salaryPrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Gaji ABK</h3></div><div class="report-actions"><button type="button" id="salaryPrint">Cetak / PDF</button></div></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang / Siklus</th><th>ABK</th><th>Gaji Bruto</th><th>Potongan Kasbon</th><th>Gaji Dibayar</th><th>Aksi</th></tr></thead><tbody>'+
-      salaries.map(s=>'<tr><td>'+prodDateId(s.paid_on)+'</td><td>'+esc(ident(s.contract_assignment_id))+'</td><td>'+esc(emp(s.abk_id))+'</td><td>Rp '+prodFmt(s.gross_salary,0)+'</td><td>Rp '+prodFmt(s.advance_deduction,0)+'</td><td><strong>Rp '+prodFmt(s.net_paid,0)+'</strong></td><td><div class="inline-actions"><button type="button" data-edit-salary="'+esc(s.id)+'">Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-salary="'+esc(s.id)+'">Hapus</button>':'')+'</div></td></tr>').join('')+
-    '</tbody></table></div>'+(salaries.length?'':'<p class="muted">Belum ada gaji ABK.</p>')+'</section>';
+    '<section class="panel" id="salaryPrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Gaji ABK</h3></div><div class="report-actions"><button type="button" id="salaryPrint">Cetak / PDF</button></div></div>'+
+      '<form id="salaryHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+        '<label>Tanggal Dari<input type="date" name="from" value="'+esc(st.historyFrom||'')+'"></label>'+
+        '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(st.historyTo||'')+'"></label>'+
+        '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="salaryHistoryReset">Reset</button></div>'+
+      '</form>'+
+      (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang / Siklus</th><th>ABK</th><th>Gaji Bruto</th><th>Potongan Kasbon</th><th>Gaji Dibayar</th><th>Aksi</th></tr></thead><tbody>'+
+      salaryHistoryRows.map(s=>'<tr><td>'+prodDateId(s.paid_on)+'</td><td>'+esc(ident(s.contract_assignment_id))+'</td><td>'+esc(emp(s.abk_id))+'</td><td>Rp '+prodFmt(s.gross_salary,0)+'</td><td>Rp '+prodFmt(s.advance_deduction,0)+'</td><td><strong>Rp '+prodFmt(s.net_paid,0)+'</strong></td><td><div class="inline-actions"><button type="button" data-edit-salary="'+esc(s.id)+'">Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-salary="'+esc(s.id)+'">Hapus</button>':'')+'</div></td></tr>').join('')+
+    '</tbody></table></div>'+(salaryHistoryRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
   layout(html);bindNumberInputs();if(err)msg(err.message);
+
+  const salaryHistoryFilter=document.getElementById('salaryHistoryFilter');
+  const salaryHistoryReset=document.getElementById('salaryHistoryReset');
+  if(salaryHistoryFilter)salaryHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(salaryHistoryFilter);st.historyFrom=String(fd.get('from')||'');st.historyTo=String(fd.get('to')||'');if(st.historyFrom&&st.historyTo&&st.historyFrom>st.historyTo){const t=st.historyFrom;st.historyFrom=st.historyTo;st.historyTo=t}st.historyShown=true;await financeSalaryPage();};
+  if(salaryHistoryReset)salaryHistoryReset.onclick=async()=>{st.historyFrom='';st.historyTo='';st.historyShown=false;await financeSalaryPage();};
 
   const salaryPrint=document.getElementById('salaryPrint');if(salaryPrint)salaryPrint.onclick=()=>printFinanceDocument('salaryPrintArea','Laporan Gaji ABK per Siklus');
   const b=document.getElementById('salaryBarn'),cy=document.getElementById('salaryCycle'),ab=document.getElementById('salaryAbk');
@@ -8656,7 +8738,7 @@ async function financeMandiriReceiptsPage(){
     const paid=paidByHarvest.get(h.id)||0,total=prodNum(h.total_amount),remaining=Math.max(0,total-paid);
     return {...h,paid,remaining,status:remaining<=0.005?'LUNAS':paid>0?'SEBAGIAN':'BELUM DITERIMA'};
   });
-  window.__financeMandiriReceiptState=window.__financeMandiriReceiptState||{selected:'',status:'',editReceiptId:''};
+  window.__financeMandiriReceiptState=window.__financeMandiriReceiptState||{selected:'',status:'',editReceiptId:'',historyFrom:'',historyTo:'',historyShown:false};
   const st=window.__financeMandiriReceiptState;
   const editReceipt=receipts.find(x=>x.id===st.editReceiptId)||null;
   if(editReceipt)st.selected=editReceipt.harvest_id||st.selected;
@@ -8705,15 +8787,26 @@ async function financeMandiriReceiptsPage(){
     '</tr>';}).join('')+
     '</tbody></table></div>'+(shown.length?'':'<p class="muted">Tidak ada data sesuai filter.</p>')+'</section>';
 
-  const selectedReceiptRows=selected?receipts.filter(r=>r.harvest_id===selected.id):receipts;
-  if(selectedReceiptRows.length){
-    html+='<section class="panel"><h3>Riwayat Penerimaan'+(selected?' Penjualan Dipilih':'')+'</h3><div class="tablewrap"><table><thead><tr>'+
-      '<th>Tanggal</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th>'+
-      '</tr></thead><tbody>'+selectedReceiptRows.map(r=>'<tr><td>'+prodDateId(r.received_on)+'</td><td>'+esc(r.method)+'</td><td>Rp '+prodFmt(r.amount,0)+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-receipt="'+esc(r.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_sales_receipts',r.id)+'</div></td></tr>').join('')+
-      '</tbody></table></div></section>';
-  }
+  const selectedReceiptBase=selected?receipts.filter(r=>r.harvest_id===selected.id):receipts;
+  const selectedReceiptRows=st.historyShown?selectedReceiptBase.filter(r=>
+    (!st.historyFrom||String(r.received_on||'')>=st.historyFrom)&&
+    (!st.historyTo||String(r.received_on||'')<=st.historyTo)
+  ):[];
+  html+='<section class="panel"><h3>Riwayat Penerimaan'+(selected?' Penjualan Dipilih':'')+'</h3>'+
+    '<form id="mandiriReceiptHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(st.historyFrom||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(st.historyTo||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="mandiriReceiptHistoryReset">Reset</button></div>'+
+    '</form>'+
+    (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+selectedReceiptRows.map(r=>'<tr><td>'+prodDateId(r.received_on)+'</td><td>'+esc(r.method)+'</td><td>Rp '+prodFmt(r.amount,0)+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-receipt="'+esc(r.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_sales_receipts',r.id)+'</div></td></tr>').join('')+
+    '</tbody></table></div>'+(selectedReceiptRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  const mandiriReceiptHistoryFilter=document.getElementById('mandiriReceiptHistoryFilter');
+  const mandiriReceiptHistoryReset=document.getElementById('mandiriReceiptHistoryReset');
+  if(mandiriReceiptHistoryFilter)mandiriReceiptHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(mandiriReceiptHistoryFilter);st.historyFrom=String(fd.get('from')||'');st.historyTo=String(fd.get('to')||'');if(st.historyFrom&&st.historyTo&&st.historyFrom>st.historyTo){const t=st.historyFrom;st.historyFrom=st.historyTo;st.historyTo=t}st.historyShown=true;await financeMandiriReceiptsPage();};
+  if(mandiriReceiptHistoryReset)mandiriReceiptHistoryReset.onclick=async()=>{st.historyFrom='';st.historyTo='';st.historyShown=false;await financeMandiriReceiptsPage();};
+
   const status=document.getElementById('mandiriReceiptStatus');
   if(status)status.onchange=async()=>{st.status=status.value||'';st.selected='';await financeMandiriReceiptsPage();};
   root.querySelectorAll('[data-receive-mandiri]').forEach(btn=>btn.onclick=async()=>{st.selected=btn.dataset.receiveMandiri;await financeMandiriReceiptsPage();const receiptForm=document.getElementById('mandiriReceiptForm');if(receiptForm)receiptForm.scrollIntoView({behavior:'smooth',block:'start'});});
@@ -8837,7 +8930,7 @@ async function financeMandiriSupplierPaymentPage(){
     return {...p,total,paid,balance,status:balance<=0.005?'LUNAS':paid>0?'SEBAGIAN':'BELUM BAYAR'};
   });
 
-  window.__financeMandiriSupplierPaymentState=window.__financeMandiriSupplierPaymentState||{selected:'',status:'',editPaymentId:''};
+  window.__financeMandiriSupplierPaymentState=window.__financeMandiriSupplierPaymentState||{selected:'',status:'',editPaymentId:'',historyFrom:'',historyTo:'',historyShown:false};
   const st=window.__financeMandiriSupplierPaymentState;
   const editPayment=payments.find(x=>x.id===st.editPaymentId)||null;
   if(editPayment)st.selected=editPayment.purchase_id||st.selected;
@@ -8885,15 +8978,29 @@ async function financeMandiriSupplierPaymentPage(){
     '</tr>';}).join('')+
     '</tbody></table></div>'+(shown.length?'':'<p class="muted">Tidak ada data sesuai filter.</p>')+'</section>';
 
-  const history=selected?payments.filter(p=>p.purchase_id===selected.id):payments;
-  if(history.length){
-    html+='<section class="panel"><h3>Riwayat Pembayaran'+(selected?' Hutang Dipilih':'')+'</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
+  const historyBase=selected?payments.filter(p=>p.purchase_id===selected.id):payments;
+  const history=st.historyShown?historyBase.filter(p=>
+    (!st.historyFrom||String(p.paid_on||'')>=st.historyFrom)&&
+    (!st.historyTo||String(p.paid_on||'')<=st.historyTo)
+  ):[];
+  html+='<section class="panel"><h3>Riwayat Pembayaran'+(selected?' Hutang Dipilih':'')+'</h3>'+
+    '<form id="mandiriSupplierHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(st.historyFrom||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(st.historyTo||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="mandiriSupplierHistoryReset">Reset</button></div>'+
+    '</form>'+
+    (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
       history.map(p=>{const pur=purchases.find(x=>x.id===p.purchase_id),s=suppliers.find(x=>x.id===pur?.supplier_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(s?.name||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method)+'</td><td>'+esc(p.reference||'-')+'</td><td>'+esc(p.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_supplier_payments',p.id)+'</div></td></tr>';}).join('')+
-      '</tbody></table></div></section>';
-  }
+      '</tbody></table></div>'+(history.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+    '</section>';
 
   layout(html);bindNumberInputs();
   const err=[pr,sr,ir,pyr].find(x=>x.error)?.error;if(err)msg(err.message);
+
+  const mandiriSupplierHistoryFilter=document.getElementById('mandiriSupplierHistoryFilter');
+  const mandiriSupplierHistoryReset=document.getElementById('mandiriSupplierHistoryReset');
+  if(mandiriSupplierHistoryFilter)mandiriSupplierHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(mandiriSupplierHistoryFilter);st.historyFrom=String(fd.get('from')||'');st.historyTo=String(fd.get('to')||'');if(st.historyFrom&&st.historyTo&&st.historyFrom>st.historyTo){const t=st.historyFrom;st.historyFrom=st.historyTo;st.historyTo=t}st.historyShown=true;await financeMandiriSupplierPaymentPage();};
+  if(mandiriSupplierHistoryReset)mandiriSupplierHistoryReset.onclick=async()=>{st.historyFrom='';st.historyTo='';st.historyShown=false;await financeMandiriSupplierPaymentPage();};
 
   const status=document.getElementById('mandiriSupplierPaymentStatus');
   if(status)status.onchange=async()=>{st.status=status.value||'';st.selected='';await financeMandiriSupplierPaymentPage();};
