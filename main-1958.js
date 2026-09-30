@@ -1218,14 +1218,30 @@ function profilePage(){
 }
 function field([key,label,type]){let options=type==='assignment'?assignments.filter(a=>a.active).map(a=>[a.id,assignmentActiveBarnLabel(barns,a)]):type==='barn'?barns.map(b=>[b.id,shortBarnLabel(b)]):type==='item'?items.map(i=>[i.id,i.code+' · '+i.name]):type==='supplier'?suppliers.filter(s=>s.active&&s.supplier_type==='SAPRONAK').map(s=>[s.id,s.code+' · '+s.name]):type==='contract'?contracts.map(k=>[k.id,k.number]):type==='employee'?employees.map(e=>[e.id,e.code+' · '+e.name]):type==='abk'?employees.filter(e=>e.kind==='ABK').map(e=>[e.id,e.code+' · '+e.name]):type==='ppl'?pplUsers.map(p=>[p.user_id,p.full_name]):type==='advance'?advances.filter(a=>a.balance>0).map(a=>[a.id,'Sisa Rp '+a.balance]):null;const required=new Set(['contract_assignment_id','contract_id','barn_id','employee_id','advance_id','code','name','unit','capacity','kind','initial_population','company_name','number','contract_date','integrator','arrived_on','shipped','received','doa','item_id','quantity','received_on','recorded_on','age_days','visited_on','harvested_on','transaction_number','birds','net_weight_kg','price_per_kg','incurred_on','acquired_on','acquisition_value','category','amount','advanced_on','paid_on','method','departed_on','destination','estimated_on','min_weight_kg','price_per_kg','metric','rupiah_per_kg','std_body_weight_g','std_fcr','std_feed_g_per_bird']);let input=type==='computed'?'<input type="text" data-computed="'+key+'" readonly tabindex="-1">':options?'<select name="'+key+'" '+(required.has(key)?'required':'')+'><option value="">Pilih '+label+'</option>'+options.map(([v,t])=>'<option value="'+esc(v)+'">'+esc(t)+'</option>').join('')+'</select>':type?.startsWith('select:')?'<select name="'+key+'">'+type.slice(7).split(',').map(v=>'<option>'+esc(v)+'</option>').join('')+'</select>':'<input name="'+key+'" type="'+(type==='number'?'text':(type||'text'))+'" '+(type==='number'?'data-number="1" inputmode="decimal" autocomplete="off"':'')+(required.has(key)?' required':'')+'>';return '<label>'+label+input+'</label>'}
 async function logisticsContractPage(){
-  const [br,cr,pr,ar,er,abr,ppr]=await Promise.all([
+  const [br,cr,pr,ar,er,abr,ppr,txShip,txExtShip,txReturn,txChick,txRec,txVisit,txEstimate,txHarvest,txMeat,txBop,txAdvance,txSalary,txRhppReal,txRhppFinal,txMandiriAlloc,txFeedMove]=await Promise.all([
     db.from('barns').select('id,code,name,location,kind,active').eq('active',true).order('code',{ascending:true}),
     db.from('contracts').select('id,number,contract_date,performance_template_name').is('cycle_id',null).order('contract_date',{ascending:false,nullsFirst:false}).order('number',{ascending:true}),
     db.from('performance_standards').select('contract_id,template_name').order('template_name',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,start_date,active,created_at,ppl_id,cycle_type').order('created_at',{ascending:false}),
     db.from('employees').select('id,code,name,kind,active').eq('kind','ABK').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_contract_assignment_abks').select('id,contract_assignment_id,abk_id,initial_birds,feed_pre_bags,feed_starter_bags,feed_finisher_bags,basics_locked_at,created_at').order('created_at',{ascending:true}),
-    db.from('profiles').select('user_id,full_name,role,active').eq('role','PPL').eq('active',true).order('full_name',{ascending:true})
+    db.from('profiles').select('user_id,full_name,role,active').eq('role','PPL').eq('active',true).order('full_name',{ascending:true}),
+    db.from('logistics_shipments').select('contract_assignment_id'),
+    db.from('logistics_external_shipments').select('contract_assignment_id'),
+    db.from('logistics_returns').select('contract_assignment_id'),
+    db.from('chick_ins').select('contract_assignment_id'),
+    db.from('recordings').select('contract_assignment_id'),
+    db.from('visits').select('contract_assignment_id'),
+    db.from('production_estimates').select('contract_assignment_id'),
+    db.from('marketing_contract_harvests').select('contract_assignment_id'),
+    db.from('marketing_external_meat_purchases').select('contract_assignment_id'),
+    db.from('bop').select('contract_assignment_id'),
+    db.from('advances').select('contract_assignment_id'),
+    db.from('abk_cycle_salaries').select('contract_assignment_id'),
+    db.from('rhpp_real').select('contract_assignment_id'),
+    db.from('rhpp_system_final').select('contract_assignment_id'),
+    db.from('logistics_mandiri_purchase_allocations').select('contract_assignment_id'),
+    db.from('logistics_company_feed_movements').select('contract_assignment_id')
   ]);
 
   const barns=br.data||[];
@@ -1241,6 +1257,11 @@ async function logisticsContractPage(){
   const availableBarns=barns.filter(x=>!lockedBarnIds.has(x.id));
   const abkName=id=>{const x=abks.find(a=>a.id===id);return x?x.code+' · '+x.name:'-'};
   const linksFor=id=>abkLinks.filter(x=>x.contract_assignment_id===id);
+  const transactionAssignmentIds=new Set(
+    [txShip,txExtShip,txReturn,txChick,txRec,txVisit,txEstimate,txHarvest,txMeat,txBop,txAdvance,txSalary,txRhppReal,txRhppFinal,txMandiriAlloc,txFeedMove]
+      .flatMap(r=>(r.data||[]).map(x=>x.contract_assignment_id).filter(Boolean))
+  );
+  const hasAssignmentTransactions=id=>transactionAssignmentIds.has(id);
 
   let html='<section class="panel"><h3>Buat Siklus</h3>'+
     '<form id="logisticsContractForm" class="form-vertical">'+
@@ -1265,7 +1286,7 @@ async function logisticsContractPage(){
       const b=barns.find(x=>x.id===a.barn_id);
       const k=masters.find(x=>x.id===a.master_contract_id);
       const ls=linksFor(a.id);
-      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td><strong>'+esc(a.cycle_type||'MITRA')+'</strong></td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">AKTIF</span></td><td><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Detail</button></td></tr>';
+      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td><strong>'+esc(a.cycle_type||'MITRA')+'</strong></td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">AKTIF</span></td><td><div class="table-actions"><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Edit</button>'+(hasAssignmentTransactions(a.id)?'':'<button type="button" class="btn-danger-soft" data-delete-cycle="'+esc(a.id)+'">Hapus</button>')+'</div></td></tr>';
     }).join('')+
     '</tbody></table></div>'+(!activeAssignments.length?'<p>Belum ada kontrak kandang aktif.</p>':'')+'</section>'+
     '<section class="panel"><h3>Riwayat Semua Siklus</h3><p class="muted">Read-only untuk pengecekan ADMIN. Menampilkan siklus aktif dan closed agar data lama tetap bisa diperiksa.</p><div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Siklus</th><th>Jenis</th><th>Kontrak</th><th>Performa</th><th>PPL</th><th>ABK</th><th>Tanggal Mulai</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
@@ -1273,14 +1294,16 @@ async function logisticsContractPage(){
       const b=barns.find(x=>x.id===a.barn_id);
       const k=masters.find(x=>x.id===a.master_contract_id);
       const ls=linksFor(a.id);
-      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td>'+esc(a.cycle_type||'MITRA')+'</td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">'+(a.active?'AKTIF':'CLOSED')+'</span></td><td><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Detail</button></td></tr>';
+      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td>'+esc(a.cycle_type||'MITRA')+'</td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">'+(a.active?'AKTIF':'CLOSED')+'</span></td><td><div class="table-actions"><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Edit</button>'+(hasAssignmentTransactions(a.id)?'':'<button type="button" class="btn-danger-soft" data-delete-cycle="'+esc(a.id)+'">Hapus</button>')+'</div></td></tr>';
     }).join('')+
     '</tbody></table></div>'+(!allAssignments.length?'<p>Belum ada riwayat siklus.</p>':'')+'</section>'+
     '<section class="panel" id="contractActiveDetail" hidden><h3>Detail Siklus</h3><div id="contractActiveDetailBody"></div></section>';
 
   layout(html);
   bindNumberInputs();
-  if(br.error||cr.error||pr.error||ar.error||er.error||abr.error||ppr.error)msg((br.error||cr.error||pr.error||ar.error||er.error||abr.error||ppr.error).message);
+  const contractPageErrors=[br,cr,pr,ar,er,abr,ppr,txShip,txExtShip,txReturn,txChick,txRec,txVisit,txEstimate,txHarvest,txMeat,txBop,txAdvance,txSalary,txRhppReal,txRhppFinal,txMandiriAlloc,txFeedMove];
+  const contractPageError=contractPageErrors.find(x=>x?.error)?.error;
+  if(contractPageError)msg(contractPageError.message);
 
   const contractSelect=document.getElementById('logisticsMasterContract');
   const perfSelect=document.getElementById('logisticsPerformance');
@@ -1467,6 +1490,18 @@ async function logisticsContractPage(){
   };
 
   root.querySelectorAll('[data-contract-detail]').forEach(btn=>btn.onclick=()=>renderContractDetail(btn.dataset.contractDetail));
+  root.querySelectorAll('[data-delete-cycle]').forEach(btn=>btn.onclick=async()=>{
+    const id=btn.dataset.deleteCycle;
+    const a=allAssignments.find(x=>x.id===id);
+    if(!a)return;
+    if(hasAssignmentTransactions(id))return msg('Siklus sudah memiliki transaksi. Hanya dapat diedit, tidak dapat dihapus.');
+    if(profile.role!=='ADMIN')return msg('Hanya Administrator yang dapat menghapus siklus.');
+    if(!await appConfirm('Hapus siklus kosong ini? Data ABK yang hanya terikat ke siklus ini juga akan dilepas.'))return;
+    const {error}=await db.from('logistics_contract_assignments').delete().eq('id',id);
+    if(error)return msg(error.message);
+    await logisticsContractPage();
+    msg('Siklus kosong berhasil dihapus.',true);
+  });
 
 }
 
