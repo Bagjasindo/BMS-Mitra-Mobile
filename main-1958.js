@@ -211,7 +211,51 @@ const modules={
   ,cicilan:{table:'advance_payments',fields:[['advance_id','Kasbon','advance'],['paid_on','Tanggal Bayar','date'],['amount','Nominal','number'],['method','Metode'],['reference','Referensi'],['notes','Catatan']]}
 };
 const title={finance_mandiri_piutang:'Piutang Penjualan',finance_mandiri_penerimaan:'Penerimaan Penjualan',finance_mandiri_hutang:'Hutang Supplier',finance_mandiri_pembayaran:'Pembayaran Supplier',finance_mandiri_laporan:'Laporan Mandiri',dashboard:'Dashboard',reset_klasemen:'Reset Klasemen ABK',owner_logistics_report:'Laporan Logistik',owner_marketing_report:'Laporan Marketing',owner_finance_report:'Laporan Keuangan',owner_production_report:'Laporan Produksi',owner_ppl_report:'Laporan PPL',supplier_sapronak:'Master Supplier Sapronak',supplier_daging:'Master Supplier Daging',logistik_kontrak:'Buat Siklus',logistik_pembelian_mandiri:'Pembelian Mandiri',logistik_pengiriman:'Pengiriman',logistik_kiriman_luar:'Sapronak Luar',logistik_pakan_luar:'Pakan Luar',logistik_doc_luar:'DOC Luar',logistik_ovk1_luar:'OVK1 / Obat Luar',logistik_beli_peralatan:'Beli Peralatan',logistik_stok_barang:'Stok Barang',logistik_kirim_stok:'Kirim Barang dari Gudang',logistik_retur:'Retur RHPP',logistik_retur_sebagian:'Retur Bermasalah',logistik_retur_luar:'Retur Tambah Sapronak',logistik_laporan:'Laporan Logistik',marketing_pelanggan:'Master Pelanggan',marketing_panen_kontrak:'Panen Mitra',marketing_panen_mandiri:'Panen Mandiri',marketing_tambah_daging:'Tambah Daging',marketing_laporan:'Laporan Marketing',kandang:'Master Kandang',item:'Master Sapronak',supplier:'Master Supplier',kontrak:'Master Kontrak',harga_hidup:'Harga Ayam Hidup',bonus_kontrak:'Bonus Kontrak',standar_performa:'Master Performa',chick_in:'Chick-In / DOC Masuk',sapronak:'Sapronak',recording:'Recording PPL',kunjungan:'Kunjungan PPL',panen:'Panen',ekspedisi:'Ekspedisi',estimasi:'Estimasi',liga_abk:'Liga ABK',rekap_produksi:'Rekap Produksi PPL',ppl_rhpp_view:'Lihat RHPP',rhpp:'CEK RHPP',rhpp_history:'Cetak RHPP',finance_rhpp_real:'RHPP Real',bop:'BOP Produksi',laba_rugi_kandang:'Laba/Rugi Kandang',laba_rugi_global:'Laba/Rugi Global',perawatan_kandang:'Perawatan Kandang',aset_kandang:'Aset Kandang / Kantor',hutang_supplier:'Hutang Supplier',finance_pembelian_langsung:'Beli Aset',finance_beli_stok:'Pembelian Barang',bop_umum:'BOP Umum',expedisi_master:'Master Data Expedisi',expedisi_usaha:'Expedisi',expedisi_pembayaran:'Penerimaan Expedisi',bop_expedisi:'BOP Expedisi',perawatan_expedisi:'Perawatan Expedisi',laporan_expedisi:'Laporan Expedisi',arus_kas:'Arus Kas',laporan_keuangan:'Laporan Keuangan',perusahaan:'Data Perusahaan',karyawan:'Master Karyawan',kasbon:'Kasbon',cicilan:'Bayar Kasbon',gaji_abk:'Gaji ABK',laporan:'Laporan',pengguna:'Master Pengguna',admin_cycle_lock:'Buka/Tutup Siklus',admin_log_aktivitas:'Log Aktivitas Pengguna',arsip_data:'Arsip Data',profil:'Profil'};
-const msg=(s,ok=false)=>{let e=document.getElementById('message');if(e){e.textContent=s;e.className=ok?'success':'error'}};
+const submitGuardSkip=form=>{
+  const id=String(form?.id||'');
+  return form?.dataset?.noSubmitGuard==='1'||/(filter|search|history)/i.test(id);
+};
+const releaseSubmitGuard=form=>{
+  if(!form||form.dataset?.bmsSubmitting!=='1')return;
+  form.dataset.bmsSubmitting='0';
+  const btn=form.__bmsSubmitButton;
+  if(btn){
+    btn.disabled=false;
+    if(btn.tagName==='INPUT')btn.value=btn.dataset.bmsOriginalLabel||btn.value;
+    else btn.textContent=btn.dataset.bmsOriginalLabel||btn.textContent;
+    delete btn.dataset.bmsOriginalLabel;
+  }
+  form.__bmsSubmitButton=null;
+  if(window.__bmsSubmittingForm===form)window.__bmsSubmittingForm=null;
+};
+document.addEventListener('submit',ev=>{
+  const form=ev.target;
+  if(!(form instanceof HTMLFormElement)||submitGuardSkip(form))return;
+  if(form.dataset.bmsSubmitting==='1'){
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    const e=document.getElementById('message');
+    if(e){e.textContent='Data sedang diproses. Tunggu sampai proses pertama selesai.';e.className='error';}
+    return;
+  }
+  form.dataset.bmsSubmitting='1';
+  window.__bmsSubmittingForm=form;
+  const btn=ev.submitter||form.querySelector('button[type="submit"],input[type="submit"],button:not([type])');
+  if(btn){
+    form.__bmsSubmitButton=btn;
+    btn.dataset.bmsOriginalLabel=btn.tagName==='INPUT'?btn.value:btn.textContent;
+    btn.disabled=true;
+    if(btn.tagName==='INPUT')btn.value='Sedang menyimpan...';
+    else btn.textContent='Sedang menyimpan...';
+  }
+  window.setTimeout(()=>releaseSubmitGuard(form),60000);
+},true);
+window.addEventListener('unhandledrejection',()=>releaseSubmitGuard(window.__bmsSubmittingForm));
+const msg=(s,ok=false)=>{
+  releaseSubmitGuard(window.__bmsSubmittingForm);
+  let e=document.getElementById('message');
+  if(e){e.textContent=s;e.className=ok?'success':'error'}
+};
 const transactionDeleteImpact=(table)=>{
   const impacts={
     logistics_shipments:'pengiriman dan rincian stok/logistik yang terkait dapat berubah',
