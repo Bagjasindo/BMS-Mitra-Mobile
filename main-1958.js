@@ -1268,7 +1268,15 @@ async function logisticsContractPage(){
       return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td><strong>'+esc(a.cycle_type||'MITRA')+'</strong></td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">AKTIF</span></td><td><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Detail</button></td></tr>';
     }).join('')+
     '</tbody></table></div>'+(!activeAssignments.length?'<p>Belum ada kontrak kandang aktif.</p>':'')+'</section>'+
-    '<section class="panel" id="contractActiveDetail" hidden><h3>Detail Kontrak Aktif</h3><div id="contractActiveDetailBody"></div></section>';
+    '<section class="panel"><h3>Riwayat Semua Siklus</h3><p class="muted">Read-only untuk pengecekan ADMIN. Menampilkan siklus aktif dan closed agar data lama tetap bisa diperiksa.</p><div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Siklus</th><th>Jenis</th><th>Kontrak</th><th>Performa</th><th>PPL</th><th>ABK</th><th>Tanggal Mulai</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    allAssignments.map(a=>{
+      const b=barns.find(x=>x.id===a.barn_id);
+      const k=masters.find(x=>x.id===a.master_contract_id);
+      const ls=linksFor(a.id);
+      return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td><strong>'+esc(assignmentCycleLabel(allAssignments,a))+'</strong></td><td>'+esc(a.cycle_type||'MITRA')+'</td><td>'+esc(a.cycle_type==='MANDIRI'?'MANDIRI':(shortContractLabel(k?.number)||'-'))+'</td><td>'+esc(a.performance_template_name||'-')+'</td><td>'+esc(pplName(a.ppl_id))+'</td><td>'+ls.length+' ABK</td><td>'+esc(a.start_date||'-')+'</td><td><span class="pill">'+(a.active?'AKTIF':'CLOSED')+'</span></td><td><button type="button" class="btn-secondary" data-contract-detail="'+esc(a.id)+'">Detail</button></td></tr>';
+    }).join('')+
+    '</tbody></table></div>'+(!allAssignments.length?'<p>Belum ada riwayat siklus.</p>':'')+'</section>'+
+    '<section class="panel" id="contractActiveDetail" hidden><h3>Detail Siklus</h3><div id="contractActiveDetailBody"></div></section>';
 
   layout(html);
   bindNumberInputs();
@@ -1385,22 +1393,29 @@ async function logisticsContractPage(){
   const detailPanel=document.getElementById('contractActiveDetail');
   const detailBody=document.getElementById('contractActiveDetailBody');
   const renderContractDetail=id=>{
-    const a=activeAssignments.find(x=>x.id===id);if(!a)return;
+    const a=allAssignments.find(x=>x.id===id);if(!a)return;
     const b=barns.find(x=>x.id===a.barn_id),k=masters.find(x=>x.id===a.master_contract_id),ls=linksFor(a.id);
-    let detail='<div class="contract-detail-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+' · '+esc(assignmentCycleLabel(allAssignments,a))+' · '+esc(a.cycle_type||'MITRA')+'</strong><div class="muted">'+esc(a.cycle_type==='MANDIRI'?('Mandiri · '+(a.performance_template_name||'-')+' · harga aktual'):((shortContractLabel(k?.number)||'-')+' · '+(a.performance_template_name||'-')))+'</div></div><span class="pill">AKTIF</span></div>';
-    detail+='<div class="return-grid">'+
-      '<label>Tanggal Mulai<input type="date" data-start-date="'+esc(a.id)+'" value="'+esc(a.start_date||'')+'"></label>'+ 
-      '<label>PPL Penanggung Jawab<select data-ppl-id="'+esc(a.id)+'"><option value="">Pilih PPL</option>'+ppls.map(x=>'<option value="'+esc(x.user_id)+'" '+(x.user_id===a.ppl_id?'selected':'')+'>'+esc(x.full_name)+'</option>').join('')+'</select></label>'+
-      '<div class="inline-actions contract-detail-actions"><button type="button" data-save-logistics-start="'+esc(a.id)+'">Simpan Tanggal</button><button type="button" data-save-ppl="'+esc(a.id)+'">Simpan PPL</button></div>'+
-    '</div>';
+    const active=!!a.active;
+    let detail='<div class="contract-detail-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+' · '+esc(assignmentCycleLabel(allAssignments,a))+' · '+esc(a.cycle_type||'MITRA')+'</strong><div class="muted">'+esc(a.cycle_type==='MANDIRI'?('Mandiri · '+(a.performance_template_name||'-')+' · harga aktual'):((shortContractLabel(k?.number)||'-')+' · '+(a.performance_template_name||'-')))+'</div></div><span class="pill">'+(active?'AKTIF':'CLOSED')+'</span></div>';
+    if(active){
+      detail+='<div class="return-grid">'+
+        '<label>Tanggal Mulai<input type="date" data-start-date="'+esc(a.id)+'" value="'+esc(a.start_date||'')+'"></label>'+ 
+        '<label>PPL Penanggung Jawab<select data-ppl-id="'+esc(a.id)+'"><option value="">Pilih PPL</option>'+ppls.map(x=>'<option value="'+esc(x.user_id)+'" '+(x.user_id===a.ppl_id?'selected':'')+'>'+esc(x.full_name)+'</option>').join('')+'</select></label>'+
+        '<div class="inline-actions contract-detail-actions"><button type="button" data-save-logistics-start="'+esc(a.id)+'">Simpan Tanggal</button><button type="button" data-save-ppl="'+esc(a.id)+'">Simpan PPL</button></div>'+
+      '</div>';
+    }else{
+      detail+='<div class="tablewrap"><table><tbody><tr><td>Tanggal Mulai</td><td>'+esc(a.start_date||'-')+'</td></tr><tr><td>PPL</td><td>'+esc(pplName(a.ppl_id))+'</td></tr><tr><td>Status</td><td>CLOSED · read-only</td></tr></tbody></table></div>';
+    }
     detail+='<h4>ABK Kandang</h4>';
-    detail+=ls.length?ls.map(x=>'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div><input type="text" data-number="1" inputmode="decimal" data-abk-pop="'+esc(x.id)+'" value="'+(x.initial_birds?fmtNumber(x.initial_birds):'')+'" placeholder="Ekor"><div class="table-actions"><button type="button" data-save-abk-pop="'+esc(x.id)+'">Simpan</button><button type="button" class="btn-danger-soft" data-remove-abk="'+esc(x.id)+'">Hapus</button></div></div>').join(''):'<p class="muted">Belum ada ABK.</p>';
-    if(a.cycle_type==='MANDIRI'&&profile.role==='ADMIN')detail+='<div class="inline-actions"><button type="button" class="btn-danger-soft" data-close-mandiri="'+esc(a.id)+'">Close Siklus Mandiri</button></div>';
-    detail+='<div class="contract-abk-add"><select data-add-abk-select="'+esc(a.id)+'"><option value="">Tambah ABK...</option>'+abks.filter(x=>!ls.some(l=>l.abk_id===x.id)).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select><input type="text" data-number="1" inputmode="decimal" data-add-abk-pop="'+esc(a.id)+'" placeholder="Populasi Awal"><button type="button" data-add-abk="'+esc(a.id)+'">Tambah ABK</button></div>';
+    detail+=ls.length?ls.map(x=>active
+      ?'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div><input type="text" data-number="1" inputmode="decimal" data-abk-pop="'+esc(x.id)+'" value="'+(x.initial_birds?fmtNumber(x.initial_birds):'')+'" placeholder="Ekor"><div class="table-actions"><button type="button" data-save-abk-pop="'+esc(x.id)+'">Simpan</button><button type="button" class="btn-danger-soft" data-remove-abk="'+esc(x.id)+'">Hapus</button></div></div>'
+      :'<div class="contract-abk-row"><div><strong>'+esc(abkName(x.abk_id))+'</strong><div class="muted">Populasi Awal</div></div><strong>'+(x.initial_birds==null?'-':fmtNumber(x.initial_birds))+' ekor</strong></div>'
+    ).join(''):'<p class="muted">Belum ada ABK.</p>';
+    if(active&&a.cycle_type==='MANDIRI'&&profile.role==='ADMIN')detail+='<div class="inline-actions"><button type="button" class="btn-danger-soft" data-close-mandiri="'+esc(a.id)+'">Close Siklus Mandiri</button></div>';
+    if(active)detail+='<div class="contract-abk-add"><select data-add-abk-select="'+esc(a.id)+'"><option value="">Tambah ABK...</option>'+abks.filter(x=>!ls.some(l=>l.abk_id===x.id)).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select><input type="text" data-number="1" inputmode="decimal" data-add-abk-pop="'+esc(a.id)+'" placeholder="Populasi Awal"><button type="button" data-add-abk="'+esc(a.id)+'">Tambah ABK</button></div>';
     detailBody.innerHTML=detail;
     detailPanel.hidden=false;
-    bindNumberInputs();
-    bindContractDetailActions();
+    if(active){bindNumberInputs();bindContractDetailActions();}
     detailPanel.scrollIntoView({behavior:'smooth',block:'start'});
   };
 
