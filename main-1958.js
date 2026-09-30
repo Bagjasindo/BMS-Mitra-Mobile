@@ -5350,7 +5350,7 @@ async function financeBopPage(){
     db.from('barns').select('id,code,name').order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,created_at').order('start_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('bop').select('id,contract_assignment_id,barn_id,incurred_on,category,amount,paid_by,reference,notes').order('incurred_on',{ascending:false}).order('id',{ascending:false})
+    db.from('bop').select('id,contract_assignment_id,barn_id,incurred_on,category,amount,paid_by,source_type,source_id,reference,notes').order('incurred_on',{ascending:false}).order('id',{ascending:false})
   ]);
   const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],rows=bopr.data||[];
   const err=[br,ar,cr,bopr].find(x=>x.error)?.error;
@@ -7228,19 +7228,23 @@ async function financeMandiriReportPage(){
 
 
 async function financeCashflowPage(){
-  const [xr,bar,assr,cr,cpr]=await Promise.all([
+  const [xr,bar,assr,cr,cpr,obr,ogr,omr]=await Promise.all([
     db.rpc('finance_cashflow_entries_v2'),
     db.from('barns').select('id,code,name'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
+    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle(),
+    db.from('bop').select('incurred_on,amount,barn_id,contract_assignment_id').eq('paid_by','OWNER'),
+    db.from('bop_outside').select('incurred_on,amount').eq('paid_by','OWNER'),
+    db.from('barn_maintenance_costs').select('incurred_on,amount,barn_id').eq('paid_by','OWNER')
   ]);
   const rows=(xr.data||[]).map(x=>({date:x.txn_date,type:x.txn_type,source:x.source,amount:prodNum(x.amount),barn_id:x.barn_id||'',assignment_id:x.contract_assignment_id||'',detail:x.detail||'',reference:x.reference||''})).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const barns=bar.data||[],assignments=assr.data||[],company=cpr.data||{};
-  const err=[xr,bar,assr,cr,cpr].find(x=>x.error)?.error;
+  const err=[xr,bar,assr,cr,cpr,obr,ogr,omr].find(x=>x.error)?.error;
   window.__financeCashflowState=window.__financeCashflowState||{from:'',to:'',barn:'',assignment:'',shown:false};
   const st=window.__financeCashflowState;
   const visible=rows.filter(x=>(!st.from||x.date>=st.from)&&(!st.to||x.date<=st.to)&&(!st.barn||x.barn_id===st.barn)&&(!st.assignment||x.assignment_id===st.assignment));
+  const ownerCosts=[...(obr.data||[]),...(ogr.data||[]),...(omr.data||[])].filter(x=>(!st.from||x.incurred_on>=st.from)&&(!st.to||x.incurred_on<=st.to)&&(!st.barn||x.barn_id===st.barn)&&(!st.assignment||x.contract_assignment_id===st.assignment)).reduce((n,x)=>n+prodNum(x.amount),0);
   const masuk=visible.filter(x=>x.type==='MASUK').reduce((n,x)=>n+x.amount,0),keluar=visible.filter(x=>x.type==='KELUAR').reduce((n,x)=>n+x.amount,0),saldo=masuk-keluar;
   const bySource=new Map();
   visible.forEach(x=>{const k=x.source||'LAINNYA',v=bySource.get(k)||{source:k,count:0,masuk:0,keluar:0};v.count++;v[x.type==='MASUK'?'masuk':'keluar']+=x.amount;bySource.set(k,v)});
@@ -7251,7 +7255,7 @@ async function financeCashflowPage(){
     '<form id="cashflowFilter" class="form-vertical"><label>Tanggal Awal<input type="date" name="from" value="'+esc(st.from||'')+'"></label><label>Tanggal Akhir<input type="date" name="to" value="'+esc(st.to||'')+'"></label>'+
     '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
     '<label>Siklus<select name="assignment" '+(!st.barn?'disabled':'')+'><option value="">Semua Siklus</option>'+assignments.filter(a=>a.barn_id===st.barn).map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label><button type="submit">Tampilkan</button></form></section>';
-  if(st.shown)html+='<section class="panel" id="cashflowPrintArea"><div class="rhpp-section-head"><div><h3>Ringkasan Arus Kas</h3></div><div class="report-actions"><button type="button" id="cashflowPrint">Cetak / PDF</button></div></div><div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Kas Masuk</span><strong>Rp '+prodFmt(masuk,0)+'</strong></div><div class="rhpp-summary-card"><span>Kas Keluar</span><strong>Rp '+prodFmt(keluar,0)+'</strong></div><div class="rhpp-summary-card"><span>Selisih Kas Periode</span><strong>Rp '+prodFmt(saldo,0)+'</strong></div></div>'+
+  if(st.shown)html+='<section class="panel" id="cashflowPrintArea"><div class="rhpp-section-head"><div><h3>Ringkasan Arus Kas</h3></div><div class="report-actions"><button type="button" id="cashflowPrint">Cetak / PDF</button></div></div><div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Kas Masuk</span><strong>Rp '+prodFmt(masuk,0)+'</strong></div><div class="rhpp-summary-card"><span>Kas Keluar</span><strong>Rp '+prodFmt(keluar,0)+'</strong></div><div class="rhpp-summary-card"><span>Selisih Kas Periode</span><strong>Rp '+prodFmt(saldo,0)+'</strong></div><div class="rhpp-summary-card"><span>Biaya Dibayar Owner</span><strong>Rp '+prodFmt(ownerCosts,0)+'</strong><small>BOP Produksi, BOP Umum, Perawatan Kandang; di luar kas perusahaan</small></div></div>'+
     '<h4>Rincian per Sumber</h4><p class="muted">Satu transaksi tercatat pada sumber asalnya. Cocokkan referensi dan rincian sebelum menambah biaya dari Excel.</p>'+
     '<div class="tablewrap"><table><thead><tr><th>Sumber</th><th>Transaksi</th><th>Masuk</th><th>Keluar</th></tr></thead><tbody>'+sourceRows.map(x=>'<tr><td>'+esc(x.source)+'</td><td>'+x.count+'</td><td>Rp '+prodFmt(x.masuk,0)+'</td><td>Rp '+prodFmt(x.keluar,0)+'</td></tr>').join('')+'</tbody></table></div>'+
     '<h4>Rincian Transaksi</h4><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Sumber</th><th>Kandang</th><th>Keterangan</th><th>Referensi</th><th>Masuk</th><th>Keluar</th></tr></thead><tbody>'+visible.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.source)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(x.detail)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+(x.type==='MASUK'?'Rp '+prodFmt(x.amount,0):'-')+'</td><td>'+(x.type==='KELUAR'?'Rp '+prodFmt(x.amount,0):'-')+'</td></tr>').join('')+'</tbody></table></div>'+(visible.length?'':'<p class="muted">Tidak ada transaksi sesuai filter.</p>')+'</section>';
