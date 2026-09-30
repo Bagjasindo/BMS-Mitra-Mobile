@@ -1015,6 +1015,10 @@ async function printFinanceDocument(sectionIds,heading){
     return clone.innerHTML;
   }).join('<div class="print-gap"></div>');
   const generated=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'long',timeStyle:'short'}).format(new Date());
+  const isCashflowDetail=/Rincian Arus Kas/i.test(String(heading||''));
+  const cashflowPrintCss=isCashflowDetail
+    ?'body{font-size:9px!important;max-width:281mm!important}h2{font-size:15px!important}h3{font-size:11px!important}h4{font-size:10px!important}table{table-layout:fixed!important}th,td{font-size:8.5px!important;padding:4px 4px!important;line-height:1.3!important;vertical-align:top!important}th:nth-child(1),td:nth-child(1){width:10%}th:nth-child(2),td:nth-child(2){width:7%}th:nth-child(3),td:nth-child(3){width:13%}th:nth-child(4),td:nth-child(4){width:17%}th:nth-child(5),td:nth-child(5){width:28%;white-space:normal!important;overflow-wrap:anywhere!important}th:nth-child(6),td:nth-child(6){width:11%;white-space:normal!important;overflow-wrap:anywhere!important}th:nth-child(7),td:nth-child(7),th:nth-child(8),td:nth-child(8){width:7%;text-align:right;white-space:nowrap!important}.rhpp-summary-card span{font-size:8.5px!important}.rhpp-summary-card strong{font-size:11px!important}.muted{font-size:8.5px!important}'
+    :'';
   w.document.write('<html><head><meta charset="utf-8"><title>'+esc(heading||'Laporan')+'</title><style>'+
     '@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;font-size:8px;line-height:1.2;margin:0 auto;max-width:281mm}'+
     '.print-head{border-bottom:1px solid #222;padding-bottom:4px;margin-bottom:6px;min-height:38px}.print-head h2{margin:0 0 2px;font-size:14px}.print-head div{margin:1px 0;font-size:8px}.print-head img{max-height:34px!important}'+
@@ -1024,6 +1028,7 @@ async function printFinanceDocument(sectionIds,heading){
     '.muted{color:#444;font-size:7.5px}.print-gap{height:4px}.tablewrap{overflow:visible!important;width:100%}.panel{border:0!important;box-shadow:none!important;padding:0!important;margin:0!important;background:#fff!important}'+
     '.total{margin:4px 0!important}.report-actions,.inline-actions,button,form{display:none!important}'+
     '@media print{html,body{width:100%;height:auto}.page-break{break-before:page}.avoid-break{break-inside:avoid;page-break-inside:avoid}}'+
+    cashflowPrintCss+
     '</style></head><body>'+
     '<div class="print-head">'+'<img src="'+esc(reportLogo)+'" style="max-height:42px;float:right;object-fit:contain">'+
     '<h2>'+esc(cp.company_name||cp.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
