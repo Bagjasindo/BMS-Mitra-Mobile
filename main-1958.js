@@ -5672,66 +5672,53 @@ async function logisticsEquipmentPurchasePage(){
 }
 
 async function financeDirectPurchasePage(){
-  const [pr,sr,br,ar]=await Promise.all([
-    db.from('finance_direct_purchases').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}).limit(500),
-    db.from('suppliers').select('id,code,name,active').eq('active',true).order('name',{ascending:true}),
-    db.from('barns').select('id,code,name,active').order('code',{ascending:true}),
-    db.from('logistics_contract_assignments').select('id,barn_id,start_date,active,cycle_type,created_at').eq('cycle_type','MITRA').order('start_date',{ascending:false})
+  const [hr,dr,br]=await Promise.all([
+    db.from('finance_asset_purchase_invoices').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}).limit(300),
+    db.from('finance_direct_purchases').select('id,invoice_id,standard_name,description,quantity,unit,unit_price,total_amount,linked_id').eq('purchase_type','ASSET').order('created_at',{ascending:true}).limit(1500),
+    db.from('barns').select('id,code,name,active').order('code',{ascending:true})
   ]);
-  const purchases=pr.data||[],suppliers=sr.data||[],barns=br.data||[],assignments=ar.data||[];
-  const err=[pr,sr,br,ar].find(x=>x.error)?.error;
+  const invoices=hr.data||[],details=dr.data||[],barns=br.data||[];
+  const err=[hr,dr,br].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  const standardNames=[...new Map(purchases.filter(x=>x.standard_name).map(x=>[String(x.standard_name).trim().toLowerCase(),x.standard_name])).values()];
-  const supplierLabel=id=>{const x=suppliers.find(s=>s.id===id);return x?((x.code||'')+' · '+x.name):'-'};
+  const standardNames=[...new Map(details.filter(x=>x.standard_name).map(x=>[String(x.standard_name).trim().toLowerCase(),x.standard_name])).values()];
+  const latestByName=name=>details.slice().reverse().find(x=>String(x.standard_name||'').trim().toLowerCase()===String(name||'').trim().toLowerCase());
   const barnLabel=id=>{const x=barns.find(b=>b.id===id);return x?shortBarnLabel(x):'-'};
-  const assignmentLabelLocal=a=>{const b=barns.find(x=>x.id===a.barn_id);return (b?shortBarnLabel(b):'-')+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED');};
+  const invoiceItems=id=>details.filter(x=>x.invoice_id===id);
 
   let html='<section class="panel"><h3>Beli Aset</h3>'+
-    '<p class="muted">Khusus pembelian aset oleh Keuangan yang bukan wilayah Logistik. Nama standar dipakai kembali agar pembelian pada tanggal berbeda dapat direkap kumulatif, sedangkan catatan transaksi tetap tersimpan per nota.</p>'+
-    '<form id="financeDirectPurchaseForm" class="form-vertical">'+
+    '<p class="muted">Satu nota dapat berisi beberapa aset. Isi data nota sekali, lalu tambahkan setiap barang dengan tombol <strong>+ Barang</strong>. Setiap barang menjadi aset tersendiri, sedangkan Arus Kas tetap dihitung satu kali sebesar total nota.</p>'+
+    '<form id="financeAssetInvoiceForm" class="form-vertical">'+
       '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+today+'" required></label>'+
-      '<input type="hidden" name="purchase_type" id="directPurchaseType" value="ASSET">'+
-      '<label>Nama Standar<input name="standard_name" id="directStandardName" list="directStandardNames" autocomplete="off" placeholder="Contoh: Pompa Air" required></label>'+
-      '<datalist id="directStandardNames">'+standardNames.map(x=>'<option value="'+esc(x)+'"></option>').join('')+'</datalist>'+
-      '<label>Deskripsi / Catatan Nota<input name="description" placeholder="Boleh berbeda tiap pembelian"></label>'+
       '<label>Supplier<input name="supplier_name" placeholder="Masukkan nama supplier"></label>'+
       '<label>Lokasi Aset<select name="asset_location_type" id="assetLocationType" required><option value="KANDANG">Kandang</option><option value="KANTOR">Kantor</option></select></label>'+
       '<label id="directBarnWrap">Kandang<select name="barn_id" id="directBarn"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Jumlah<input type="text" name="quantity" data-number="1" inputmode="decimal" required></label>'+
-      '<label>Satuan<input name="unit" id="directUnit" placeholder="UNIT / PCS / BOTOL / JASA" required></label>'+
-      '<label>Harga per Satuan<input type="text" name="unit_price" data-number="1" inputmode="decimal" required></label>'+
-      '<label>Total<input id="directTotal" readonly tabindex="-1"></label>'+
       '<label>Metode Pembayaran<select name="payment_method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option></select></label>'+
       '<label>Referensi / No. Nota<input name="reference"></label>'+
-      '<label>Catatan Tambahan<textarea name="notes"></textarea></label>'+
-      '<button type="submit">Simpan Beli Aset</button>'+
+      '<label>Catatan Nota<textarea name="notes"></textarea></label>'+
+      '<datalist id="assetStandardNames">'+standardNames.map(x=>'<option value="'+esc(x)+'"></option>').join('')+'</datalist>'+
+      '<div class="tablewrap"><table><thead><tr><th>Nama Standar</th><th>Deskripsi</th><th>Jumlah</th><th>Satuan</th><th>Harga/Satuan</th><th>Total</th><th></th></tr></thead><tbody id="assetItemRows"></tbody></table></div>'+
+      '<div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.75rem"><button type="button" id="addAssetItem">+ Barang</button><strong>Total Nota: <span id="assetInvoiceTotal">Rp 0</span></strong></div>'+
+      '<button type="submit">Simpan Nota Aset</button>'+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Pembelian Aset</h3><div class="tablewrap"><table><thead><tr>'+
-    '<th>Tanggal</th><th>Jenis</th><th>Nama Standar</th><th>Deskripsi</th><th>Lokasi</th><th>Jumlah</th><th>Harga/Satuan</th><th>Total</th><th>Metode</th><th>Supplier</th>'+
+  html+='<section class="panel"><h3>Riwayat Nota Aset</h3><div class="tablewrap"><table><thead><tr>'+
+    '<th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Lokasi</th><th>Barang</th><th>Jumlah Jenis</th><th>Total Nota</th><th>Metode</th>'+
     '</tr></thead><tbody>'+
-    purchases.map(x=>'<tr><td>'+prodDateId(x.purchase_date)+'</td><td>'+esc('ASET')+'</td><td><strong>'+esc(x.standard_name||'-')+'</strong></td><td>'+esc(x.description||'-')+'</td><td>'+esc(x.asset_location_type==='KANTOR'?'Kantor':barnLabel(x.barn_id))+'</td><td>'+prodFmt(x.quantity,2)+' '+esc(x.unit||'')+'</td><td>Rp '+prodFmt(x.unit_price,0)+'</td><td><strong>Rp '+prodFmt(x.total_amount,0)+'</strong></td><td>'+esc(x.payment_method||'-')+'</td><td>'+esc(x.supplier_id?supplierLabel(x.supplier_id):(x.supplier_name||'-'))+'</td></tr>').join('')+
-    '</tbody></table></div>'+(purchases.length?'':'<p class="muted">Belum ada pembelian langsung.</p>')+'</section>';
+    invoices.map(h=>{
+      const lines=invoiceItems(h.id);
+      const names=lines.map(x=>x.standard_name+' ('+prodFmt(x.quantity,2)+' '+(x.unit||'')+')').join(', ');
+      const loc=h.asset_location_type==='KANTOR'?'Kantor':barnLabel(h.barn_id);
+      return '<tr><td>'+prodDateId(h.purchase_date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier_name||'-')+'</td><td>'+esc(loc)+'</td><td>'+esc(names||'-')+'</td><td>'+lines.length+'</td><td><strong>Rp '+prodFmt(h.total_amount,0)+'</strong></td><td>'+esc(h.payment_method||'-')+'</td></tr>';
+    }).join('')+
+    '</tbody></table></div>'+(invoices.length?'':'<p class="muted">Belum ada nota pembelian aset.</p>')+'</section>';
 
-  layout(html);bindNumberInputs();if(err)msg(err.message);
-  const form=document.getElementById('financeDirectPurchaseForm');
-  const type=form?.elements.purchase_type;
-  const standard=form?.elements.standard_name;
-  const unit=form?.elements.unit;
-  const barn=form?.elements.barn_id;
+  layout(html);if(err)msg(err.message);
+  const form=document.getElementById('financeAssetInvoiceForm');
   const locationType=document.getElementById('assetLocationType');
+  const barn=form?.elements.barn_id;
   const barnWrap=document.getElementById('directBarnWrap');
-  const total=document.getElementById('directTotal');
-
-  const latestByName=name=>purchases.find(x=>String(x.standard_name||'').trim().toLowerCase()===String(name||'').trim().toLowerCase());
-  const canon=()=>{
-    const hit=latestByName(standard?.value);
-    if(hit){
-      standard.value=hit.standard_name;
-      if(unit&&!unit.value)unit.value=hit.unit||'';
-    }
-  };
-  if(standard){standard.onchange=canon;standard.onblur=canon;}
+  const rowsEl=document.getElementById('assetItemRows');
+  const totalEl=document.getElementById('assetInvoiceTotal');
 
   const syncLocation=()=>{
     const isBarn=locationType?.value!=='KANTOR';
@@ -5742,41 +5729,95 @@ async function financeDirectPurchasePage(){
   if(locationType)locationType.onchange=syncLocation;
   syncLocation();
 
-  const calc=()=>{
-    const q=normalizeInputID(form.elements.quantity?.value);
-    const p=normalizeInputID(form.elements.unit_price?.value);
-    total.value=(q!=null&&p!=null)?'Rp '+prodFmt(q*p,0):'';
+  const calcInvoice=()=>{
+    let total=0;
+    rowsEl?.querySelectorAll('tr').forEach(row=>{
+      const q=normalizeInputID(row.querySelector('.asset-qty')?.value);
+      const p=normalizeInputID(row.querySelector('.asset-price')?.value);
+      const line=(q!=null&&p!=null)?q*p:0;
+      const lineEl=row.querySelector('.asset-line-total');
+      if(lineEl)lineEl.textContent='Rp '+prodFmt(line,0);
+      total+=line;
+    });
+    if(totalEl)totalEl.textContent='Rp '+prodFmt(total,0);
+    return total;
   };
-  form?.elements.quantity?.addEventListener('input',calc);
-  form?.elements.unit_price?.addEventListener('input',calc);
+
+  const bindRow=row=>{
+    const name=row.querySelector('.asset-name');
+    const unit=row.querySelector('.asset-unit');
+    const canonical=()=>{
+      const hit=latestByName(name?.value);
+      if(hit&&name){
+        name.value=hit.standard_name;
+        if(unit&&!unit.value)unit.value=hit.unit||'';
+      }
+    };
+    if(name){name.onchange=canonical;name.onblur=canonical;}
+    row.querySelectorAll('.asset-qty,.asset-price').forEach(el=>el.addEventListener('input',calcInvoice));
+    const del=row.querySelector('.asset-remove');
+    if(del)del.onclick=()=>{
+      const all=rowsEl.querySelectorAll('tr');
+      if(all.length<=1)return msg('Minimal satu barang harus ada.');
+      row.remove();calcInvoice();
+    };
+  };
+
+  const addRow=(seed={})=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td><input class="asset-name" list="assetStandardNames" autocomplete="off" placeholder="Contoh: Pompa Air" value="'+esc(seed.standard_name||'')+'"></td>'+
+      '<td><input class="asset-description" placeholder="Keterangan barang" value="'+esc(seed.description||'')+'"></td>'+
+      '<td><input class="asset-qty" type="text" data-number="1" inputmode="decimal" value="'+esc(seed.quantity||'')+'"></td>'+
+      '<td><input class="asset-unit" placeholder="UNIT / PCS" value="'+esc(seed.unit||'')+'"></td>'+
+      '<td><input class="asset-price" type="text" data-number="1" inputmode="decimal" value="'+esc(seed.unit_price||'')+'"></td>'+
+      '<td><strong class="asset-line-total">Rp 0</strong></td>'+
+      '<td><button type="button" class="asset-remove btn-danger">Hapus</button></td>';
+    rowsEl.appendChild(tr);bindRow(tr);bindNumberInputs();calcInvoice();
+  };
+  document.getElementById('addAssetItem').onclick=()=>addRow();
+  addRow();
 
   if(form)form.onsubmit=async ev=>{
-    ev.preventDefault();canon();
+    ev.preventDefault();
     const fd=new FormData(form);
-    const q=normalizeInputID(fd.get('quantity')),price=normalizeInputID(fd.get('unit_price'));
-    if(q===null||q<=0)return msg('Jumlah tidak valid.');
-    if(price===null||price<0)return msg('Harga per satuan tidak valid.');
-    const name=String(fd.get('standard_name')||'').trim();
-    if(!name)return msg('Nama Standar wajib.');
-    const info=String(fd.get('asset_location_type')||'KANDANG')==='KANTOR'?'Aset Kantor':'Aset Kandang';
-    if(!await appConfirm('Simpan '+name+' sebesar Rp '+prodFmt(q*price,0)+'? Sistem akan mengarahkan otomatis ke '+info+'.'))return;
-    const {error}=await db.rpc('finance_save_direct_purchase_atomic',{
+    const items=[];
+    for(const row of rowsEl.querySelectorAll('tr')){
+      const name=String(row.querySelector('.asset-name')?.value||'').trim();
+      const description=String(row.querySelector('.asset-description')?.value||'').trim();
+      const q=normalizeInputID(row.querySelector('.asset-qty')?.value);
+      const unit=String(row.querySelector('.asset-unit')?.value||'').trim();
+      const price=normalizeInputID(row.querySelector('.asset-price')?.value);
+      if(!name)return msg('Nama Standar setiap barang wajib diisi.');
+      if(q===null||q<=0)return msg('Jumlah setiap barang harus lebih dari 0.');
+      if(!unit)return msg('Satuan setiap barang wajib diisi.');
+      if(price===null||price<0)return msg('Harga setiap barang tidak valid.');
+      const hit=latestByName(name);
+      items.push({
+        standard_name:hit?.standard_name||name,
+        description:description||null,
+        quantity:q,
+        unit:(hit?.unit&&unit===String(hit.unit))?hit.unit:unit,
+        unit_price:price
+      });
+    }
+    if(!items.length)return msg('Minimal satu barang wajib diisi.');
+    const total=calcInvoice();
+    const loc=String(fd.get('asset_location_type')||'KANDANG');
+    const info=loc==='KANTOR'?'Kantor':barnLabel(String(fd.get('barn_id')||''));
+    if(!await appConfirm('Simpan 1 nota dengan '+items.length+' barang, total Rp '+prodFmt(total,0)+' ke '+info+'?'))return;
+    const {error}=await db.rpc('finance_save_asset_invoice_atomic',{
       p_purchase_date:String(fd.get('purchase_date')||''),
-      p_purchase_type:'ASSET',
-      p_standard_name:name,
-      p_description:String(fd.get('description')||'')||null,
-      p_supplier_id:null,
       p_supplier_name:String(fd.get('supplier_name')||'')||null,
+      p_asset_location_type:loc,
       p_barn_id:String(fd.get('barn_id')||'')||null,
-      p_contract_assignment_id:null,
-      p_quantity:q,p_unit:String(fd.get('unit')||''),p_unit_price:price,
       p_payment_method:String(fd.get('payment_method')||''),
-      p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null,
-      p_asset_location_type:String(fd.get('asset_location_type')||'KANDANG')
+      p_reference:String(fd.get('reference')||'')||null,
+      p_notes:String(fd.get('notes')||'')||null,
+      p_items:items
     });
     if(error)return msg(error.message);
     await financeDirectPurchasePage();
-    msg('Pembelian langsung tersimpan dan diarahkan otomatis ke '+info+'.',true);
+    msg('Nota aset tersimpan. '+items.length+' barang dibuat sebagai aset terpisah dan Arus Kas dihitung satu kali sebesar total nota.',true);
   };
 }
 
