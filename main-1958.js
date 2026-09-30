@@ -5519,6 +5519,15 @@ async function pplRhppAbkViewPage(){
       '<section class="panel rhpp-panel rhpp-head"><h3>'+esc(leagueAbkName(e))+' · '+esc(b?shortBarnLabel(b):'-')+'</h3>'+
         '<p class="muted">'+esc(assignmentCycleLabel(d.assignments,a))+' · Status: <strong>'+(a?.active?'PROSES':'CLOSED')+'</strong></p>'+
       '</section>';
+    if(r){html+='<div class="ui-rhpp-kpis">'+
+      '<div class="ui-rhpp-kpi"><span>Populasi Awal</span><strong>'+prodFmt(r.initial,0)+'</strong></div>'+
+      '<div class="ui-rhpp-kpi"><span>Panen</span><strong>'+prodFmt(r.birds,0)+' ekor</strong></div>'+
+      '<div class="ui-rhpp-kpi"><span>Total Berat</span><strong>'+prodFmt(r.kg,2)+' kg</strong></div>'+
+      '<div class="ui-rhpp-kpi"><span>BW Rata-rata</span><strong>'+prodFmt(r.bw,2)+' kg</strong></div>'+
+      '<div class="ui-rhpp-kpi"><span>FCR</span><strong>'+prodFmt(r.fcr,3)+'</strong></div>'+
+      '<div class="ui-rhpp-kpi"><span>IP</span><strong>'+prodFmt(r.ip,0)+'</strong></div>'+
+    '</div>';}
+
 
     if(r){
       html+='<section class="panel rhpp-panel rhpp-wide rhpp-harvest"><div class="rhpp-section-head"><div><h3>Rincian Panen ABK</h3><p class="muted">Data panen Liga ABK yang menjadi sumber nilai produksi RHPP ABK.</p></div><span class="rhpp-count">'+selectedHarvestRows.length+' transaksi</span></div>'+
@@ -5682,7 +5691,25 @@ const RHPP_SCREEN_STYLE='<style>'+
 '.rhpp-ui .rhpp-summary-card strong,.rhpp-page .rhpp-summary-card strong{font-size:17px;color:#102a43}'+
 '.rhpp-ui .rhpp-total-row th,.rhpp-ui .rhpp-total-row td,.rhpp-page .rhpp-total-row th,.rhpp-page .rhpp-total-row td{background:#eef8fc!important;font-weight:800}'+
 '.rhpp-ui .muted,.rhpp-page .muted{color:#64748b}'+
+'.rhpp-ui .ui-rhpp-head,.rhpp-page .ui-rhpp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}'+
+'.rhpp-ui .ui-rhpp-title h2,.rhpp-page .ui-rhpp-title h2{margin:0;color:#0b5f8f}'+
+'.rhpp-ui .ui-rhpp-status,.rhpp-page .ui-rhpp-status{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;background:#e9f7fb;color:#0b5f8f;font-weight:700;font-size:12px}'+
+'.rhpp-ui .ui-rhpp-kpis,.rhpp-page .ui-rhpp-kpis{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}'+
+'.rhpp-ui .ui-rhpp-kpi,.rhpp-page .ui-rhpp-kpi{border:1px solid #d7e5ec;border-radius:10px;padding:12px;background:#fff}'+
+'.rhpp-ui .ui-rhpp-kpi span,.rhpp-page .ui-rhpp-kpi span{display:block;color:#64748b;font-size:12px;margin-bottom:4px}'+
+'.rhpp-ui .ui-rhpp-kpi strong,.rhpp-page .ui-rhpp-kpi strong{font-size:18px;color:#102a43}'+
+'.rhpp-ui .ui-rhpp-grid,.rhpp-page .ui-rhpp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}'+
+'.rhpp-ui .ui-rhpp-card,.rhpp-page .ui-rhpp-card{border:1px solid #d7e5ec;border-radius:10px;background:#fff;overflow:hidden}'+
+'.rhpp-ui .ui-rhpp-card h3,.rhpp-page .ui-rhpp-card h3{margin:0;padding:10px 12px;background:#eef8fc;color:#0b5f8f;font-size:14px}'+
+'.rhpp-ui .ui-rhpp-card table,.rhpp-page .ui-rhpp-card table{width:100%;border-collapse:collapse}'+
+'.rhpp-ui .ui-rhpp-card td,.rhpp-ui .ui-rhpp-card th,.rhpp-page .ui-rhpp-card td,.rhpp-page .ui-rhpp-card th{padding:8px 10px;border-top:1px solid #edf2f5;font-size:13px}'+
+'.rhpp-ui .ui-rhpp-card td:last-child,.rhpp-page .ui-rhpp-card td:last-child{text-align:right;font-weight:700}'+
+'.rhpp-ui .ui-rhpp-wide,.rhpp-page .ui-rhpp-wide{grid-column:1/-1}'+
+'.rhpp-ui .ui-rhpp-profit,.rhpp-page .ui-rhpp-profit{color:#111!important;font-weight:800!important}'+
+'.rhpp-ui .ui-rhpp-loss,.rhpp-page .ui-rhpp-loss{color:#d9272e!important;font-weight:800!important}'+
+'@media(max-width:980px){.rhpp-ui .ui-rhpp-kpis,.rhpp-page .ui-rhpp-kpis{grid-template-columns:repeat(3,1fr)}.rhpp-ui .ui-rhpp-grid,.rhpp-page .ui-rhpp-grid{grid-template-columns:1fr}}'+
 '@media(max-width:900px){.rhpp-ui .rhpp-summary-cards,.rhpp-page .rhpp-summary-cards{grid-template-columns:repeat(2,1fr)}}'+
+'@media(max-width:600px){.rhpp-ui .ui-rhpp-kpis,.rhpp-page .ui-rhpp-kpis{grid-template-columns:repeat(2,1fr)}}'+
 '</style>';
 async function pplRhppViewPage(){
   const d=await productionBase();
@@ -5977,18 +6004,55 @@ async function adminRhppHistoryPage(){
     const avgLivePrice=harvestKg>0?prodNum(src?.harvest_value)/harvestKg:0;
     const docUnitPrice=chickIn>0?prodNum(src?.main_doc_cost)/chickIn:prodNum(contract?.doc_price);
     const feedUnitPrice=feedKg>0?prodNum(src?.main_feed_cost)/feedKg:0;
-    html+='<section class="panel">'+
-      '<div class="rhpp-section-head"><div><h3>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,a))+'</h3>'+
-        '<p class="muted">'+assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+(closed?'CLOSED / FINAL':'PROSES')+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</p></div>'+
+    const screenMoney=v=>'Rp '+prodFmt(v,0);
+    const screenProfit=prodNum(src?.farmer_profit);
+    const screenProfitClass=screenProfit<0?'ui-rhpp-loss':'ui-rhpp-profit';
+    html+='<section class="panel" id="pplRhppExportArea">'+
+      '<div class="ui-rhpp-head"><div class="ui-rhpp-title"><h2>'+esc(b?shortBarnLabel(b):'RHPP')+'</h2>'+
+        '<div class="muted">'+esc(assignmentCycleLabel(d.assignments,a))+' · '+esc(a.cycle_type||'MITRA')+' · <span class="ui-rhpp-status">FINAL / CLOSED</span>'+(fin?' · Close '+prodDateId(fin.closed_on):'')+'</div></div>'+
         '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
       '</div>'+
-      '<div id="pplRhppExportArea" style="margin-top:12px">'+
-        '<iframe id="pplRhppPreview" title="Preview RHPP" style="width:100%;height:1220px;border:1px solid #d7e0e8;border-radius:8px;background:#fff;display:block"></iframe>'+
+      '<div class="ui-rhpp-kpis" style="margin-top:14px">'+
+        '<div class="ui-rhpp-kpi"><span>Populasi DOC</span><strong>'+prodFmt(chickIn,0)+'</strong></div>'+
+        '<div class="ui-rhpp-kpi"><span>Panen</span><strong>'+prodFmt(harvestBirds,0)+' ekor</strong></div>'+
+        '<div class="ui-rhpp-kpi"><span>Total Berat</span><strong>'+prodFmt(harvestKg,2)+' kg</strong></div>'+
+        '<div class="ui-rhpp-kpi"><span>BW Rata-rata</span><strong>'+prodFmt(avgBw,2)+' kg</strong></div>'+
+        '<div class="ui-rhpp-kpi"><span>FCR</span><strong>'+prodFmt(src?.fcr_actual,3)+'</strong></div>'+
+        '<div class="ui-rhpp-kpi"><span>IP</span><strong>'+prodFmt(src?.ip,0)+'</strong></div>'+
       '</div>'+
-      (!src?'<p class="muted">Ringkasan RHPP belum tersedia untuk siklus ini.</p>':'')+
-      (!closed?'<p class="muted">Periode masih PROSES. Nilai FINAL tersedia setelah Administrator melakukan Close.</p>':'')+
-    '</section>';
-  }
+      '<div class="ui-rhpp-grid" style="margin-top:14px">'+
+        '<div class="ui-rhpp-card"><h3>Identitas Siklus</h3><table><tbody>'+
+          '<tr><td>Kandang</td><td>'+esc(b?shortBarnLabel(b):'-')+'</td></tr>'+
+          '<tr><td>Tanggal Chick-In</td><td>'+prodDateId(closed?fin?.chick_in_date:ci?.arrived_on)+'</td></tr>'+
+          '<tr><td>DOC Masuk</td><td>'+prodFmt(chickIn,0)+' ekor</td></tr>'+
+          '<tr><td>Harga DOC</td><td>'+screenMoney(docUnitPrice)+'</td></tr>'+
+          '<tr><td>Harga Pakan Rata-rata</td><td>'+screenMoney(feedUnitPrice)+'</td></tr>'+
+        '</tbody></table></div>'+
+        '<div class="ui-rhpp-card"><h3>Kinerja Produksi</h3><table><tbody>'+
+          '<tr><td>Mortalitas</td><td>'+prodFmt(src?.mortality_pct,2)+' %</td></tr>'+
+          '<tr><td>Total Pakan</td><td>'+prodFmt(feedKg,2)+' kg</td></tr>'+
+          '<tr><td>Pakan / Ekor</td><td>'+prodFmt(feedPerBird,0)+' gr</td></tr>'+
+          '<tr><td>Umur Panen</td><td>'+prodFmt(src?.weighted_age,2)+' hari</td></tr>'+
+          '<tr><td>FCR Standar</td><td>'+prodFmt(src?.fcr_standard,3)+'</td></tr>'+
+        '</tbody></table></div>'+
+        '<div class="ui-rhpp-card"><h3>Biaya Sapronak</h3><table><tbody>'+
+          '<tr><td>DOC</td><td>'+screenMoney(src?.main_doc_cost)+'</td></tr>'+
+          '<tr><td>Pakan</td><td>'+screenMoney(src?.main_feed_cost)+'</td></tr>'+
+          '<tr><td>Retur</td><td>'+screenMoney(src?.main_return_cost)+'</td></tr>'+
+          '<tr><td>Total Sapronak</td><td>'+screenMoney(src?.sapronak_cost)+'</td></tr>'+
+          '<tr><td>Nilai Produksi</td><td>'+screenMoney(src?.harvest_value)+'</td></tr>'+
+        '</tbody></table></div>'+
+        '<div class="ui-rhpp-card"><h3>Nilai RHPP</h3><table><tbody>'+
+          '<tr><td>Laba Dasar</td><td>'+screenMoney(src?.base_profit)+'</td></tr>'+
+          '<tr><td>Bonus IP</td><td>'+screenMoney(src?.bonus_ip)+'</td></tr>'+
+          '<tr><td>Bonus FCR</td><td>'+screenMoney(src?.bonus_fc)+'</td></tr>'+
+          '<tr><td>Bonus Mortalitas</td><td>'+screenMoney(src?.bonus_mortality)+'</td></tr>'+
+          '<tr><td><strong>Hasil RHPP</strong></td><td class="'+screenProfitClass+'">'+screenMoney(screenProfit)+'</td></tr>'+
+          '<tr><td>Hasil / Ekor</td><td>'+screenMoney(src?.profit_per_chick_in)+'</td></tr>'+
+        '</tbody></table></div>'+
+      '</div>'+
+      '<p class="muted" style="margin:14px 0 0">Gunakan tombol Print/PDF untuk membuka dokumen RHPP A4 resmi.</p>'+
+    '</section>';  }
 
   html+='</div>';
   layout(html);
@@ -6171,11 +6235,6 @@ async function adminRhppHistoryPage(){
         '</div></div>'+
         '</div></body></html>';
     };
-    const previewFrame=document.getElementById('pplRhppPreview');
-    if(previewFrame){
-      const previewHtml=docHtml().replace('</style>','.sheet{transform:scale(1.6);transform-origin:top center}body{min-height:1180px}</style>');
-      previewFrame.srcdoc=previewHtml;
-    }
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
       w.document.write(docHtml());w.document.close();
@@ -6187,9 +6246,7 @@ async function adminRhppHistoryPage(){
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
     if(xBtn)xBtn.onclick=()=>{
-      const clone=exportArea?.cloneNode(true);if(!clone)return;
-      clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-      const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(company.company_name||'BMS Mobile')+'</h2><h3>RHPP Sistem</h3>'+clone.innerHTML+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob(['\ufeff'+docHtml()],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xls';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
