@@ -4653,20 +4653,21 @@ async function leagueByBarnViewPage(){
     return {...x,a,birds,kg,bw,feed,fcr,ip,initial,profit,perBird,complete:!!link?.basics_locked_at&&initial>0&&birds>0&&kg>0&&feed>0};
   };
 
-  const closedSeasonal=rows.map(calcResult).filter(x=>
-    x.complete&&
-    x.a?.active===false&&
-    closedFinalAssignmentIds.has(x.contract_assignment_id)&&
-    String(x.harvest_date||'')>=seasonStart
-  );
-  const barnIds=[...new Set(closedSeasonal.map(x=>x.a?.barn_id).filter(Boolean))];
+  const calculated=rows.map(calcResult);
+  const selectableAssignments=d.assignments.filter(a=>a.active===true||closedFinalAssignmentIds.has(a.id));
+  const barnIds=[...new Set(selectableAssignments.map(a=>a.barn_id).filter(Boolean))];
   const barnRows=d.barns.filter(b=>barnIds.includes(b.id)).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
   if(st.barn&&!barnRows.some(b=>b.id===st.barn)){st.barn='';st.assignment='';}
-  const assignmentIdsForBarn=st.barn?[...new Set(closedSeasonal.filter(x=>x.a?.barn_id===st.barn).map(x=>x.contract_assignment_id))]:[];
-  const assignmentRows=st.barn?d.assignments.filter(a=>assignmentIdsForBarn.includes(a.id)).sort((u,v)=>String(v.start_date||'').localeCompare(String(u.start_date||''))):[];
+  const assignmentRows=st.barn?selectableAssignments
+    .filter(a=>a.barn_id===st.barn)
+    .sort((u,v)=>String(v.start_date||'').localeCompare(String(u.start_date||''))):[];
   if(st.assignment&&!assignmentRows.some(a=>a.id===st.assignment))st.assignment='';
 
-  const scoped=st.assignment?closedSeasonal.filter(x=>x.contract_assignment_id===st.assignment):[];
+  const scoped=st.assignment?calculated.filter(x=>
+    x.complete&&
+    x.contract_assignment_id===st.assignment&&
+    (x.a?.active===true||closedFinalAssignmentIds.has(x.contract_assignment_id))
+  ):[];
   const map=new Map();
   scoped.forEach(x=>{
     if(!map.has(x.abk_id))map.set(x.abk_id,{...x,birds:0,kg:0,feed:0,profit:0,ipWeighted:0,totalPopulation:0,periods:0});
@@ -4699,27 +4700,27 @@ async function leagueByBarnViewPage(){
 
   const selectedBarn=d.barns.find(b=>b.id===st.barn);
   const selectedAssignment=d.assignments.find(a=>a.id===st.assignment);
-  let html='<section class="panel"><h3>Lihat Liga per Kandang</h3><p class="muted">Pilih kandang, lalu pilih siklus CLOSED. Sumber dan bobot sama dengan Liga ABK utama.</p>'+
+  let html='<section class="panel"><h3>Lihat Liga per Kandang</h3><p class="muted">Pilih kandang, lalu pilih siklus PROSES atau CLOSED. Sumber dan bobot sama dengan Liga ABK utama.</p>'+
     '<form id="leagueByBarnFilter" class="form-vertical" data-no-submit-guard="1">'+
       '<label>Kandang<select id="leagueByBarnSelect" required><option value="">Pilih Kandang</option>'+
         barnRows.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
       '</select></label>'+
       '<label>Siklus<select id="leagueByBarnAssignment" required '+(!st.barn?'disabled':'')+'><option value="">Pilih Siklus</option>'+
-        assignmentRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · CLOSED')+'</option>').join('')+
+        assignmentRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+
       '</select></label>'+
       '<button type="submit">Tampilkan</button>'+
     '</form></section>';
 
   if(st.assignment){
     html+='<section class="panel"><div class="owner-section-title"><div><h3>Liga ABK · '+esc(selectedBarn?shortBarnLabel(selectedBarn):'-')+' · '+esc(assignmentCycleLabel(d.assignments,selectedAssignment))+'</h3>'+
-      '<p class="muted">Musim sejak '+prodDateId(seasonStart)+' · Pendapatan/Ekor 50% · FCR 30% · IP 20%</p></div><span class="owner-trophy">🏆</span></div>'+
+      '<p class="muted">'+(selectedAssignment?.active?'Status PROSES · ranking sementara dari data Liga ABK yang sudah masuk':'Status CLOSED · hasil final')+' · Pendapatan/Ekor 50% · FCR 30% · IP 20%</p></div><span class="owner-trophy">🏆</span></div>'+
       '<div class="tablewrap"><table class="owner-table"><thead><tr><th>Peringkat</th><th>ABK</th><th class="num">Siklus</th><th class="num">Total Populasi</th><th class="num">Total Ekor Panen</th><th class="num">Pendapatan/Ekor</th><th class="num">IP</th><th class="num">FCR</th><th class="num">BW</th></tr></thead><tbody>'+
       league.map((x,i)=>{
         const e=d.abks.find(v=>v.id===x.abk_id);
         const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
         return '<tr><td class="owner-rank">'+medal+'</td><td><strong>'+esc(leagueAbkName(e))+'</strong></td><td class="num">'+prodFmt(x.periods,0)+'</td><td class="num">'+prodFmt(x.totalPopulation,0)+'</td><td class="num">'+prodFmt(x.birds,0)+'</td><td class="num">Rp '+prodFmt(x.perBird,0)+'</td><td class="num">'+prodFmt(x.ip,2)+'</td><td class="num">'+prodFmt(x.fcr,3)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td></tr>';
       }).join('')+
-      '</tbody></table></div>'+(league.length?'':'<p class="muted">Belum ada hasil Liga ABK untuk siklus CLOSED ini.</p>')+'</section>';
+      '</tbody></table></div>'+(league.length?'':'<p class="muted">Belum ada hasil Liga ABK lengkap untuk siklus ini.</p>')+'</section>';
   }
 
   layout(html);
