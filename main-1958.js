@@ -4560,7 +4560,11 @@ async function leagueByBarnViewPage(){
     db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
     db.from('production_cycle_final_unified').select('contract_assignment_id')
   ]);
-  const rows=rr.data||[],sizes=sr.data||[],leagueContracts=cr.data||[],leagueBonuses=br.data||[];
+  const allowedAssignmentIds=new Set(d.assignments.map(a=>a.id));
+  const rows=(rr.data||[]).filter(x=>allowedAssignmentIds.has(x.contract_assignment_id));
+  const allowedResultIds=new Set(rows.map(x=>x.id));
+  const sizes=(sr.data||[]).filter(x=>allowedResultIds.has(x.result_id));
+  const leagueContracts=cr.data||[],leagueBonuses=br.data||[];
   const closedFinalAssignmentIds=new Set((finalR.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
   const seasonStart=leagueSetting.data?.season_start||'0000-00-00';
   const err=[{error:d.err},leagueSetting,rr,sr,cr,br,finalR].find(x=>x?.error)?.error;
