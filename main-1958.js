@@ -5499,7 +5499,7 @@ async function pplRhppAbkViewPage(){
     })
     :[];
 
-  let html='<section class="panel"><h3>Lihat RHPP ABK</h3><p class="muted">Pilih kandang, siklus, lalu ABK. Sumber data tetap dari Liga ABK.</p>'+
+  let html=RHPP_SCREEN_STYLE+'<div class="rhpp-ui"><section class="panel"><h3>Lihat RHPP ABK</h3><p class="muted">Pilih kandang, siklus, lalu ABK. Sumber data tetap dari Liga ABK.</p>'+
     '<form id="pplRhppAbkFilter" class="form-vertical" data-no-submit-guard="1">'+
       '<label>Kandang<select id="pplRhppAbkBarn" required><option value="">Pilih Kandang</option>'+barnRows.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Siklus<select id="pplRhppAbkAssignment" required '+(!st.barn?'disabled':'')+'><option value="">Pilih Siklus</option>'+barnAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
@@ -5599,6 +5599,7 @@ async function pplRhppAbkViewPage(){
       '<div class="report-actions"><button type="button" id="pplRhppAbkPrint">Print</button><button type="button" id="pplRhppAbkPdf">PDF</button><button type="button" id="pplRhppAbkExcel">Excel</button></div></div></section>'+
     '</div>';
   }
+  html+='</div>';
   layout(html);
 
   const form=document.getElementById('pplRhppAbkFilter');
@@ -5660,6 +5661,29 @@ async function pplRhppAbkViewPage(){
   }
 }
 
+const RHPP_SCREEN_STYLE='<style>'+
+'.rhpp-ui .panel,.rhpp-page .panel{border:1px solid #d7e5ec!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(15,50,70,.04);padding:16px!important}'+
+'.rhpp-ui h2,.rhpp-ui h3,.rhpp-page h2,.rhpp-page h3{color:#0b5f8f}'+
+'.rhpp-ui .rhpp-section-head,.rhpp-page .rhpp-section-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}'+
+'.rhpp-ui .rhpp-count,.rhpp-page .rhpp-count{display:inline-flex;align-items:center;border-radius:999px;background:#e9f7fb;color:#0b5f8f;padding:5px 10px;font-weight:700;font-size:12px}'+
+'.rhpp-ui .tablewrap,.rhpp-page .tablewrap{overflow:auto;border-radius:9px;border:1px solid #e1eaf0}'+
+'.rhpp-ui .tablewrap table,.rhpp-page .tablewrap table{width:100%;border-collapse:collapse;background:#fff}'+
+'.rhpp-ui .tablewrap th,.rhpp-ui .tablewrap td,.rhpp-page .tablewrap th,.rhpp-page .tablewrap td{padding:9px 10px;border-bottom:1px solid #edf2f5;font-size:13px;vertical-align:middle}'+
+'.rhpp-ui .tablewrap thead th,.rhpp-page .tablewrap thead th{background:#12a8d4!important;color:#fff!important;font-weight:700}'+
+'.rhpp-ui .tablewrap tbody tr:last-child td,.rhpp-page .tablewrap tbody tr:last-child td{border-bottom:0}'+
+'.rhpp-ui .num,.rhpp-page .num{text-align:right}'+
+'.rhpp-ui .report-actions,.rhpp-page .report-actions{display:flex;gap:8px;flex-wrap:wrap}'+
+'.rhpp-ui .report-actions button,.rhpp-page .report-actions button{border-radius:8px}'+
+'.rhpp-ui .form-vertical,.rhpp-page .form-vertical{gap:10px}'+
+'.rhpp-ui select,.rhpp-ui input,.rhpp-ui textarea,.rhpp-page select,.rhpp-page input,.rhpp-page textarea{border-radius:8px}'+
+'.rhpp-ui .rhpp-summary-cards,.rhpp-page .rhpp-summary-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}'+
+'.rhpp-ui .rhpp-summary-card,.rhpp-page .rhpp-summary-card{border:1px solid #d7e5ec;border-radius:10px;padding:12px;background:#fff}'+
+'.rhpp-ui .rhpp-summary-card span,.rhpp-page .rhpp-summary-card span{display:block;color:#64748b;font-size:12px;margin-bottom:4px}'+
+'.rhpp-ui .rhpp-summary-card strong,.rhpp-page .rhpp-summary-card strong{font-size:17px;color:#102a43}'+
+'.rhpp-ui .rhpp-total-row th,.rhpp-ui .rhpp-total-row td,.rhpp-page .rhpp-total-row th,.rhpp-page .rhpp-total-row td{background:#eef8fc!important;font-weight:800}'+
+'.rhpp-ui .muted,.rhpp-page .muted{color:#64748b}'+
+'@media(max-width:900px){.rhpp-ui .rhpp-summary-cards,.rhpp-page .rhpp-summary-cards{grid-template-columns:repeat(2,1fr)}}'+
+'</style>';
 async function pplRhppViewPage(){
   const d=await productionBase();
   const [fr,cpr,sr,cr,br]=await Promise.all([
@@ -5683,7 +5707,7 @@ async function pplRhppViewPage(){
     window.__pplRhppViewState.assignment='';
   }
 
-  let html='<section class="panel"><h3>Lihat RHPP</h3><p class="muted">Pilih kandang, lalu pilih siklus. Data CLOSED membaca snapshot final MITRA maupun MANDIRI.</p>'+
+  let html=RHPP_SCREEN_STYLE+'<div class="rhpp-ui"><section class="panel"><h3>Lihat RHPP</h3><p class="muted">Pilih kandang, lalu pilih siklus. Data CLOSED membaca snapshot final MITRA maupun MANDIRI.</p>'+
     '<form id="pplRhppViewForm" class="form-vertical">'+
       '<label>Kandang<select id="pplRhppBarn" required><option value="">Pilih Kandang</option>'+
         barnsForAssignments.map(b=>'<option value="'+esc(b.id)+'" '+(selectedBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
@@ -5806,6 +5830,7 @@ async function pplRhppViewPage(){
     '</section>';
   }
 
+  html+='</div>';
   layout(html);
   if(d.err||fr.error||cpr.error||sr.error||cr.error||br.error)msg((d.err||fr.error||cpr.error||sr.error||cr.error||br.error).message);
   const barnSel=document.getElementById('pplRhppBarn');
@@ -5894,7 +5919,7 @@ async function adminRhppHistoryPage(){
     window.__adminRhppHistoryState.assignment='';
   }
 
-  let html='<section class="panel"><h3>'+(historyOnly?'Riwayat RHPP':'Lihat RHPP')+'</h3><p class="muted">'+(historyOnly?'Pilih kandang dan siklus CLOSED. Riwayat memakai snapshot final MITRA maupun MANDIRI saat produksi ditutup dan hanya untuk dilihat/cetak.':'Pilih kandang, lalu pilih siklus. Data CLOSED ditampilkan sebagai ringkasan RHPP Sistem.')+'</p>'+
+  let html=RHPP_SCREEN_STYLE+'<div class="rhpp-ui"><section class="panel"><h3>'+(historyOnly?'Riwayat RHPP':'Lihat RHPP')+'</h3><p class="muted">'+(historyOnly?'Pilih kandang dan siklus CLOSED. Riwayat memakai snapshot final MITRA maupun MANDIRI saat produksi ditutup dan hanya untuk dilihat/cetak.':'Pilih kandang, lalu pilih siklus. Data CLOSED ditampilkan sebagai ringkasan RHPP Sistem.')+'</p>'+
     '<form id="pplRhppViewForm" class="form-vertical">'+
       '<label>Kandang<select id="pplRhppBarn" required><option value="">Pilih Kandang</option>'+
         barnsForAssignments.map(b=>'<option value="'+esc(b.id)+'" '+(selectedBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
@@ -5965,6 +5990,7 @@ async function adminRhppHistoryPage(){
     '</section>';
   }
 
+  html+='</div>';
   layout(html);
   if(d.err||fr.error||cpr.error||sr.error||hdr.error||shr.error||shir.error||rrr.error||rir.error||itr.error||ctr.error||supr.error||ppr.error||bdr.error)msg((d.err||fr.error||cpr.error||sr.error||hdr.error||shr.error||shir.error||rrr.error||rir.error||itr.error||ctr.error||supr.error||ppr.error||bdr.error).message);
   const barnSel=document.getElementById('pplRhppBarn');
@@ -9310,7 +9336,7 @@ async function financeRhppRealPage(){
     st.selected='';
   }
 
-  let html='<section class="panel"><h3>RHPP Real Keuangan</h3><p class="muted">Data CLOSED wajib dipilih berdasarkan Kandang dan Siklus agar periode tidak tertukar. Input nominal sesuai PDF RHPP Real; tanggal penerimaan dipilih sesuai uang benar-benar diterima dan nominal langsung masuk Arus Kas.</p>'+
+  let html=RHPP_SCREEN_STYLE+'<div class="rhpp-ui"><section class="panel"><h3>RHPP Real Keuangan</h3><p class="muted">Data CLOSED wajib dipilih berdasarkan Kandang dan Siklus agar periode tidak tertukar. Input nominal sesuai PDF RHPP Real; tanggal penerimaan dipilih sesuai uang benar-benar diterima dan nominal langsung masuk Arus Kas.</p>'+
     '<form id="rhppRealFilter" class="form-vertical">'+
       '<label>Kandang<select name="barn" id="rhppRealBarn"><option value="">Semua Kandang</option>'+rhppBarns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Siklus<select name="assignment" id="rhppRealCycle"><option value="">Semua Siklus</option>'+rhppCycles.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date))+'</option>').join('')+'</select></label>'+
@@ -9320,7 +9346,7 @@ async function financeRhppRealPage(){
 
   if(!systems.length){
     html+='<section class="panel"><p>Belum ada RHPP Sistem Final dari Administrator.</p></section>';
-    layout(html);if(err)msg(err.message);return;
+    html+='</div>';layout(html);if(err)msg(err.message);return;
   }
 
   if(st.shown)html+='<section class="panel"><h3>Daftar RHPP Real</h3>'+
@@ -9385,6 +9411,7 @@ async function financeRhppRealPage(){
     '</section>';
   }
 
+  html+='</div>';
   layout(html);bindNumberInputs();if(err)msg(err.message);const rhppRealPrint=document.getElementById('rhppRealPrint');if(rhppRealPrint)rhppRealPrint.onclick=()=>printFinanceDocument('rhppRealDetail','RHPP Real');
 
   const filter=document.getElementById('rhppRealFilter');
@@ -9530,7 +9557,7 @@ async function financeRhppPage(){
   const extShips=esr.data||[],extShipItems=esir.data||[],extReturns=errh.data||[],extReturnItems=erir.data||[],transfersIn=tir.data||[],chickIns=cir.data||[],company=cpr.data||{};
   const err=[pr,rr,hr,sr,sir,rtr,rir,ir,esr,esir,errh,erir,tir,cir,cpr].find(x=>x.error)?.error;
 
-  let html='<div class="rhpp-page" id="rhppExportArea"><section class="panel rhpp-panel rhpp-intro"><div class="rhpp-section-head"><div><h3>RHPP Otomatis</h3>'+
+  let html=RHPP_SCREEN_STYLE+'<div class="rhpp-ui"><div class="rhpp-page" id="rhppExportArea"><section class="panel rhpp-panel rhpp-intro"><div class="rhpp-section-head"><div><h3>RHPP Otomatis</h3>'+
     '<p class="muted">RHPP dihitung langsung dari Chick-In, Logistik, Retur, Panen Marketing, Master Performa, dan Bonus Kontrak. BOP kandang tidak masuk RHPP.</p></div></div></section>';
 
   if(!rows.length){
