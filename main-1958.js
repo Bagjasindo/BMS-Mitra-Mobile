@@ -5914,21 +5914,25 @@ async function pplRhppViewPage(){
 
 async function adminRhppHistoryPage(){
   const d=await productionBase();
-  const [fr,cpr,sr,hdr,shr,shir,rrr,rir,itr,ctr]=await Promise.all([
+  const [fr,cpr,sr,hdr,shr,shir,rrr,rir,itr,ctr,supr,ppr,bdr]=await Promise.all([
     db.from('production_cycle_final_unified').select('*').order('created_at',{ascending:false}),
-    db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
+    db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url,bank_name,bank_account_number,bank_account_name').eq('id',true).maybeSingle(),
     db.rpc('finance_rhpp_summary_v6'),
     db.from('marketing_contract_harvests').select('id,contract_assignment_id,harvested_on,birds,net_weight_kg,avg_weight_kg,price_per_kg,total_amount,buyer_name,vehicle_number').order('harvested_on',{ascending:true}),
-    db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date'),
+    db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date,shipping_note_number'),
     db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
     db.from('logistics_returns').select('id,contract_assignment_id,return_date,reference,notes'),
     db.from('logistics_return_items').select('return_id,item_id,quantity,quantity_kg,unit_price'),
-    db.from('items').select('id,name,feed_phase,unit,kg_per_unit').eq('category','PAKAN'),
-    db.from('contracts').select('id,number,doc_price,pre_starter_price,starter_price,finisher_price').is('cycle_id',null)
+    db.from('items').select('id,name,category,feed_phase,unit,kg_per_unit,supplier_id'),
+    db.from('contracts').select('id,number,doc_price,pre_starter_price,starter_price,finisher_price').is('cycle_id',null),
+    db.from('suppliers').select('id,name'),
+    db.from('profiles').select('user_id,full_name').eq('role','PPL'),
+    db.from('barns').select('id,location')
   ]);
   const finals=fr.data||[],company=cpr.data||{},summaries=sr.data||[];
   const harvestDetails=hdr.data||[],shipments=shr.data||[],shipmentItems=shir.data||[];
-  const returns=rrr.data||[],returnItems=rir.data||[],printFeedItems=itr.data||[],printContracts=ctr.data||[];
+  const returns=rrr.data||[],returnItems=rir.data||[],printItems=itr.data||[],printFeedItems=printItems.filter(i=>i.category==='PAKAN'),printOvkItems=printItems.filter(i=>['OVK','OVK1'].includes(String(i.category||'').toUpperCase())),printContracts=ctr.data||[];
+  const printSuppliers=supr.data||[],printPpl=ppr.data||[],printBarnDetails=bdr.data||[];
   const historyOnly=true;
   const viewAssignments=d.assignments.filter(a=>finals.some(f=>f.contract_assignment_id===a.id));
   const barnsForAssignments=[...new Map(viewAssignments.map(a=>{
@@ -6061,7 +6065,7 @@ async function adminRhppHistoryPage(){
   }
 
   layout(html);
-  if(d.err||fr.error||cpr.error||sr.error||hdr.error||shr.error||shir.error||rrr.error||rir.error||itr.error||ctr.error)msg((d.err||fr.error||cpr.error||sr.error||hdr.error||shr.error||shir.error||rrr.error||rir.error||itr.error||ctr.error).message);
+  if(d.err||fr.error||cpr.error||sr.error||hdr.error||shr.error||shir.error||rrr.error||rir.error||itr.error||ctr.error||supr.error||ppr.error||bdr.error)msg((d.err||fr.error||cpr.error||sr.error||hdr.error||shr.error||shir.error||rrr.error||rir.error||itr.error||ctr.error||supr.error||ppr.error||bdr.error).message);
   const barnSel=document.getElementById('pplRhppBarn');
   const cycleSel=document.getElementById('pplRhppCycle');
   if(barnSel)barnSel.onchange=async()=>{
