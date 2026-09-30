@@ -139,8 +139,8 @@ begin
   join public.suppliers s on s.id=mp.supplier_id
   left join lateral (
     select count(*) cnt,
-           max(a.contract_assignment_id) contract_assignment_id,
-           max(ca.barn_id) barn_id
+           max(a.contract_assignment_id::text)::uuid contract_assignment_id,
+           max(ca.barn_id::text)::uuid barn_id
     from public.logistics_mandiri_purchase_allocations a
     join public.logistics_contract_assignments ca on ca.id=a.contract_assignment_id
     where a.purchase_id=mp.id
