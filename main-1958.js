@@ -7301,6 +7301,8 @@ async function financeBarnProfitLossPage(){
   const finalRows=filtered.filter(x=>statusOf(x)==='FINAL');
   const sum=(arr,k)=>arr.reduce((n,x)=>n+prodNum(x[k]),0);
   const totalRhpp=sum(finalRows,'rhpp_real');
+  const totalRhppMitra=sum(finalRows.filter(x=>!isMandiri(x)),'rhpp_real');
+  const totalPenjualanMandiri=sum(finalRows.filter(isMandiri),'rhpp_real');
   const totalBop=sum(finalRows,'bop_produksi');
   const totalSapronakLuar=sum(finalRows,'sapronak_luar');
   const totalTambahDaging=sum(finalRows,'tambah_daging');
@@ -7319,12 +7321,14 @@ async function financeBarnProfitLossPage(){
       '<div class="rhpp-section-head"><div><h3>Ringkasan Laba/Rugi Kandang</h3></div><div class="report-actions"><button type="button" id="barnProfitPrint">Cetak / PDF</button></div></div>'+
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>Pendapatan Kandang</span><strong>Rp '+prodFmt(totalRhpp,0)+'</strong><small>RHPP Real Mitra + Penjualan Mandiri</small></div>'+
+        '<div class="rhpp-summary-card"><span>RHPP Real Mitra</span><strong>Rp '+prodFmt(totalRhppMitra,0)+'</strong></div>'+
+        '<div class="rhpp-summary-card"><span>Penjualan Mandiri</span><strong>Rp '+prodFmt(totalPenjualanMandiri,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(totalBop,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Biaya Sapronak / Tambahan</span><strong>Rp '+prodFmt(totalSapronakLuar+totalTambahDaging,0)+'</strong><small>Termasuk stok BMS dari retur dan pemindahan kandang</small></div>'+
         '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(totalNet,0)+'</strong><small>'+finalRows.length+' siklus · perawatan terpisah</small></div>'+
       '</div>'+
       '<div class="tablewrap"><table><thead><tr>'+
-        '<th>Kandang / Siklus</th><th>Jenis</th><th>Pendapatan</th><th>BOP Produksi</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Laba/Rugi Kandang</th>'+
+        '<th>Kandang / Siklus</th><th>Jenis</th><th>RHPP Real Mitra</th><th>Penjualan Mandiri</th><th>BOP Produksi</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Laba/Rugi Kandang</th>'+
       '</tr></thead><tbody>'+
       filtered.map(x=>{
         const a=assignments.find(v=>v.id===x.contract_assignment_id);
@@ -7333,7 +7337,8 @@ async function financeBarnProfitLossPage(){
         return '<tr>'+
           '<td>'+esc(ident)+'</td>'+
           '<td><strong>'+esc(a?.cycle_type||'MITRA')+'</strong></td>'+
-          '<td>Rp '+prodFmt(x.rhpp_real,0)+'</td>'+
+          '<td>'+(isMandiri(x)?'—':'Rp '+prodFmt(x.rhpp_real,0))+'</td>'+
+          '<td>'+(isMandiri(x)?'Rp '+prodFmt(x.rhpp_real,0):'—')+'</td>'+
           '<td>Rp '+prodFmt(x.bop_produksi,0)+'</td>'+
           '<td>Rp '+prodFmt(x.sapronak_luar,0)+'</td>'+
           '<td>Rp '+prodFmt(x.tambah_daging,0)+'</td>'+
@@ -7393,6 +7398,8 @@ async function financeGlobalProfitLossPage(){
   const sum=(arr,k)=>arr.reduce((n,x)=>n+prodNum(x[k]),0);
 
   const totalRevenue=sum(finalRows,'rhpp_real');
+  const totalRhppMitra=sum(finalRows.filter(x=>assignmentOf(x)?.cycle_type!=='MANDIRI'),'rhpp_real');
+  const totalPenjualanMandiri=sum(finalRows.filter(x=>assignmentOf(x)?.cycle_type==='MANDIRI'),'rhpp_real');
   const totalBop=sum(finalRows,'bop_produksi');
   const totalSapronak=sum(finalRows,'sapronak_luar');
   const totalTambahDaging=sum(finalRows,'tambah_daging');
@@ -7436,6 +7443,8 @@ async function financeGlobalProfitLossPage(){
 
     '<h3>1. Kumulatif Usaha Kandang</h3>'+
     '<div class="tablewrap"><table><tbody>'+
+      '<tr><td>RHPP Real Mitra</td><td>Rp '+prodFmt(totalRhppMitra,0)+'</td></tr>'+
+      '<tr><td>Penjualan Mandiri</td><td>Rp '+prodFmt(totalPenjualanMandiri,0)+'</td></tr>'+
       '<tr><td>Total Pendapatan Kandang</td><td><strong>Rp '+prodFmt(totalRevenue,0)+'</strong></td></tr>'+
       '<tr><td>Total BOP Produksi</td><td>Rp '+prodFmt(totalBop,0)+'</td></tr>'+
       '<tr><td>Total Biaya Sapronak</td><td>Rp '+prodFmt(totalSapronak,0)+'</td></tr>'+
@@ -7443,12 +7452,13 @@ async function financeGlobalProfitLossPage(){
       '<tr><td><strong>Laba/Rugi Kandang</strong></td><td><strong>Rp '+prodFmt(labaKandang,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
 
-    '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Jenis</th><th>Pendapatan</th><th>BOP</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Laba/Rugi</th></tr></thead><tbody>'+
+    '<div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Jenis</th><th>RHPP Real Mitra</th><th>Penjualan Mandiri</th><th>BOP</th><th>Biaya Sapronak</th><th>Tambah Daging</th><th>Laba/Rugi</th></tr></thead><tbody>'+
       finalRows.map(x=>{
         const a=assignmentOf(x);
         const ident=a?assignmentIdentity(assignments,barns,contractsRows,a):(x.barn_code+' · '+x.barn_name);
         return '<tr><td>'+esc(ident)+'</td><td><strong>'+esc(a?.cycle_type||'MITRA')+'</strong></td>'+
-          '<td>Rp '+prodFmt(x.rhpp_real,0)+'</td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td>'+
+          '<td>'+(a?.cycle_type==='MANDIRI'?'—':'Rp '+prodFmt(x.rhpp_real,0))+'</td>'+
+          '<td>'+(a?.cycle_type==='MANDIRI'?'Rp '+prodFmt(x.rhpp_real,0):'—')+'</td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td>'+
           '<td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td>'+
           '<td><strong>Rp '+prodFmt(x.laba_operasional_produksi,0)+'</strong></td></tr>';
       }).join('')+
