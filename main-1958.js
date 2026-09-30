@@ -5688,7 +5688,7 @@ async function financeStockPurchasePage(){
     '<label>Metode Pembayaran<select name="payment_method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option></select></label>'+
     '<label>Referensi / No. Nota<input name="reference"></label>'+
     '<label>Catatan Nota<textarea name="notes"></textarea></label>'+
-    '<div class="tablewrap"><table><thead><tr><th>Nama Barang</th><th>Deskripsi</th><th>Jumlah</th><th>Satuan</th><th>Harga/Satuan</th><th>Total</th><th></th></tr></thead><tbody id="stockPurchaseRows"></tbody></table></div>'+
+    '<div class="tablewrap"><table><thead><tr><th>Nama Barang</th><th>Deskripsi</th><th>Jenis Stok</th><th>Jumlah</th><th>Satuan</th><th>Harga/Satuan</th><th>Total</th><th></th></tr></thead><tbody id="stockPurchaseRows"></tbody></table></div>'+
     '<div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.75rem"><button type="button" id="addStockPurchaseItem">+ Barang</button><strong>Total Nota: <span id="stockPurchaseTotal">Rp 0</span></strong></div>'+
     '<button type="submit">Simpan Pembelian Stok</button></form></section>';
   html+='<section class="panel"><h3>Riwayat Pembelian Stok</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Barang</th><th>Total</th><th>Metode</th></tr></thead><tbody>'+
@@ -5702,13 +5702,13 @@ async function financeStockPurchasePage(){
   };
   const addRow=()=>{
     const tr=document.createElement('tr');
-    tr.innerHTML='<td><input name="standard_name" required></td><td><input name="description"></td><td><input name="quantity" data-number="1" inputmode="decimal" required></td><td><input name="unit" placeholder="UNIT/PCS/ROLL" required></td><td><input name="unit_price" data-number="1" inputmode="decimal" required></td><td class="stockLineTotal">Rp 0</td><td><button type="button" class="removeStockPurchaseItem">Hapus</button></td>';
+    tr.innerHTML='<td><input name="standard_name" required></td><td><input name="description"></td><td><select name="stock_kind" required><option value="ASET">Aset</option><option value="HABIS_PAKAI">Habis Pakai</option></select></td><td><input name="quantity" data-number="1" inputmode="decimal" required></td><td><input name="unit" placeholder="UNIT/PCS/ROLL" required></td><td><input name="unit_price" data-number="1" inputmode="decimal" required></td><td class="stockLineTotal">Rp 0</td><td><button type="button" class="removeStockPurchaseItem">Hapus</button></td>';
     tbody.appendChild(tr);bindNumberInputs();tr.querySelectorAll('input').forEach(x=>x.addEventListener('input',recalc));tr.querySelector('.removeStockPurchaseItem').onclick=()=>{if(tbody.children.length>1)tr.remove();recalc()};recalc();
   };
   document.getElementById('addStockPurchaseItem').onclick=addRow;addRow();
   document.getElementById('financeStockPurchaseForm').onsubmit=async e=>{
     e.preventDefault();const fd=new FormData(e.target);
-    const payload=[...tbody.querySelectorAll('tr')].map(tr=>({standard_name:String(tr.querySelector('[name="standard_name"]').value||'').trim(),description:String(tr.querySelector('[name="description"]').value||'').trim(),quantity:prodNum(tr.querySelector('[name="quantity"]').value),unit:String(tr.querySelector('[name="unit"]').value||'').trim().toUpperCase(),unit_price:prodNum(tr.querySelector('[name="unit_price"]').value)}));
+    const payload=[...tbody.querySelectorAll('tr')].map(tr=>({standard_name:String(tr.querySelector('[name="standard_name"]').value||'').trim(),description:String(tr.querySelector('[name="description"]').value||'').trim(),stock_kind:String(tr.querySelector('[name="stock_kind"]').value||'ASET'),quantity:prodNum(tr.querySelector('[name="quantity"]').value),unit:String(tr.querySelector('[name="unit"]').value||'').trim().toUpperCase(),unit_price:prodNum(tr.querySelector('[name="unit_price"]').value)}));
     if(payload.some(x=>!x.standard_name||!x.unit||x.quantity<=0||x.unit_price<0))return msg('Lengkapi nama, jumlah, satuan, dan harga setiap barang.');
     if(!await appConfirm('Simpan '+payload.length+' barang sebagai stok gudang?'))return;
     const {error}=await db.rpc('finance_save_stock_invoice_atomic',{p_purchase_date:String(fd.get('purchase_date')||''),p_supplier_name:String(fd.get('supplier_name')||'')||null,p_payment_method:String(fd.get('payment_method')||''),p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null,p_items:payload});
@@ -5726,8 +5726,8 @@ async function logisticsWarehouseStockPage(){
   const items=ir.data||[],headers=hr.data||[],ships=sr.data||[];
   const err=[ir,hr,sr].find(x=>x.error)?.error;
   const sent=id=>ships.filter(x=>x.stock_item_id===id).reduce((n,x)=>n+prodNum(x.quantity),0);
-  let html='<section class="panel"><h3>Stok Barang</h3><p class="muted"><strong>OTOMATIS.</strong> Stok masuk berasal dari Keuangan → Beli untuk Stok. Stok keluar berasal dari Logistik → Kirim Barang dari Gudang.</p><div class="tablewrap"><table><thead><tr><th>Barang</th><th>Supplier</th><th>Tanggal Masuk</th><th>Masuk</th><th>Sudah Dikirim</th><th>Sisa Gudang</th><th>Nilai Sisa</th></tr></thead><tbody>'+
-    items.map(x=>{const h=headers.find(v=>v.id===x.invoice_id),s=sent(x.id),r=Math.max(0,prodNum(x.quantity)-s);return '<tr><td><strong>'+esc(x.standard_name)+'</strong><br><small>'+esc(x.description||'')+'</small></td><td>'+esc(h?.supplier_name||'-')+'</td><td>'+prodDateId(h?.purchase_date||'')+'</td><td>'+prodFmt(x.quantity,2)+' '+esc(x.unit)+'</td><td>'+prodFmt(s,2)+' '+esc(x.unit)+'</td><td><strong>'+prodFmt(r,2)+' '+esc(x.unit)+'</strong></td><td>Rp '+prodFmt(r*prodNum(x.unit_price),0)+'</td></tr>';}).join('')+
+  let html='<section class="panel"><h3>Stok Barang</h3><p class="muted"><strong>OTOMATIS.</strong> Stok masuk berasal dari Keuangan → Beli untuk Stok. Stok keluar berasal dari Logistik → Kirim Barang dari Gudang.</p><div class="tablewrap"><table><thead><tr><th>Barang</th><th>Jenis</th><th>Supplier</th><th>Tanggal Masuk</th><th>Masuk</th><th>Sudah Dikirim</th><th>Sisa Gudang</th><th>Nilai Sisa</th></tr></thead><tbody>'+
+    items.map(x=>{const h=headers.find(v=>v.id===x.invoice_id),s=sent(x.id),r=Math.max(0,prodNum(x.quantity)-s);return '<tr><td><strong>'+esc(x.standard_name)+'</strong><br><small>'+esc(x.description||'')+'</small></td><td>'+esc(x.stock_kind==='HABIS_PAKAI'?'Habis Pakai':'Aset')+'</td><td>'+esc(h?.supplier_name||'-')+'</td><td>'+prodDateId(h?.purchase_date||'')+'</td><td>'+prodFmt(x.quantity,2)+' '+esc(x.unit)+'</td><td>'+prodFmt(s,2)+' '+esc(x.unit)+'</td><td><strong>'+prodFmt(r,2)+' '+esc(x.unit)+'</strong></td><td>Rp '+prodFmt(r*prodNum(x.unit_price),0)+'</td></tr>';}).join('')+
     '</tbody></table></div>'+(items.length?'':'<p>Belum ada stok gudang.</p>')+'</section>';
   layout(html);if(err)msg(err.message);
 }
@@ -5745,13 +5745,13 @@ async function logisticsWarehouseSendPage(){
   const remain=x=>Math.max(0,prodNum(x.quantity)-sent(x.id));
   const available=items.filter(x=>remain(x)>0);
   const itemLabel=x=>x.standard_name+' · sisa '+prodFmt(remain(x),2)+' '+x.unit;
-  let html='<section class="panel"><h3>Kirim Barang dari Gudang</h3><p class="muted">Pengiriman mengurangi stok gudang. Pilih <strong>Buat menjadi Aset</strong> hanya jika barang sudah ditempatkan sebagai aset di Kandang/Kantor.</p>'+
+  let html='<section class="panel"><h3>Kirim Barang dari Gudang</h3><p class="muted">Pengiriman mengurangi stok gudang. Barang berjenis <strong>Aset</strong> otomatis masuk Aset Kandang/Kantor saat dikirim; barang <strong>Habis Pakai</strong> hanya mengurangi stok.</p>'+
     '<form id="warehouseSendForm" class="form-vertical"><label>Tanggal Kirim<input type="date" name="shipment_date" value="'+prodToday()+'" required></label>'+
     '<label>Barang<select name="stock_item_id" required><option value="">Pilih Barang</option>'+available.map(x=>'<option value="'+esc(x.id)+'">'+esc(itemLabel(x))+'</option>').join('')+'</select></label>'+
     '<label>Tujuan<select name="destination_type" id="warehouseDestination" required><option value="KANDANG">Kandang</option><option value="KANTOR">Kantor</option></select></label>'+
     '<label id="warehouseBarnWrap">Kandang<select name="barn_id"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
     '<label>Jumlah Kirim<input name="quantity" data-number="1" inputmode="decimal" required></label>'+
-    '<label><input type="checkbox" name="make_asset" value="1"> Buat menjadi Aset di lokasi tujuan</label>'+
+
     '<label>Referensi<input name="reference"></label><label>Catatan<textarea name="notes"></textarea></label>'+
     '<button type="submit">Kirim Barang</button></form></section>';
   html+='<section class="panel"><h3>Riwayat Pengiriman Gudang</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Barang</th><th>Jumlah</th><th>Tujuan</th><th>Status</th><th>Referensi</th></tr></thead><tbody>'+
@@ -5765,7 +5765,7 @@ async function logisticsWarehouseSendPage(){
     if(!x)return msg('Pilih barang gudang.');if(q<=0||q>remain(x))return msg('Jumlah kirim melebihi stok yang tersedia.');
     if(String(fd.get('destination_type'))==='KANDANG'&&!fd.get('barn_id'))return msg('Pilih kandang tujuan.');
     if(!await appConfirm('Kirim '+prodFmt(q,2)+' '+x.unit+' '+x.standard_name+' dari gudang?'))return;
-    const {error}=await db.rpc('logistics_send_warehouse_stock_atomic',{p_stock_item_id:id,p_shipment_date:String(fd.get('shipment_date')||''),p_destination_type:String(fd.get('destination_type')||''),p_barn_id:String(fd.get('barn_id')||'')||null,p_quantity:q,p_make_asset:fd.get('make_asset')==='1',p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null});
+    const {error}=await db.rpc('logistics_send_warehouse_stock_atomic',{p_stock_item_id:id,p_shipment_date:String(fd.get('shipment_date')||''),p_destination_type:String(fd.get('destination_type')||''),p_barn_id:String(fd.get('barn_id')||'')||null,p_quantity:q,p_make_asset:false,p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null});
     if(error)return msg(error.message);
     await logisticsWarehouseSendPage();msg('Barang berhasil dikirim dan stok gudang otomatis berkurang.',true);
   };
