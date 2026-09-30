@@ -6099,17 +6099,11 @@ async function adminRhppHistoryPage(){
       const harvestBirds=prodNum(src.total_harvest_birds);
       const harvestKg=prodNum(src.total_harvest_kg);
       const avgBw=prodNum(src.avg_bw_kg);
-      const feedPerBird=chickIn>0?feedKg*1000/chickIn:0;
       const avgLivePrice=harvestKg>0?prodNum(src.harvest_value)/harvestKg:0;
-      const fcrDiff=prodNum(src.fcr_standard)-prodNum(src.fcr_actual);
-      const companyName=company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih';
-      const companyContact=[company.address,company.phone?('Tel/WA: '+company.phone):'',company.email||'',company.website||''].filter(Boolean).map(esc).join('<br>');
-      const rawLogo=String(company.logo_url||'').trim();
-      const logoSrc=rawLogo.startsWith('data:image/')&&rawLogo.includes(',')
-        ?rawLogo+'='.repeat((4-(rawLogo.split(',')[1].length%4))%4)
-        :rawLogo;
-      const logo='<div class="brand-logo">'+(logoSrc?'<img class="logo" src="'+esc(logoSrc)+'" alt="Logo BMS">':'<div class="logo-mark">BMS</div>')+'</div>';
-      const printStamp=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date())+' WIB';
+      const fcrDiff=prodNum(src.fcr_actual)-prodNum(src.fcr_standard);
+      const hasilPlasma=prodNum(src.system_amount||src.farmer_profit);
+      const pplName=printPpl.find(x=>x.user_id===a?.ppl_id)?.full_name||'-';
+      const barnLocation=printBarnDetails.find(x=>x.id===a?.barn_id)?.location||'-';
       const money=v=>prodFmt(v,0);
       const n2=v=>prodFmt(v,2);
       const priceForPhase=phase=>{
@@ -6121,150 +6115,121 @@ async function adminRhppHistoryPage(){
       };
       const phaseLabel=phase=>{
         const p=String(phase||'').toUpperCase();
-        if(p==='PRE_STARTER')return 'Pre Starter';
-        if(p==='STARTER')return 'Starter';
-        if(p==='FINISHER')return 'Finisher';
-        return phase||'Suplayer Lain';
+        if(p==='PRE_STARTER')return 'PRE-STATER';
+        if(p==='STARTER')return 'STARTER';
+        if(p==='FINISHER')return 'FINISHER';
+        return phase||'PAKAN';
       };
-
       const assignmentShipIds=new Set(shipments.filter(x=>x.contract_assignment_id===selectedAssignment).map(x=>x.id));
       const assignmentReturnIds=new Set(returns.filter(x=>x.contract_assignment_id===selectedAssignment).map(x=>x.id));
-      const feedMap=new Map();
-      const ensureFeed=item=>{
-        const key=item?.id||'OTHER';
-        if(!feedMap.has(key))feedMap.set(key,{item,inside:0,insideKg:0,ret:0,retKg:0});
-        return feedMap.get(key);
-      };
+      const feedTxnRows=[];
       shipmentItems.filter(x=>assignmentShipIds.has(x.shipment_id)).forEach(x=>{
-        const item=printFeedItems.find(i=>i.id===x.item_id);
-        const row=ensureFeed(item);
-        row.inside+=prodNum(x.quantity);
-        row.insideKg+=prodNum(x.quantity_kg)||prodNum(x.quantity)*prodNum(item?.kg_per_unit);
+        const item=printFeedItems.find(i=>i.id===x.item_id); if(!item)return;
+        const ship=shipments.find(r=>r.id===x.shipment_id);
+        const kg=prodNum(x.quantity_kg)||prodNum(x.quantity)*prodNum(item.kg_per_unit);
+        const price=priceForPhase(item.feed_phase)||(prodNum(item.kg_per_unit)>0?prodNum(x.unit_price)/prodNum(item.kg_per_unit):prodNum(x.unit_price));
+        feedTxnRows.push({date:ship?.shipment_date,name:item.name||phaseLabel(item.feed_phase),sj:ship?.shipping_note_number||'-',qty:prodNum(x.quantity),dir:'',mut:0,price,total:kg*price});
       });
       returnItems.filter(x=>assignmentReturnIds.has(x.return_id)).forEach(x=>{
-        const item=printFeedItems.find(i=>i.id===x.item_id);
-        const row=ensureFeed(item);
-        row.ret+=prodNum(x.quantity);
-        row.retKg+=prodNum(x.quantity_kg)||prodNum(x.quantity)*prodNum(item?.kg_per_unit);
-      });
-      const preferred=['PRE_STARTER','STARTER','FINISHER'];
-      const feedRows=[...feedMap.values()].sort((x,y)=>{
-        const ax=preferred.indexOf(String(x.item?.feed_phase||'').toUpperCase());
-        const ay=preferred.indexOf(String(y.item?.feed_phase||'').toUpperCase());
-        return (ax<0?99:ax)-(ay<0?99:ay)||String(x.item?.name||'').localeCompare(String(y.item?.name||''));
-      });
-      const totalFeedBags=feedRows.reduce((n,x)=>n+Math.max(0,x.inside-x.ret),0);
-
-      const returnRows=returnItems.filter(x=>assignmentReturnIds.has(x.return_id)).map(x=>{
+        const item=printFeedItems.find(i=>i.id===x.item_id); if(!item)return;
         const ret=returns.find(r=>r.id===x.return_id);
-        const item=printFeedItems.find(i=>i.id===x.item_id);
-        const kg=prodNum(x.quantity_kg)||prodNum(x.quantity)*prodNum(item?.kg_per_unit);
-        const price=priceForPhase(item?.feed_phase)||prodNum(x.unit_price);
-        return {ret,item,zak:prodNum(x.quantity),kg,price,value:kg*price};
+        const kg=prodNum(x.quantity_kg)||prodNum(x.quantity)*prodNum(item.kg_per_unit);
+        const price=priceForPhase(item.feed_phase)||(prodNum(item.kg_per_unit)>0?prodNum(x.unit_price)/prodNum(item.kg_per_unit):prodNum(x.unit_price));
+        feedTxnRows.push({date:ret?.return_date,name:item.name||phaseLabel(item.feed_phase),sj:ret?.reference||'-',qty:0,dir:'Ke Retur',mut:-prodNum(x.quantity),price,total:kg*price});
       });
+      feedTxnRows.sort((u,v)=>String(u.date||'').localeCompare(String(v.date||'')));
+      const totalFeedQty=feedTxnRows.reduce((n,x)=>n+prodNum(x.qty),0);
+      const totalFeedMut=feedTxnRows.reduce((n,x)=>n+prodNum(x.mut),0);
+      const avgFeedPrice=feedKg>0?prodNum(src.main_feed_cost)/feedKg:0;
 
-      const kv=(label,value)=>'<div class="kv"><span>'+esc(label)+'</span><b>:</b><strong>'+value+'</strong></div>';
-      const header='<header class="head">'+logo+
-        '<div class="company"><h1>'+esc(companyName)+'</h1><p>Integritas Kemitraan untuk Peternakan Lebih Baik</p></div>'+
-        '<div class="contact"><strong>DOKUMEN RHPP FINAL</strong><br>'+companyContact+'</div></header>'+
-        '<div class="doc-title"><h2>REKAP HASIL PEMELIHARAAN PETERNAK (RHPP)</h2><p>'+
-        esc(b?shortBarnLabel(b):'-')+' &nbsp; · &nbsp; '+esc(assignmentCycleLabel(d.assignments,a))+' &nbsp; · &nbsp; FINAL / CLOSED</p></div>';
+      const ovkRows=[];
+      shipmentItems.filter(x=>assignmentShipIds.has(x.shipment_id)).forEach(x=>{
+        const item=printOvkItems.find(i=>i.id===x.item_id); if(!item)return;
+        const ship=shipments.find(r=>r.id===x.shipment_id);
+        const supplier=printSuppliers.find(v=>v.id===item.supplier_id)?.name||'-';
+        ovkRows.push({date:ship?.shipment_date,name:item.name||'OVK',qty:prodNum(x.quantity),unit:item.unit||'-',sj:ship?.shipping_note_number||'-',supplier,price:prodNum(x.unit_price),total:prodNum(x.quantity)*prodNum(x.unit_price)});
+      });
+      const ovkTotal=ovkRows.length?ovkRows.reduce((n,x)=>n+prodNum(x.total),0):prodNum(src.main_ovk_cost);
 
-      return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(fileBase)+'</title>'+
-        '<style>'+
-        '@page{size:A4 landscape;margin:7mm}*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#15253b;font-size:8.4px;line-height:1.18;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.page{min-height:190mm;position:relative;padding-bottom:9mm}.page+.page{page-break-before:always}.head{display:grid;grid-template-columns:64px 1fr 290px;gap:12px;align-items:center;border-bottom:3px solid #174d88;padding:3px 2px 7px;margin-bottom:5px}.brand-logo{width:58px;height:48px;display:flex;align-items:center;justify-content:center}.logo{max-width:58px;max-height:48px;object-fit:contain;display:block}.logo-mark{width:48px;height:48px;border:2px solid #174d88;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#174d88}.company h1{font-size:17px;margin:0;color:#103b70;font-weight:800}.company p{margin:2px 0 0;color:#63758b;font-size:7.7px}.contact{text-align:right;color:#40536c;font-size:7.2px;line-height:1.35}.doc-title{text-align:center;margin:5px 0 7px}.doc-title h2{font-size:17px;margin:0;color:#102e57;font-weight:800}.doc-title p{margin:2px 0 0;font-size:8px;color:#52667f;font-weight:700}.band{background:#255a8b!important;color:#fff!important;text-align:center;font-size:12px;font-weight:800;padding:4px 7px;letter-spacing:.2px;margin:5px 0 4px}.subband{background:#5b9bd5!important;color:#fff!important;font-size:9px;font-weight:800;padding:4px 6px;margin:6px 0 3px}.tbl{width:100%;border-collapse:collapse;table-layout:fixed}.tbl th{background:#5b9bd5!important;color:#fff!important;border:1px solid #d6e0e8;padding:3px 3px;text-align:center;font-weight:700}.tbl td{border:1px solid #d7dde4;padding:2.4px 3px;color:#15253b}.tbl .n{text-align:right}.tbl .c{text-align:center}.tbl .total th,.tbl .total td{background:#e2f0d9!important;color:#122a18!important;font-weight:800}.feed-table th{font-size:7.7px}.return-wrap{width:48%;margin-top:4px}.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px 28px;margin-top:7px}.summary-block h3{margin:0 0 4px;background:#e2e2e2!important;color:#111;padding:3px 6px;font-size:10px;font-weight:500}.kv{display:grid;grid-template-columns:190px 10px 1fr;min-height:17px;align-items:center;font-size:9px}.kv strong{font-weight:600}.rhpp-value strong{font-weight:800}.footer{position:absolute;left:0;right:0;bottom:0;border-top:1px solid #d8e0e8;padding-top:3px;display:flex;justify-content:space-between;color:#68788b;font-size:6.8px}.page2-head{margin-bottom:8px}.status-badge{display:inline-block;padding:2px 6px;border-radius:4px;background:#d7f4e4!important;color:#145c3b!important;font-weight:800}'+
-        '</style></head><body>'+
+      const bmsLogo=BMS_PRINT_LOGO;
+      const topInfo='<table class="meta"><tbody>'+
+        '<tr><th>Plasma</th><td>'+esc(b?shortBarnLabel(b):'-')+'</td></tr>'+
+        '<tr><th>Populasi</th><td>'+prodFmt(chickIn,0)+'</td></tr>'+
+        '<tr><th>Alamat</th><td>'+esc(barnLocation)+'</td></tr>'+
+        '<tr><th>Periode</th><td>'+esc(assignmentCycleLabel(d.assignments,a))+'</td></tr>'+
+        '<tr><th>Kontrak</th><td>'+esc(contract.number||'-')+'</td></tr>'+
+        '<tr><th>PPL</th><td>'+esc(pplName)+'</td></tr>'+
+      '</tbody></table>';
 
-        '<section class="page">'+header+
-          '<div class="band">DATA PANEN</div>'+
-          '<table class="tbl"><thead><tr>'+
-            '<th style="width:11%">Tanggal</th><th style="width:16%">Pembeli / RPA</th><th style="width:13%">No. Kendaraan</th><th style="width:9%">Ekor</th><th style="width:12%">Berat (Kg)</th><th style="width:8%">BW</th><th style="width:12%">Harga Kontrak</th><th style="width:19%">Nilai Produksi (Rp)</th>'+
-          '</tr></thead><tbody>'+
-          hs.map(h=>'<tr>'+
-            '<td class="c">'+prodDateId(h.harvested_on)+'</td>'+
-            '<td>'+esc(h.buyer_name||'-')+'</td>'+
-            '<td>'+esc(h.vehicle_number||'-')+'</td>'+
-            '<td class="n">'+prodFmt(h.birds,0)+'</td>'+
-            '<td class="n">'+n2(h.net_weight_kg)+'</td>'+
-            '<td class="n">'+n2(h.avg_weight_kg)+'</td>'+
-            '<td class="n">'+money(h.price_per_kg)+'</td>'+
-            '<td class="n">'+money(h.total_amount)+'</td>'+
-          '</tr>').join('')+
-          '<tr class="total"><th colspan="3" style="text-align:left">TOTAL</th><td class="n">'+prodFmt(harvestBirds,0)+'</td><td class="n">'+n2(harvestKg)+'</td><td class="n">'+n2(avgBw)+'</td><td></td><td class="n">'+money(src.harvest_value)+'</td></tr>'+
-          '</tbody></table>'+
+      const docRows='<tr><td>'+prodDateId(fin?.chick_in_date||ci?.arrived_on)+'</td><td>'+esc(ci?.hatchery||ci?.strain||'DOC')+'</td><td>'+esc(ci?.delivery_number||'-')+'</td><td class="n">'+prodFmt(chickIn,0)+'</td><td>Ekor</td><td class="n">'+money(docPrice)+'</td><td class="n">('+money(src.main_doc_cost)+')</td></tr>'+
+        '<tr><td></td><td>KOMPLAIN DOC</td><td></td><td class="n">0</td><td>Ekor</td><td></td><td class="n">(0)</td></tr>'+
+        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(chickIn,0)+'</td><td></td><td></td><td class="n">('+money(src.main_doc_cost)+')</td></tr>';
 
-          '<div class="band">PEMAKAIAN PAKAN &amp; RETUR</div>'+
-          '<table class="tbl feed-table"><thead><tr>'+
-            '<th style="width:20%">Jenis</th><th style="width:10%">Masuk (Zak)</th><th style="width:10%">Retur (Zak)</th><th style="width:10%">Bersih (Zak)</th><th style="width:10%">Kg/Zak</th><th style="width:12%">Bersih (Kg)</th><th style="width:13%">Harga Kontrak (Rp/Kg)</th><th style="width:15%">Nilai Bersih (Rp)</th>'+
-          '</tr></thead><tbody>'+
-          (feedRows.length?feedRows.map(x=>{
-            const cleanZak=Math.max(0,x.inside-x.ret);
-            const cleanKg=Math.max(0,x.insideKg-x.retKg);
-            const kgPerZak=prodNum(x.item?.kg_per_unit)||(cleanZak?cleanKg/cleanZak:0);
-            const price=priceForPhase(x.item?.feed_phase);
-            return '<tr><td>'+esc(phaseLabel(x.item?.feed_phase)||x.item?.name||'Pakan')+'</td>'+
-              '<td class="n">'+n2(x.inside)+'</td><td class="n">'+n2(x.ret)+'</td><td class="n">'+n2(cleanZak)+'</td>'+
-              '<td class="n">'+n2(kgPerZak)+'</td><td class="n">'+n2(cleanKg)+'</td><td class="n">'+money(price)+'</td><td class="n">'+money(cleanKg*price)+'</td></tr>';
-          }).join(''):'<tr><td colspan="8" class="c">Tidak ada rincian pakan.</td></tr>')+
-          '<tr class="total"><th colspan="3" style="text-align:left">TOTAL BERSIH</th><td class="n">'+n2(totalFeedBags)+'</td><td></td><td class="n">'+n2(feedKg)+'</td><td></td><td class="n">'+money(src.main_feed_cost)+'</td></tr>'+
-          '</tbody></table>'+
+      const feedRowsHtml=(feedTxnRows.length?feedTxnRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.sj)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.dir)+'</td><td class="n">'+n2(x.mut)+'</td><td class="n">'+money(x.price)+'</td><td class="n">('+money(x.total)+')</td></tr>').join(''):'<tr><td colspan="8" class="c">Tidak ada rincian pakan.</td></tr>')+
+        '<tr class="total"><td colspan="3"></td><td class="n">'+n2(totalFeedQty)+'</td><td></td><td class="n">'+n2(totalFeedMut)+'</td><td></td><td class="n">('+money(src.main_feed_cost)+')</td></tr>'+
+        '<tr class="total"><td colspan="5"></td><td class="n">'+n2(feedKg)+'</td><td class="n">'+money(avgFeedPrice)+'</td><td></td></tr>';
 
-          '<div class="return-wrap"><div class="subband">KETERANGAN RETUR</div>'+
-          '<table class="tbl"><thead><tr><th>Keterangan Retur</th><th style="width:18%">Zak</th><th style="width:22%">Kg</th><th style="width:28%">Nilai Retur (Rp)</th></tr></thead><tbody>'+
-          (returnRows.length?returnRows.map(x=>'<tr><td>'+esc((x.ret?.notes||x.ret?.reference||phaseLabel(x.item?.feed_phase)||x.item?.name||'Retur Pakan'))+'</td><td class="n">'+n2(x.zak)+'</td><td class="n">'+n2(x.kg)+'</td><td class="n">'+money(x.value)+'</td></tr>').join(''):'<tr><td>Retur Pakan</td><td class="n">-</td><td class="n">-</td><td class="n">'+money(src.main_return_cost)+'</td></tr>')+
-          '</tbody></table></div>'+
-          '<footer class="footer"><div><strong>REKAP HASIL PEMELIHARAAN PETERNAK (RHPP)</strong><br>'+esc(companyName)+'</div><div style="text-align:right"><strong>Halaman 1 dari 2</strong><br>Dicetak: '+esc(printStamp)+'</div></footer>'+
-        '</section>'+
+      const ovkRowsHtml=ovkRows.length?ovkRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.unit)+'</td><td>'+esc(x.sj)+'</td><td>'+esc(x.supplier)+'</td><td class="n">('+money(x.price)+')</td><td class="n">'+money(x.total)+'</td></tr>').join('')+'<tr class="total"><td colspan="2"></td><td class="n">'+n2(ovkRows.reduce((n,x)=>n+x.qty,0))+'</td><td colspan="4"></td><td class="n">'+money(ovkTotal)+'</td></tr>':
+        '<tr><td>-</td><td>OVK</td><td class="n">-</td><td>-</td><td>-</td><td>-</td><td class="n">-</td><td class="n">'+money(ovkTotal)+'</td></tr>';
 
-        '<section class="page">'+header+
-          '<div class="summary-grid">'+
-            '<div class="summary-block"><h3>INPUT WAJIB</h3>'+
-              kv('Nama Kandang / Peternak',esc(b?shortBarnLabel(b):'-'))+
-              kv('Tanggal Chick-in',fin?.chick_in_date?prodDateId(fin.chick_in_date):(ci?.arrived_on?prodDateId(ci.arrived_on):'-'))+
-              kv('DOC Masuk (Ekor)',prodFmt(chickIn,0))+
-              kv('FCR Standar (Otomatis)',prodFmt(src.fcr_standard,3))+
-              kv('BW Standar (Kg)',src.std_bw_kg!=null?prodFmt(src.std_bw_kg,3):'-')+
-              kv('Tarif Bonus Mortalitas (Rp/Kg)',money(src.bonus_depletion_rate||src.bonus_mortality_rate))+
-              kv('Status Bonus FC',prodNum(src.bonus_fc)>0?'DAPAT BONUS':'TIDAK ADA BONUS')+
-            '</div>'+
-            '<div class="summary-block"><h3>KINERJA PRODUKSI</h3>'+
-              kv('Mortalitas',prodFmt(src.mortality_pct,2)+' %')+
-              kv('Bobot Badan',prodFmt(avgBw,2)+' Kg')+
-              kv('Total Pakan',n2(feedKg)+' Kg')+
-              kv('Pakan Per Ekor',prodFmt(feedPerBird,0)+' gr/ekor')+
-              kv('Umur Panen',prodFmt(src.weighted_age,2)+' hari')+
-              kv('FCR',prodFmt(src.fcr_actual,3))+
-              kv('Indek Prestasi',prodFmt(src.ip,2))+
-            '</div>'+
-            '<div class="summary-block"><h3>RINGKASAN DATA</h3>'+
-              kv('Total Panen (Ekor)',prodFmt(harvestBirds,0))+
-              kv('Total Berat (Kg)',n2(harvestKg))+
-              kv('Rata-rata BB (Kg/Ekor)',prodFmt(avgBw,2))+
-              kv('Pakan Bersih (Zak)',n2(totalFeedBags))+
-              kv('Pakan Bersih (Kg)',n2(feedKg))+
-              kv('Harga DOC (Rp/Ekor)',money(docPrice))+
-              kv('Tarif Bonus IP (Rp/Kg)',money(src.bonus_ip_rate))+
-              kv('Total Nilai Panen (Rp)',money(src.harvest_value))+
-              kv('DIFF FCR',prodFmt(fcrDiff,3))+
-              kv('Tarif Bonus FC (Rp/Kg)',money(src.bonus_fc_rate))+
-            '</div>'+
-            '<div class="summary-block rhpp-value"><h3>NILAI RHPP</h3>'+
-              kv('Jml. Sapronak',money(prodNum(src.sapronak_cost)+prodNum(src.main_return_cost)))+
-              kv('Jml. Retur',money(src.main_return_cost))+
-              kv('Total Sapronak',money(src.sapronak_cost))+
-              kv('Total Hasil Produksi',money(src.harvest_value))+
-              kv('Laba',money(src.base_profit))+
-              kv('Bonus IP',money(src.bonus_ip))+
-              kv('Bonus FC',money(src.bonus_fc))+
-              kv('Bonus Mortalitas',money(src.bonus_depletion||src.bonus_mortality))+
-              kv('Laba Peternak',money(src.system_amount||src.farmer_profit))+
-              kv('Laba Per Ekor',money(src.profit_per_chick_in))+
-            '</div>'+
-          '</div>'+
-          '<footer class="footer"><div><strong>REKAP HASIL PEMELIHARAAN PETERNAK (RHPP)</strong><br>'+esc(companyName)+'</div><div style="text-align:right"><strong>Halaman 2 dari 2</strong><br>Dicetak: '+esc(printStamp)+'</div></footer>'+
-        '</section>'+
-        '</body></html>';
-    };;
+      const harvestRowsHtml=hs.map(h=>'<tr><td>'+prodDateId(h.harvested_on)+'</td><td>'+esc(h.id?String(h.id).slice(0,6).toUpperCase():'-')+'</td><td>'+esc(h.buyer_name||'-')+'</td><td class="n">'+prodFmt(h.birds,0)+'</td><td class="n">'+n2(h.net_weight_kg)+'</td><td class="n">'+n2(h.avg_weight_kg)+'</td><td class="n">'+prodFmt(src.weighted_age,0)+'</td><td class="n">'+money(h.price_per_kg)+'</td><td class="n">('+money(h.total_amount)+')</td></tr>').join('')+
+        '<tr class="total"><td colspan="3"></td><td class="n">('+prodFmt(harvestBirds,0)+')</td><td class="n">('+n2(harvestKg)+')</td><td class="n">'+n2(avgBw)+'</td><td class="n">'+n2(src.weighted_age)+'</td><td class="n">'+money(avgLivePrice)+'</td><td class="n">('+money(src.harvest_value)+')</td></tr>';
+
+      const bonusDepletion=prodNum(src.bonus_depletion||src.bonus_mortality);
+      const bonusDepletionRate=prodNum(src.bonus_depletion_rate||src.bonus_mortality_rate);
+      const resultRows=
+        '<tr><td>Penjualan Ayam</td><td class="n">'+money(src.harvest_value)+'</td></tr>'+
+        '<tr><td>Pembelian Sapronak</td><td class="n">'+money(src.sapronak_cost)+'</td></tr>'+
+        '<tr><td>Total Kenaikan Harga Kontrak Dari Pasar</td><td class="n">-</td></tr>'+
+        '<tr><td>Total Tambahan Harga Kontrak Dari FCR</td><td class="n">'+money(src.bonus_fc)+'</td></tr>'+
+        '<tr><td>Total Tambahan Harga Kontrak Dari IP</td><td class="n">'+money(src.bonus_ip)+'</td></tr>'+
+        '<tr><td>Total Tambahan Harga Kontrak Dari Deplesi</td><td class="n">'+money(bonusDepletion)+'</td></tr>'+
+        '<tr class="red-total"><td>Hasil Plasma</td><td class="n">'+money(hasilPlasma)+'</td></tr>'+
+        '<tr class="red-total"><td>Hasil Plasma Per Ekor</td><td class="n">'+money(src.profit_per_chick_in)+'</td></tr>'+
+        '<tr><td>Potongan Jaminan</td><td class="n">-</td></tr>'+
+        '<tr class="red-total"><td>Hasil Plasma Akhir Setelah Dikurangi Pot.</td><td class="n">'+money(hasilPlasma)+'</td></tr>';
+
+      const bonusRows=
+        '<tr><td>PERHITUNGAN SELISIH PASAR</td><td class="n">-</td><td class="n">-</td><td class="n">-</td><td class="n">-</td><td class="n">-</td></tr>'+
+        '<tr><td>PERHITUNGAN FCR</td><td class="n">'+prodFmt(src.fcr_actual,3)+'</td><td class="n">'+prodFmt(src.fcr_standard,3)+'</td><td class="n">'+prodFmt(fcrDiff,3)+'</td><td class="n">'+money(src.bonus_fc_rate)+'</td><td class="n">'+money(src.bonus_fc)+'</td></tr>'+
+        '<tr><td>PERHITUNGAN IP</td><td class="n">'+prodFmt(src.ip,0)+'</td><td class="n">-</td><td class="n">-</td><td class="n">'+money(src.bonus_ip_rate)+'</td><td class="n">'+money(src.bonus_ip)+'</td></tr>'+
+        '<tr><td>PERHITUNGAN DEPLESI</td><td class="n">'+prodFmt(src.mortality_pct,2)+'</td><td class="n">-</td><td class="n">-</td><td class="n">'+money(bonusDepletionRate)+'</td><td class="n">'+money(bonusDepletion)+'</td></tr>';
+
+      return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(fileBase)+'</title><style>'+
+        '@page{size:A4 portrait;margin:4mm}*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;font-size:5.6px;line-height:1.1;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.sheet{width:100%;}.top{display:grid;grid-template-columns:30% 38% 32%;align-items:start;min-height:25mm}.logo-wrap{display:flex;align-items:flex-start}.logo{max-width:35mm;max-height:20mm;object-fit:contain}.title{text-align:center;padding-top:8mm}.title h2{font-size:8px;margin:0;text-decoration:underline}.title p{font-size:5.8px;margin:1px 0}.meta{width:100%;border-collapse:collapse;font-size:5.2px}.meta th,.meta td{border:0.5px solid #000;padding:1px 2px}.meta th{width:42%;text-align:left}.section-label{display:inline-block;background:#000!important;color:#fff!important;font-weight:700;padding:1.5px 4px;margin-top:1.5mm;min-width:20mm}.tbl{width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 .8mm}.tbl th,.tbl td{border:.45px solid #000;padding:1px 1.5px;vertical-align:middle}.tbl thead th{background:#f40000!important;color:#fff!important;font-weight:700;text-align:center}.tbl .n{text-align:right}.tbl .c{text-align:center}.tbl .total td,.tbl .total th{font-weight:700}.summary td:first-child{width:84%}.summary td:last-child{width:16%;font-weight:700}.red-total td{color:#e00000!important;font-weight:700}.bonus-title{text-align:center;font-weight:700;border:.45px solid #000;padding:1.5px;margin-top:1mm}.bonus thead th{background:#fff!important;color:#000!important}.bottom{display:grid;grid-template-columns:48% 4% 48%;margin-top:1.2mm}.mini{width:100%;border-collapse:collapse}.mini td{border:.45px solid #000;padding:1px 2px}.mini td:first-child{width:60%}.bank{border:.45px solid #000;padding:2px;min-height:14mm}.bank div{margin-bottom:1px}.muted-line{height:2px}.nowrap{white-space:nowrap}</style></head><body>'+
+        '<div class="sheet"><div class="top"><div class="logo-wrap"><img class="logo" src="'+esc(bmsLogo)+'" alt="BMS"></div><div class="title"><h2>RHPP (OH)</h2><p>Rekapitulasi Hasil Perhitungan Plasma</p></div><div>'+topInfo+'</div></div>'+
+
+        '<div class="section-label">DOC</div>'+
+        '<table class="tbl"><thead><tr><th style="width:12%">Tanggal</th><th style="width:32%">DOC</th><th style="width:23%">No. SJ</th><th style="width:8%">Qty</th><th style="width:8%">Satuan</th><th style="width:8%">Harga</th><th style="width:9%">Total</th></tr></thead><tbody>'+docRows+'</tbody></table>'+
+
+        '<div class="section-label">PAKAN</div>'+
+        '<table class="tbl"><thead><tr><th style="width:11%">Tanggal</th><th style="width:27%">Pakan</th><th style="width:20%">No. SJ</th><th style="width:7%">Qty</th><th style="width:12%">Dari/Ke</th><th style="width:7%">Qty</th><th style="width:8%">Harga</th><th style="width:8%">Total</th></tr></thead><tbody>'+feedRowsHtml+'</tbody></table>'+
+
+        '<div class="section-label">OVK</div>'+
+        '<table class="tbl"><thead><tr><th style="width:11%">Tanggal</th><th style="width:27%">Obat</th><th style="width:7%">Qty</th><th style="width:8%">Satuan</th><th style="width:17%">No. SJ</th><th style="width:15%">Supplier</th><th style="width:7%">Harga</th><th style="width:8%">Total</th></tr></thead><tbody>'+ovkRowsHtml+'</tbody></table>'+
+
+        '<div class="section-label">PENJUALAN AYAM</div>'+
+        '<table class="tbl"><thead><tr><th style="width:10%">Tanggal</th><th style="width:10%">LBSI</th><th style="width:20%">Broker</th><th style="width:8%">Ekor</th><th style="width:12%">Kg</th><th style="width:8%">Rata2</th><th style="width:7%">Umur</th><th style="width:10%">Kontrak</th><th style="width:15%">Total</th></tr></thead><tbody>'+harvestRowsHtml+'</tbody></table>'+
+
+        '<table class="tbl summary"><tbody>'+resultRows+'</tbody></table>'+
+
+        '<div class="bonus-title">TAMBAHAN HARGA KONTRAK / KENAIKAN HARGA KONTRAK</div>'+
+        '<table class="tbl bonus"><thead><tr><th style="width:28%">JENIS PERHITUNGAN</th><th style="width:14%">ACTUAL</th><th style="width:15%">STD/KONTRAK</th><th style="width:14%">SELISIH</th><th style="width:15%">TAMBAHAN RP/KG</th><th style="width:14%">TOTAL</th></tr></thead><tbody>'+bonusRows+'</tbody></table>'+
+
+        '<div class="bottom"><div><strong>KETERANGAN :</strong><table class="mini"><tbody>'+
+          '<tr><td>Mortalitas</td><td class="n">'+prodFmt(src.mortality_pct,2)+'</td></tr>'+
+          '<tr><td>BW rata2</td><td class="n">'+prodFmt(avgBw,2)+'</td></tr>'+
+          '<tr><td>FCR</td><td class="n">'+prodFmt(src.fcr_actual,3)+'</td></tr>'+
+          '<tr><td>Umur</td><td class="n">'+prodFmt(src.weighted_age,2)+'</td></tr>'+
+          '<tr><td>IP</td><td class="n">'+prodFmt(src.ip,0)+'</td></tr>'+
+        '</tbody></table></div><div></div><div class="bank">'+
+          '<div>BANK * : '+esc(company.bank_name||'-')+'</div>'+
+          '<div>CABANG, KOTA * : -</div>'+
+          '<div>NO REK * : '+esc(company.bank_account_number||'-')+'</div>'+
+          '<div>AN * : '+esc(company.bank_account_name||'-')+'</div>'+
+        '</div></div>'+
+        '</div></body></html>';
+    };
         const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
       w.document.write(docHtml());w.document.close();
