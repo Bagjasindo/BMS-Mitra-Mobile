@@ -17,6 +17,17 @@ Sumber lanjutan tunggal: source code live + file ini.
 
 
 
+
+## KEUANGAN — RIWAYAT FILTER-FIRST
+- Riwayat Pembelian Barang
+- Riwayat Nota Aset
+- Riwayat Pembayaran Supplier
+- Riwayat Penerimaan Expedisi
+- Riwayat Gaji ABK
+- Riwayat Penerimaan Penjualan Mandiri
+- Riwayat Pembayaran Hutang Supplier Mandiri
+Semua mengikuti pola: awal tersembunyi, filter tanggal lalu Tampilkan, Reset menyembunyikan kembali, tanpa pagination.
+
 ## STANDAR RIWAYAT FILTER-FIRST
 - Riwayat transaksi yang memakai helper bersama tidak lagi memakai pagination Sebelumnya/Selanjutnya.
 - Awal buka: riwayat belum ditampilkan.
@@ -93,6 +104,8 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `f58b8e90c2c135c27a18cce1ae4c944e821665e9` — Bump cache for finance history filters
+- `0af8a9fa761505811a812fe301c8f2e08dfbe80c` — Standardize finance histories as filter-first
 - `01e18f1120b6dc8675a3928d6b8a649d7da97eb0` — Bump cache for remaining history filters
 - `bb077f7e54b9394347c8897fa3ea775c5aa00c4e` — Add filter-first controls to remaining logistics histories
 - `91665be19ecc1785c4e658d08420e78d539aa1ce` — Bump cache for filter-first transaction histories
@@ -116,7 +129,7 @@ Terdapat 5 halaman/menu RHPP:
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2300-history-local-filters`
+`main-1958.js?v=2301-finance-history-filter-first`
 
 ## TITIK BERHENTI
 STOP di sini.
