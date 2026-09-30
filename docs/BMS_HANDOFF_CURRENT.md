@@ -18,6 +18,16 @@ Sumber lanjutan tunggal: source code live + file ini.
 
 
 
+
+## STANDAR FONT & HP GLOBAL
+- Seluruh UI layar memakai satu font stack: Inter / system-ui / Segoe UI / Roboto / Arial.
+- Hierarki font dikunci global: body, heading, label, control, button, table, sidebar, KPI.
+- Desktop dan HP memakai hierarchy yang sama; ukuran HP dibuat responsif tanpa mengubah bahasa visual.
+- Field input/select/textarea di HP memakai 16px untuk keterbacaan dan mencegah zoom otomatis browser.
+- Tombol Simpan/Edit feedback (`Menyimpan…`, `✓ Tersimpan`, `✕ Belum tersimpan`) memakai ukuran dan font yang sama di desktop dan HP.
+- Mobile touch target tombol minimal 44px.
+- Layer ini hanya `@media screen`; Print/PDF tidak diubah.
+
 ## STANDAR TOMBOL SIMPAN / EDIT GLOBAL
 - Submit form tidak boleh menghasilkan double input: submit pertama langsung mengunci form/tombol, submit berikutnya diblok.
 - Saat proses: tombol menampilkan `Menyimpan…`.
@@ -111,6 +121,8 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `0a0af4ad83ab90b3e58b0ac286ffa3b7880a8b09` — Bump cache for global typography mobile sync
+- `36a10061e3f5c848d8683a42750729634e5fe3c8` — Synchronize global typography and mobile UI
 - `b1c85d98bf77701cd7a594f610c51094379616e4` — Add visual states for save button feedback
 - `a983760e2b1994a3d527ae6d7500adde79ad9ba2` — Bump cache for button save feedback
 - `8f6541c6976b5c4d09ce34ffcb3f04b3c7e7946f` — Standardize save feedback on buttons and block duplicate submits
@@ -137,7 +149,7 @@ Terdapat 5 halaman/menu RHPP:
 Cache aktif saat handoff ini dibuat:
 `main-1958.js?v=2295-button-save-feedback`
 Cache CSS aktif:
-`style.css?v=2219-global-ui-9point`
+`style.css?v=2220-global-font-mobile-sync`
 
 ## TITIK BERHENTI
 STOP di sini.
