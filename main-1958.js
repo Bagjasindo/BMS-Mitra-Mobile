@@ -5701,35 +5701,44 @@ async function financeSupplierPayablesPage(){
   };
 }
 
+function financeGeneralExpenseWarnings(scope,category,notes){
+  const warnings=[];
+  if(scope==='LUAR_KANTOR'&&category==='LISTRIK')warnings.push('Listrik kantor sebaiknya dicatat sebagai Kantor.');
+  if(scope==='KANTOR'&&category==='BBM')warnings.push('BBM perjalanan sebaiknya dicatat sebagai Luar Kantor.');
+  const text=String(notes||'').toLowerCase();
+  if(/\b(kandang|doc|pakan|ovk|sekam|sapronak|panen)\b/.test(text))warnings.push(/\b(perbaikan|perawatan|renovasi|lampu|atap)\b/.test(text)?'Perbaikan khusus kandang dicatat di Perawatan Kandang.':'Biaya produksi kandang dicatat di BOP Produksi; pembelian sapronak atau tambah daging melalui modul sumber.');
+  if(/\b(expedisi|ekspedisi|trip|ongkos kirim)\b/.test(text))warnings.push('Biaya trip usaha dicatat di BOP Expedisi.');
+  return warnings;
+}
+
 async function financeBopGeneralPage(){
   const {data,error}=await db.from('bop_outside').select('*').order('incurred_on',{ascending:false}).order('created_at',{ascending:false});
-  const rows=data||[];
-  const isSalary=x=>x.category==='TENAGA_KERJA'&&/\b(gaji|salary)\b/i.test(String(x.notes||''));
+  const allRows=data||[];
+  window.__financeBopGeneralState=window.__financeBopGeneralState||{editId:'',scopeFilter:''};
+  const scopeFilter=window.__financeBopGeneralState.scopeFilter||'';
+  const rows=allRows.filter(x=>!scopeFilter||x.expense_scope===scopeFilter);
+  const isSalary=x=>x.category==='GAJI'||x.category==='TENAGA_KERJA'&&/\b(gaji|salary)\b/i.test(String(x.notes||''));
   const salaryRows=rows.filter(isSalary),operationalRows=rows.filter(x=>!isSalary(x));
   const salaryTotal=salaryRows.reduce((n,x)=>n+prodNum(x.amount),0),operationalTotal=operationalRows.reduce((n,x)=>n+prodNum(x.amount),0);
   window.__financeBopGeneralState=window.__financeBopGeneralState||{editId:''};
-  const editState=window.__financeBopGeneralState,editRow=rows.find(x=>x.id===editState.editId)||null;
+  const editState=window.__financeBopGeneralState,editRow=allRows.find(x=>x.id===editState.editId)||null;
   const txn=txnListState(rows,'bop_outside','incurred_on',5);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
-  const bopUmumLabels={TENAGA_KERJA:'Gaji & Insentif',TRANSPORTASI:'BBM & Pajak Kendaraan',LISTRIK:'Listrik Kantor',PERBAIKAN:'Servis & Perbaikan',ADMINISTRASI:'Kebutuhan Kantor & Langganan',LAINNYA:'Sumbangan, Seragam & Lainnya'};
+  const bopUmumLabels={GAJI:'Gaji',INSENTIF:'Insentif',BBM:'BBM',PAJAK:'Pajak',LISTRIK:'Listrik',SERVIS:'Servis',ATK:'ATK',KONSUMSI:'Konsumsi',LANGGANAN:'Langganan',SUMBANGAN:'Sumbangan',LAINNYA:'Lainnya',TENAGA_KERJA:'Tenaga Kerja',TRANSPORTASI:'Transportasi',PERBAIKAN:'Perbaikan',ADMINISTRASI:'Administrasi'};
   let html='<section class="panel"><h3>Ringkasan Biaya Perusahaan</h3><p class="muted">Gaji karyawan ditampilkan terpisah agar angka BOP Umum tidak tercampur. Keduanya tetap masuk Arus Kas satu kali dari transaksi sumber.</p><div class="rhpp-summary-cards">'+
     '<div class="rhpp-summary-card"><span>BOP Umum selain gaji</span><strong>Rp '+prodFmt(operationalTotal,0)+'</strong><small>'+operationalRows.length+' transaksi</small></div>'+
     '<div class="rhpp-summary-card"><span>Gaji Karyawan</span><strong>Rp '+prodFmt(salaryTotal,0)+'</strong><small>'+salaryRows.length+' transaksi</small></div>'+
     '<div class="rhpp-summary-card"><span>Total Biaya Perusahaan</span><strong>Rp '+prodFmt(operationalTotal+salaryTotal,0)+'</strong></div></div></section>'+
     '<section class="panel"><h3>'+(editRow?'Edit BOP Umum':'Tambah BOP Umum')+'</h3>'+
-    '<p class="muted">Biaya operasional perusahaan. Gaji dan insentif: Tenaga Kerja; BBM dan pajak kendaraan: Transportasi; oli, ban, servis: Perbaikan; rapat, konsumsi kantor, langganan: Administrasi; sumbangan dan seragam: Lainnya. Biaya khusus kandang dicatat di BOP Kandang, biaya trip di Expedisi. Jelaskan transaksi pada Rincian transaksi.</p>'+
+    '<p class="muted">Pilih Kantor atau Luar Kantor. Biaya khusus kandang masuk BOP Produksi atau Perawatan Kandang; biaya trip usaha masuk Expedisi.</p>'+
     '<form id="bopOutsideForm" class="form-vertical">'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(editRow?.incurred_on||today)+'" required></label>'+
-      '<label>Kategori<select name="category" required>'+
-        '<option value="">Pilih Kategori</option>'+
-        '<option value="TENAGA_KERJA" '+(editRow?.category==='TENAGA_KERJA'?'selected':'')+'>Gaji &amp; Insentif</option>'+
-        '<option value="TRANSPORTASI" '+(editRow?.category==='TRANSPORTASI'?'selected':'')+'>BBM &amp; Pajak Kendaraan</option>'+
-        '<option value="LISTRIK" '+(editRow?.category==='LISTRIK'?'selected':'')+'>Listrik Kantor</option>'+
-        '<option value="PERBAIKAN" '+(editRow?.category==='PERBAIKAN'?'selected':'')+'>Servis &amp; Perbaikan</option>'+
-        '<option value="ADMINISTRASI" '+(editRow?.category==='ADMINISTRASI'?'selected':'')+'>Kebutuhan Kantor &amp; Langganan</option>'+
-        '<option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Sumbangan, Seragam &amp; Lainnya</option>'+
-      '</select></label>'+
+      '<label>Jenis<select name="expense_scope" required><option value="">Pilih Jenis</option><option value="KANTOR" '+(editRow?.expense_scope==='KANTOR'?'selected':'')+'>Kantor</option><option value="LUAR_KANTOR" '+(editRow?.expense_scope==='LUAR_KANTOR'?'selected':'')+'>Luar Kantor</option></select></label>'+
+      '<label>Kategori<select name="category" required><option value="">Pilih Kategori</option>'+
+      ['GAJI','INSENTIF','BBM','PAJAK','LISTRIK','SERVIS','ATK','KONSUMSI','LANGGANAN','SUMBANGAN','LAINNYA'].map(k=>'<option value="'+k+'" '+(editRow?.category===k?'selected':'')+'>'+bopUmumLabels[k]+'</option>').join('')+
+      (editRow&&['TENAGA_KERJA','TRANSPORTASI','PERBAIKAN','ADMINISTRASI'].includes(editRow.category)?'<option value="'+esc(editRow.category)+'" selected>'+esc(bopUmumLabels[editRow.category])+' (lama)</option>':'')+
+      '</select></label><p id="bopScopeWarning" role="status" aria-live="polite" class="muted"></p>'+
       '<label>Dibayar dari<select name="paid_by"><option value="COMPANY" '+(editRow?.paid_by!=='OWNER'?'selected':'')+'>Kas Perusahaan</option><option value="OWNER" '+(editRow?.paid_by==='OWNER'?'selected':'')+'>Uang Pribadi Owner</option></select></label>'+
       '<p class="muted">Biaya tetap mengurangi laba. Pembayaran langsung owner dicatat terpisah dan tidak mengurangi kas perusahaan.</p>'+
       '<label>No. Bukti / Referensi<input name="reference" value="'+esc(editRow?.reference||'')+'" placeholder="Nomor nota / transfer / bukti Excel"></label>'+
@@ -5738,15 +5747,16 @@ async function financeBopGeneralPage(){
       '<label>Rincian transaksi<textarea name="notes" placeholder="Contoh: gaji Juli 2026 / bensin Om Burhan / kopi kantor" required>'+esc(editRow?.notes||'')+'</textarea></label>'+
       '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan')+'</button>'+(editRow?'<button type="button" id="bopOutsideEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
-    '<section class="panel" id="bopUmumPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Umum</h3></div><div class="report-actions"><button type="button" id="bopUmumPrint">Cetak / PDF</button></div></div>'+txn.controls+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(bopUmumLabels[x.category]||String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
+    '<section class="panel" id="bopUmumPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Umum</h3></div><div class="report-actions"><button type="button" id="bopUmumPrint">Cetak / PDF</button></div></div>'+'<label>Jenis laporan<select id="bopGeneralScopeFilter"><option value="">Semua</option><option value="KANTOR" '+(scopeFilter==='KANTOR'?'selected':'')+'>Kantor</option><option value="LUAR_KANTOR" '+(scopeFilter==='LUAR_KANTOR'?'selected':'')+'>Luar Kantor</option></select></label>'+txn.controls+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
+      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(x.expense_scope==='KANTOR'?'Kantor':x.expense_scope==='LUAR_KANTOR'?'Luar Kantor':'Belum ditentukan')+'</td><td>'+esc(bopUmumLabels[x.category]||String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
       '</tbody></table></div>'+
       (!txn.total?'<p>Belum ada data.</p>':'')+txn.pager+
     '</section>';
 
   layout(html);
   bindNumberInputs();
+  document.getElementById('bopGeneralScopeFilter').onchange=async ev=>{editState.scopeFilter=ev.target.value;await financeBopGeneralPage();};
   bindTxnList(txn,()=>financeBopGeneralPage());const bopUmumPrint=document.getElementById('bopUmumPrint');if(bopUmumPrint)bopUmumPrint.onclick=()=>printFinanceDocument('bopUmumPrintArea','Laporan BOP Umum');
   if(error)msg(error.message);
 
@@ -5754,6 +5764,14 @@ async function financeBopGeneralPage(){
   const cancelEdit=document.getElementById('bopOutsideEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{editState.editId='';await financeBopGeneralPage();};
   bindAdminTransactionDeletes(()=>{editState.editId='';return financeBopGeneralPage();});
   const form=document.getElementById('bopOutsideForm');
+  const showScopeWarning=()=>{
+    if(!form)return [];
+    const warnings=financeGeneralExpenseWarnings(form.elements.expense_scope.value,form.elements.category.value,form.elements.notes.value);
+    const target=document.getElementById('bopScopeWarning');
+    if(target){target.textContent=warnings.join(' ');target.className=warnings.length?'error':'muted';}
+    return warnings;
+  };
+  if(form){['expense_scope','category'].forEach(k=>form.elements[k].addEventListener('change',showScopeWarning));form.elements.notes.addEventListener('input',showScopeWarning);showScopeWarning();}
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
     const fd=new FormData(form);
@@ -5762,13 +5780,18 @@ async function financeBopGeneralPage(){
     const payload={
       incurred_on:fd.get('incurred_on'),
       category:fd.get('category'),
+      expense_scope:String(fd.get('expense_scope')||''),
       amount,
       paid_by:String(fd.get('paid_by')||'COMPANY'),
       reference:String(fd.get('reference')||'').trim()||null,
       notes:String(fd.get('notes')||'').trim()||null
     };
-    if(payload.reference&&rows.some(x=>x.id!==editRow?.id&&String(x.reference||'').trim().toLowerCase()===payload.reference.toLowerCase()))return msg('Nomor bukti sudah tercatat di kamar ini. Periksa transaksi lama; jangan input ulang.');
-    if(!await appConfirm('Tujuan: '+'BOP Umum'+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\nDibayar: '+(payload.paid_by==='OWNER'?'Owner':'Kas Perusahaan')+'\n\nSimpan transaksi?'))return;
+    if(!['KANTOR','LUAR_KANTOR'].includes(payload.expense_scope))return msg('Pilih Kantor atau Luar Kantor.');
+    if(!payload.notes)return msg('Isi rincian transaksi agar tujuan biaya jelas.');
+    const warnings=showScopeWarning();
+    if(warnings.length&&!await appConfirm('PERINGATAN TUJUAN BIAYA\n\n'+warnings.join('\n')+'\n\nPeriksa jenis, kategori, dan menu tujuan. Tetap simpan sebagai BOP Umum?'))return;
+    if(payload.reference&&allRows.some(x=>x.id!==editRow?.id&&String(x.reference||'').trim().toLowerCase()===payload.reference.toLowerCase()))return msg('Nomor bukti sudah tercatat di kamar ini. Periksa transaksi lama; jangan input ulang.');
+    if(!await appConfirm('Tujuan: '+'BOP Umum'+'\nJenis: '+(payload.expense_scope==='KANTOR'?'Kantor':'Luar Kantor')+'\nKategori: '+bopUmumLabels[payload.category]+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\nDibayar: '+(payload.paid_by==='OWNER'?'Owner':'Kas Perusahaan')+'\n\nSimpan transaksi?'))return;
     const {error}=editRow?await db.from('bop_outside').update(payload).eq('id',editRow.id):await db.from('bop_outside').insert(payload);
     if(error)return msg(error.message);
     editState.editId='';
