@@ -201,7 +201,7 @@ const modules={
   kunjungan:{table:'visits',fields:[['contract_assignment_id','Kandang / Kontrak Logistik','assignment'],['visited_on','Tanggal Kunjungan','date'],['findings','Temuan'],['recommendation','Rekomendasi'],['follow_up','Tindak lanjut'],['follow_up_status','Status']]},
   panen:{table:'harvests',fields:[['contract_assignment_id','Kandang / Kontrak Logistik','assignment'],['harvested_on','Tanggal Panen','date'],['transaction_number','Nomor Transaksi'],['delivery_number','Nomor DO'],['birds','Jumlah Ekor','number'],['net_weight_kg','Berat Bersih (kg)','number'],['avg_weight_kg','Bobot Rata-rata (kg)','computed'],['price_per_kg','Harga per kg','number'],['buyer','Pembeli'],['vehicle','Kendaraan'],['driver','Sopir']]},
   rhpp:{table:'rhpp_real',fields:[['contract_assignment_id','Kandang / Kontrak Logistik','assignment'],['amount','RHPP Real (Rp)','number'],['received_on','Tanggal Diterima','date'],['reference','Referensi'],['notes','Catatan']]},
-  bop:{table:'bop',fields:[['contract_assignment_id','Kandang / Kontrak Logistik','assignment'],['incurred_on','Tanggal','date'],['category','Kategori','select:OVK,TENAGA_KERJA,TRANSPORTASI,LISTRIK,PERBAIKAN,EKSPEDISI,LAINNYA'],['amount','Nominal (Rp)','number'],['reference','Referensi'],['notes','Catatan']]}
+  bop:{table:'bop',fields:[['contract_assignment_id','Kandang / Kontrak Logistik','assignment'],['incurred_on','Tanggal','date'],['category','Kategori','select:OVK,TENAGA_KERJA,TRANSPORTASI,LISTRIK,PERBAIKAN,LAINNYA'],['amount','Nominal (Rp)','number'],['reference','Referensi'],['notes','Catatan']]}
   ,ekspedisi:{table:'expeditions',fields:[['contract_assignment_id','Kandang / Kontrak Logistik','assignment'],['departed_on','Tanggal','date'],['destination','Tujuan'],['vehicle','Kendaraan'],['driver','Sopir'],['cargo','Muatan'],['reference','Referensi'],['notes','Catatan']]}
   ,estimasi:{table:'rhpp_estimates',fields:[['contract_assignment_id','Kandang / Kontrak Logistik','assignment'],['estimated_on','Tanggal Estimasi','date'],['age_days','Umur (hari)','number'],['projected_amount','Proyeksi RHPP','number'],['notes','Catatan']]}
   ,perusahaan:{table:'company_profile',fields:[['company_name','Nama Perusahaan'],['legal_name','Nama Legal'],['address','Alamat'],['phone','Telepon'],['email','Email'],['website','Website'],['tax_number','NPWP'],['business_id','Nomor Usaha'],['bank_name','Bank Perusahaan'],['bank_account_number','No. Rekening Perusahaan'],['bank_account_name','Atas Nama Rekening'],['signatory_name','Penandatangan'],['signatory_title','Jabatan']]}
@@ -5391,7 +5391,7 @@ async function financeBopPage(){
         '<option value="SEKAM" '+(editRow?.category==='SEKAM'?'selected':'')+'>Sekam</option>'+
         '<option value="SANITASI" '+(editRow?.category==='SANITASI'?'selected':'')+'>Sanitasi</option>'+
         '<option value="OPERASIONAL" '+(editRow?.category==='OPERASIONAL'?'selected':'')+'>Operasional Produksi Lain</option>'+
-        '<option value="EKSPEDISI" '+(editRow?.category==='EKSPEDISI'?'selected':'')+'>Ekspedisi</option>'+
+
         '<option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Lainnya</option>'+
       '</select></label>'+
       '<label>Dibayar dari<select name="paid_by"><option value="COMPANY" '+(editRow?.paid_by!=='OWNER'?'selected':'')+'>Kas Perusahaan</option><option value="OWNER" '+(editRow?.paid_by==='OWNER'?'selected':'')+'>Uang Pribadi Owner</option></select></label>'+
