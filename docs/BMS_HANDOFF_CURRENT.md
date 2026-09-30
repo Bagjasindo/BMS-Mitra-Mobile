@@ -95,3 +95,17 @@ Urutan audit:
 ## TITIK MULAI CHAT BERIKUTNYA
 Perintah:
 **"Lanjut BMS dari HANDOFF TUNGGAL TERBARU. Mulai Audit Hulu → Hilir. Jangan baca/ulang handoff lama karena semuanya sudah PASS."**
+
+
+## PERUBAHAN TERBARU — ADMIN BUKA/TUTUP SIKLUS
+- Menu baru: **Administrator → Buka/Tutup Siklus**.
+- Alur: pilih Kandang → pilih Siklus → Buka/Tutup.
+- Hanya ADMIN yang dapat menjalankan aksi.
+- Membuka siklus hanya memengaruhi assignment kandang+siklus terpilih; siklus lain tetap terkunci.
+- Sistem menolak membuka siklus lama jika kandang yang sama masih memiliki siklus aktif lain.
+- Saat siklus MITRA dibuka, snapshot `rhpp_system_final` lama dilepas; saat ditutup kembali sistem memakai proses close resmi dan membuat snapshot final baru.
+- Saat siklus MANDIRI dibuka, snapshot `production_mandiri_final` lama dilepas; saat ditutup kembali sistem memakai proses close resmi.
+- Backend RPC: `admin_reopen_cycle_v1` dan `admin_reclose_cycle_v1`.
+- Uji ADMIN buka→tutup dilakukan dengan transaksi rollback; data asli tetap CLOSED dan snapshot final tetap ada setelah rollback.
+- Uji akses non-ADMIN: ditolak.
+- Cache web saat ini: `main-1958.js?v=2248-admin-cycle-open-close`.
