@@ -5550,7 +5550,12 @@ async function pplRhppAbkViewPage(){
         '</tbody></table></div>'+
       '</section>';
 
-      html+='<section class="panel rhpp-panel rhpp-wide rhpp-feed-panel"><h3>Pemakaian Pakan ABK</h3>'+
+      html+='<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>DOC ABK</h3><p class="muted">Biaya DOC mengikuti populasi awal ABK dan harga DOC kontrak.</p></div></div>'+
+        '<div class="tablewrap"><table><thead><tr><th>Tanggal DOC</th><th>ABK</th><th class="num">Qty Ekor</th><th class="num">Harga/Ekor</th><th class="num">Total</th></tr></thead><tbody>'+
+          '<tr><td>'+prodDateId(r.ci?.arrived_on)+'</td><td>'+esc(leagueAbkName(e))+'</td><td class="num">'+prodFmt(r.initial,0)+'</td><td class="num">'+money(selectedContract?.doc_price)+'</td><td class="num">'+money(r.docCost)+'</td></tr>'+
+        '</tbody></table></div></section>';
+
+            html+='<section class="panel rhpp-panel rhpp-wide rhpp-feed-panel"><h3>Pemakaian Pakan ABK</h3>'+
         '<div class="tablewrap"><table class="rhpp-feed-table"><thead><tr><th>Jenis</th><th class="num">Zak</th><th class="num">Kg</th><th class="num">Harga/Kg</th><th class="num">Nilai</th></tr></thead><tbody>'+
           '<tr><td>Pre Starter</td><td class="num">'+prodFmt(link?.feed_pre_bags,2)+'</td><td class="num">'+prodFmt(prodNum(link?.feed_pre_bags)*50,2)+'</td><td class="num">'+money(selectedContract?.pre_starter_price)+'</td><td class="num">'+money(prodNum(link?.feed_pre_bags)*50*prodNum(selectedContract?.pre_starter_price))+'</td></tr>'+
           '<tr><td>Starter</td><td class="num">'+prodFmt(link?.feed_starter_bags,2)+'</td><td class="num">'+prodFmt(prodNum(link?.feed_starter_bags)*50,2)+'</td><td class="num">'+money(selectedContract?.starter_price)+'</td><td class="num">'+money(prodNum(link?.feed_starter_bags)*50*prodNum(selectedContract?.starter_price))+'</td></tr>'+
@@ -5558,7 +5563,20 @@ async function pplRhppAbkViewPage(){
           '<tr class="rhpp-total-row"><th>TOTAL PAKAN</th><th class="num">'+prodFmt(prodNum(link?.feed_pre_bags)+prodNum(link?.feed_starter_bags)+prodNum(link?.feed_finisher_bags),2)+'</th><th class="num">'+prodFmt(r.feed,2)+'</th><th></th><th class="num">'+money(r.feedCost)+'</th></tr>'+
         '</tbody></table></div></section>';
 
-      html+='<div class="rhpp-grid">'+
+      html+='<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>Tambahan Harga Kontrak / Bonus</h3><p class="muted">Struktur mengikuti contoh RHPP: actual dibanding standar/kontrak lalu menghasilkan tambahan Rp/Kg.</p></div></div>'+
+        '<div class="tablewrap"><table><thead><tr><th>Jenis Perhitungan</th><th class="num">Actual</th><th class="num">Standar / Kontrak</th><th class="num">Selisih</th><th class="num">Tambahan Rp/Kg</th><th class="num">Total</th></tr></thead><tbody>'+
+          '<tr><td>FCR</td><td class="num">'+prodFmt(r.fcr,3)+'</td><td class="num">'+prodFmt(r.stdFcr,3)+'</td><td class="num">'+prodFmt(r.fcrDiff,3)+'</td><td class="num">'+money(r.fcrRate)+'</td><td class="num">'+money(r.fcrBonus)+'</td></tr>'+
+          '<tr><td>IP</td><td class="num">'+prodFmt(r.ip,2)+'</td><td class="num">-</td><td class="num">-</td><td class="num">'+money(r.ipRate)+'</td><td class="num">'+money(r.ipBonus)+'</td></tr>'+
+          '<tr><td>Deplesi / Mortalitas</td><td class="num">'+prodFmt(r.mortality,2)+'%</td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td class="num">-</td></tr>'+
+        '</tbody></table></div>'+
+        '<div class="rhpp-summary-cards" style="margin-top:10px">'+
+          '<div class="rhpp-summary-card"><span>Penjualan Ayam</span><strong>'+money(r.revenue)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Pembelian Sapronak</span><strong>'+money(r.sapronakCost)+'</strong></div>'+
+          '<div class="rhpp-summary-card"><span>Laba Dasar</span><strong>'+money(r.baseProfit)+'</strong></div>'+
+          '<div class="rhpp-summary-card rhpp-summary-value"><span>Hasil RHPP ABK</span><strong>'+money(r.profit)+'</strong></div>'+
+        '</div></section>';
+
+            html+='<div class="rhpp-grid">'+
         '<section class="panel rhpp-panel"><h3>Ringkasan Produksi ABK</h3><div class="tablewrap"><table><tbody>'+
           '<tr><td>Nama Kandang / Peternak</td><td>'+esc(b?shortBarnLabel(b):'-')+'</td></tr>'+
           '<tr><td>Nama ABK</td><td>'+esc(leagueAbkName(e))+'</td></tr>'+
@@ -5596,7 +5614,7 @@ async function pplRhppAbkViewPage(){
       html+='<section class="panel rhpp-panel"><p class="muted">Data hasil Liga ABK untuk pilihan ini belum tersedia.</p></section>';
     }
 
-    html+='<section class="panel rhpp-panel rhpp-control"><div class="rhpp-section-head"><div><h3>Kontrol RHPP ABK</h3><p class="muted">'+(a?.active?'Siklus masih PROSES. Nilai mengikuti data Liga ABK berjalan dan belum menjadi hasil CLOSED.':'Siklus CLOSED. Data tampil sebagai hasil akhir siklus.')+'</p></div>'+
+    html+='<section class="panel rhpp-panel rhpp-control"><div class="rhpp-section-head"><div><h3>Keterangan</h3><p class="muted">Mortalitas '+prodFmt(r?.mortality,2)+'% · BW '+prodFmt(r?.bw,3)+' Kg · FCR '+prodFmt(r?.fcr,3)+' · Umur '+prodFmt(r?.age,2)+' hari · IP '+prodFmt(r?.ip,2)+' · '+(a?.active?'Siklus masih PROSES, belum final.':'Siklus CLOSED / final.')+'</p></div>'+
       '<div class="report-actions"><button type="button" id="pplRhppAbkPrint">Print</button><button type="button" id="pplRhppAbkPdf">PDF</button><button type="button" id="pplRhppAbkExcel">Excel</button></div></div></section>'+
     '</div>';
   }
@@ -5754,7 +5772,7 @@ async function pplRhppViewPage(){
           '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
         '</div>'+
         '<div class="rhpp-mini-grid">'+
-          '<div class="rhpp-mini-block"><h4>INPUT WAJIB</h4>'+
+          '<div class="rhpp-mini-block"><h4>IDENTITAS & DOC</h4>'+
             val('Nama Kandang / Peternak',esc(b?shortBarnLabel(b):'-'))+
             val('Tanggal Chick-In',prodDateId(closed?fin?.chick_in_date:ci?.arrived_on))+
             val('DOC Masuk (Ekor)',prodFmt(chickIn,0))+
@@ -5763,7 +5781,7 @@ async function pplRhppViewPage(){
             val('Tarif Bonus Mortalitas (Rp/Kg)',money(src?.bonus_mortality_rate))+
             val('Status Bonus FC',prodNum(src?.bonus_fc)>0?'DAPAT BONUS':'TIDAK ADA BONUS')+
           '</div>'+
-          '<div class="rhpp-mini-block"><h4>KINERJA PRODUKSI</h4>'+
+          '<div class="rhpp-mini-block"><h4>KETERANGAN PRODUKSI</h4>'+
             val('Mortalitas',prodFmt(src?.mortality_pct,2)+' %')+
             val('Bobot Badan',prodFmt(avgBw,3)+' Kg')+
             val('Total Pakan',prodFmt(feedKg,2)+' Kg')+
@@ -5772,7 +5790,7 @@ async function pplRhppViewPage(){
             val('FCR',prodFmt(src?.fcr_actual,3))+
             val('Indek Prestasi',prodFmt(src?.ip,2))+
           '</div>'+
-          '<div class="rhpp-mini-block"><h4>RINGKASAN DATA</h4>'+
+          '<div class="rhpp-mini-block"><h4>DATA KONTRAK & PANEN</h4>'+
             val('Total Panen (Ekor)',prodFmt(harvestBirds,0))+
             val('Total Berat (Kg)',prodFmt(harvestKg,2))+
             val('Rata-rata BB (Kg/Ekor)',prodFmt(avgBw,3))+
@@ -5784,7 +5802,7 @@ async function pplRhppViewPage(){
             val('Tarif Bonus FC (Rp/Kg)',money(src?.bonus_fc_rate))+
             val('FCR Final',prodFmt(src?.fcr_actual,3))+
           '</div>'+
-          '<div class="rhpp-mini-block rhpp-mini-value"><h4>NILAI RHPP</h4>'+
+          '<div class="rhpp-mini-block rhpp-mini-value"><h4>REKAPITULASI HASIL</h4>'+
             val('Jml. Sapronak',money(src?.sapronak_cost))+
             val('Jml. Retur',money(src?.main_return_cost))+
             val('Total Sapronak',money(src?.sapronak_cost))+
@@ -5821,6 +5839,12 @@ async function pplRhppViewPage(){
             '</tbody></table></div>'+
           '</div>'+
         '</div>':'')+
+        (src?'<div class="rhpp-mini-block" style="margin-top:12px"><h4>TAMBAHAN HARGA KONTRAK / BONUS</h4>'+
+          '<div class="tablewrap"><table><thead><tr><th>Jenis Perhitungan</th><th class="num">Actual</th><th class="num">Standar / Kontrak</th><th class="num">Selisih</th><th class="num">Tambahan Rp/Kg</th><th class="num">Total</th></tr></thead><tbody>'+
+            '<tr><td>FCR</td><td class="num">'+prodFmt(src?.fcr_actual,3)+'</td><td class="num">'+prodFmt(src?.fcr_standard,3)+'</td><td class="num">'+prodFmt(prodNum(src?.fcr_standard)-prodNum(src?.fcr_actual),3)+'</td><td class="num">'+money(src?.bonus_fc_rate)+'</td><td class="num">'+money(src?.bonus_fc)+'</td></tr>'+
+            '<tr><td>IP</td><td class="num">'+prodFmt(src?.ip,2)+'</td><td class="num">-</td><td class="num">-</td><td class="num">'+money(src?.bonus_ip_rate)+'</td><td class="num">'+money(src?.bonus_ip)+'</td></tr>'+
+            '<tr><td>Deplesi / Mortalitas</td><td class="num">'+prodFmt(src?.mortality_pct,2)+'%</td><td class="num">-</td><td class="num">-</td><td class="num">'+money(src?.bonus_mortality_rate)+'</td><td class="num">'+money(src?.bonus_mortality)+'</td></tr>'+
+          '</tbody></table></div></div>':'')+
         (!src?'<p class="muted">Ringkasan RHPP belum tersedia untuk siklus ini.</p>':'')+
         (!closed?'<p class="muted">Periode masih PROSES. Nilai FINAL tersedia setelah Administrator melakukan Close.</p>':'')+
       '</section></div>';
@@ -5980,7 +6004,7 @@ async function adminRhppHistoryPage(){
           '<div class="report-actions"><button type="button" id="pplRhppPrint">Print</button><button type="button" id="pplRhppPdf">PDF</button><button type="button" id="pplRhppExcel">Excel</button></div>'+
         '</div>'+
         '<div class="rhpp-mini-grid">'+
-          '<div class="rhpp-mini-block"><h4>INPUT WAJIB</h4>'+
+          '<div class="rhpp-mini-block"><h4>IDENTITAS & DOC</h4>'+
             val('Nama Kandang / Peternak',esc(b?shortBarnLabel(b):'-'))+
             val('Tanggal Chick-In',prodDateId(closed?fin?.chick_in_date:ci?.arrived_on))+
             val('DOC Masuk (Ekor)',prodFmt(chickIn,0))+
@@ -5989,7 +6013,7 @@ async function adminRhppHistoryPage(){
             val('Tarif Bonus Mortalitas (Rp/Kg)',money(src?.bonus_mortality_rate))+
             val('Status Bonus FC',prodNum(src?.bonus_fc)>0?'DAPAT BONUS':'TIDAK ADA BONUS')+
           '</div>'+
-          '<div class="rhpp-mini-block"><h4>KINERJA PRODUKSI</h4>'+
+          '<div class="rhpp-mini-block"><h4>KETERANGAN PRODUKSI</h4>'+
             val('Mortalitas',prodFmt(src?.mortality_pct,2)+' %')+
             val('Bobot Badan',prodFmt(avgBw,3)+' Kg')+
             val('Total Pakan',prodFmt(feedKg,2)+' Kg')+
@@ -5998,7 +6022,7 @@ async function adminRhppHistoryPage(){
             val('FCR',prodFmt(src?.fcr_actual,3))+
             val('Indek Prestasi',prodFmt(src?.ip,2))+
           '</div>'+
-          '<div class="rhpp-mini-block"><h4>RINGKASAN DATA</h4>'+
+          '<div class="rhpp-mini-block"><h4>DATA KONTRAK & PANEN</h4>'+
             val('Total Panen (Ekor)',prodFmt(harvestBirds,0))+
             val('Total Berat (Kg)',prodFmt(harvestKg,2))+
             val('Rata-rata BB (Kg/Ekor)',prodFmt(avgBw,3))+
@@ -6010,7 +6034,7 @@ async function adminRhppHistoryPage(){
             val('Tarif Bonus FC (Rp/Kg)',money(src?.bonus_fc_rate))+
             val('FCR Final',prodFmt(src?.fcr_actual,3))+
           '</div>'+
-          '<div class="rhpp-mini-block rhpp-mini-value"><h4>NILAI RHPP</h4>'+
+          '<div class="rhpp-mini-block rhpp-mini-value"><h4>REKAPITULASI HASIL</h4>'+
             val('Jml. Sapronak',money(src?.sapronak_cost))+
             val('Jml. Retur',money(src?.main_return_cost))+
             val('Total Sapronak',money(src?.sapronak_cost))+
