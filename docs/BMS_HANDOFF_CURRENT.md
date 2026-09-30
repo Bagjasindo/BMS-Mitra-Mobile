@@ -338,3 +338,21 @@ Status: FIXED / UI-only; backend dan FLOW FREEZE tidak berubah.
 - Frontend commits: `4e7eb5175166d8d0548327935c16ee601ab303eb`, `90ed668ef3042a3ef8f99537da5a5c23f556c96a`.
 - Cache: `main-1958.js?v=2257-cycle-history-button-feedback`.
 - Cache commit: `e8db917006f2aa04e00276de12a56ca99a1650a6`.
+
+
+## FIX — KLASMEN ABK HANYA SIKLUS CLOSED — 30 SEPTEMBER 2026
+Status: FIXED / source tetap Liga ABK.
+
+- Sumber perhitungan tetap data Liga ABK: production_abk_results + production_abk_result_sizes + pembagian ABK/pakan.
+- Data Liga ABK pada siklus AKTIF tetap boleh diinput/diedit sesuai alur yang sudah PASS.
+- Namun hasilnya tidak boleh masuk Klasemen Performa ABK selama siklus masih AKTIF.
+- Kriteria masuk klasemen sekarang wajib:
+  1. hasil Liga ABK lengkap,
+  2. assignment siklus active = false,
+  3. assignment memiliki snapshot final resmi di production_cycle_final_unified.
+- “Kandang Terakhir” dan siklus ABK pada klasemen juga hanya mengambil siklus yang sudah CLOSED + final.
+- Dashboard dan halaman Liga ABK sama-sama memakai gate CLOSED tersebut untuk ranking.
+- Tidak ada perubahan formula ranking maupun alur input Liga ABK.
+- Frontend commit: `436f8feae7a28ac03ede2743ec8e98bbbc0b18db`.
+- Cache: `main-1958.js?v=2258-abk-standings-closed-only`.
+- Cache commit: `e437c4485692e8f17a0fc7f3132c0c53ac5b772f`.
