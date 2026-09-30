@@ -526,7 +526,7 @@ function appNav(){
       }
       if(section.label==='Produksi / PPL'&&key==='ppl_rhpp_view'){
         const rhppOpen=['ppl_rhpp_view','ppl_rhpp_abk_view'].includes(tab)?' open':'';
-        return '<details class="nav-subgroup"'+rhppOpen+'><summary>Lihat RHPP</summary><div class="nav-child-item">'+
+        return '<details class="nav-subgroup nav-rhpp-subgroup"'+rhppOpen+'><summary>Lihat RHPP</summary><div class="nav-child-item">'+
           navButton('ppl_rhpp_view')+
           navButton('ppl_rhpp_abk_view')+
           '</div></details>';
@@ -685,7 +685,7 @@ function navIconForTab(k){
     dashboard:'dashboard',
     kandang:'building',item:'box',supplier_sapronak:'users',supplier_daging:'users',kontrak:'file',standar_performa:'chart',reset_klasemen:'chart',karyawan:'users',pengguna:'users',perusahaan:'building',
     logistik_kontrak:'file',logistik_pengiriman:'truck',logistik_kiriman_luar:'box',logistik_retur_luar:'box',logistik_retur:'truck',logistik_retur_sebagian:'truck',logistik_laporan:'report',
-    chick_in:'production',recording:'clipboard',kunjungan:'clipboard',estimasi:'chart',liga_abk:'chart',rekap_produksi:'report',ppl_rhpp_view:'file',rhpp_history:'file',
+    chick_in:'production',recording:'clipboard',kunjungan:'clipboard',estimasi:'chart',liga_abk:'chart',rekap_produksi:'report',ppl_rhpp_view:'file',ppl_rhpp_abk_view:'file',rhpp_history:'file',
     marketing_panen_kontrak:'chart',marketing_panen_mandiri:'chart',marketing_tambah_daging:'box',marketing_laporan:'report',
     rhpp:'file',admin_log_aktivitas:'clipboard',arsip_data:'file',finance_rhpp_real:'file',bop:'wallet',bop_umum:'wallet',expedisi_usaha:'truck',bop_expedisi:'wallet',perawatan_expedisi:'wallet',laporan_expedisi:'report',kasbon:'wallet',cicilan:'wallet',arus_kas:'chart',laporan_keuangan:'report',
     laporan:'report',profil:'user',harga_hidup:'chart',bonus_kontrak:'chart'
