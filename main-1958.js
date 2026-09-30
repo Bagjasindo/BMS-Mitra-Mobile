@@ -1642,12 +1642,12 @@ async function logisticsShippingPage(editId=null){
       const isLocked=a?.active===false;
       const details=shipmentItems.filter(x=>x.shipment_id===s.id);
       if(!details.length){
-        return ['<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(s.shipment_date||'-')+'</td><td>'+esc(s.shipping_note_number||'-')+'</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(isLocked?'<button type="button" data-view-shipment="'+esc(s.id)+'">Lihat</button>':'<button type="button" data-view-shipment="'+esc(s.id)+'">Edit</button> <button type="button" data-delete-shipment="'+esc(s.id)+'">Hapus</button>')+'</td></tr>'];
+        return ['<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(s.shipment_date||'-')+'</td><td>'+esc(s.shipping_note_number||'-')+'</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(isLocked?'<button type="button" data-view-shipment="'+esc(s.id)+'">Lihat</button>':'<button type="button" data-view-shipment="'+esc(s.id)+'">Edit</button>'+(profile.role==='ADMIN'?' <button type="button" data-delete-shipment="'+esc(s.id)+'">Hapus</button>':''))+'</td></tr>'];
       }
       return details.map((d,idx)=>{
         const i=itemsAll.find(x=>x.id===d.item_id);
         const kg=d.quantity_kg!=null?d.quantity_kg:(i?.category==='PAKAN'?Number(d.quantity)*Number(i.kg_per_unit||50):null);
-        return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(s.shipment_date||'-')+'</td><td>'+esc(s.shipping_note_number||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(d.quantity)+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td><td>'+fmtNumber(d.unit_price)+'</td><td>'+fmtNumber(Number(d.quantity||0)*Number(d.unit_price||0))+'</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(idx===0?(isLocked?'<button type="button" data-view-shipment="'+esc(s.id)+'">Lihat</button>':'<button type="button" data-view-shipment="'+esc(s.id)+'">Edit</button> <button type="button" data-delete-shipment="'+esc(s.id)+'">Hapus</button>'):'')+'</td></tr>';
+        return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(s.shipment_date||'-')+'</td><td>'+esc(s.shipping_note_number||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(d.quantity)+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td><td>'+fmtNumber(d.unit_price)+'</td><td>'+fmtNumber(Number(d.quantity||0)*Number(d.unit_price||0))+'</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(idx===0?(isLocked?'<button type="button" data-view-shipment="'+esc(s.id)+'">Lihat</button>':'<button type="button" data-view-shipment="'+esc(s.id)+'">Edit</button>'+(profile.role==='ADMIN'?' <button type="button" data-delete-shipment="'+esc(s.id)+'">Hapus</button>':'')):'')+'</td></tr>';
       });
     }).join('')+
     '</tbody></table></div>'+(!shownShipments.length?'<p>Data pengiriman tidak ditemukan.</p>':'')+'<p class="muted">Riwayat lengkap tersedia di Laporan Logistik.</p></section>';
@@ -3468,7 +3468,7 @@ async function chickInPage(){
         const e=d.abks.find(v=>v.id===l.abk_id);
         return (e?.name||e?.code||'ABK')+' '+prodFmt(l.initial_birds,0);
       }).join(' · '):'-';
-      return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodFmt(x.received,0)+'</td><td>'+prodFmt(x.doa,0)+'</td><td><strong>'+prodFmt(net,0)+'</strong></td><td>'+esc(abkText)+'</td><td>'+weight+'</td><td>'+esc(doText)+'</td><td><div class="inline-actions"><button type="button" data-edit-chick="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('chick_ins',x.id)+'</div></td></tr>';
+      return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodFmt(x.received,0)+'</td><td>'+prodFmt(x.doa,0)+'</td><td><strong>'+prodFmt(net,0)+'</strong></td><td>'+esc(abkText)+'</td><td>'+weight+'</td><td>'+esc(doText)+'</td><td>'+(a?.active?'<div class="inline-actions"><button type="button" data-edit-chick="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('chick_ins',x.id)+'</div>':'<strong>Terkunci</strong>')+'</td></tr>';
     }).join('')+
     '</tbody></table></div></section>';
 
@@ -3482,6 +3482,17 @@ async function chickInPage(){
   const abkTotalEl=document.getElementById('chickAbkTotal');
   const addAbkBtn=document.getElementById('addChickAbk');
   let chickAbks=[];
+
+  if(!editRow){
+    form.assignment.onchange=async()=>{
+      const existing=d.chicks.find(x=>x.contract_assignment_id===form.assignment.value);
+      if(existing){
+        window.__chickInEdit=existing.id;
+        await chickInPage();
+        msg('Chick-In siklus ini sudah ada. Form otomatis masuk mode Edit.',true);
+      }
+    };
+  }
 
   const currentAssignmentId=()=>editRow?.contract_assignment_id||form.assignment.value||'';
   const activeAbks=d.abks.filter(e=>e.active);
@@ -4564,16 +4575,15 @@ async function leagueAbkPage(editSizeId=null){
   ):[]);
 
   let html='<section class="panel"><h3>'+(selected?'Edit Panen ABK':'Liga ABK')+'</h3>'+
-    '<p class="muted">Pilih kandang dan ABK, isi Populasi Awal, kunci Pakan, lalu input Panen. Liga bersifat kumulatif MITRA + MANDIRI; ABK MANDIRI tetap dinilai dengan harga acuan kontrak.</p>'+
+    '<p class="muted">Pilih kandang dan ABK, cek Populasi Awal dari Chick-In, kunci Pakan, lalu input Panen. Liga bersifat kumulatif MITRA + MANDIRI; ABK MANDIRI tetap dinilai dengan harga acuan kontrak.</p>'+
     '<form id="abkForm" class="form-vertical">'+
       '<label>Kandang Aktif<select name="assignment" required '+(selected?'disabled':'')+'><option value="">Pilih</option>'+
         d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id)).map(a=>'<option value="'+esc(a.id)+'" '+(selected?.r.contract_assignment_id===a.id?'selected':'')+'>'+esc(leagueAssignmentLabel(d,a))+'</option>').join('')+
       '</select></label>'+
       '<label>ABK<select name="abk" required '+(selected?'disabled':'')+'><option value="">Pilih kontrak dulu</option></select></label>'+
       '<section class="panel" style="margin:0"><h4>Data ABK</h4>'+
-        '<label>Populasi Awal ABK (ekor)<input name="initial_birds" data-number="1" inputmode="decimal" placeholder="Contoh: 8.250"></label>'+
-        (['ADMIN','PPL'].includes(profile.role)?'<button type="button" id="saveAbkPopulation">Simpan Populasi Awal</button>':'')+
-        '<p class="muted">Populasi Awal adalah data dasar ABK dan tidak ikut kunci transaksi kontrak.</p>'+
+        '<label>Populasi Awal ABK (ekor)<input name="initial_birds" data-number="1" inputmode="decimal" readonly></label>'+
+        '<p class="muted">Populasi Awal mengikuti pembagian ABK saat Chick-In / DOC Masuk dan tidak dapat diubah dari Liga ABK.</p>'+
         '<p class="muted">Penempatan Pakan mengikuti kontrak aktif. Input dalam zak, 1 zak = 50 kg.</p>'+
         '<label>Pre Starter (zak)<input name="pre_bags" data-number="1" inputmode="decimal" placeholder="Contoh: 24"></label>'+
         '<label>Starter (zak)<input name="starter_bags" data-number="1" inputmode="decimal" placeholder="Contoh: 70"></label>'+
@@ -4684,7 +4694,7 @@ async function leagueAbkPage(editSizeId=null){
     f.starter_bags.value=link?.feed_starter_bags!=null?prodFmt(link.feed_starter_bags,2):'';
     f.finisher_bags.value=link?.feed_finisher_bags!=null?prodFmt(link.feed_finisher_bags,2):'';
 
-    f.initial_birds.readOnly=!['ADMIN','PPL'].includes(profile.role);
+    f.initial_birds.readOnly=true;
     [f.pre_bags,f.starter_bags,f.finisher_bags].forEach(inp=>inp.readOnly=locked||!['ADMIN','PPL'].includes(profile.role));
     if(savePopulationButton)savePopulationButton.disabled=!link;
     if(lockButton){
@@ -4748,7 +4758,7 @@ async function leagueAbkPage(editSizeId=null){
     if(!a||!link)return msg('Pilih Kandang / Kontrak dan ABK terlebih dahulu.');
     const initialBirds=prodNum(link.initial_birds);
     const pre=normalizeInputID(f.pre_bags.value),starter=normalizeInputID(f.starter_bags.value),finisher=normalizeInputID(f.finisher_bags.value);
-    if(initialBirds<=0)return msg('Simpan Populasi Awal ABK terlebih dahulu.');
+    if(initialBirds<=0)return msg('Populasi Awal ABK belum tersedia dari Chick-In. Periksa pembagian ABK di Chick-In / DOC Masuk.');
     if(pre==null||starter==null||finisher==null||pre<0||starter<0||finisher<0)return msg('Total Penempatan Pakan harus berupa angka yang benar.');
     if(pre+starter+finisher<=0)return msg('Total Penempatan Pakan wajib diisi.');
     const {error}=await db.rpc('lock_production_abk_basics_atomic',{
