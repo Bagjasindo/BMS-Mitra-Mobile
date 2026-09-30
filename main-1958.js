@@ -1628,7 +1628,7 @@ async function logisticsShippingPage(editId=null){
     '<p class="muted">Pengiriman ini khusus Siklus Mitra. Pilih kandang dengan Siklus Mitra aktif, isi No. SJ, lalu tambahkan Sapronak dan jumlah kiriman.</p>'+
     '<form id="logisticsShippingForm" class="form-vertical">'+
       '<input type="hidden" name="shipment_id" value="'+(selected?esc(selected.id):'')+'">'+
-      '<label>Cari / Pilih Kandang<input id="shippingBarnSearch" autocomplete="off" placeholder="Contoh: cicurug" value="'+(selected?esc((barns.find(b=>b.id===selected.barn_id)?.code||'')+' · '+(barns.find(b=>b.id===selected.barn_id)?.name||'')):'')+'" '+(locked?'disabled':'')+' required></label>'+
+      '<label>Cari / Pilih Kandang<input id="shippingBarnSearch" autocomplete="off" placeholder="Contoh: cicurug" value="'+(selected?esc((barns.find(b=>b.id===selected.barn_id)?.code||'')+' · '+(barns.find(b=>b.id===selected.barn_id)?.name||'')):'')+'" '+(selected?'readonly':(locked?'disabled':''))+' required></label>'+
       '<input type="hidden" name="barn_id" id="shippingBarnId" value="'+(selected?esc(selected.barn_id):'')+'">'+
       '<div id="shippingBarnSuggestions" class="search-suggestions"></div>'+
       '<label>Tanggal Pengiriman<input type="date" name="shipment_date" value="'+esc(selected?.shipment_date||todayID())+'" '+(locked?'disabled':'')+' required></label>'+
@@ -1653,7 +1653,7 @@ async function logisticsShippingPage(editId=null){
   if(locked){
     html+='<p><strong>Status: Terkunci</strong> — Kontrak Logistik periode ini sudah CLOSED.</p>';
   }else{
-    html+='<button type="button" id="saveShippingDraft">Simpan Draft</button>';
+    html+='<button type="button" id="saveShippingDraft">'+(selected?'Simpan Perubahan':'Simpan Draft')+'</button>';
     if(selected) html+=' <button type="button" id="cancelShippingEdit">Batal Edit</button>';
   }
   html+='</section>';
@@ -1681,7 +1681,7 @@ async function logisticsShippingPage(editId=null){
   const barnSearch=document.getElementById('shippingBarnSearch');
   const barnIdInput=document.getElementById('shippingBarnId');
   const barnSuggestions=document.getElementById('shippingBarnSuggestions');
-  if(barnSearch&&barnIdInput&&barnSuggestions&&!locked){
+  if(barnSearch&&barnIdInput&&barnSuggestions&&!locked&&!selected){
     const renderShippingBarnSuggestions=()=>{
       const q=(barnSearch.value||'').trim().toLowerCase();
       barnIdInput.value='';
@@ -1719,7 +1719,7 @@ async function logisticsShippingPage(editId=null){
   const contractUnitPriceForItem=(item)=>{
     if(!item)return null;
     const barnId=document.getElementById('shippingBarnId')?.value;
-    const a=activeByBarn.get(barnId);
+    const a=selectedAssignment||activeByBarn.get(barnId);
     const k=masters.find(v=>v.id===a?.master_contract_id);
     if(!a||!k)return null;
     if(item.category==='PAKAN'){
@@ -1809,14 +1809,26 @@ async function logisticsShippingPage(editId=null){
     body.innerHTML=arr.map((x,idx)=>{
       const i=itemsAll.find(v=>v.id===x.item_id);
       const kg=i?.category==='PAKAN'?Number(x.quantity)*Number(i.kg_per_unit||50):null;
-      return '<tr><td>'+esc(i?.code||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(x.quantity)+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td><td>'+fmtNumber(x.unit_price)+'</td><td>'+fmtNumber(Number(x.quantity||0)*Number(x.unit_price||0))+'</td>'+
+      const qtyCell=selected&&!locked
+        ?'<input type="text" data-number="1" inputmode="decimal" data-edit-draft-qty="'+idx+'" value="'+formatInputID(String(x.quantity??''))+'" style="min-width:110px">'
+        :fmtNumber(x.quantity);
+      return '<tr><td>'+esc(i?.code||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+qtyCell+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td><td>'+fmtNumber(x.unit_price)+'</td><td>'+fmtNumber(Number(x.quantity||0)*Number(x.unit_price||0))+'</td>'+
         (locked?'':'<td><button type="button" data-remove-draft="'+idx+'">Hapus</button></td>')+'</tr>';
     }).join('');
-    if(!locked) body.querySelectorAll('[data-remove-draft]').forEach(btn=>btn.onclick=()=>{
-      const arr=window.__logisticsDraftItems||[];
-      arr.splice(Number(btn.dataset.removeDraft),1);
-      renderDraftItems();
-    });
+    if(!locked){
+      bindNumberInputs();
+      body.querySelectorAll('[data-edit-draft-qty]').forEach(inp=>inp.oninput=()=>{
+        const arr=window.__logisticsDraftItems||[];
+        const idx=Number(inp.dataset.editDraftQty);
+        const qty=normalizeInputID(inp.value);
+        if(arr[idx]&&qty!=null&&qty>=0)arr[idx].quantity=qty;
+      });
+      body.querySelectorAll('[data-remove-draft]').forEach(btn=>btn.onclick=()=>{
+        const arr=window.__logisticsDraftItems||[];
+        arr.splice(Number(btn.dataset.removeDraft),1);
+        renderDraftItems();
+      });
+    }
   };
   renderDraftItems();
 
@@ -1851,15 +1863,16 @@ async function logisticsShippingPage(editId=null){
     document.getElementById('saveShippingDraft').onclick=async()=>{
       const fd=new FormData(document.getElementById('logisticsShippingForm'));
       const barnId=fd.get('barn_id');
-      const assignment=activeByBarn.get(barnId);
+      const assignment=selectedAssignment||activeByBarn.get(barnId);
       const arr=window.__logisticsDraftItems||[];
-      if(!barnId)return msg('Pilih kandang.');
-      if(!assignment)return msg('Kandang belum memiliki kontrak Logistik aktif.');
+      if(!barnId)return msg('Kandang transaksi tidak ditemukan.');
+      if(!assignment)return msg('Siklus transaksi tidak ditemukan atau belum dibuka oleh Administrator.');
       if(!fd.get('shipping_note_number'))return msg('No. SJ Kiriman wajib diisi.');
       const sj=String(fd.get('shipping_note_number')||'').trim();
       const duplicate=shipments.find(x=>String(x.shipping_note_number||'').trim().toLowerCase()===sj.toLowerCase()&&x.id!==fd.get('shipment_id'));
       if(duplicate)return msg('No. SJ '+sj+' sudah pernah digunakan. Gunakan No. SJ lain.');
       if(!arr.length)return msg('Tambahkan minimal satu Sapronak dan jumlah kirimannya.');
+      if(arr.some(x=>!Number.isFinite(Number(x.quantity))||Number(x.quantity)<=0))return msg('Jumlah kiriman harus lebih dari 0.');
 
       const shipmentId=fd.get('shipment_id')||null;
       const {error:saveError}=await db.rpc('save_logistics_shipment_atomic',{
