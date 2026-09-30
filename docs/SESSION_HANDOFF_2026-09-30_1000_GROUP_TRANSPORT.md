@@ -1,0 +1,7 @@
+# GROUP transport allocation — latest supplement
+User explicitly instructed direct equal four-barn allocation after0958 BOP checkpoint.
+Imported9 shared transport source transactions, total6470000, as36 rows in barn_maintenance_costs, category LAINNYA, assignment null. Each barn gets1617500. References use BB source ID plus suffix1 Cicurug,2 Baturuyuk,3 Randegan,4 Bantrangsana. Source descriptions/total and1/4 split retained in notes. No duplicate matching source references found in maintenance/bop/general before import.
+Sources: BB-140 Jul18 solar terpal/arang300000; BB-165 Aug1 terpal350000; BB-174 Aug2 kipas800000; BB-201 Aug7 dolken685000; BB-203 Aug8 dolken685000; BB-204 Aug10 pakan1600000; BB-231 Aug20 bambu200000; BB-255 Aug29 prozen1600000; BB-285 Sep27 truck250000.
+Assistant informed user destination Perawatan Kandang LAINNYA without cycle because requested equal allocations include dates before Baturuyuk current cycle startsAug18. These are transport costs, not purchases/commodity amounts. Destination choice is assistant implementation judgment; user explicitly authorised equal split, not individually naming maintenance category. Review if needed.
+Not included: BB-202200000 collection of mobilSS (not material transport); BB-211400000 bensin/upah tripBeber (purpose unspecified). Other unresolved items stay deferred by user.
+Verification after import:9 records and1617500 per each of four barns, total36 records6470000. paid_by existing COMPANY default, actual payer not independently established.
