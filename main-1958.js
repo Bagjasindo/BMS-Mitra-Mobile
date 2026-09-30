@@ -1058,26 +1058,32 @@ async function contractMasterPage(){
   const ipRows=bonuses.filter(x=>x.metric==='IP');
   const fcrRows=bonuses.filter(x=>x.metric==='FCR_DIFFERENCE');
   const depletionRows=bonuses.filter(x=>x.metric==='DEPLETION');
+  const contractLocked=!!selected?.frozen_at;
+  const canEditContract=can&&!contractLocked;
 
-  let html='<section class="panel"><h3>Master Kontrak</h3><p class="muted">Master kontrak dipilih saat Logistik membuat Siklus Mitra per kandang.</p>';
+  let html='<section class="panel"><h3>Master Kontrak</h3><p class="muted">Master kontrak dipilih saat Logistik membuat Siklus Mitra per kandang.</p>'+\n    (selected?(contractLocked?'<p><strong>Status: TERKUNCI</strong> · '+esc(prodDateId(String(selected.frozen_at).slice(0,10)))+' · revisi wajib Buat Kontrak Baru.</p>':'<p><strong>Status: BELUM DIKUNCI</strong> · setelah final, tekan Kunci Kontrak agar historinya tidak dapat berubah.</p>'):'');
 
   if(can){
     html+='<form id="contractInfoForm" class="form-vertical">'+
       '<input type="hidden" name="id" value="'+(selected?esc(selected.id):'')+'">'+
-      '<label>Nama Kontrak<input name="number" value="'+(selected?esc(selected.number):'')+'" placeholder="Contoh: Bounty September 2026" required></label>'+
-      '<label>Tanggal Berlaku<input name="contract_date" type="date" value="'+(selected&&selected.contract_date?esc(selected.contract_date):'')+'"></label>'+
-      '<label>Template Performa<select name="performance_template_name">'+
+      '<label>Nama Kontrak<input name="number" value="'+(selected?esc(selected.number):'')+'" placeholder="Contoh: Bounty September 2026" required '+(contractLocked?'readonly':'')+'></label>'+
+      '<label>Tanggal Berlaku<input name="contract_date" type="date" value="'+(selected&&selected.contract_date?esc(selected.contract_date):'')+'" '+(contractLocked?'disabled':'')+'></label>'+
+      '<label>Template Performa<select name="performance_template_name" '+(contractLocked?'disabled':'')+'>'+
         '<option value="Performa Bounty" '+(selected?.performance_template_name==='Performa Bounty'?'selected':'')+'>Performa Bounty</option>'+
         '<option value="Performa BMS" '+(selected?.performance_template_name==='Performa BMS'?'selected':'')+'>Performa BMS</option>'+
       '</select></label>'+
-      '<label>Keterangan<textarea name="signed_reference" placeholder="Keterangan kontrak">'+(selected?esc(selected.signed_reference||''):'')+'</textarea></label>'+
-      '<div class="form-actions"><button type="submit">Simpan Kontrak</button><button type="button" id="newContractTemplate">Buat Kontrak Baru</button></div>'+
+      '<label>Keterangan<textarea name="signed_reference" placeholder="Keterangan kontrak" '+(contractLocked?'readonly':'')+'>'+(selected?esc(selected.signed_reference||''):'')+'</textarea></label>'+
+      '<div class="form-actions">'+
+        (canEditContract?'<button type="submit">Simpan Kontrak</button>':'')+
+        '<button type="button" id="newContractTemplate">Buat Kontrak Baru</button>'+
+        (selected&&!contractLocked?'<button type="button" id="lockContractTemplate">Kunci Kontrak</button>':'')+
+      '</div>'+
     '</form>';
   }
   html+='</section>';
 
   html+='<section class="panel"><h3>Harga Sapronak Kontrak</h3>';
-  if(can&&selected){
+  if(canEditContract&&selected){
     html+='<form id="sapronakContractPriceForm" class="form-vertical compact-form">'+
       '<label>DOC (Rp/ekor)<input name="doc_price" data-number="1" inputmode="decimal" value="'+fmtNumber(selected.doc_price||0)+'" required></label>'+
       '<label>Pre Starter (Rp/kg)<input name="pre_starter_price" data-number="1" inputmode="decimal" value="'+fmtNumber(selected.pre_starter_price||0)+'" required></label>'+
@@ -1092,7 +1098,7 @@ async function contractMasterPage(){
   html+='</section>';
 
   html+='<section class="panel"><h3>Harga Ayam Hidup</h3>';
-  if(can&&selected){
+  if(canEditContract&&selected){
     html+='<form id="priceRowForm" class="form-vertical compact-form">'+
       '<input type="hidden" name="id">'+
       '<label>Bobot Minimum (kg)<input name="min_weight_kg" data-number="1" inputmode="decimal" required></label>'+
@@ -1102,11 +1108,11 @@ async function contractMasterPage(){
     '</form>';
   }
   html+='<div class="tablewrap"><table><thead><tr><th>Bobot Min</th><th>Bobot Max</th><th>Harga/kg</th>'+(can?'<th>Aksi</th>':'')+'</tr></thead><tbody>'+
-    prices.map(x=>'<tr><td>'+fmtNumber(x.min_weight_kg)+'</td><td>'+(x.max_weight_kg==null?'Tanpa batas':fmtNumber(x.max_weight_kg))+'</td><td>Rp '+fmtNumber(x.price_per_kg)+'</td>'+(can?'<td><button type="button" data-edit-price="'+esc(x.id)+'">Edit</button></td>':'')+'</tr>').join('')+
+    prices.map(x=>'<tr><td>'+fmtNumber(x.min_weight_kg)+'</td><td>'+(x.max_weight_kg==null?'Tanpa batas':fmtNumber(x.max_weight_kg))+'</td><td>Rp '+fmtNumber(x.price_per_kg)+'</td>'+(can?'<td>'+(contractLocked?'Terkunci':'<button type="button" data-edit-price="'+esc(x.id)+'">Edit</button>')+'</td>':'')+'</tr>').join('')+
     '</tbody></table></div></section>';
 
   html+='<section class="panel"><h3>Bonus IP</h3>';
-  if(can&&selected){
+  if(canEditContract&&selected){
     html+='<form id="ipRowForm" class="form-vertical compact-form">'+
       '<input type="hidden" name="id">'+
       '<label>IP Minimum<input name="min_value" data-number="1" inputmode="decimal"></label>'+
@@ -1117,11 +1123,11 @@ async function contractMasterPage(){
     '</form>';
   }
   html+='<div class="tablewrap"><table><thead><tr><th>Min</th><th>Max</th><th>Bonus/kg</th><th>Keterangan</th>'+(can?'<th>Aksi</th>':'')+'</tr></thead><tbody>'+
-    ipRows.map(x=>'<tr><td>'+(x.min_value==null?'-':fmtNumber(x.min_value))+'</td><td>'+(x.max_value==null?'-':fmtNumber(x.max_value))+'</td><td>Rp '+fmtNumber(x.rupiah_per_kg)+'</td><td>'+esc(x.notes||'')+'</td>'+(can?'<td><button type="button" data-edit-ip="'+esc(x.id)+'">Edit</button></td>':'')+'</tr>').join('')+
+    ipRows.map(x=>'<tr><td>'+(x.min_value==null?'-':fmtNumber(x.min_value))+'</td><td>'+(x.max_value==null?'-':fmtNumber(x.max_value))+'</td><td>Rp '+fmtNumber(x.rupiah_per_kg)+'</td><td>'+esc(x.notes||'')+'</td>'+(can?'<td>'+(contractLocked?'Terkunci':'<button type="button" data-edit-ip="'+esc(x.id)+'">Edit</button>')+'</td>':'')+'</tr>').join('')+
     '</tbody></table></div></section>';
 
   html+='<section class="panel"><h3>Bonus FCR</h3>';
-  if(can&&selected){
+  if(canEditContract&&selected){
     html+='<form id="fcrRowForm" class="form-vertical compact-form">'+
       '<input type="hidden" name="id">'+
       '<label>Selisih FCR Minimum<input name="min_value" data-number="1" inputmode="decimal"></label>'+
@@ -1132,11 +1138,11 @@ async function contractMasterPage(){
     '</form>';
   }
   html+='<div class="tablewrap"><table><thead><tr><th>Min</th><th>Max</th><th>Bonus/kg</th><th>Keterangan</th>'+(can?'<th>Aksi</th>':'')+'</tr></thead><tbody>'+
-    fcrRows.map(x=>'<tr><td>'+(x.min_value==null?'-':fmtNumber(x.min_value))+'</td><td>'+(x.max_value==null?'-':fmtNumber(x.max_value))+'</td><td>Rp '+fmtNumber(x.rupiah_per_kg)+'</td><td>'+esc(x.notes||'')+'</td>'+(can?'<td><button type="button" data-edit-fcr="'+esc(x.id)+'">Edit</button></td>':'')+'</tr>').join('')+
+    fcrRows.map(x=>'<tr><td>'+(x.min_value==null?'-':fmtNumber(x.min_value))+'</td><td>'+(x.max_value==null?'-':fmtNumber(x.max_value))+'</td><td>Rp '+fmtNumber(x.rupiah_per_kg)+'</td><td>'+esc(x.notes||'')+'</td>'+(can?'<td>'+(contractLocked?'Terkunci':'<button type="button" data-edit-fcr="'+esc(x.id)+'">Edit</button>')+'</td>':'')+'</tr>').join('')+
     '</tbody></table></div></section>';
 
   html+='<section class="panel"><h3>Bonus Deplesi</h3>';
-  if(can&&selected){
+  if(canEditContract&&selected){
     html+='<form id="depletionRowForm" class="form-vertical compact-form">'+
       '<input type="hidden" name="id">'+
       '<label>Deplesi Minimum (%)<input name="min_value" data-number="1" inputmode="decimal"></label>'+
@@ -1147,7 +1153,7 @@ async function contractMasterPage(){
     '</form>';
   }
   html+='<div class="tablewrap"><table><thead><tr><th>Min %</th><th>Max %</th><th>Bonus/kg</th><th>Keterangan</th>'+(can?'<th>Aksi</th>':'')+'</tr></thead><tbody>'+
-    depletionRows.map(x=>'<tr><td>'+(x.min_value==null?'-':fmtNumber(x.min_value))+'</td><td>'+(x.max_value==null?'-':fmtNumber(x.max_value))+'</td><td>Rp '+fmtNumber(x.rupiah_per_kg)+'</td><td>'+esc(x.notes||'')+'</td>'+(can?'<td><button type="button" data-edit-depletion="'+esc(x.id)+'">Edit</button></td>':'')+'</tr>').join('')+
+    depletionRows.map(x=>'<tr><td>'+(x.min_value==null?'-':fmtNumber(x.min_value))+'</td><td>'+(x.max_value==null?'-':fmtNumber(x.max_value))+'</td><td>Rp '+fmtNumber(x.rupiah_per_kg)+'</td><td>'+esc(x.notes||'')+'</td>'+(can?'<td>'+(contractLocked?'Terkunci':'<button type="button" data-edit-depletion="'+esc(x.id)+'">Edit</button>')+'</td>':'')+'</tr>').join('')+
     '</tbody></table></div></section>';
 
   html+='<section class="panel"><h3>Template Kontrak</h3><p class="muted">Penggunaan kontrak dilakukan dari menu Logistik → Buat Siklus, lalu pilih Mitra.</p>';
@@ -1160,7 +1166,8 @@ async function contractMasterPage(){
       const tdep=tBonuses.filter(x=>x.metric==='DEPLETION');
       return '<tr><td>'+esc(t.number)+'</td><td>'+esc(t.contract_date||'-')+'</td><td>'+esc(t.performance_template_name||'-')+'</td><td>'+tPrices.length+' baris</td><td>'+tip.length+' baris</td><td>'+tfcr.length+' baris / Deplesi '+tdep.length+'</td><td>'+
         '<button type="button" data-contract-view="'+esc(t.id)+'">Lihat</button> '+
-        (can?'<button type="button" data-contract-edit="'+esc(t.id)+'">Edit</button> ':'')+
+        (can&&!t.frozen_at?'<button type="button" data-contract-edit="'+esc(t.id)+'">Edit</button> ':'')+
+        (t.frozen_at?'<strong>Terkunci</strong> ':'')+
 
       '</td></tr>';
     }).join('')+
@@ -1177,6 +1184,16 @@ async function contractMasterPage(){
   if(!can)return;
 
   const cf=document.getElementById('contractInfoForm');
+  const lockBtn=document.getElementById('lockContractTemplate');
+  if(lockBtn)lockBtn.onclick=async()=>{
+    if(!selected||selected.frozen_at)return;
+    if(!confirm('Kunci kontrak '+selected.number+'? Setelah dikunci kontrak, harga, bonus, dan performa terkait tidak dapat diubah. Revisi harus membuat kontrak baru.'))return;
+    if(!actionButtonStart(lockBtn,'Mengunci...'))return;
+    const {error}=await db.from('contracts').update({frozen_at:new Date().toISOString()}).eq('id',selected.id).is('frozen_at',null);
+    if(error){await actionButtonFinish(lockBtn,false,'Terkunci ✓','Gagal — coba lagi');return msg(error.message);}
+    await actionButtonFinish(lockBtn,true,'Terkunci ✓');
+    await contractMasterPage();
+  };
   document.getElementById('newContractTemplate').onclick=()=>{
     cf.reset();
     cf.elements.id.value='';
@@ -1186,6 +1203,7 @@ async function contractMasterPage(){
 
   cf.onsubmit=async ev=>{
     ev.preventDefault();
+    if(contractLocked)return msg('Kontrak sudah terkunci. Buat kontrak baru untuk revisi.');
     const fd=new FormData(cf);
     const id=fd.get('id');
     const o={
