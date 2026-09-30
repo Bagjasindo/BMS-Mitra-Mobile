@@ -3235,3 +3235,434 @@ main select.app-select-native{
      Intentionally inherit the same #appSidebar nav button and .nav-sub button rules as Cetak RHPP. */
   width:100%;
 }
+
+
+/* bms-global-ui-standard-20261001 */
+@media screen{
+  :root{
+    --bms-ui-bg:#f5f7f9;
+    --bms-ui-surface:#ffffff;
+    --bms-ui-surface-soft:#f8fafb;
+    --bms-ui-text:#17212b;
+    --bms-ui-text-2:#344554;
+    --bms-ui-muted:#6b7c8b;
+    --bms-ui-border:#dbe4ea;
+    --bms-ui-border-strong:#c8d5dd;
+    --bms-ui-accent:#16a9c3;
+    --bms-ui-accent-dark:#0b7285;
+    --bms-ui-accent-soft:#eaf8fb;
+    --bms-ui-danger:#c93737;
+    --bms-ui-danger-soft:#fff1f1;
+    --bms-ui-warning:#a66a16;
+    --bms-ui-warning-soft:#fff8e8;
+    --bms-ui-radius:10px;
+    --bms-ui-radius-sm:8px;
+    --bms-ui-shadow:0 2px 10px rgba(23,55,75,.055);
+    --bms-ui-field-h:42px;
+    --bms-ui-gap:12px;
+  }
+
+  /* 1. FORM GLOBAL */
+  .shell main form,
+  .shell main .form-vertical,
+  .shell main .compact-form{
+    width:100%!important;
+    max-width:760px!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:var(--bms-ui-gap)!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+  .shell main form label,
+  .shell main .form-vertical label,
+  .shell main .compact-form label{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:6px!important;
+    margin:0!important;
+    color:var(--bms-ui-text-2)!important;
+    font-size:13px!important;
+    line-height:1.35!important;
+    font-weight:650!important;
+  }
+  .shell main input:not([type="checkbox"]):not([type="radio"]),
+  .shell main select,
+  .shell main textarea,
+  .shell main .app-select-input{
+    width:100%!important;
+    min-width:0!important;
+    min-height:var(--bms-ui-field-h)!important;
+    padding:9px 11px!important;
+    border:1px solid var(--bms-ui-border-strong)!important;
+    border-radius:var(--bms-ui-radius-sm)!important;
+    background:#fff!important;
+    color:var(--bms-ui-text)!important;
+    box-shadow:none!important;
+    font-size:14px!important;
+    line-height:1.35!important;
+  }
+  .shell main textarea{min-height:96px!important;resize:vertical!important}
+  .shell main input:focus,
+  .shell main select:focus,
+  .shell main textarea:focus,
+  .shell main .app-select-input:focus{
+    border-color:#79cbd9!important;
+    outline:0!important;
+    box-shadow:0 0 0 3px rgba(22,169,195,.10)!important;
+  }
+  .shell main input[disabled],
+  .shell main select[disabled],
+  .shell main textarea[disabled],
+  .shell main input[readonly]{
+    background:#f3f5f6!important;
+    color:#7c8994!important;
+    cursor:not-allowed!important;
+  }
+  .shell main .app-select-control,
+  .shell main .app-select-results{width:100%!important;max-width:100%!important}
+
+  /* 2. BUTTON GLOBAL */
+  .shell main button,
+  .shell main input[type="submit"],
+  .shell main input[type="button"]{
+    min-height:38px!important;
+    min-width:auto!important;
+    padding:8px 13px!important;
+    border:1px solid transparent!important;
+    border-radius:var(--bms-ui-radius-sm)!important;
+    background:var(--bms-ui-accent)!important;
+    color:#fff!important;
+    box-shadow:none!important;
+    font-size:13px!important;
+    line-height:1.2!important;
+    font-weight:700!important;
+    cursor:pointer;
+    transition:background .14s ease,border-color .14s ease,box-shadow .14s ease,transform .14s ease!important;
+  }
+  .shell main button:hover:not(:disabled),
+  .shell main input[type="submit"]:hover:not(:disabled),
+  .shell main input[type="button"]:hover:not(:disabled){
+    background:#1197af!important;
+  }
+  .shell main button:focus-visible{
+    outline:0!important;
+    box-shadow:0 0 0 3px rgba(22,169,195,.18)!important;
+  }
+  .shell main button:disabled{
+    opacity:.55!important;
+    cursor:not-allowed!important;
+  }
+  .shell main button[data-delete],
+  .shell main button[class*="delete"],
+  .shell main button.danger,
+  .shell main .btn-danger,
+  .shell main [data-delete-shipment],
+  .shell main [data-delete-harvest],
+  .shell main [data-delete-bl],
+  .shell main [data-delete-return],
+  .shell main [data-delete-ext-return],
+  .shell main [data-delete-external],
+  .shell main [data-delete-mandiri-purchase],
+  .shell main [data-delete-abk-harvest]{
+    background:#fff!important;
+    color:var(--bms-ui-danger)!important;
+    border-color:#efcaca!important;
+  }
+  .shell main button[data-delete]:hover,
+  .shell main button[class*="delete"]:hover,
+  .shell main button.danger:hover,
+  .shell main .btn-danger:hover{
+    background:var(--bms-ui-danger-soft)!important;
+  }
+  .shell main .report-actions,
+  .shell main .inline-actions,
+  .shell main .rhpp-report-actions,
+  .shell main .app-confirm-actions{
+    display:flex!important;
+    align-items:center!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+    margin:10px 0 0!important;
+  }
+  .shell main .inline-actions button,
+  .shell main .report-actions button,
+  .shell main .rhpp-report-actions button{
+    margin:0!important;
+  }
+
+  /* 3. TABLE GLOBAL */
+  .shell main .tablewrap{
+    width:100%!important;
+    overflow-x:auto!important;
+    border:1px solid var(--bms-ui-border)!important;
+    border-radius:var(--bms-ui-radius-sm)!important;
+    background:#fff!important;
+    box-shadow:none!important;
+  }
+  .shell main .tablewrap table,
+  .shell main table:not(.meta):not(.mini){
+    width:100%!important;
+    border-collapse:collapse!important;
+    background:#fff!important;
+    color:var(--bms-ui-text)!important;
+  }
+  .shell main .tablewrap th,
+  .shell main .tablewrap td,
+  .shell main table:not(.meta):not(.mini) th,
+  .shell main table:not(.meta):not(.mini) td{
+    padding:9px 11px!important;
+    border-bottom:1px solid #e6edf1!important;
+    font-size:12.5px!important;
+    line-height:1.35!important;
+    vertical-align:middle!important;
+  }
+  .shell main .tablewrap thead th,
+  .shell main table:not(.meta):not(.mini) thead th{
+    background:#f1f6f8!important;
+    color:#405563!important;
+    font-size:11.5px!important;
+    font-weight:800!important;
+    letter-spacing:.01em!important;
+  }
+  .shell main .tablewrap tbody tr:hover td{
+    background:#fbfdfe!important;
+  }
+  .shell main td.num,
+  .shell main th.num,
+  .shell main td[class*="money"],
+  .shell main th[class*="money"]{
+    text-align:right!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  .shell main tfoot th,
+  .shell main tfoot td,
+  .shell main .rhpp-total-row th,
+  .shell main .rhpp-total-row td,
+  .shell main tr.total th,
+  .shell main tr.total td{
+    background:#edf6f9!important;
+    color:#193e51!important;
+    font-weight:800!important;
+  }
+
+  /* 4. PANEL / CARD GLOBAL */
+  .shell main .panel{
+    width:100%!important;
+    margin:12px 0!important;
+    padding:16px 18px!important;
+    border:1px solid var(--bms-ui-border)!important;
+    border-radius:var(--bms-ui-radius)!important;
+    background:var(--bms-ui-surface)!important;
+    box-shadow:var(--bms-ui-shadow)!important;
+  }
+  .shell main .panel>h3:first-child,
+  .shell main .panel>div:first-child>h3:first-child{
+    margin-top:0!important;
+  }
+  .shell main .panel h3{
+    color:#172b3b!important;
+    font-size:16px!important;
+    line-height:1.3!important;
+    font-weight:760!important;
+  }
+  .shell main .panel h4{
+    color:#2a3e4d!important;
+    font-size:14px!important;
+    font-weight:720!important;
+  }
+  .shell main .panel p,
+  .shell main .muted{
+    color:var(--bms-ui-muted)!important;
+    line-height:1.45!important;
+  }
+  .shell main .card,
+  .shell main [class$="-card"]:not(.login):not(.app-confirm){
+    border-radius:var(--bms-ui-radius)!important;
+  }
+
+  /* 5. FILTER GLOBAL */
+  .shell main form[id*="Filter"],
+  .shell main form[id*="filter"],
+  .shell main .report-filter,
+  .shell main .filter-form{
+    max-width:760px!important;
+    padding:14px!important;
+    border:1px solid #e0e8ed!important;
+    border-radius:var(--bms-ui-radius)!important;
+    background:var(--bms-ui-surface-soft)!important;
+  }
+  .shell main form[id*="Filter"] .report-actions,
+  .shell main form[id*="filter"] .report-actions{
+    padding-top:2px!important;
+    border-top:1px solid #e5ecef!important;
+  }
+
+  /* 6. SIDEBAR / SUBMENU GLOBAL */
+  #appSidebar nav button,
+  #appSidebar nav summary{
+    width:100%!important;
+    min-height:38px!important;
+    margin:2px 0!important;
+    padding:8px 10px!important;
+    border-radius:8px!important;
+    border:1px solid transparent!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:9px!important;
+    color:#465d6b!important;
+    background:transparent!important;
+    font-size:12.5px!important;
+    line-height:1.25!important;
+    font-weight:620!important;
+  }
+  #appSidebar nav button:hover,
+  #appSidebar nav summary:hover{
+    background:#f1f7f9!important;
+    color:#0b7285!important;
+  }
+  #appSidebar nav button.active{
+    background:var(--bms-ui-accent-soft)!important;
+    color:var(--bms-ui-accent-dark)!important;
+    border-color:#cbeaf0!important;
+    box-shadow:inset 3px 0 0 var(--bms-ui-accent)!important;
+    font-weight:750!important;
+  }
+  #appSidebar .nav-group,
+  #appSidebar .nav-subgroup{margin:3px 0!important}
+  #appSidebar .nav-sub{
+    margin:2px 0 4px 9px!important;
+    padding-left:8px!important;
+    border-left:1px solid var(--bms-ui-border)!important;
+  }
+  #appSidebar .nav-child-item,
+  #appSidebar .nav-rhpp-items{
+    margin:2px 0 2px 9px!important;
+    padding-left:8px!important;
+    border-left:1px solid var(--bms-ui-border)!important;
+  }
+  #appSidebar .nav-sub button,
+  #appSidebar .nav-child-item button,
+  #appSidebar .nav-rhpp-items button{
+    min-height:38px!important;
+    padding:8px 10px!important;
+    font-size:12px!important;
+  }
+  #appSidebar .nav-icon,
+  #appSidebar .nav-sub .nav-icon,
+  #appSidebar .nav-child-item .nav-icon,
+  #appSidebar .nav-rhpp-items .nav-icon{
+    width:16px!important;
+    height:16px!important;
+    flex:0 0 16px!important;
+  }
+  #appSidebar .nav-icon svg{width:16px!important;height:16px!important}
+
+  /* 7. KPI / SUMMARY GLOBAL */
+  .shell main .cards,
+  .shell main .rhpp-summary-cards,
+  .shell main .ui-rhpp-kpis,
+  .shell main .estimate-summary-grid,
+  .shell main .owner-estimate-metrics{
+    gap:10px!important;
+  }
+  .shell main .card,
+  .shell main .rhpp-summary-card,
+  .shell main .ui-rhpp-kpi,
+  .shell main .owner-estimate-card,
+  .shell main .estimate-history-card,
+  .shell main .estimate-economy-grid>div,
+  .shell main .estimate-summary-grid>div{
+    border:1px solid var(--bms-ui-border)!important;
+    border-radius:var(--bms-ui-radius)!important;
+    background:#fff!important;
+    box-shadow:none!important;
+  }
+  .shell main .card,
+  .shell main .rhpp-summary-card,
+  .shell main .ui-rhpp-kpi{
+    min-height:82px!important;
+    padding:12px 14px!important;
+  }
+  .shell main .card span,
+  .shell main .rhpp-summary-card span,
+  .shell main .ui-rhpp-kpi span{
+    color:var(--bms-ui-muted)!important;
+    font-size:11px!important;
+    line-height:1.3!important;
+  }
+  .shell main .card strong,
+  .shell main .rhpp-summary-card strong,
+  .shell main .ui-rhpp-kpi strong{
+    color:#17364a!important;
+    font-size:18px!important;
+    line-height:1.2!important;
+    font-weight:800!important;
+  }
+  .shell main .rhpp-summary-value,
+  .shell main .estimate-economy-total{
+    background:var(--bms-ui-accent-soft)!important;
+    border-color:#cbeaf0!important;
+  }
+
+  /* 8. RESPONSIVE / MOBILE GLOBAL */
+  @media(max-width:900px){
+    .shell main{padding:14px!important}
+    .shell main .panel{padding:14px!important;margin:10px 0!important}
+    .shell main form,
+    .shell main .form-vertical,
+    .shell main .compact-form,
+    .shell main form[id*="Filter"],
+    .shell main form[id*="filter"]{max-width:none!important}
+    .shell main .cards,
+    .shell main .rhpp-summary-cards,
+    .shell main .ui-rhpp-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+    #appSidebar nav button,
+    #appSidebar nav summary,
+    #appSidebar .nav-sub button,
+    #appSidebar .nav-child-item button,
+    #appSidebar .nav-rhpp-items button{
+      min-height:44px!important;
+      font-size:13px!important;
+    }
+  }
+  @media(max-width:560px){
+    .shell main{padding:10px!important}
+    .shell main .panel{padding:12px!important;border-radius:9px!important}
+    .shell main .cards,
+    .shell main .rhpp-summary-cards,
+    .shell main .ui-rhpp-kpis{grid-template-columns:1fr!important}
+    .shell main .report-actions,
+    .shell main .inline-actions,
+    .shell main .rhpp-report-actions{width:100%!important}
+    .shell main .report-actions button,
+    .shell main .inline-actions button,
+    .shell main .rhpp-report-actions button{flex:1 1 120px!important}
+    .shell main input:not([type="checkbox"]):not([type="radio"]),
+    .shell main select,
+    .shell main textarea,
+    .shell main .app-select-input{font-size:16px!important}
+  }
+
+  /* 9. INLINE STYLE CONFLICT NORMALIZATION
+     Semantic component classes win over old inline spacing/sizing. */
+  .shell main .panel[style]{
+    border-radius:var(--bms-ui-radius)!important;
+    box-shadow:var(--bms-ui-shadow)!important;
+  }
+  .shell main .form-vertical[style],
+  .shell main form[style]{
+    width:100%!important;
+  }
+  .shell main .report-actions[style],
+  .shell main .inline-actions[style],
+  .shell main .rhpp-report-actions[style]{
+    display:flex!important;
+    gap:8px!important;
+  }
+  .shell main .ui-rhpp-kpis[style],
+  .shell main .ui-rhpp-grid[style],
+  .shell main .rhpp-summary-cards[style]{
+    margin-top:12px!important;
+  }
+}
