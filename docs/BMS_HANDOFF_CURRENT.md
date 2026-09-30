@@ -120,3 +120,53 @@ Perintah:
 - Liga ABK tetap memakai `initial_birds` dari relasi tersebut untuk survival, IP, biaya DOC, dan perhitungan ABK.
 - Uji rollback pada Baturuyuk: Chick-In 14.800, dua ABK @7.400, total relasi 14.800 PASS.
 - Cache web: `main-1958.js?v=2251-chickin-abk-to-league`.
+
+
+## AUDIT HULU → HILIR — STATUS 30 SEPTEMBER 2026
+Audit live dilanjutkan tanpa mengubah data.
+
+### PASS — Integritas Hulu / Operasional
+- Master assignment → kandang: tidak ada orphan.
+- Siklus MITRA → kontrak: tidak ada kontrak hilang.
+- Tidak ada lebih dari satu siklus aktif pada kandang yang sama.
+- Chick-In: tidak ada duplikat per assignment dan tidak ada barn mismatch.
+- Pembagian ABK: tidak ada duplicate assignment+ABK.
+- Randegan Siklus 2 sudah dikoreksi: Logistik DOC 8.000 = Chick-In 8.000 = total ABK 8.000, DOA 0, selisih 0.
+- Bantrangsana Siklus 2: Chick-In 24.500 = total ABK 24.500.
+- Logistik shipment, Panen, Recording, Marketing: tidak ditemukan mismatch barn/assignment pada pemeriksaan audit.
+- Invoice stok vs total item: mismatch 0.
+- Pembelian langsung vs assignment/barn: mismatch 0.
+- Aset lokasi KANDANG tanpa barn: 0.
+
+### PASS — RHPP / Laba Rugi
+- Cicurug Siklus 2 sempat drift karena Tambah Daging Rp11.520.000 dibuat setelah snapshot CLOSED.
+- Siklus sudah dibuka lalu ditutup kembali melalui jalur resmi.
+- Setelah re-close: snapshot RHPP System Rp286.096.800 = live Rp286.096.800, selisih 0.
+- Tambah Daging Cicurug Rp11.520.000 terpisah dari BOP; tidak double count.
+- Laba/Rugi Cicurug Siklus 2: RHPP Real Rp250.161.212; BOP Produksi Rp93.662.864; Tambah Daging Rp11.520.000; Laba Bersih Rp144.978.348.
+- Formula internal finance_cycle_profit_loss_v2: mismatch 0.
+- Population balance RHPP live: tidak ditemukan unbalanced row pada audit.
+
+### PASS — Keuangan / Hilir
+- Supplier/Expedition/Mandiri payment orphan: 0.
+- Payment nonpositive pada jalur yang diperiksa: 0.
+- Hutang supplier live: 5 transaksi terbuka, total Rp36.440.000, pembayaran tercatat Rp0.
+- Cashflow v4 agregat saat audit: masuk Rp1.982.526.613; keluar Rp855.777.277; net Rp1.126.749.336.
+- Laba/Rugi Global saat audit:
+  - Kandang operational profit Rp592.620.928
+  - Expedition profit/loss Rp14.793.840
+  - BOP Umum Rp205.323.659
+  - Maintenance long term Rp0
+  - Company profit/loss Rp402.091.109
+  - hitung ulang selisih 0.
+
+### PASS — Output Akhir
+- Dashboard OWNER membaca sumber live (productionBase + recording + estimasi + final produksi + logistik + Liga ABK), tidak ditemukan angka KPI/Rupiah hard-code pada audit source.
+- KPI produksi berjalan menggunakan data Chick-In, Recording, Panen live.
+- Laporan OWNER bukan halaman dummy: menu OWNER meneruskan ke laporan asli Logistik, Marketing, Keuangan, Produksi, dan PPL.
+- Print/PDF/Excel Produksi mengambil clone dari area laporan live yang sedang ditampilkan.
+- Siklus ABK sekarang berinduk pada pembagian ABK saat Chick-In: pertama ikut = Siklus ABK 1, pindah kandang/ikut Chick-In berikutnya = Siklus ABK berikutnya; nomor siklus kandang tidak dijadikan nomor Siklus ABK.
+
+### STATUS
+Audit Hulu → Hilir yang diperiksa sampai Output Akhir: PASS.
+Jangan ulang audit bagian di atas kecuali perubahan kode/data berikutnya menyentuh jalurnya.
