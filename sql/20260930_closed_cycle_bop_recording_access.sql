@@ -55,3 +55,4 @@ begin
  return new;
 end;
 $fn$;
+revoke insert,update,delete,truncate,references,trigger on public.finance_bop_period_access from authenticated;
