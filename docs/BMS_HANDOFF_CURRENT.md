@@ -412,3 +412,47 @@ Status: FIXED / backend guard aktif.
 - SQL commit: `4216548f5837964b153b0db11151ebeef2bd9009`.
 - Cache: `main-1958.js?v=2264-contract-lock-button`.
 - Cache commit: `898abe88df05f9b9fc32c9ce0db046df66e96950`.
+
+
+## AUDIT GLOBAL KUNCI SIKLUS — 30 SEPTEMBER 2026
+Status: PASS setelah perbaikan trigger Pakan ABK.
+
+Tujuan:
+- Siklus PROSES/AKTIF: transaksi operasional dapat dikoreksi sesuai role.
+- Siklus CLOSED: transaksi terkunci.
+- ADMIN Buka Siklus: seluruh kunci berbasis status siklus ikut terbuka kembali.
+- ADMIN Close: terkunci kembali dan snapshot final dibuat ulang.
+
+Audit backend mencakup trigger/RPC/RLS pada jalur utama:
+- Chick-In
+- Logistik Pengiriman / Tambah Sapronak / Retur + child item
+- Recording
+- Kunjungan
+- Estimasi + child size
+- Liga ABK + Panen ABK + child size
+- Marketing Panen
+- Tambah Daging
+- Supplies
+- Expedisi
+- RHPP estimate
+- BOP / assignment guard
+
+Temuan:
+- Satu trigger lama `trg_prevent_locked_abk_basics_change` masih mengunci Pakan ABK berdasarkan `basics_locked_at` walaupun assignment sudah AKTIF.
+- Trigger diperbaiki: Pakan ABK hanya ditolak bila assignment CLOSED; selama PROSES tetap dapat dikoreksi oleh role yang berwenang.
+- RPC `lock_production_abk_basics_atomic` sebelumnya juga sudah disesuaikan agar koreksi pakan aktif diizinkan.
+
+Pengecualian desain yang sengaja tidak mengikuti Buka Siklus:
+- Master Kontrak dengan `contracts.frozen_at` / tombol Kunci Kontrak adalah lock permanen.
+- Hak DELETE beberapa transaksi tetap ADMIN-only, meskipun siklus dibuka.
+- BOP memiliki jalur khusus `finance_bop_period_access` / Buka Pencatatan BOP untuk akses keuangan saat CLOSED; tidak diubah.
+
+SQL:
+- `sql/20260930_abk_feed_edit_while_active.sql`
+- `sql/20260930_abk_feed_lock_follow_cycle_status.sql`
+- Trigger fix commit: `a9be7e7b84cbecd134eddcf1d28f86948455c821`.
+
+Frontend:
+- Active-cycle Pakan ABK editable, CLOSED read-only.
+- Commit: `4fe727fd0a667e6c5f198f199cceee5c8bb1d05d`.
+- Cache: `main-1958.js?v=2265-abk-feed-edit-active-only`.
