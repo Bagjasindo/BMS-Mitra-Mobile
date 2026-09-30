@@ -139,10 +139,9 @@ const bindNumberInputs=()=>{
 
 const txnListState=(rows,key,dateKey,size=5,barns=null,barnKey='barn_id',opts={})=>{
   window.__bmsTxnList=window.__bmsTxnList||{};
-  const st=window.__bmsTxnList[key]||{from:'',to:'',barn:'',assignment:'',status:'',shown:false};
+  const st=window.__bmsTxnList[key]||{from:'',to:'',barn:'',assignment:'',status:'',page:0};
   if(st.assignment===undefined)st.assignment='';
   if(st.status===undefined)st.status='';
-  if(st.shown===undefined)st.shown=false;
   if(!st.barn)st.assignment='';
   const filtered=rows.filter(x=>
     (!st.barn||String(x?.[barnKey]||'')===st.barn)&&
@@ -151,6 +150,8 @@ const txnListState=(rows,key,dateKey,size=5,barns=null,barnKey='barn_id',opts={}
     (!st.from||String(x?.[dateKey]||'')>=st.from)&&
     (!st.to||String(x?.[dateKey]||'')<=st.to)
   );
+  const pages=Math.max(1,Math.ceil(filtered.length/size));
+  if(st.page>=pages)st.page=pages-1;if(st.page<0)st.page=0;
   window.__bmsTxnList[key]=st;
   const pplFilter=profile?.role==='PPL';
   const allBarnLabel=pplFilter?'Semua Kandang Saya':'Semua Kandang';
@@ -159,34 +160,22 @@ const txnListState=(rows,key,dateKey,size=5,barns=null,barnKey='barn_id',opts={}
   const cycleRows=(opts.assignments||[]).filter(a=>!st.barn||!a.barn_id||String(a.barn_id)===String(st.barn));
   const assignmentControl=opts.assignments?.length?'<label>Pilih Siklus<select data-txn-assignment="'+key+'" '+(!st.barn?'disabled':'')+'><option value="">'+allCycleLabel+'</option>'+cycleRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(a.label||a.id)+'</option>').join('')+'</select></label>':'';
   const statusControl=opts.statusOptions?.length?'<label>Status<select data-txn-status="'+key+'"><option value="">Semua Status</option>'+opts.statusOptions.map(v=>'<option value="'+esc(v)+'" '+(st.status===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select></label>':'';
-  return {
-    key,st,total:st.shown?filtered.length:0,rows:st.shown?filtered:[],assignmentOptions:opts.assignments||[],
-    controls:'<div class="form-vertical compact-form" style="margin-bottom:12px">'+barnControl+assignmentControl+statusControl+'<label>Tanggal Dari<input type="date" data-txn-from="'+key+'" value="'+esc(st.from||'')+'"></label><label>Tanggal Sampai<input type="date" data-txn-to="'+key+'" value="'+esc(st.to||'')+'"></label><div class="inline-actions"><button type="button" data-txn-search="'+key+'">Tampilkan</button><button type="button" data-txn-reset="'+key+'">Reset</button></div></div>',
-    pager:st.shown?'<p class="muted" style="margin-top:10px">'+filtered.length+' data ditampilkan.</p>':'<p class="muted" style="margin-top:10px">Pilih filter lalu klik Tampilkan untuk melihat riwayat.</p>'
-  };
+  return {key,st,pages,total:filtered.length,rows:filtered.slice(st.page*size,(st.page+1)*size),assignmentOptions:opts.assignments||[],
+    controls:'<div class="form-vertical compact-form" style="margin-bottom:12px">'+barnControl+assignmentControl+statusControl+'<label>Tanggal Dari<input type="date" data-txn-from="'+key+'" value="'+esc(st.from||'')+'"></label><label>Tanggal Sampai<input type="date" data-txn-to="'+key+'" value="'+esc(st.to||'')+'"></label><div class="inline-actions"><button type="button" data-txn-search="'+key+'">Cari</button><button type="button" data-txn-reset="'+key+'">Reset</button></div></div>',
+    pager:'<div class="inline-actions" style="margin-top:12px"><button type="button" data-txn-prev="'+key+'" '+(st.page<=0?'disabled':'')+'>Sebelumnya</button><span class="muted">Halaman '+(st.page+1)+' / '+pages+' · '+filtered.length+' data</span><button type="button" data-txn-next="'+key+'" '+(st.page>=pages-1?'disabled':'')+'>Selanjutnya</button></div>'};
 };
 const bindTxnList=(x,render)=>{
-  const barn=root.querySelector('[data-txn-barn="'+x.key+'"]'),assignment=root.querySelector('[data-txn-assignment="'+x.key+'"]'),status=root.querySelector('[data-txn-status="'+x.key+'"]'),from=root.querySelector('[data-txn-from="'+x.key+'"]'),to=root.querySelector('[data-txn-to="'+x.key+'"]'),search=root.querySelector('[data-txn-search="'+x.key+'"]'),reset=root.querySelector('[data-txn-reset="'+x.key+'"]');
+  const barn=root.querySelector('[data-txn-barn="'+x.key+'"]'),assignment=root.querySelector('[data-txn-assignment="'+x.key+'"]'),status=root.querySelector('[data-txn-status="'+x.key+'"]'),from=root.querySelector('[data-txn-from="'+x.key+'"]'),to=root.querySelector('[data-txn-to="'+x.key+'"]'),search=root.querySelector('[data-txn-search="'+x.key+'"]'),reset=root.querySelector('[data-txn-reset="'+x.key+'"]'),prev=root.querySelector('[data-txn-prev="'+x.key+'"]'),next=root.querySelector('[data-txn-next="'+x.key+'"]');
   if(barn&&assignment)barn.onchange=()=>{
     const bid=barn.value||'';
     const rows=x.assignmentOptions.filter(a=>!bid||!a.barn_id||String(a.barn_id)===String(bid));
     assignment.disabled=!bid;
     assignment.innerHTML='<option value="">'+(profile?.role==='PPL'?'Semua Siklus Saya':'Semua Siklus')+'</option>'+rows.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.label||a.id)+'</option>').join('');
   };
-  if(search)search.onclick=()=>{
-    x.st.barn=barn?.value||'';
-    x.st.assignment=x.st.barn?(assignment?.value||''):'';
-    x.st.status=status?.value||'';
-    x.st.from=from?.value||'';
-    x.st.to=to?.value||'';
-    if(x.st.from&&x.st.to&&x.st.from>x.st.to){const t=x.st.from;x.st.from=x.st.to;x.st.to=t}
-    x.st.shown=true;
-    render();
-  };
-  if(reset)reset.onclick=()=>{
-    x.st.barn='';x.st.assignment='';x.st.status='';x.st.from='';x.st.to='';x.st.shown=false;
-    render();
-  };
+  if(search)search.onclick=()=>{x.st.barn=barn?.value||'';x.st.assignment=x.st.barn?(assignment?.value||''):'';x.st.status=status?.value||'';x.st.from=from?.value||'';x.st.to=to?.value||'';if(x.st.from&&x.st.to&&x.st.from>x.st.to){const t=x.st.from;x.st.from=x.st.to;x.st.to=t}x.st.page=0;render()};
+  if(reset)reset.onclick=()=>{x.st.barn='';x.st.assignment='';x.st.status='';x.st.from='';x.st.to='';x.st.page=0;render()};
+  if(prev)prev.onclick=()=>{x.st.page=Math.max(0,x.st.page-1);render()};
+  if(next)next.onclick=()=>{x.st.page=Math.min(x.pages-1,x.st.page+1);render()};
 };
 const roles={finance_mandiri_piutang:['ADMIN','KEUANGAN'],finance_mandiri_penerimaan:['ADMIN','KEUANGAN'],finance_mandiri_hutang:['ADMIN','KEUANGAN'],finance_mandiri_pembayaran:['ADMIN','KEUANGAN'],finance_mandiri_laporan:['ADMIN','KEUANGAN'],logistik_pembelian_mandiri:['ADMIN','LOGISTIK'],logistik_pakan_luar:['ADMIN','LOGISTIK'],logistik_doc_luar:['ADMIN','LOGISTIK'],logistik_ovk1_luar:['ADMIN','LOGISTIK'],logistik_beli_peralatan:['ADMIN','LOGISTIK'],marketing_pelanggan:['ADMIN','MARKETING'],kandang:['ADMIN'],liga_abk:['ADMIN','PPL'],rekap_produksi:['ADMIN','PPL'],item:['ADMIN'],supplier:['ADMIN'],supplier_sapronak:['ADMIN'],supplier_daging:['ADMIN'],kontrak:['ADMIN'],harga_hidup:['ADMIN'],bonus_kontrak:['ADMIN'],standar_performa:['ADMIN'],chick_in:['ADMIN','PPL'],sapronak:['ADMIN','LOGISTIK'],recording:['ADMIN','PPL'],kunjungan:['ADMIN','PPL'],panen:['ADMIN','MARKETING'],ekspedisi:['ADMIN','LOGISTIK','MARKETING'],estimasi:['ADMIN','PPL'],rhpp:['ADMIN'],finance_rhpp_real:['ADMIN','KEUANGAN','OWNER'],bop:['ADMIN','KEUANGAN'],laba_rugi_kandang:['ADMIN','KEUANGAN','OWNER'],laba_rugi_global:['ADMIN','OWNER'],perawatan_kandang:['ADMIN','KEUANGAN'],aset_kandang:['ADMIN','KEUANGAN'],hutang_supplier:['ADMIN','KEUANGAN'],finance_pembelian_langsung:['ADMIN','KEUANGAN'],finance_beli_stok:['ADMIN','KEUANGAN'],logistik_stok_barang:['ADMIN','LOGISTIK'],logistik_kirim_stok:['ADMIN','LOGISTIK'],bop_umum:['ADMIN','KEUANGAN'],arus_kas:['ADMIN','KEUANGAN'],laporan_keuangan:['ADMIN','KEUANGAN'],perusahaan:['ADMIN'],karyawan:['ADMIN'],kasbon:['ADMIN','KEUANGAN'],cicilan:['ADMIN','KEUANGAN'],gaji_abk:['ADMIN','KEUANGAN'],expedisi_master:['ADMIN'],expedisi_usaha:['ADMIN','LOGISTIK'],expedisi_pembayaran:['ADMIN','KEUANGAN'],bop_expedisi:['ADMIN','KEUANGAN'],perawatan_expedisi:['ADMIN','KEUANGAN'],laporan_expedisi:['ADMIN','KEUANGAN','OWNER']};
 const visibleTabs={
@@ -239,7 +228,7 @@ const actionButtonStart=(btn,label='Memproses...')=>{
   btn.textContent=label;
   return true;
 };
-const actionButtonFinish=async(btn,ok=true,successLabel='✓ Tersimpan',failureLabel='✕ Belum tersimpan')=>{
+const actionButtonFinish=async(btn,ok=true,successLabel='Terhapus ✓',failureLabel='Gagal — coba lagi')=>{
   if(!btn)return;
   btn.textContent=ok?successLabel:failureLabel;
   await new Promise(resolve=>setTimeout(resolve,ok?850:1500));
@@ -250,56 +239,23 @@ const actionButtonFinish=async(btn,ok=true,successLabel='✓ Tersimpan',failureL
   delete btn.dataset.bmsActionBusy;
   delete btn.dataset.bmsActionOriginal;
 };
-const applyPendingSubmitFeedback=()=>{
-  const fb=window.__bmsPendingSubmitFeedback;
-  if(!fb||Date.now()>fb.expires){window.__bmsPendingSubmitFeedback=null;return;}
-  const form=fb.formId?document.getElementById(fb.formId):null;
-  const btn=form?.querySelector('button[type="submit"],input[type="submit"],button:not([type])');
-  if(!btn)return;
-  const original=btn.tagName==='INPUT'?btn.value:btn.textContent;
-  submitButtonSet(btn,fb.ok?'✓ Tersimpan':'✕ Belum tersimpan');
-  btn.disabled=!!fb.ok;
-  btn.dataset.bmsFeedbackState=fb.ok?'saved':'failed';
-  if(fb.message)btn.title=String(fb.message);
-  window.setTimeout(()=>{
-    if(!btn.isConnected)return;
-    btn.disabled=false;
-    submitButtonSet(btn,original||'Simpan');
-    delete btn.dataset.bmsFeedbackState;
-    btn.removeAttribute('title');
-  },fb.ok?1600:2200);
-  window.__bmsPendingSubmitFeedback=null;
-};
 const releaseSubmitGuard=(form,feedback=null)=>{
   if(!form||form.dataset?.bmsSubmitting!=='1')return;
   form.dataset.bmsSubmitting='0';
   const btn=form.__bmsSubmitButton;
   const original=btn?.dataset?.bmsOriginalLabel||'Simpan';
   if(btn&&feedback){
-    const label=feedback.ok?'✓ Tersimpan':'✕ Belum tersimpan';
-    submitButtonSet(btn,label);
-    btn.dataset.bmsFeedbackState=feedback.ok?'saved':'failed';
-    if(feedback.message)btn.title=String(feedback.message);
-    btn.disabled=!!feedback.ok;
-    window.__bmsPendingSubmitFeedback={
-      formId:String(form.id||''),
-      ok:!!feedback.ok,
-      message:String(feedback.message||''),
-      expires:Date.now()+(feedback.ok?2200:3000)
-    };
+    submitButtonSet(btn,feedback.ok?'Tersimpan ✓':'Gagal — coba lagi');
+    btn.disabled=true;
     window.setTimeout(()=>{
-      if(!btn.isConnected)return;
       btn.disabled=false;
       submitButtonSet(btn,original);
       delete btn.dataset.bmsOriginalLabel;
-      delete btn.dataset.bmsFeedbackState;
-      btn.removeAttribute('title');
-    },feedback.ok?1600:2200);
+    },feedback.ok?1200:1800);
   }else if(btn){
     btn.disabled=false;
     submitButtonSet(btn,original);
     delete btn.dataset.bmsOriginalLabel;
-    delete btn.dataset.bmsFeedbackState;
   }
   form.__bmsSubmitButton=null;
   if(window.__bmsSubmittingForm===form)window.__bmsSubmittingForm=null;
@@ -311,10 +267,7 @@ document.addEventListener('submit',ev=>{
     ev.preventDefault();
     ev.stopImmediatePropagation();
     const btn=form.__bmsSubmitButton;
-    if(btn){
-      submitButtonSet(btn,'Menyimpan…');
-      btn.dataset.bmsFeedbackState='saving';
-    }
+    if(btn)submitButtonSet(btn,'Sedang menyimpan...');
     return;
   }
   form.dataset.bmsSubmitting='1';
@@ -324,19 +277,12 @@ document.addEventListener('submit',ev=>{
     form.__bmsSubmitButton=btn;
     btn.dataset.bmsOriginalLabel=btn.tagName==='INPUT'?btn.value:btn.textContent;
     btn.disabled=true;
-    btn.dataset.bmsFeedbackState='saving';
-    submitButtonSet(btn,'Menyimpan…');
+    if(btn.tagName==='INPUT')btn.value='Sedang menyimpan...';
+    else btn.textContent='Sedang menyimpan...';
   }
-  window.setTimeout(()=>{
-    if(form.dataset?.bmsSubmitting==='1'){
-      releaseSubmitGuard(form,{ok:false,message:'Penyimpanan belum selesai. Silakan coba lagi.'});
-    }
-  },60000);
+  window.setTimeout(()=>releaseSubmitGuard(form),60000);
 },true);
-window.addEventListener('unhandledrejection',()=>{
-  const form=window.__bmsSubmittingForm;
-  if(form)releaseSubmitGuard(form,{ok:false,message:'Terjadi kesalahan saat menyimpan.'});
-});
+window.addEventListener('unhandledrejection',()=>releaseSubmitGuard(window.__bmsSubmittingForm));
 const msg=(s,ok=false)=>{
   const submitting=window.__bmsSubmittingForm;
   if(submitting){
@@ -388,7 +334,7 @@ const bindAdminTransactionDeletes=(rerender)=>{
     if(!actionButtonStart(btn,'Menghapus...'))return;
     const {error}=await db.rpc('admin_delete_transaction_v1',{p_table:table,p_id:String(id)});
     if(error){await actionButtonFinish(btn,false);return;}
-    await actionButtonFinish(btn,true,'✓ Selesai','✕ Gagal');
+    await actionButtonFinish(btn,true);
     if(typeof rerender==='function')await rerender();
   });
 };
@@ -935,7 +881,7 @@ function layout(content){
         if(!actionButtonStart(btn,'Menghapus...'))return;
         const {error}=await db.rpc('delete_production_abk_harvest_atomic',{p_size_id:btn.getAttribute('data-delete-abk-harvest')});
         if(error){await actionButtonFinish(btn,false);return;}
-        await actionButtonFinish(btn,true,'✓ Selesai','✕ Gagal');
+        await actionButtonFinish(btn,true);
         await render();return;
       }
       if(!attr)return;
@@ -945,13 +891,12 @@ function layout(content){
       if(!actionButtonStart(btn,'Menghapus...'))return;
       const {error}=await db.rpc('admin_delete_transaction_v1',{p_table:table,p_id:String(id||'')});
       if(error){await actionButtonFinish(btn,false);return;}
-      await actionButtonFinish(btn,true,'✓ Selesai','✕ Gagal');
+      await actionButtonFinish(btn,true);
       await render();
     };
     root.addEventListener('click',window.__legacyTxnDeleteCapture,true);
   }
   decorateNavigation(root);
-  applyPendingSubmitFeedback();
   if(profile?.role!=='ADMIN'){
     root.querySelectorAll([
       '[data-delete-shipment]',
@@ -1735,7 +1680,7 @@ async function logisticsContractPage(){
     if(!actionButtonStart(btn,'Menghapus...'))return;
     const {error}=await db.from('logistics_contract_assignments').delete().eq('id',id);
     if(error){await actionButtonFinish(btn,false);return;}
-    await actionButtonFinish(btn,true,'✓ Selesai','✕ Gagal');
+    await actionButtonFinish(btn,true);
     await logisticsContractPage();
   });
 
@@ -4118,8 +4063,8 @@ async function productionVisitPage(){
   const visitAssignmentId=window.__pplVisitAssignment||'';
   const historyVisits=visitAssignmentId?rows.filter(v=>v.contract_assignment_id===visitAssignmentId):[];
   window.__bmsTxnList=window.__bmsTxnList||{};
-  const oldVisitShown=window.__bmsTxnList.pplVisit?.shown||false;
-  window.__bmsTxnList.pplVisit={from:'',to:'',barn:'',assignment:'',status:'',shown:oldVisitShown};
+  const oldVisitPage=window.__bmsTxnList.pplVisit?.page||0;
+  window.__bmsTxnList.pplVisit={from:'',to:'',barn:'',assignment:'',status:'',page:oldVisitPage};
   const txnVisit=txnListState(historyVisits,'pplVisit','visited_on',5,null,'barn_id',{}),shownVisits=txnVisit.rows;
   const eligibleVisits=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
   let html='<section class="panel"><h3>Kunjungan PPL</h3><form id="prodVisit" class="form-vertical">'+
