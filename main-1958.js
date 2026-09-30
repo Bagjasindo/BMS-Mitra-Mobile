@@ -239,19 +239,46 @@ const actionButtonFinish=async(btn,ok=true,successLabel='Terhapus ✓',failureLa
   delete btn.dataset.bmsActionBusy;
   delete btn.dataset.bmsActionOriginal;
 };
+const applyPendingSubmitFeedback=()=>{
+  const fb=window.__bmsPendingSubmitFeedback;
+  if(!fb||Date.now()>fb.expires){window.__bmsPendingSubmitFeedback=null;return;}
+  const form=fb.formId?document.getElementById(fb.formId):null;
+  const btn=form?.querySelector('button[type="submit"],input[type="submit"],button:not([type])');
+  if(!btn)return;
+  const original=btn.tagName==='INPUT'?btn.value:btn.textContent;
+  submitButtonSet(btn,fb.ok?'✓ Tersimpan':'✕ Belum tersimpan');
+  btn.disabled=!!fb.ok;
+  if(fb.message)btn.title=String(fb.message);
+  window.setTimeout(()=>{
+    if(!btn.isConnected)return;
+    btn.disabled=false;
+    submitButtonSet(btn,original||'Simpan');
+    btn.removeAttribute('title');
+  },fb.ok?1400:2000);
+  window.__bmsPendingSubmitFeedback=null;
+};
 const releaseSubmitGuard=(form,feedback=null)=>{
   if(!form||form.dataset?.bmsSubmitting!=='1')return;
   form.dataset.bmsSubmitting='0';
   const btn=form.__bmsSubmitButton;
   const original=btn?.dataset?.bmsOriginalLabel||'Simpan';
   if(btn&&feedback){
-    submitButtonSet(btn,feedback.ok?'Tersimpan ✓':'Gagal — coba lagi');
-    btn.disabled=true;
+    submitButtonSet(btn,feedback.ok?'✓ Tersimpan':'✕ Belum tersimpan');
+    btn.disabled=!!feedback.ok;
+    if(feedback.message)btn.title=String(feedback.message);
+    window.__bmsPendingSubmitFeedback={
+      formId:String(form.id||''),
+      ok:!!feedback.ok,
+      message:String(feedback.message||''),
+      expires:Date.now()+(feedback.ok?2200:3000)
+    };
     window.setTimeout(()=>{
+      if(!btn.isConnected)return;
       btn.disabled=false;
       submitButtonSet(btn,original);
       delete btn.dataset.bmsOriginalLabel;
-    },feedback.ok?1200:1800);
+      btn.removeAttribute('title');
+    },feedback.ok?1400:2000);
   }else if(btn){
     btn.disabled=false;
     submitButtonSet(btn,original);
@@ -267,7 +294,7 @@ document.addEventListener('submit',ev=>{
     ev.preventDefault();
     ev.stopImmediatePropagation();
     const btn=form.__bmsSubmitButton;
-    if(btn)submitButtonSet(btn,'Sedang menyimpan...');
+    if(btn)submitButtonSet(btn,'Menyimpan…');
     return;
   }
   form.dataset.bmsSubmitting='1';
@@ -277,12 +304,18 @@ document.addEventListener('submit',ev=>{
     form.__bmsSubmitButton=btn;
     btn.dataset.bmsOriginalLabel=btn.tagName==='INPUT'?btn.value:btn.textContent;
     btn.disabled=true;
-    if(btn.tagName==='INPUT')btn.value='Sedang menyimpan...';
-    else btn.textContent='Sedang menyimpan...';
+    submitButtonSet(btn,'Menyimpan…');
   }
-  window.setTimeout(()=>releaseSubmitGuard(form),60000);
+  window.setTimeout(()=>{
+    if(form.dataset?.bmsSubmitting==='1'){
+      releaseSubmitGuard(form,{ok:false,message:'Penyimpanan belum selesai. Silakan coba lagi.'});
+    }
+  },60000);
 },true);
-window.addEventListener('unhandledrejection',()=>releaseSubmitGuard(window.__bmsSubmittingForm));
+window.addEventListener('unhandledrejection',()=>{
+  const form=window.__bmsSubmittingForm;
+  if(form)releaseSubmitGuard(form,{ok:false,message:'Terjadi kesalahan saat menyimpan.'});
+});
 const msg=(s,ok=false)=>{
   const submitting=window.__bmsSubmittingForm;
   if(submitting){
@@ -897,6 +930,7 @@ function layout(content){
     root.addEventListener('click',window.__legacyTxnDeleteCapture,true);
   }
   decorateNavigation(root);
+  applyPendingSubmitFeedback();
   if(profile?.role!=='ADMIN'){
     root.querySelectorAll([
       '[data-delete-shipment]',
