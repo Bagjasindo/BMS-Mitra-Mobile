@@ -9317,16 +9317,18 @@ async function financeGlobalProfitLossPage(){
 }
 
 async function financeReportPage(){
-  const [xr,ar,br,cr,rr]=await Promise.all([
+  const [xr,ar,br,cr,rr,mfr]=await Promise.all([
     db.rpc('finance_cycle_profit_loss_v2'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('barns').select('id,code,name'),
     db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('rhpp_real').select('contract_assignment_id')
+    db.from('rhpp_real').select('contract_assignment_id'),
+    db.from('production_mandiri_final').select('contract_assignment_id,source_reference')
   ]);
   const rows=xr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[];
   const realIds=new Set((rr.data||[]).map(x=>x.contract_assignment_id).filter(Boolean));
-  const err=[xr,ar,br,cr,rr].find(x=>x.error)?.error;
+  const mandiriFinalMap=new Map((mfr.data||[]).map(x=>[x.contract_assignment_id,x]));
+  const err=[xr,ar,br,cr,rr,mfr].find(x=>x.error)?.error;
   window.__financeReportState=window.__financeReportState||{barn:'',assignment:'',kind:'',status:'',from:'',to:'',shown:false};
   const st=window.__financeReportState;
   if(st.kind===undefined)st.kind='';
@@ -9336,10 +9338,21 @@ async function financeReportPage(){
   const assignmentOf=x=>assignments.find(a=>a.id===x.contract_assignment_id);
   const isMandiri=x=>assignmentOf(x)?.cycle_type==='MANDIRI';
   const cycleStatus=x=>x.active?'PROSES':(isMandiri(x)||realIds.has(x.contract_assignment_id))?'FINAL':'MENUNGGU RHPP REAL';
-  const validationStatus=x=>cycleStatus(x)==='FINAL'?'PASS':cycleStatus(x);
-  const cycleIncome=x=>cycleStatus(x)==='FINAL'?prodNum(x.rhpp_real):null;
+  const validationStatus=x=>{
+    const status=cycleStatus(x);
+    if(status!=='FINAL')return status;
+    if(isMandiri(x)){
+      if(!mandiriFinalMap.has(x.contract_assignment_id))return 'BELUM LENGKAP';
+      if(!(prodNum(x.rhpp_real)>0))return 'BELUM LENGKAP';
+      if(!(prodNum(x.sapronak_luar)>0))return 'BELUM LENGKAP';
+    }else if(!realIds.has(x.contract_assignment_id)){
+      return 'MENUNGGU RHPP REAL';
+    }
+    return 'PASS';
+  };
+  const cycleIncome=x=>validationStatus(x)==='PASS'?prodNum(x.rhpp_real):null;
   const cycleCost=x=>prodNum(x.bop_produksi)+prodNum(x.sapronak_luar)+prodNum(x.tambah_daging);
-  const cycleProfit=x=>cycleStatus(x)==='FINAL'?cycleIncome(x)-cycleCost(x):null;
+  const cycleProfit=x=>validationStatus(x)==='PASS'?cycleIncome(x)-cycleCost(x):null;
 
   const visible=st.shown?rows.filter(x=>{
     const a=assignmentOf(x),d=String(a?.start_date||''),status=cycleStatus(x),kind=a?.cycle_type||'MITRA';
@@ -9351,7 +9364,8 @@ async function financeReportPage(){
       (!st.to||d<=st.to);
   }):[];
 
-  const finalRows=visible.filter(x=>cycleStatus(x)==='FINAL');
+  const finalRows=visible.filter(x=>validationStatus(x)==='PASS');
+  const incompleteRows=visible.filter(x=>cycleStatus(x)==='FINAL'&&validationStatus(x)!=='PASS');
   const waitingRows=visible.filter(x=>cycleStatus(x)==='MENUNGGU RHPP REAL');
   const processRows=visible.filter(x=>cycleStatus(x)==='PROSES');
   const totalIncome=finalRows.reduce((n,x)=>n+cycleIncome(x),0);
@@ -9378,7 +9392,7 @@ async function financeReportPage(){
         '<div class="rhpp-summary-card"><span>Total Biaya Siklus Final</span><strong>Rp '+prodFmt(totalCost,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Laba/Rugi Operasional</span><strong>Rp '+prodFmt(totalProfit,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Siklus PASS</span><strong>'+finalRows.length+'</strong><small>FINAL dan dapat dihitung</small></div>'+
-        '<div class="rhpp-summary-card"><span>Menunggu Final</span><strong>'+(processRows.length+waitingRows.length)+'</strong><small>'+processRows.length+' PROSES · '+waitingRows.length+' menunggu RHPP Real</small></div>'+
+        '<div class="rhpp-summary-card"><span>Menunggu Final</span><strong>'+(processRows.length+waitingRows.length+incompleteRows.length)+'</strong><small>'+processRows.length+' PROSES · '+waitingRows.length+' menunggu RHPP Real · '+incompleteRows.length+' belum lengkap</small></div>'+
       '</div>'+
     '</section>';
 
