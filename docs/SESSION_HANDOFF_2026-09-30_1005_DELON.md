@@ -1,0 +1,5 @@
+# Upah Mangdelon checkpoint
+User explicitly instructed divide Mangdelon wages equally across four barns even where original designation names one barn, provided clear notes, then instructed import.
+Imported6 sources BB-18 640000 Apr10, BB-97 200000 Jun17, BB-1251530000 Jul7, BB-153510000 Jul24, BB-1543580000 Jul30, BB-2132120000 Aug13. Combined8580000,24 maintenance rows,2145000 per barn. Barn1 Cicurug,2 Baturuyuk,3 Randegan,4 Bantrangsana. Category PERAWATAN_JANGKA_PANJANG, assignment null. References BB-id-suffix1..4. Notes retain original description, source date/ID, original barn designation, total source,25% allocation, four barn names, and explicit user instruction. No prior delon/buhe maintenance entries found; insert guarded against duplicate references.
+Verified6 records and2145000 per each barn. Other repair/material/asset transactions remain unimported and require examination; do not claim all workbook migrated. paid_by uses existing COMPANY default, not independently confirmed historic payer.
+Earlier checkpoints remain applicable, including CicurugJune reopened-state reporting risk, deferred supplier/Paris/upahgemuk items.
