@@ -4685,6 +4685,9 @@ async function leagueByBarnViewPage(){
       '<label>Kandang<select id="leagueByBarnSelect" required><option value="">Pilih Kandang</option>'+
         barnRows.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
       '</select></label>'+
+      '<label>Siklus<select id="leagueByBarnAssignment" required '+(!st.barn?'disabled':'')+'><option value="">Pilih Siklus</option>'+
+        assignmentRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.cycle_type||'MITRA')+' · '+prodDateId(a.start_date)+' · CLOSED')+'</option>').join('')+
+      '</select></label>'+
       '<button type="submit">Tampilkan</button>'+
     '</form></section>';
 
