@@ -170,3 +170,36 @@ Audit live dilanjutkan tanpa mengubah data.
 ### STATUS
 Audit Hulu → Hilir yang diperiksa sampai Output Akhir: PASS.
 Jangan ulang audit bagian di atas kecuali perubahan kode/data berikutnya menyentuh jalurnya.
+
+
+## AUDIT KHUSUS LOGISTIK + PPL SETELAH REVISI FORM — 30 SEPTEMBER 2026
+Status: PASS setelah hardening.
+
+### LOGISTIK
+- Menu/hak akses LOGISTIK tetap sesuai visibleTabs.
+- Form Pengiriman edit memakai assignment asli transaksi; kandang tetap fixed saat edit.
+- Qty draft dapat diedit inline; harga kontrak tetap dihitung dari assignment/kontrak terpilih.
+- Riwayat Pengiriman mendukung filter Kandang + Siklus + Tanggal dan menampilkan semua hasil tanpa pagination.
+- Smoke-test akun LOGISTIK pada Pengiriman Baturuyuk menggunakan transaksi rollback: edit nilai yang sama berhasil; qty 60 zak = 3.000 kg, harga Rp500.000/zak tetap benar.
+- Tombol Hapus Pengiriman sekarang hanya tampil untuk ADMIN.
+- RLS logistics_shipments DELETE diperketat menjadi ADMIN-only.
+- Direct DELETE sebagai akun LOGISTIK diuji: 0 row terhapus.
+- logistics_shipment_items DELETE tetap tersedia untuk LOGISTIK karena RPC save_logistics_shipment_atomic adalah SECURITY INVOKER dan perlu mengganti child rows saat edit.
+
+### PPL
+- Chick-In tetap menjadi sumber pembagian ABK.
+- Jika PPL memilih siklus aktif yang sudah memiliki Chick-In, form otomatis masuk mode Edit dan tidak lagi berhenti pada error duplikat.
+- Baris Chick-In pada siklus CLOSED sekarang tampil Terkunci; Edit baru tersedia setelah Administrator membuka siklus.
+- Liga ABK menampilkan Populasi Awal sebagai read-only dari pembagian Chick-In; tombol lama Simpan Populasi Awal di Liga ABK dihapus.
+- Pakan dan Panen ABK tetap berjalan dari relasi ABK yang dibentuk saat Chick-In.
+- Smoke-test akun PPL Burhanudin pada Baturuyuk menggunakan rollback: Chick-In 14.800, DOA 0, ABK 7.400 + 7.400 = 14.800 PASS.
+- Tombol/akses DELETE Chick-In non-admin ditutup di backend; RLS chick_ins DELETE menjadi ADMIN-only.
+- Direct DELETE sebagai akun PPL diuji: 0 row terhapus.
+- RLS logistics_contract_assignment_abks DELETE juga diperketat ADMIN-only.
+
+### CACHE / SOURCE
+- Frontend commit: 01c731e0830381bda8252056966e14bd7f44bcb1
+- Cache: main-1958.js?v=2253-logistics-ppl-form-hardening
+- Cache commit: 26075b0f90fc0f07f5c7f156556c894eeb9a5011
+- SQL hardening: sql/20260930_logistics_ppl_form_hardening.sql
+- SQL commit: 7c7d6389e269fb168a82fef6cbbf3a4d22acd4c9
