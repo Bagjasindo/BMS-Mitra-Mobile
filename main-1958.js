@@ -1612,7 +1612,15 @@ async function logisticsShippingPage(editId=null){
   ]);
 
   const barns=br.data||[], itemsAll=ir.data||[], shipments=sr.data||[], shipmentItems=sir.data||[], assignments=ar.data||[], masters=kr.data||[];
-  const txnShipping=txnListState(shipments,'shipping','shipment_date',5,barns),shownShipments=txnShipping.rows;
+  const shippingHistoryState=window.__shippingHistoryFilter||{barn_id:'',assignment_id:'',date_from:'',date_to:''};
+  window.__shippingHistoryFilter=shippingHistoryState;
+  const historyAssignments=assignments.filter(a=>(a.cycle_type||'MITRA')==='MITRA'&&(!shippingHistoryState.barn_id||a.barn_id===shippingHistoryState.barn_id));
+  const shownShipments=shipments.filter(s=>
+    (!shippingHistoryState.barn_id||s.barn_id===shippingHistoryState.barn_id)&&
+    (!shippingHistoryState.assignment_id||s.contract_assignment_id===shippingHistoryState.assignment_id)&&
+    (!shippingHistoryState.date_from||String(s.shipment_date||'')>=shippingHistoryState.date_from)&&
+    (!shippingHistoryState.date_to||String(s.shipment_date||'')<=shippingHistoryState.date_to)
+  );
   const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
   const selectableBarns=barns.filter(b=>activeByBarn.has(b.id));
@@ -1658,7 +1666,16 @@ async function logisticsShippingPage(editId=null){
   }
   html+='</section>';
 
-  html+='<section class="panel"><h3>Riwayat Pengiriman</h3>'+txnShipping.controls+'<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>No. SJ</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+  html+='<section class="panel"><h3>Riwayat Pengiriman</h3>'+
+    '<div class="form-vertical compact-form">'+
+      '<label>Pilih Kandang<select id="shippingHistoryBarn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(shippingHistoryState.barn_id===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Pilih Siklus<select id="shippingHistoryCycle"><option value="">Semua Siklus</option>'+historyAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(shippingHistoryState.assignment_id===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+(a.start_date||'-')+' · '+(a.active?'AKTIF':'CLOSED'))+'</option>').join('')+'</select></label>'+
+      '<label>Tanggal Dari<input type="date" id="shippingHistoryDateFrom" value="'+esc(shippingHistoryState.date_from||'')+'"></label>'+
+      '<label>Tanggal Sampai<input type="date" id="shippingHistoryDateTo" value="'+esc(shippingHistoryState.date_to||'')+'"></label>'+
+      '<div class="inline-actions"><button type="button" id="shippingHistoryApply">Cari</button><button type="button" id="shippingHistoryReset">Reset</button></div>'+
+      '<p class="muted">Semua kiriman sesuai kandang, siklus, dan tanggal ditampilkan sekaligus tanpa pagination.</p>'+
+    '</div>'+
+    '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>No. SJ</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
     shownShipments.flatMap(s=>{
       const b=barns.find(x=>x.id===s.barn_id), a=assignments.find(x=>x.id===s.contract_assignment_id);
       const isLocked=a?.active===false;
@@ -1672,11 +1689,51 @@ async function logisticsShippingPage(editId=null){
         return '<tr><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(s.shipment_date||'-')+'</td><td>'+esc(s.shipping_note_number||'-')+'</td><td>'+esc(i?.name||'-')+'</td><td>'+fmtNumber(d.quantity)+'</td><td>'+esc(i?.unit||'-')+'</td><td>'+fmtNumber(kg)+'</td><td>'+fmtNumber(d.unit_price)+'</td><td>'+fmtNumber(Number(d.quantity||0)*Number(d.unit_price||0))+'</td><td>'+(isLocked?'Terkunci':'Draft')+'</td><td>'+(idx===0?(isLocked?'<button type="button" data-view-shipment="'+esc(s.id)+'">Lihat</button>':'<button type="button" data-view-shipment="'+esc(s.id)+'">Edit</button> <button type="button" data-delete-shipment="'+esc(s.id)+'">Hapus</button>'):'')+'</td></tr>';
       });
     }).join('')+
-    '</tbody></table></div>'+(!txnShipping.total?'<p>Data pengiriman tidak ditemukan.</p>':'')+txnShipping.pager+'<p class="muted">Riwayat lengkap tersedia di Laporan Logistik.</p></section>';
+    '</tbody></table></div>'+(!shownShipments.length?'<p>Data pengiriman tidak ditemukan.</p>':'')+'<p class="muted">Riwayat lengkap tersedia di Laporan Logistik.</p></section>';
 
   layout(html);
   bindNumberInputs();
-  bindTxnList(txnShipping,()=>logisticsShippingPage());
+
+  const shippingHistoryBarn=document.getElementById('shippingHistoryBarn');
+  const shippingHistoryCycle=document.getElementById('shippingHistoryCycle');
+  const shippingHistoryDateFrom=document.getElementById('shippingHistoryDateFrom');
+  const shippingHistoryDateTo=document.getElementById('shippingHistoryDateTo');
+  const shippingHistoryApply=document.getElementById('shippingHistoryApply');
+  const shippingHistoryReset=document.getElementById('shippingHistoryReset');
+
+  if(shippingHistoryBarn)shippingHistoryBarn.onchange=()=>{
+    window.__shippingHistoryFilter={
+      barn_id:shippingHistoryBarn.value,
+      assignment_id:'',
+      date_from:shippingHistoryDateFrom?.value||'',
+      date_to:shippingHistoryDateTo?.value||''
+    };
+    logisticsShippingPage();
+  };
+
+  if(shippingHistoryCycle)shippingHistoryCycle.onchange=()=>{
+    window.__shippingHistoryFilter={
+      barn_id:shippingHistoryBarn?.value||'',
+      assignment_id:shippingHistoryCycle.value,
+      date_from:shippingHistoryDateFrom?.value||'',
+      date_to:shippingHistoryDateTo?.value||''
+    };
+  };
+
+  if(shippingHistoryApply)shippingHistoryApply.onclick=()=>{
+    window.__shippingHistoryFilter={
+      barn_id:shippingHistoryBarn?.value||'',
+      assignment_id:shippingHistoryCycle?.value||'',
+      date_from:shippingHistoryDateFrom?.value||'',
+      date_to:shippingHistoryDateTo?.value||''
+    };
+    logisticsShippingPage();
+  };
+
+  if(shippingHistoryReset)shippingHistoryReset.onclick=()=>{
+    window.__shippingHistoryFilter={barn_id:'',assignment_id:'',date_from:'',date_to:''};
+    logisticsShippingPage();
+  };
 
   const barnSearch=document.getElementById('shippingBarnSearch');
   const barnIdInput=document.getElementById('shippingBarnId');
