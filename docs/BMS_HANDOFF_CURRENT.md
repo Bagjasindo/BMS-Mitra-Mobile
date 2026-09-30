@@ -356,3 +356,19 @@ Status: FIXED / source tetap Liga ABK.
 - Frontend commit: `436f8feae7a28ac03ede2743ec8e98bbbc0b18db`.
 - Cache: `main-1958.js?v=2258-abk-standings-closed-only`.
 - Cache commit: `e437c4485692e8f17a0fc7f3132c0c53ac5b772f`.
+
+
+## UI — SUBMENU LIHAT RHPP ABK DI PRODUKSI/PPL — 30 SEPTEMBER 2026
+Status: FIXED / UI + read-only view.
+
+- Penambahan hanya di grup menu Produksi / PPL.
+- “Lihat RHPP” menjadi induk submenu dengan dua anak:
+  - Lihat RHPP
+  - Lihat RHPP ABK
+- Lihat RHPP lama tidak diubah.
+- Lihat RHPP ABK memakai sumber data Liga ABK dan bersifat read-only.
+- Tampilan Lihat RHPP ABK disamakan pola RHPP: pilih Kandang → Siklus → ABK → lembar ringkasan RHPP 4 blok + Print/PDF/Excel.
+- Tidak ada perubahan ke input/edit Liga ABK maupun formula ranking.
+- Frontend commit: `ce4e9c0049078feb880c9b229a4ad1d3f097de5e`.
+- Cache: `main-1958.js?v=2259-rhpp-abk-production-menu`.
+- Cache commit: `c5d07ea0925bc3bbb92a264b2d6ba739f8f8173c`.
