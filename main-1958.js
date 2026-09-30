@@ -5395,7 +5395,7 @@ async function pplRhppAbkViewPage(){
   const [rr,sr,cr,br,cpr]=await Promise.all([
     db.from('production_abk_results').select('*'),
     db.from('production_abk_result_sizes').select('*').order('harvest_date',{ascending:true}).order('created_at',{ascending:true}),
-    db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
+    db.from('contracts').select('id,number,contract_date,performance_template_name,doc_price,pre_starter_price,starter_price,finisher_price'),
     db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle()
   ]);
@@ -5485,6 +5485,19 @@ async function pplRhppAbkViewPage(){
   const selectedResult=st.assignment&&st.abk
     ?rows.map(calcResult).find(x=>x.contract_assignment_id===st.assignment&&x.abk_id===st.abk)
     :null;
+  const selectedAssignment=st.assignment?d.assignments.find(x=>x.id===st.assignment):null;
+  const selectedContractId=abkReferenceContractId(selectedAssignment);
+  const selectedContract=selectedContractId?leagueContracts.find(x=>x.id===selectedContractId):null;
+  const selectedLivePrices=selectedContractId?(d.livePrices||[]).filter(x=>x.contract_id===selectedContractId):[];
+  const selectedBonuses=selectedContractId?leagueBonuses.filter(x=>x.contract_id===selectedContractId):[];
+  const selectedHarvestRows=selectedResult
+    ?sizes.filter(x=>x.result_id===selectedResult.id).map(x=>{
+      const birds=prodNum(x.birds),kg=prodNum(x.weight_kg),bw=birds?kg/birds:0;
+      const priceRow=selectedLivePrices.find(p=>bw>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||bw<prodNum(p.max_weight_kg)));
+      const price=prodNum(priceRow?.price_per_kg);
+      return {...x,bw,price,value:kg*price};
+    })
+    :[];
 
   let html='<section class="panel"><h3>Lihat RHPP ABK</h3><p class="muted">Pilih kandang, siklus, lalu ABK. Sumber data tetap dari Liga ABK.</p>'+
     '<form id="pplRhppAbkFilter" class="form-vertical" data-no-submit-guard="1">'+
@@ -5550,6 +5563,30 @@ async function pplRhppAbkViewPage(){
           val('Hasil Per Ekor',money(r?.perBird))+
         '</div>'+
       '</div>'+
+      (r?'<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px">'+
+        '<div class="rhpp-mini-block"><h4>RINCIAN PANEN ABK</h4>'+
+          '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th class="num">Ekor</th><th class="num">Kg</th><th class="num">BW</th><th class="num">Harga Kontrak/Kg</th><th class="num">Nilai Panen</th></tr></thead><tbody>'+
+            selectedHarvestRows.map(x=>'<tr><td>'+prodDateId(x.harvest_date)+'</td><td class="num">'+prodFmt(x.birds,0)+'</td><td class="num">'+prodFmt(x.weight_kg,2)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td><td class="num">'+money(x.price)+'</td><td class="num">'+money(x.value)+'</td></tr>').join('')+
+          '</tbody><tfoot><tr><th>Total</th><th class="num">'+prodFmt(selectedHarvestRows.reduce((z,x)=>z+prodNum(x.birds),0),0)+'</th><th class="num">'+prodFmt(selectedHarvestRows.reduce((z,x)=>z+prodNum(x.weight_kg),0),2)+'</th><th></th><th></th><th class="num">'+money(selectedHarvestRows.reduce((z,x)=>z+prodNum(x.value),0))+'</th></tr></tfoot></table></div>'+
+        '</div>'+
+        '<div class="rhpp-mini-block"><h4>RINCIAN HARGA KONTRAK</h4>'+
+          val('Kontrak',esc(selectedContract?.number||'-'))+
+          val('Tanggal Berlaku',prodDateId(selectedContract?.contract_date))+
+          val('Template Performa',esc(a?.performance_template_name||selectedContract?.performance_template_name||'-'))+
+          val('DOC / Ekor',money(selectedContract?.doc_price))+
+          val('Pre Starter / Kg',money(selectedContract?.pre_starter_price))+
+          val('Starter / Kg',money(selectedContract?.starter_price))+
+          val('Finisher / Kg',money(selectedContract?.finisher_price))+
+          '<h4 style="margin-top:8px">Harga Ayam Hidup</h4>'+
+          '<div class="tablewrap"><table><thead><tr><th>BW Min</th><th>BW Max</th><th class="num">Harga/Kg</th></tr></thead><tbody>'+
+            selectedLivePrices.map(x=>'<tr><td>'+prodFmt(x.min_weight_kg,3)+'</td><td>'+(x.max_weight_kg==null?'Tanpa batas':prodFmt(x.max_weight_kg,3))+'</td><td class="num">'+money(x.price_per_kg)+'</td></tr>').join('')+
+          '</tbody></table></div>'+
+          '<h4 style="margin-top:8px">Bonus Kontrak</h4>'+
+          '<div class="tablewrap"><table><thead><tr><th>Jenis</th><th>Min</th><th>Max</th><th class="num">Rp/Kg</th></tr></thead><tbody>'+
+            selectedBonuses.map(x=>'<tr><td>'+esc(x.metric||'-')+'</td><td>'+(x.min_value==null?'-':prodFmt(x.min_value,3))+'</td><td>'+(x.max_value==null?'-':prodFmt(x.max_value,3))+'</td><td class="num">'+money(x.rupiah_per_kg)+'</td></tr>').join('')+
+          '</tbody></table></div>'+
+        '</div>'+
+      '</div>':'')+
       (!r?'<p class="muted">Data hasil Liga ABK untuk pilihan ini belum tersedia.</p>':'')+
       (a?.active?'<p class="muted">Siklus masih PROSES. Nilai mengikuti data Liga ABK berjalan dan belum menjadi hasil CLOSED.</p>':'')+
     '</section></div>';
@@ -5611,12 +5648,14 @@ async function pplRhppAbkViewPage(){
 
 async function pplRhppViewPage(){
   const d=await productionBase();
-  const [fr,cpr,sr]=await Promise.all([
+  const [fr,cpr,sr,cr,br]=await Promise.all([
     db.from('production_cycle_final_unified').select('*').order('created_at',{ascending:false}),
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
-    db.rpc('finance_rhpp_summary_v6')
+    db.rpc('finance_rhpp_summary_v6'),
+    db.from('contracts').select('id,number,contract_date,performance_template_name,doc_price,pre_starter_price,starter_price,finisher_price'),
+    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg')
   ]);
-  const finals=fr.data||[],company=cpr.data||{},summaries=sr.data||[];
+  const finals=fr.data||[],company=cpr.data||{},summaries=sr.data||[],rhppContracts=cr.data||[],rhppBonuses=br.data||[];
   const barnsForAssignments=[...new Map(d.assignments.map(a=>{
     const b=d.barns.find(x=>x.id===a.barn_id);
     return b?[b.id,b]:null;
@@ -5650,6 +5689,15 @@ async function pplRhppViewPage(){
     const fin=finals.find(x=>x.contract_assignment_id===selectedAssignment);
     const live=summaries.find(x=>x.contract_assignment_id===selectedAssignment);
     const contract=d.masters.find(x=>x.id===a?.master_contract_id);
+    const auditContract=rhppContracts.find(x=>x.id===a?.master_contract_id)||contract;
+    const auditLivePrices=(d.livePrices||[]).filter(x=>x.contract_id===a?.master_contract_id);
+    const auditBonuses=rhppBonuses.filter(x=>x.contract_id===a?.master_contract_id);
+    const auditHarvestRows=(d.harvests||[]).filter(x=>x.contract_assignment_id===selectedAssignment).map(x=>{
+      const birds=prodNum(x.birds),kg=prodNum(x.net_weight_kg),bw=prodNum(x.avg_weight_kg)||(birds?kg/birds:0);
+      const priceRow=auditLivePrices.find(p=>bw>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||bw<prodNum(p.max_weight_kg)));
+      const contractPrice=prodNum(priceRow?.price_per_kg);
+      return {...x,bw,contractPrice,contractValue:kg*contractPrice};
+    });
     const closed=!!fin;
     const src=closed?{
       chick_in_birds:fin.chick_in_birds,
@@ -5741,13 +5789,37 @@ async function pplRhppViewPage(){
             val('Laba Per Ekor',money(src?.profit_per_chick_in))+
           '</div>'+
         '</div>'+
+        (src?'<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px">'+
+          '<div class="rhpp-mini-block"><h4>RINCIAN PANEN</h4>'+
+            '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th class="num">Ekor</th><th class="num">Kg</th><th class="num">BW</th><th class="num">Harga Kontrak/Kg</th><th class="num">Nilai Kontrak</th></tr></thead><tbody>'+
+              auditHarvestRows.map(x=>'<tr><td>'+prodDateId(x.harvested_on)+'</td><td class="num">'+prodFmt(x.birds,0)+'</td><td class="num">'+prodFmt(x.net_weight_kg,2)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td><td class="num">'+money(x.contractPrice)+'</td><td class="num">'+money(x.contractValue)+'</td></tr>').join('')+
+            '</tbody><tfoot><tr><th>Total</th><th class="num">'+prodFmt(auditHarvestRows.reduce((z,x)=>z+prodNum(x.birds),0),0)+'</th><th class="num">'+prodFmt(auditHarvestRows.reduce((z,x)=>z+prodNum(x.net_weight_kg),0),2)+'</th><th></th><th></th><th class="num">'+money(auditHarvestRows.reduce((z,x)=>z+prodNum(x.contractValue),0))+'</th></tr></tfoot></table></div>'+
+          '</div>'+
+          '<div class="rhpp-mini-block"><h4>RINCIAN HARGA KONTRAK</h4>'+
+            val('Kontrak',esc(auditContract?.number||'-'))+
+            val('Tanggal Berlaku',prodDateId(auditContract?.contract_date))+
+            val('Template Performa',esc(a?.performance_template_name||auditContract?.performance_template_name||'-'))+
+            val('DOC / Ekor',money(auditContract?.doc_price))+
+            val('Pre Starter / Kg',money(auditContract?.pre_starter_price))+
+            val('Starter / Kg',money(auditContract?.starter_price))+
+            val('Finisher / Kg',money(auditContract?.finisher_price))+
+            '<h4 style="margin-top:8px">Harga Ayam Hidup</h4>'+
+            '<div class="tablewrap"><table><thead><tr><th>BW Min</th><th>BW Max</th><th class="num">Harga/Kg</th></tr></thead><tbody>'+
+              auditLivePrices.map(x=>'<tr><td>'+prodFmt(x.min_weight_kg,3)+'</td><td>'+(x.max_weight_kg==null?'Tanpa batas':prodFmt(x.max_weight_kg,3))+'</td><td class="num">'+money(x.price_per_kg)+'</td></tr>').join('')+
+            '</tbody></table></div>'+
+            '<h4 style="margin-top:8px">Bonus Kontrak</h4>'+
+            '<div class="tablewrap"><table><thead><tr><th>Jenis</th><th>Min</th><th>Max</th><th class="num">Rp/Kg</th></tr></thead><tbody>'+
+              auditBonuses.map(x=>'<tr><td>'+esc(x.metric||'-')+'</td><td>'+(x.min_value==null?'-':prodFmt(x.min_value,3))+'</td><td>'+(x.max_value==null?'-':prodFmt(x.max_value,3))+'</td><td class="num">'+money(x.rupiah_per_kg)+'</td></tr>').join('')+
+            '</tbody></table></div>'+
+          '</div>'+
+        '</div>':'')+
         (!src?'<p class="muted">Ringkasan RHPP belum tersedia untuk siklus ini.</p>':'')+
         (!closed?'<p class="muted">Periode masih PROSES. Nilai FINAL tersedia setelah Administrator melakukan Close.</p>':'')+
       '</section></div>';
   }
 
   layout(html);
-  if(d.err||fr.error||cpr.error||sr.error)msg((d.err||fr.error||cpr.error||sr.error).message);
+  if(d.err||fr.error||cpr.error||sr.error||cr.error||br.error)msg((d.err||fr.error||cpr.error||sr.error||cr.error||br.error).message);
   const barnSel=document.getElementById('pplRhppBarn');
   const cycleSel=document.getElementById('pplRhppCycle');
   if(barnSel)barnSel.onchange=async()=>{
