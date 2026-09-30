@@ -18,6 +18,7 @@ create table if not exists public.warehouse_stock_items (
   invoice_id uuid not null references public.finance_stock_purchase_invoices(id) on delete restrict,
   standard_name text not null check (length(btrim(standard_name)) > 0),
   description text,
+  stock_kind text not null default 'ASET' check (stock_kind in ('ASET','HABIS_PAKAI')),
   quantity numeric not null check (quantity > 0),
   unit text not null check (length(btrim(unit)) > 0),
   unit_price numeric not null check (unit_price >= 0),
@@ -82,25 +83,28 @@ revoke all on public.finance_stock_purchase_invoices, public.warehouse_stock_ite
 create or replace function public.finance_save_stock_invoice_atomic(
   p_purchase_date date,p_supplier_name text,p_payment_method text,p_reference text,p_notes text,p_items jsonb
 ) returns uuid language plpgsql security definer set search_path='' as $$
-declare v_invoice_id uuid; v_item jsonb; v_name text; v_unit text; v_qty numeric; v_price numeric; v_total numeric:=0;
+declare v_invoice_id uuid; v_item jsonb; v_name text; v_unit text; v_kind text; v_qty numeric; v_price numeric; v_total numeric:=0;
 begin
   if not exists(select 1 from public.profiles p where p.user_id=auth.uid() and p.active and p.role in ('ADMIN','KEUANGAN')) then raise exception 'Akses ditolak.'; end if;
   if p_purchase_date is null then raise exception 'Tanggal pembelian wajib.'; end if;
   if p_payment_method not in ('TUNAI','TRANSFER') then raise exception 'Metode pembayaran tidak valid.'; end if;
   if p_items is null or jsonb_typeof(p_items)<>'array' or jsonb_array_length(p_items)=0 then raise exception 'Minimal satu barang stok wajib diisi.'; end if;
   for v_item in select value from jsonb_array_elements(p_items) loop
-    v_name:=nullif(trim(coalesce(v_item->>'standard_name','')),''); v_unit:=upper(nullif(trim(coalesce(v_item->>'unit','')),''));
+    v_name:=nullif(trim(coalesce(v_item->>'standard_name','')),'');
+    v_unit:=upper(nullif(trim(coalesce(v_item->>'unit','')),''));
+    v_kind:=upper(trim(coalesce(v_item->>'stock_kind','ASET')));
     begin v_qty:=(v_item->>'quantity')::numeric; v_price:=(v_item->>'unit_price')::numeric; exception when others then raise exception 'Jumlah atau harga barang stok tidak valid.'; end;
-    if v_name is null or v_unit is null or coalesce(v_qty,0)<=0 or coalesce(v_price,-1)<0 then raise exception 'Data barang stok tidak valid.'; end if;
+    if v_name is null or v_unit is null or v_kind not in ('ASET','HABIS_PAKAI') or coalesce(v_qty,0)<=0 or coalesce(v_price,-1)<0 then raise exception 'Data barang stok tidak valid.'; end if;
     v_total:=v_total+(v_qty*v_price);
   end loop;
   insert into public.finance_stock_purchase_invoices(purchase_date,supplier_name,payment_method,reference,notes,total_amount,created_by)
   values(p_purchase_date,nullif(trim(coalesce(p_supplier_name,'')),''),p_payment_method,nullif(trim(coalesce(p_reference,'')),''),nullif(trim(coalesce(p_notes,'')),''),v_total,auth.uid())
   returning id into v_invoice_id;
   for v_item in select value from jsonb_array_elements(p_items) loop
-    v_name:=trim(v_item->>'standard_name'); v_unit:=upper(trim(v_item->>'unit')); v_qty:=(v_item->>'quantity')::numeric; v_price:=(v_item->>'unit_price')::numeric;
-    insert into public.warehouse_stock_items(invoice_id,standard_name,description,quantity,unit,unit_price,total_amount,created_by)
-    values(v_invoice_id,v_name,nullif(trim(coalesce(v_item->>'description','')),''),v_qty,v_unit,v_price,v_qty*v_price,auth.uid());
+    v_name:=trim(v_item->>'standard_name'); v_unit:=upper(trim(v_item->>'unit')); v_kind:=upper(trim(coalesce(v_item->>'stock_kind','ASET')));
+    v_qty:=(v_item->>'quantity')::numeric; v_price:=(v_item->>'unit_price')::numeric;
+    insert into public.warehouse_stock_items(invoice_id,standard_name,description,stock_kind,quantity,unit,unit_price,total_amount,created_by)
+    values(v_invoice_id,v_name,nullif(trim(coalesce(v_item->>'description','')),''),v_kind,v_qty,v_unit,v_price,v_qty*v_price,auth.uid());
   end loop;
   return v_invoice_id;
 end $$;
@@ -111,7 +115,7 @@ create or replace function public.logistics_send_warehouse_stock_atomic(
   p_stock_item_id uuid,p_shipment_date date,p_destination_type text,p_barn_id uuid,p_quantity numeric,
   p_make_asset boolean default false,p_reference text default null,p_notes text default null
 ) returns uuid language plpgsql security definer set search_path='' as $$
-declare v_item public.warehouse_stock_items%rowtype; v_sent numeric; v_remaining numeric; v_destination text; v_shipment_id uuid; v_asset_id uuid;
+declare v_item public.warehouse_stock_items%rowtype; v_sent numeric; v_remaining numeric; v_destination text; v_shipment_id uuid; v_asset_id uuid; v_make_asset boolean;
 begin
   if not exists(select 1 from public.profiles p where p.user_id=auth.uid() and p.active and p.role in ('ADMIN','LOGISTIK')) then raise exception 'Akses ditolak.'; end if;
   if p_shipment_date is null or coalesce(p_quantity,0)<=0 then raise exception 'Tanggal dan jumlah kirim wajib.'; end if;
@@ -125,7 +129,8 @@ begin
   select coalesce(sum(s.quantity),0) into v_sent from public.warehouse_stock_shipments s where s.stock_item_id=v_item.id;
   v_remaining:=v_item.quantity-v_sent;
   if p_quantity>v_remaining then raise exception 'Stok tidak cukup. Sisa % %.',v_remaining,v_item.unit; end if;
-  if coalesce(p_make_asset,false) then
+  v_make_asset:=(v_item.stock_kind='ASET');
+  if v_make_asset then
     insert into public.barn_assets(barn_id,location_type,name,category,quantity,unit,acquired_on,acquisition_value,condition,status,notes,created_by)
     values(p_barn_id,v_destination,v_item.standard_name,'PERALATAN',p_quantity,v_item.unit,p_shipment_date,p_quantity*v_item.unit_price,'BAIK','AKTIF',
       'Sumber: Kirim Stok Gudang · Nota '||v_item.invoice_id::text||' · Item '||v_item.id::text||
@@ -134,7 +139,7 @@ begin
     returning id into v_asset_id;
   end if;
   insert into public.warehouse_stock_shipments(stock_item_id,shipment_date,destination_type,barn_id,quantity,make_asset,asset_id,reference,notes,created_by)
-  values(v_item.id,p_shipment_date,v_destination,p_barn_id,p_quantity,coalesce(p_make_asset,false),v_asset_id,nullif(trim(coalesce(p_reference,'')),''),nullif(trim(coalesce(p_notes,'')),''),auth.uid())
+  values(v_item.id,p_shipment_date,v_destination,p_barn_id,p_quantity,v_make_asset,v_asset_id,nullif(trim(coalesce(p_reference,'')),''),nullif(trim(coalesce(p_notes,'')),''),auth.uid())
   returning id into v_shipment_id;
   return v_shipment_id;
 end $$;
