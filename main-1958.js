@@ -179,9 +179,9 @@ const bindTxnList=(x,render)=>{
 };
 const roles={finance_mandiri_piutang:['ADMIN','KEUANGAN'],finance_mandiri_penerimaan:['ADMIN','KEUANGAN'],finance_mandiri_hutang:['ADMIN','KEUANGAN'],finance_mandiri_pembayaran:['ADMIN','KEUANGAN'],finance_mandiri_laporan:['ADMIN','KEUANGAN'],logistik_pembelian_mandiri:['ADMIN','LOGISTIK'],logistik_pakan_luar:['ADMIN','LOGISTIK'],logistik_doc_luar:['ADMIN','LOGISTIK'],logistik_ovk1_luar:['ADMIN','LOGISTIK'],logistik_beli_peralatan:['ADMIN','LOGISTIK'],marketing_pelanggan:['ADMIN','MARKETING'],kandang:['ADMIN'],liga_abk:['ADMIN','PPL'],rekap_produksi:['ADMIN','PPL'],item:['ADMIN'],supplier:['ADMIN'],supplier_sapronak:['ADMIN'],supplier_daging:['ADMIN'],kontrak:['ADMIN'],harga_hidup:['ADMIN'],bonus_kontrak:['ADMIN'],standar_performa:['ADMIN'],chick_in:['ADMIN','PPL'],sapronak:['ADMIN','LOGISTIK'],recording:['ADMIN','PPL'],kunjungan:['ADMIN','PPL'],panen:['ADMIN','MARKETING'],ekspedisi:['ADMIN','LOGISTIK','MARKETING'],estimasi:['ADMIN','PPL'],rhpp:['ADMIN','KEUANGAN'],finance_rhpp_real:['ADMIN','KEUANGAN','OWNER'],bop:['ADMIN','KEUANGAN'],laba_rugi_kandang:['ADMIN','KEUANGAN','OWNER'],laba_rugi_global:['ADMIN','OWNER'],perawatan_kandang:['ADMIN','KEUANGAN'],aset_kandang:['ADMIN','KEUANGAN'],hutang_supplier:['ADMIN','KEUANGAN'],finance_pembelian_langsung:['ADMIN','KEUANGAN'],finance_beli_stok:['ADMIN','KEUANGAN'],logistik_stok_barang:['ADMIN','LOGISTIK'],logistik_kirim_stok:['ADMIN','LOGISTIK'],bop_umum:['ADMIN','KEUANGAN'],arus_kas:['ADMIN','KEUANGAN'],laporan_keuangan:['ADMIN','KEUANGAN'],perusahaan:['ADMIN'],karyawan:['ADMIN'],kasbon:['ADMIN','KEUANGAN'],cicilan:['ADMIN','KEUANGAN'],gaji_abk:['ADMIN','KEUANGAN'],expedisi_master:['ADMIN'],expedisi_usaha:['ADMIN','LOGISTIK'],expedisi_pembayaran:['ADMIN','KEUANGAN'],bop_expedisi:['ADMIN','KEUANGAN'],perawatan_expedisi:['ADMIN','KEUANGAN'],laporan_expedisi:['ADMIN','KEUANGAN','OWNER']};
 const visibleTabs={
-  ADMIN:['dashboard','finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan','kandang','item','supplier_sapronak','supplier_daging','marketing_pelanggan','kontrak','harga_hidup','bonus_kontrak','standar_performa','reset_klasemen','karyawan','pengguna','perusahaan','logistik_kontrak','logistik_pembelian_mandiri','logistik_pengiriman','logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar','logistik_beli_peralatan','logistik_stok_barang','logistik_kirim_stok','logistik_retur_luar','logistik_retur','logistik_retur_sebagian','logistik_laporan','chick_in','recording','kunjungan','estimasi','liga_abk','rekap_produksi','ppl_rhpp_view','laporan','marketing_panen_kontrak','marketing_panen_mandiri','marketing_tambah_daging','marketing_laporan','rhpp','rhpp_history','finance_rhpp_real','bop','laba_rugi_kandang','laba_rugi_global','perawatan_kandang','aset_kandang','hutang_supplier','finance_pembelian_langsung','finance_beli_stok','gaji_abk','bop_umum','expedisi_master','expedisi_usaha','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi','kasbon','cicilan','arus_kas','laporan_keuangan','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report','admin_cycle_lock','admin_log_aktivitas','arsip_data','profil'],
+  ADMIN:['dashboard','finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan','kandang','item','supplier_sapronak','supplier_daging','marketing_pelanggan','kontrak','harga_hidup','bonus_kontrak','standar_performa','reset_klasemen','karyawan','pengguna','perusahaan','logistik_kontrak','logistik_pembelian_mandiri','logistik_pengiriman','logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar','logistik_beli_peralatan','logistik_stok_barang','logistik_kirim_stok','logistik_retur_luar','logistik_retur','logistik_retur_sebagian','logistik_laporan','chick_in','recording','kunjungan','estimasi','liga_abk','rekap_produksi','ppl_rhpp_view','ppl_rhpp_abk_view','laporan','marketing_panen_kontrak','marketing_panen_mandiri','marketing_tambah_daging','marketing_laporan','rhpp','rhpp_history','finance_rhpp_real','bop','laba_rugi_kandang','laba_rugi_global','perawatan_kandang','aset_kandang','hutang_supplier','finance_pembelian_langsung','finance_beli_stok','gaji_abk','bop_umum','expedisi_master','expedisi_usaha','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi','kasbon','cicilan','arus_kas','laporan_keuangan','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report','admin_cycle_lock','admin_log_aktivitas','arsip_data','profil'],
   LOGISTIK:['dashboard','logistik_kontrak','logistik_pembelian_mandiri','logistik_pengiriman','logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar','logistik_beli_peralatan','logistik_stok_barang','logistik_kirim_stok','logistik_retur_luar','logistik_retur','logistik_retur_sebagian','expedisi_usaha','logistik_laporan','profil'],
-  PPL:['dashboard','kandang','kontrak','harga_hidup','bonus_kontrak','standar_performa','chick_in','recording','kunjungan','estimasi','liga_abk','rekap_produksi','ppl_rhpp_view','laporan','profil'],
+  PPL:['dashboard','kandang','kontrak','harga_hidup','bonus_kontrak','standar_performa','chick_in','recording','kunjungan','estimasi','liga_abk','rekap_produksi','ppl_rhpp_view','ppl_rhpp_abk_view','laporan','profil'],
   MARKETING:['dashboard','kandang','kontrak','harga_hidup','marketing_pelanggan','marketing_panen_kontrak','marketing_panen_mandiri','marketing_tambah_daging','marketing_laporan','profil'],
   KEUANGAN:['dashboard','finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi','rhpp','finance_rhpp_real','bop','laba_rugi_kandang','perawatan_kandang','aset_kandang','hutang_supplier','finance_pembelian_langsung','finance_beli_stok','gaji_abk','bop_umum','kasbon','cicilan','arus_kas','laporan_keuangan','profil'],
   OWNER:['dashboard','laporan_expedisi','finance_rhpp_real','laba_rugi_kandang','laba_rugi_global','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report']
@@ -210,7 +210,7 @@ const modules={
   ,kasbon:{table:'advances',fields:[['employee_id','Karyawan','employee'],['advanced_on','Tanggal Kasbon','date'],['amount','Nominal','number'],['description','Keterangan'],['reference','Referensi']]}
   ,cicilan:{table:'advance_payments',fields:[['advance_id','Kasbon','advance'],['paid_on','Tanggal Bayar','date'],['amount','Nominal','number'],['method','Metode'],['reference','Referensi'],['notes','Catatan']]}
 };
-const title={finance_mandiri_piutang:'Piutang Penjualan',finance_mandiri_penerimaan:'Penerimaan Penjualan',finance_mandiri_hutang:'Hutang Supplier',finance_mandiri_pembayaran:'Pembayaran Supplier',finance_mandiri_laporan:'Laporan Mandiri',dashboard:'Dashboard',reset_klasemen:'Reset Klasemen ABK',owner_logistics_report:'Laporan Logistik',owner_marketing_report:'Laporan Marketing',owner_finance_report:'Laporan Keuangan',owner_production_report:'Laporan Produksi',owner_ppl_report:'Laporan PPL',supplier_sapronak:'Master Supplier Sapronak',supplier_daging:'Master Supplier Daging',logistik_kontrak:'Buat Siklus',logistik_pembelian_mandiri:'Pembelian Mandiri',logistik_pengiriman:'Pengiriman',logistik_kiriman_luar:'Sapronak Luar',logistik_pakan_luar:'Pakan Luar',logistik_doc_luar:'DOC Luar',logistik_ovk1_luar:'OVK1 / Obat Luar',logistik_beli_peralatan:'Beli Peralatan',logistik_stok_barang:'Stok Barang',logistik_kirim_stok:'Kirim Barang dari Gudang',logistik_retur:'Retur RHPP',logistik_retur_sebagian:'Retur Bermasalah',logistik_retur_luar:'Retur Tambah Sapronak',logistik_laporan:'Laporan Logistik',marketing_pelanggan:'Master Pelanggan',marketing_panen_kontrak:'Panen Mitra',marketing_panen_mandiri:'Panen Mandiri',marketing_tambah_daging:'Tambah Daging',marketing_laporan:'Laporan Marketing',kandang:'Master Kandang',item:'Master Sapronak',supplier:'Master Supplier',kontrak:'Master Kontrak',harga_hidup:'Harga Ayam Hidup',bonus_kontrak:'Bonus Kontrak',standar_performa:'Master Performa',chick_in:'Chick-In / DOC Masuk',sapronak:'Sapronak',recording:'Recording PPL',kunjungan:'Kunjungan PPL',panen:'Panen',ekspedisi:'Ekspedisi',estimasi:'Estimasi',liga_abk:'Liga ABK',rekap_produksi:'Rekap Produksi PPL',ppl_rhpp_view:'Lihat RHPP',rhpp:'CEK RHPP',rhpp_history:'Cetak RHPP',finance_rhpp_real:'RHPP Real',bop:'BOP Produksi',laba_rugi_kandang:'Laba/Rugi Kandang',laba_rugi_global:'Laba/Rugi Global',perawatan_kandang:'Perawatan Kandang',aset_kandang:'Aset Kandang / Kantor',hutang_supplier:'Hutang Supplier',finance_pembelian_langsung:'Beli Aset',finance_beli_stok:'Pembelian Barang',bop_umum:'BOP Umum',expedisi_master:'Master Data Expedisi',expedisi_usaha:'Expedisi',expedisi_pembayaran:'Penerimaan Expedisi',bop_expedisi:'BOP Expedisi',perawatan_expedisi:'Perawatan Expedisi',laporan_expedisi:'Laporan Expedisi',arus_kas:'Arus Kas',laporan_keuangan:'Laporan Keuangan',perusahaan:'Data Perusahaan',karyawan:'Master Karyawan',kasbon:'Kasbon',cicilan:'Bayar Kasbon',gaji_abk:'Gaji ABK',laporan:'Laporan',pengguna:'Master Pengguna',admin_cycle_lock:'Buka/Tutup Siklus',admin_log_aktivitas:'Log Aktivitas Pengguna',arsip_data:'Arsip Data',profil:'Profil'};
+const title={finance_mandiri_piutang:'Piutang Penjualan',finance_mandiri_penerimaan:'Penerimaan Penjualan',finance_mandiri_hutang:'Hutang Supplier',finance_mandiri_pembayaran:'Pembayaran Supplier',finance_mandiri_laporan:'Laporan Mandiri',dashboard:'Dashboard',reset_klasemen:'Reset Klasemen ABK',owner_logistics_report:'Laporan Logistik',owner_marketing_report:'Laporan Marketing',owner_finance_report:'Laporan Keuangan',owner_production_report:'Laporan Produksi',owner_ppl_report:'Laporan PPL',supplier_sapronak:'Master Supplier Sapronak',supplier_daging:'Master Supplier Daging',logistik_kontrak:'Buat Siklus',logistik_pembelian_mandiri:'Pembelian Mandiri',logistik_pengiriman:'Pengiriman',logistik_kiriman_luar:'Sapronak Luar',logistik_pakan_luar:'Pakan Luar',logistik_doc_luar:'DOC Luar',logistik_ovk1_luar:'OVK1 / Obat Luar',logistik_beli_peralatan:'Beli Peralatan',logistik_stok_barang:'Stok Barang',logistik_kirim_stok:'Kirim Barang dari Gudang',logistik_retur:'Retur RHPP',logistik_retur_sebagian:'Retur Bermasalah',logistik_retur_luar:'Retur Tambah Sapronak',logistik_laporan:'Laporan Logistik',marketing_pelanggan:'Master Pelanggan',marketing_panen_kontrak:'Panen Mitra',marketing_panen_mandiri:'Panen Mandiri',marketing_tambah_daging:'Tambah Daging',marketing_laporan:'Laporan Marketing',kandang:'Master Kandang',item:'Master Sapronak',supplier:'Master Supplier',kontrak:'Master Kontrak',harga_hidup:'Harga Ayam Hidup',bonus_kontrak:'Bonus Kontrak',standar_performa:'Master Performa',chick_in:'Chick-In / DOC Masuk',sapronak:'Sapronak',recording:'Recording PPL',kunjungan:'Kunjungan PPL',panen:'Panen',ekspedisi:'Ekspedisi',estimasi:'Estimasi',liga_abk:'Liga ABK',rekap_produksi:'Rekap Produksi PPL',ppl_rhpp_view:'Lihat RHPP',ppl_rhpp_abk_view:'Lihat RHPP ABK',rhpp:'CEK RHPP',rhpp_history:'Cetak RHPP',finance_rhpp_real:'RHPP Real',bop:'BOP Produksi',laba_rugi_kandang:'Laba/Rugi Kandang',laba_rugi_global:'Laba/Rugi Global',perawatan_kandang:'Perawatan Kandang',aset_kandang:'Aset Kandang / Kantor',hutang_supplier:'Hutang Supplier',finance_pembelian_langsung:'Beli Aset',finance_beli_stok:'Pembelian Barang',bop_umum:'BOP Umum',expedisi_master:'Master Data Expedisi',expedisi_usaha:'Expedisi',expedisi_pembayaran:'Penerimaan Expedisi',bop_expedisi:'BOP Expedisi',perawatan_expedisi:'Perawatan Expedisi',laporan_expedisi:'Laporan Expedisi',arus_kas:'Arus Kas',laporan_keuangan:'Laporan Keuangan',perusahaan:'Data Perusahaan',karyawan:'Master Karyawan',kasbon:'Kasbon',cicilan:'Bayar Kasbon',gaji_abk:'Gaji ABK',laporan:'Laporan',pengguna:'Master Pengguna',admin_cycle_lock:'Buka/Tutup Siklus',admin_log_aktivitas:'Log Aktivitas Pengguna',arsip_data:'Arsip Data',profil:'Profil'};
 const submitGuardSkip=form=>{
   const id=String(form?.id||'');
   return form?.dataset?.noSubmitGuard==='1'||/(filter|search|history)/i.test(id);
@@ -517,6 +517,13 @@ function appNav(){
     const sectionActive=items.includes(tab)||(section.label==='Logistik'&&(logisticsNested.includes(tab)||tab==='expedisi_usaha'));
     const open=sectionActive?' open':'';
     let itemHtml=items.map(key=>{
+      if(section.label==='Produksi / PPL'&&key==='ppl_rhpp_view'){
+        const rhppOpen=['ppl_rhpp_view','ppl_rhpp_abk_view'].includes(tab)?' open':'';
+        return '<details class="nav-subgroup"'+rhppOpen+'><summary>Lihat RHPP</summary><div class="nav-child-item">'+
+          navButton('ppl_rhpp_view')+
+          navButton('ppl_rhpp_abk_view')+
+          '</div></details>';
+      }
       if(section.label==='Logistik'&&key==='logistik_pengiriman'){
         const shipOpen=(tab==='logistik_pengiriman'||tab==='logistik_retur'||tab==='logistik_retur_sebagian')?' open':'';
         return '<details class="nav-subgroup"'+shipOpen+'><summary>Pengiriman</summary><div class="nav-child-item">'+
@@ -5192,6 +5199,125 @@ async function productionRecapPage(){
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
 }
+async function pplRhppAbkViewPage(){
+  const d=await productionBase({includeRhppCosts:false});
+  const [rr,sr,cr,br]=await Promise.all([
+    db.from('production_abk_results').select('*'),
+    db.from('production_abk_result_sizes').select('*').order('harvest_date',{ascending:true}).order('created_at',{ascending:true}),
+    db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
+    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg')
+  ]);
+  const rows=rr.data||[],sizes=sr.data||[],leagueContracts=cr.data||[],leagueBonuses=br.data||[];
+  const err=[{error:d.err},rr,sr,cr,br].find(x=>x?.error)?.error;
+  if(err)return layout('<section class="panel"><h3>Lihat RHPP ABK</h3><p class="error">'+esc(err.message)+'</p></section>');
+
+  window.__pplRhppAbkViewState=window.__pplRhppAbkViewState||{barn:'',assignment:'',abk:''};
+  const st=window.__pplRhppAbkViewState;
+  const assignmentRows=d.assignments.filter(a=>d.links.some(l=>l.contract_assignment_id===a.id));
+  const barnRows=d.barns.filter(b=>assignmentRows.some(a=>a.barn_id===b.id));
+  const barnAssignments=st.barn?assignmentRows.filter(a=>a.barn_id===st.barn):[];
+  if(st.assignment&&!barnAssignments.some(a=>a.id===st.assignment))st.assignment='';
+  const assignmentAbkIds=st.assignment?new Set(d.links.filter(l=>l.contract_assignment_id===st.assignment).map(l=>l.abk_id)) : new Set();
+  const abkRows=st.assignment?d.abks.filter(a=>assignmentAbkIds.has(a.id)):[];
+  if(st.abk&&!abkRows.some(a=>a.id===st.abk))st.abk='';
+
+  const abkReferenceContractId=a=>{
+    if(a?.master_contract_id)return a.master_contract_id;
+    if(a?.cycle_type!=='MANDIRI')return '';
+    const ids=[...new Set((d.livePrices||[]).map(p=>p.contract_id).filter(Boolean))];
+    return ids.length===1?ids[0]:'';
+  };
+  const calcResult=x=>{
+    const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
+    const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
+    const link=d.links.find(l=>l.contract_assignment_id===x.contract_assignment_id&&l.abk_id===x.abk_id);
+    const refContractId=abkReferenceContractId(a);
+    const sz=sizes.filter(v=>v.result_id===x.id);
+    const birds=sz.reduce((sum,v)=>sum+prodNum(v.birds),0);
+    const kg=sz.reduce((sum,v)=>sum+prodNum(v.weight_kg),0);
+    const bw=birds?kg/birds:0;
+    const feed=(prodNum(link?.feed_pre_bags)+prodNum(link?.feed_starter_bags)+prodNum(link?.feed_finisher_bags))*50;
+    const fcr=kg?feed/kg:0;
+    const age=birds&&ci?sz.reduce((sum,v)=>sum+prodAge(ci.arrived_on,v.harvest_date)*prodNum(v.birds),0)/birds:0;
+    const initial=prodNum(link?.initial_birds);
+    const survival=initial?Math.min(100,birds/initial*100):0;
+    const ip=initial&&age&&fcr?(survival*bw*100)/(age*fcr):0;
+    let revenue=0;
+    for(const z of sz){
+      const av=prodNum(z.birds)?prodNum(z.weight_kg)/prodNum(z.birds):0;
+      const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
+      revenue+=prodNum(z.weight_kg)*prodNum(p?.price_per_kg);
+    }
+    const contract=leagueContracts.find(c=>c.id===refContractId);
+    const sapronakCost=
+      initial*prodNum(contract?.doc_price)+
+      prodNum(link?.feed_pre_bags)*50*prodNum(contract?.pre_starter_price)+
+      prodNum(link?.feed_starter_bags)*50*prodNum(contract?.starter_price)+
+      prodNum(link?.feed_finisher_bags)*50*prodNum(contract?.finisher_price);
+    const matchBonus=(metric,value)=>prodNum(leagueBonuses.find(b=>
+      b.contract_id===refContractId&&b.metric===metric&&
+      (b.min_value==null||value>=prodNum(b.min_value))&&
+      (b.max_value==null||value<prodNum(b.max_value))
+    )?.rupiah_per_kg);
+    const ipBonus=kg*matchBonus('IP',ip);
+    const perfRows=d.standards
+      .filter(v=>(a?.cycle_type==='MANDIRI'||v.contract_id===a?.master_contract_id)&&v.template_name===a?.performance_template_name&&v.std_fcr!=null)
+      .sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
+    let stdFcr=0;
+    if(perfRows.length){
+      const exact=perfRows.find(v=>prodNum(v.age_days)===age);
+      if(exact)stdFcr=prodNum(exact.std_fcr);
+      else{
+        const lower=[...perfRows].reverse().find(v=>prodNum(v.age_days)<=age);
+        const upper=perfRows.find(v=>prodNum(v.age_days)>=age);
+        if(lower&&upper&&prodNum(upper.age_days)!==prodNum(lower.age_days)){
+          const ratio=(age-prodNum(lower.age_days))/(prodNum(upper.age_days)-prodNum(lower.age_days));
+          stdFcr=prodNum(lower.std_fcr)+(prodNum(upper.std_fcr)-prodNum(lower.std_fcr))*ratio;
+        }else stdFcr=prodNum((lower||upper)?.std_fcr);
+      }
+    }
+    const fcrDiff=stdFcr?stdFcr-fcr:0;
+    const fcrBonus=fcrDiff>0?kg*matchBonus('FCR_DIFFERENCE',fcrDiff):0;
+    const profit=revenue-sapronakCost+ipBonus+fcrBonus;
+    const perBird=birds?profit/birds:0;
+    return {...x,a,link,birds,kg,bw,feed,fcr,stdFcr,age,initial,survival,ip,revenue,sapronakCost,ipBonus,fcrBonus,profit,perBird};
+  };
+
+  let calculated=rows.map(calcResult).filter(x=>x.a);
+  if(st.barn)calculated=calculated.filter(x=>x.a?.barn_id===st.barn);
+  if(st.assignment)calculated=calculated.filter(x=>x.contract_assignment_id===st.assignment);
+  if(st.abk)calculated=calculated.filter(x=>x.abk_id===st.abk);
+
+  let html='<section class="panel"><h3>Lihat RHPP ABK</h3><p class="muted">Read-only. Sumber data tetap Liga ABK. Halaman ini hanya untuk melihat hasil per ABK tanpa mengubah input Liga ABK.</p>'+
+    '<form id="pplRhppAbkFilter" class="form-vertical" data-no-submit-guard="1">'+
+      '<label>Kandang<select id="pplRhppAbkBarn"><option value="">Semua Kandang</option>'+barnRows.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Siklus<select id="pplRhppAbkAssignment" '+(!st.barn?'disabled':'')+'><option value="">Semua Siklus</option>'+barnAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(d.assignments,a)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
+      '<label>ABK<select id="pplRhppAbkAbk" '+(!st.assignment?'disabled':'')+'><option value="">Semua ABK</option>'+abkRows.map(a=>'<option value="'+esc(a.id)+'" '+(st.abk===a.id?'selected':'')+'>'+esc(leagueAbkName(a))+'</option>').join('')+'</select></label>'+
+      '<button type="submit">Tampilkan</button>'+
+    '</form></section>';
+
+  html+='<section class="panel"><h3>RHPP ABK</h3><div class="tablewrap"><table><thead><tr>'+
+    '<th>ABK</th><th>Kandang</th><th>Siklus</th><th>Status</th><th>Populasi</th><th>Ekor Panen</th><th>Kg Panen</th><th>BW</th><th>FCR</th><th>IP</th><th>Pendapatan</th><th>Biaya Sapronak</th><th>Bonus IP</th><th>Bonus FCR</th><th>Hasil ABK</th><th>Rp/Ekor</th>'+
+    '</tr></thead><tbody>'+
+    calculated.map(x=>{
+      const e=d.abks.find(v=>v.id===x.abk_id),b=d.barns.find(v=>v.id===x.a?.barn_id);
+      return '<tr><td><strong>'+esc(leagueAbkName(e))+'</strong></td><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td>'+esc(assignmentCycleLabel(d.assignments,x.a))+'</td><td>'+(x.a?.active?'PROSES':'CLOSED')+'</td>'+
+        '<td class="num">'+prodFmt(x.initial,0)+'</td><td class="num">'+prodFmt(x.birds,0)+'</td><td class="num">'+prodFmt(x.kg,2)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td><td class="num">'+prodFmt(x.fcr,3)+'</td><td class="num">'+prodFmt(x.ip,2)+'</td>'+
+        '<td class="num">Rp '+prodFmt(x.revenue,0)+'</td><td class="num">Rp '+prodFmt(x.sapronakCost,0)+'</td><td class="num">Rp '+prodFmt(x.ipBonus,0)+'</td><td class="num">Rp '+prodFmt(x.fcrBonus,0)+'</td><td class="num"><strong>Rp '+prodFmt(x.profit,0)+'</strong></td><td class="num">Rp '+prodFmt(x.perBird,0)+'</td></tr>';
+    }).join('')+
+    '</tbody></table></div>'+(calculated.length?'':'<p class="muted">Belum ada data RHPP ABK sesuai filter.</p>')+'</section>';
+  layout(html);
+
+  const form=document.getElementById('pplRhppAbkFilter');
+  const barn=document.getElementById('pplRhppAbkBarn');
+  const assignment=document.getElementById('pplRhppAbkAssignment');
+  const abk=document.getElementById('pplRhppAbkAbk');
+  barn.onchange=()=>{st.barn=barn.value;st.assignment='';st.abk='';pplRhppAbkViewPage();};
+  assignment.onchange=()=>{st.assignment=assignment.value;st.abk='';pplRhppAbkViewPage();};
+  abk.onchange=()=>{st.abk=abk.value;};
+  form.onsubmit=e=>{e.preventDefault();st.barn=barn.value;st.assignment=assignment.value;st.abk=abk.value;pplRhppAbkViewPage();};
+}
+
 async function pplRhppViewPage(){
   const d=await productionBase();
   const [fr,cpr,sr]=await Promise.all([
@@ -8838,7 +8964,7 @@ async function adminDataArchivePage(){
   };
 }
 
-async function render(){if(!canViewTab(tab))return layout('<section class="panel"><h3>Akses Dikunci</h3><p class="muted">Menu ini terlihat pada semua akun, tetapi akun '+esc(profile.role)+' tidak memiliki hak akses untuk membukanya.</p></section>');if(['owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report'].includes(tab)&&['OWNER','ADMIN'].includes(profile.role))return ownerReportPendingPage();if(tab==='dashboard')return dashboard();if(tab==='finance_mandiri_piutang')return financeMandiriReceivablePage();if(tab==='finance_mandiri_penerimaan')return financeMandiriReceiptsPage();if(tab==='finance_mandiri_hutang')return financeMandiriSupplierDebtPage();if(tab==='finance_mandiri_pembayaran')return financeMandiriSupplierPaymentPage();if(tab==='finance_mandiri_laporan')return financeMandiriReportPage();if(tab==='kandang')return barnMasterPage();if(tab==='item')return itemMasterPage();if(tab==='supplier_sapronak')return supplierMasterPage('SAPRONAK');if(tab==='supplier_daging')return supplierMasterPage('DAGING');if(tab==='logistik_kontrak')return logisticsContractPage();if(tab==='logistik_pembelian_mandiri')return logisticsMandiriPurchasePage();if(tab==='logistik_pengiriman')return logisticsShippingPage();if(['logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar'].includes(tab))return logisticsExternalShippingPage();if(tab==='logistik_beli_peralatan')return logisticsEquipmentPurchasePage();if(tab==='marketing_pelanggan')return marketingCustomerPage();if(tab==='marketing_panen_kontrak')return marketingContractHarvestPage(null,'MITRA');if(tab==='marketing_panen_mandiri')return marketingContractHarvestPage(null,'MANDIRI');if(tab==='marketing_tambah_daging')return marketingExternalMeatPage();if(tab==='marketing_laporan')return marketingReports();if(tab==='logistik_retur')return logisticsReturnPage();if(tab==='logistik_retur_sebagian')return logisticsPartialReturnPage();if(tab==='logistik_retur_luar')return logisticsExternalReturnPage();if(tab==='kontrak')return contractMasterPage();if(tab==='standar_performa')return performanceMasterPage();if(tab==='reset_klasemen')return resetKlasemenAbkPage();if(tab==='karyawan')return employeeMasterPage();if(tab==='profil')return profilePage();if(tab==='perusahaan')return companyProfilePage();if(tab==='admin_cycle_lock')return adminCycleLockPage();if(tab==='admin_log_aktivitas')return adminUserActivityLogPage();if(tab==='arsip_data')return adminDataArchivePage();if(tab==='logistik_laporan')return logisticsReports();if(tab==='chick_in')return chickInPage();if(tab==='recording')return recordingPplPage();if(tab==='kunjungan')return productionVisitPage();if(tab==='estimasi')return productionEstimatePage();if(tab==='liga_abk')return leagueAbkPage();if(tab==='rekap_produksi')return productionRecapPage();if(tab==='ppl_rhpp_view')return pplRhppViewPage();if(tab==='rhpp_history')return adminRhppHistoryPage();if(tab==='rhpp')return profile.role==='ADMIN'?financeRhppPage():profile.role==='OWNER'?ownerProfitLossPage():financeRhppRealPage();if(tab==='finance_rhpp_real')return financeRhppRealPage();if(tab==='bop')return financeBopPage();if(tab==='laba_rugi_kandang')return financeBarnProfitLossPage();if(tab==='laba_rugi_global')return financeGlobalProfitLossPage();if(tab==='perawatan_kandang')return financeMaintenancePage();if(tab==='finance_pembelian_langsung')return financeDirectPurchasePage();if(tab==='finance_beli_stok')return financeStockPurchasePage();if(tab==='logistik_stok_barang')return logisticsWarehouseStockPage();if(tab==='logistik_kirim_stok')return logisticsWarehouseSendPage();if(tab==='hutang_supplier')return financeSupplierPayablesPage();if(tab==='bop_umum')return financeBopGeneralPage();if(tab==='expedisi_master')return financeExpeditionMasterPage();if(tab==='expedisi_usaha')return financeExpeditionBusinessPage();if(tab==='expedisi_pembayaran')return financeExpeditionPaymentPage();if(tab==='bop_expedisi')return financeExpeditionBopPage();if(tab==='perawatan_expedisi')return financeExpeditionMaintenancePage();if(tab==='laporan_expedisi')return financeExpeditionProfitLossPage();if(tab==='kasbon')return financeAdvancePage();if(tab==='cicilan')return financeAdvancePaymentPage();if(tab==='gaji_abk')return financeSalaryPage();if(tab==='arus_kas')return financeCashflowPage();if(tab==='laporan_keuangan')return financeReportPage();if(tab==='laporan'&&profile.role==='LOGISTIK')return logisticsReports();if(tab==='laporan')return reports();if(tab==='pengguna')return users();await ensureLegacyData();const m=modules[tab],can=roles[tab].includes(profile.role);const {data,error}=await db.from(m.table).select('*').limit(1000).order(tab==='kandang'?'created_at':tab==='siklus'?'created_at':tab==='sapronak'?'created_at':tab==='rhpp'?'created_at':'id',{ascending:false});const rows=data||[];const dateField=(m.fields.find(f=>f[2]==='date')||[])[0]||null;const genericBarnField=m.fields.some(f=>f[2]==='barn');const txnGeneric=dateField?txnListState(rows,'generic_'+tab,dateField,5,genericBarnField?barns:null,'barn_id'):null;const displayRows=txnGeneric?txnGeneric.rows:rows;let html=['kontrak','harga_hidup','bonus_kontrak','standar_performa'].includes(tab)?'<p>Masukkan angka dari kontrak yang ditandatangani. Periksa ulang foto acuan sebelum menyimpan harga atau ambang performa.</p>':tab==='aset_kandang'?'<p><strong>Daftar Aset otomatis.</strong> Aset berasal dari Keuangan → Pembelian Barang langsung ke Kandang/Kantor atau dari Logistik → Kirim Barang dari Gudang. Menu ini tidak dipakai untuk input pembelian.</p>':'';if(tab==='aset_kandang'){
+async function render(){if(!canViewTab(tab))return layout('<section class="panel"><h3>Akses Dikunci</h3><p class="muted">Menu ini terlihat pada semua akun, tetapi akun '+esc(profile.role)+' tidak memiliki hak akses untuk membukanya.</p></section>');if(['owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report'].includes(tab)&&['OWNER','ADMIN'].includes(profile.role))return ownerReportPendingPage();if(tab==='dashboard')return dashboard();if(tab==='finance_mandiri_piutang')return financeMandiriReceivablePage();if(tab==='finance_mandiri_penerimaan')return financeMandiriReceiptsPage();if(tab==='finance_mandiri_hutang')return financeMandiriSupplierDebtPage();if(tab==='finance_mandiri_pembayaran')return financeMandiriSupplierPaymentPage();if(tab==='finance_mandiri_laporan')return financeMandiriReportPage();if(tab==='kandang')return barnMasterPage();if(tab==='item')return itemMasterPage();if(tab==='supplier_sapronak')return supplierMasterPage('SAPRONAK');if(tab==='supplier_daging')return supplierMasterPage('DAGING');if(tab==='logistik_kontrak')return logisticsContractPage();if(tab==='logistik_pembelian_mandiri')return logisticsMandiriPurchasePage();if(tab==='logistik_pengiriman')return logisticsShippingPage();if(['logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar'].includes(tab))return logisticsExternalShippingPage();if(tab==='logistik_beli_peralatan')return logisticsEquipmentPurchasePage();if(tab==='marketing_pelanggan')return marketingCustomerPage();if(tab==='marketing_panen_kontrak')return marketingContractHarvestPage(null,'MITRA');if(tab==='marketing_panen_mandiri')return marketingContractHarvestPage(null,'MANDIRI');if(tab==='marketing_tambah_daging')return marketingExternalMeatPage();if(tab==='marketing_laporan')return marketingReports();if(tab==='logistik_retur')return logisticsReturnPage();if(tab==='logistik_retur_sebagian')return logisticsPartialReturnPage();if(tab==='logistik_retur_luar')return logisticsExternalReturnPage();if(tab==='kontrak')return contractMasterPage();if(tab==='standar_performa')return performanceMasterPage();if(tab==='reset_klasemen')return resetKlasemenAbkPage();if(tab==='karyawan')return employeeMasterPage();if(tab==='profil')return profilePage();if(tab==='perusahaan')return companyProfilePage();if(tab==='admin_cycle_lock')return adminCycleLockPage();if(tab==='admin_log_aktivitas')return adminUserActivityLogPage();if(tab==='arsip_data')return adminDataArchivePage();if(tab==='logistik_laporan')return logisticsReports();if(tab==='chick_in')return chickInPage();if(tab==='recording')return recordingPplPage();if(tab==='kunjungan')return productionVisitPage();if(tab==='estimasi')return productionEstimatePage();if(tab==='liga_abk')return leagueAbkPage();if(tab==='rekap_produksi')return productionRecapPage();if(tab==='ppl_rhpp_view')return pplRhppViewPage();if(tab==='ppl_rhpp_abk_view')return pplRhppAbkViewPage();if(tab==='rhpp_history')return adminRhppHistoryPage();if(tab==='rhpp')return profile.role==='ADMIN'?financeRhppPage():profile.role==='OWNER'?ownerProfitLossPage():financeRhppRealPage();if(tab==='finance_rhpp_real')return financeRhppRealPage();if(tab==='bop')return financeBopPage();if(tab==='laba_rugi_kandang')return financeBarnProfitLossPage();if(tab==='laba_rugi_global')return financeGlobalProfitLossPage();if(tab==='perawatan_kandang')return financeMaintenancePage();if(tab==='finance_pembelian_langsung')return financeDirectPurchasePage();if(tab==='finance_beli_stok')return financeStockPurchasePage();if(tab==='logistik_stok_barang')return logisticsWarehouseStockPage();if(tab==='logistik_kirim_stok')return logisticsWarehouseSendPage();if(tab==='hutang_supplier')return financeSupplierPayablesPage();if(tab==='bop_umum')return financeBopGeneralPage();if(tab==='expedisi_master')return financeExpeditionMasterPage();if(tab==='expedisi_usaha')return financeExpeditionBusinessPage();if(tab==='expedisi_pembayaran')return financeExpeditionPaymentPage();if(tab==='bop_expedisi')return financeExpeditionBopPage();if(tab==='perawatan_expedisi')return financeExpeditionMaintenancePage();if(tab==='laporan_expedisi')return financeExpeditionProfitLossPage();if(tab==='kasbon')return financeAdvancePage();if(tab==='cicilan')return financeAdvancePaymentPage();if(tab==='gaji_abk')return financeSalaryPage();if(tab==='arus_kas')return financeCashflowPage();if(tab==='laporan_keuangan')return financeReportPage();if(tab==='laporan'&&profile.role==='LOGISTIK')return logisticsReports();if(tab==='laporan')return reports();if(tab==='pengguna')return users();await ensureLegacyData();const m=modules[tab],can=roles[tab].includes(profile.role);const {data,error}=await db.from(m.table).select('*').limit(1000).order(tab==='kandang'?'created_at':tab==='siklus'?'created_at':tab==='sapronak'?'created_at':tab==='rhpp'?'created_at':'id',{ascending:false});const rows=data||[];const dateField=(m.fields.find(f=>f[2]==='date')||[])[0]||null;const genericBarnField=m.fields.some(f=>f[2]==='barn');const txnGeneric=dateField?txnListState(rows,'generic_'+tab,dateField,5,genericBarnField?barns:null,'barn_id'):null;const displayRows=txnGeneric?txnGeneric.rows:rows;let html=['kontrak','harga_hidup','bonus_kontrak','standar_performa'].includes(tab)?'<p>Masukkan angka dari kontrak yang ditandatangani. Periksa ulang foto acuan sebelum menyimpan harga atau ambang performa.</p>':tab==='aset_kandang'?'<p><strong>Daftar Aset otomatis.</strong> Aset berasal dari Keuangan → Pembelian Barang langsung ke Kandang/Kantor atau dari Logistik → Kirim Barang dari Gudang. Menu ini tidak dipakai untuk input pembelian.</p>':'';if(tab==='aset_kandang'){
   const grouped=new Map();
   rows.forEach(x=>{
     const key=[x.location_type||'KANDANG',x.barn_id||'',String(x.name||'').trim().toLowerCase(),String(x.unit||'').trim().toUpperCase()].join('|');
