@@ -5562,6 +5562,11 @@ async function pplRhppAbkViewPage(){
           '<tr><td>Finisher</td><td class="num">'+prodFmt(link?.feed_finisher_bags,2)+'</td><td class="num">'+prodFmt(prodNum(link?.feed_finisher_bags)*50,2)+'</td><td class="num">'+money(selectedContract?.finisher_price)+'</td><td class="num">'+money(prodNum(link?.feed_finisher_bags)*50*prodNum(selectedContract?.finisher_price))+'</td></tr>'+
           '<tr class="rhpp-total-row"><th>TOTAL PAKAN</th><th class="num">'+prodFmt(prodNum(link?.feed_pre_bags)+prodNum(link?.feed_starter_bags)+prodNum(link?.feed_finisher_bags),2)+'</th><th class="num">'+prodFmt(r.feed,2)+'</th><th></th><th class="num">'+money(r.feedCost)+'</th></tr>'+
         '</tbody></table></div></section>';
+      html+='<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>OVK ABK</h3><p class="muted">Format disamakan dengan RHPP utama. Saat ini OVK tidak dialokasikan per ABK di Liga ABK, sehingga tidak dimasukkan ke nilai RHPP ABK.</p></div></div>'+
+        '<div class="tablewrap"><table><thead><tr><th>Jenis</th><th class="num">Qty</th><th>Satuan</th><th class="num">Harga</th><th class="num">Total</th></tr></thead><tbody>'+
+          '<tr><td>OVK</td><td class="num">-</td><td>-</td><td class="num">-</td><td class="num">Rp 0</td></tr>'+
+        '</tbody></table></div></section>';
+
 
       html+='<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>Tambahan Harga Kontrak / Bonus</h3><p class="muted">Struktur mengikuti contoh RHPP: actual dibanding standar/kontrak lalu menghasilkan tambahan Rp/Kg.</p></div></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Jenis Perhitungan</th><th class="num">Actual</th><th class="num">Standar / Kontrak</th><th class="num">Selisih</th><th class="num">Tambahan Rp/Kg</th><th class="num">Total</th></tr></thead><tbody>'+
@@ -5803,6 +5808,9 @@ async function pplRhppViewPage(){
             val('FCR Final',prodFmt(src?.fcr_actual,3))+
           '</div>'+
           '<div class="rhpp-mini-block rhpp-mini-value"><h4>REKAPITULASI HASIL</h4>'+
+            val('DOC',money(src?.main_doc_cost))+
+            val('Pakan',money(src?.main_feed_cost))+
+            val('OVK',money(src?.main_ovk_cost))+
             val('Jml. Sapronak',money(src?.sapronak_cost))+
             val('Jml. Retur',money(src?.main_return_cost))+
             val('Total Sapronak',money(src?.sapronak_cost))+
@@ -5839,7 +5847,7 @@ async function pplRhppViewPage(){
             '</tbody></table></div>'+
           '</div>'+
         '</div>':'')+
-        (src?'<div class="rhpp-mini-block" style="margin-top:12px"><h4>TAMBAHAN HARGA KONTRAK / BONUS</h4>'+
+        (src?'<div class="rhpp-mini-block" style="margin-top:12px"><h4>PERHITUNGAN FCR / IP / DEPLESI / BONUS</h4>'+
           '<div class="tablewrap"><table><thead><tr><th>Jenis Perhitungan</th><th class="num">Actual</th><th class="num">Standar / Kontrak</th><th class="num">Selisih</th><th class="num">Tambahan Rp/Kg</th><th class="num">Total</th></tr></thead><tbody>'+
             '<tr><td>FCR</td><td class="num">'+prodFmt(src?.fcr_actual,3)+'</td><td class="num">'+prodFmt(src?.fcr_standard,3)+'</td><td class="num">'+prodFmt(prodNum(src?.fcr_standard)-prodNum(src?.fcr_actual),3)+'</td><td class="num">'+money(src?.bonus_fc_rate)+'</td><td class="num">'+money(src?.bonus_fc)+'</td></tr>'+
             '<tr><td>IP</td><td class="num">'+prodFmt(src?.ip,2)+'</td><td class="num">-</td><td class="num">-</td><td class="num">'+money(src?.bonus_ip_rate)+'</td><td class="num">'+money(src?.bonus_ip)+'</td></tr>'+
