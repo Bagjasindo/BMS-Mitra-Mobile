@@ -9069,32 +9069,120 @@ async function financeCashflowPage(){
     db.from('bop_outside').select('incurred_on,amount').eq('paid_by','OWNER'),
     db.from('barn_maintenance_costs').select('incurred_on,amount,barn_id').eq('paid_by','OWNER')
   ]);
-  const rows=(xr.data||[]).map(x=>({date:x.txn_date,type:x.txn_type,source:x.source,amount:prodNum(x.amount),barn_id:x.barn_id||'',assignment_id:x.contract_assignment_id||'',detail:x.detail||'',reference:x.reference||''})).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const barns=bar.data||[],assignments=assr.data||[],company=cpr.data||{};
+  const rows=(xr.data||[]).map(x=>({
+    date:x.txn_date,type:x.txn_type,source:x.source,amount:prodNum(x.amount),
+    barn_id:x.barn_id||'',assignment_id:x.contract_assignment_id||'',
+    detail:x.detail||'',reference:x.reference||''
+  })).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const barns=bar.data||[],assignments=assr.data||[],contractsRows=cr.data||[],company=cpr.data||{};
   const err=[xr,bar,assr,cr,cpr,obr,ogr,omr].find(x=>x.error)?.error;
-  window.__financeCashflowState=window.__financeCashflowState||{from:'',to:'',barn:'',assignment:'',shown:false};
+  const sourceOptions=[
+    'RHPP REAL','BOP PRODUKSI','BOP UMUM','KASBON','CICILAN KASBON','GAJI ABK',
+    'BAYAR HUTANG SUPPLIER','PENJUALAN MANDIRI','BAYAR SUPPLIER MANDIRI',
+    'PENDAPATAN EXPEDISI','BOP EXPEDISI','PERAWATAN KANDANG','PERAWATAN EXPEDISI',
+    'BELI ASET','BELI UNTUK STOK'
+  ];
+  window.__financeCashflowState=window.__financeCashflowState||{from:'',to:'',barn:'',assignment:'',source:'',shown:false};
   const st=window.__financeCashflowState;
-  const visible=rows.filter(x=>(!st.from||x.date>=st.from)&&(!st.to||x.date<=st.to)&&(!st.barn||x.barn_id===st.barn)&&(!st.assignment||x.assignment_id===st.assignment));
-  const ownerCosts=[...(obr.data||[]),...(ogr.data||[]),...(omr.data||[])].filter(x=>(!st.from||x.incurred_on>=st.from)&&(!st.to||x.incurred_on<=st.to)&&(!st.barn||x.barn_id===st.barn)&&(!st.assignment||x.contract_assignment_id===st.assignment)).reduce((n,x)=>n+prodNum(x.amount),0);
-  const masuk=visible.filter(x=>x.type==='MASUK').reduce((n,x)=>n+x.amount,0),keluar=visible.filter(x=>x.type==='KELUAR').reduce((n,x)=>n+x.amount,0),saldo=masuk-keluar;
+  if(st.source===undefined)st.source='';
+  const visible=st.shown?rows.filter(x=>
+    (!st.from||x.date>=st.from)&&
+    (!st.to||x.date<=st.to)&&
+    (!st.barn||x.barn_id===st.barn)&&
+    (!st.assignment||x.assignment_id===st.assignment)&&
+    (!st.source||x.source===st.source)
+  ):[];
+  const ownerCosts=[...(obr.data||[]),...(ogr.data||[]),...(omr.data||[])].filter(x=>
+    (!st.from||x.incurred_on>=st.from)&&
+    (!st.to||x.incurred_on<=st.to)&&
+    (!st.barn||x.barn_id===st.barn)&&
+    (!st.assignment||x.contract_assignment_id===st.assignment)
+  ).reduce((n,x)=>n+prodNum(x.amount),0);
+  const masuk=visible.filter(x=>x.type==='MASUK').reduce((n,x)=>n+x.amount,0);
+  const keluar=visible.filter(x=>x.type==='KELUAR').reduce((n,x)=>n+x.amount,0);
+  const saldo=masuk-keluar;
   const bySource=new Map();
-  visible.forEach(x=>{const k=x.source||'LAINNYA',v=bySource.get(k)||{source:k,count:0,masuk:0,keluar:0};v.count++;v[x.type==='MASUK'?'masuk':'keluar']+=x.amount;bySource.set(k,v)});
+  visible.forEach(x=>{
+    const k=x.source||'LAINNYA';
+    const v=bySource.get(k)||{source:k,count:0,masuk:0,keluar:0};
+    v.count++;
+    v[x.type==='MASUK'?'masuk':'keluar']+=x.amount;
+    bySource.set(k,v);
+  });
   const sourceRows=[...bySource.values()].sort((a,b)=>a.source.localeCompare(b.source));
   const barnName=id=>barns.find(b=>b.id===id)?.name||'-';
+  const txnLocation=x=>{
+    if(x.assignment_id){
+      const a=assignments.find(v=>v.id===x.assignment_id);
+      if(a)return assignmentIdentity(assignments,barns,contractsRows,a);
+    }
+    return x.barn_id?barnName(x.barn_id):'-';
+  };
+  const periodLabel=(st.from||st.to)?((st.from?prodDateId(st.from):'Awal')+' s/d '+(st.to?prodDateId(st.to):'Sekarang')):'Semua tanggal';
+  const categoryLabel=st.source||'Semua Kategori';
 
-  let html='<section class="panel"><h3>Arus Kas Otomatis</h3><p class="muted"><strong>READ ONLY.</strong> Selisih kas adalah masuk dikurangi keluar pada periode pilihan, bukan saldo rekening karena saldo awal tidak tersedia. Tidak ada input ulang di menu ini. Data ditarik otomatis dari transaksi sumber. Potongan gaji bukan kas masuk; gaji bruto tidak dicatat dua kali, dan saat gajian hanya gaji bersih yang menjadi kas keluar.</p>'+
-    '<form id="cashflowFilter" class="form-vertical"><label>Tanggal Awal<input type="date" name="from" value="'+esc(st.from||'')+'"></label><label>Tanggal Akhir<input type="date" name="to" value="'+esc(st.to||'')+'"></label>'+
+  let html='<section class="panel"><h3>Arus Kas Otomatis</h3><p class="muted"><strong>READ ONLY.</strong> Data ditarik otomatis dari transaksi sumber. Gunakan filter Kategori / Sumber untuk melihat dan mencetak rincian transaksi yang diminta Owner.</p>'+
+    '<form id="cashflowFilter" class="form-vertical" data-no-submit-guard="1">'+
+    '<label>Tanggal Awal<input type="date" name="from" value="'+esc(st.from||'')+'"></label>'+
+    '<label>Tanggal Akhir<input type="date" name="to" value="'+esc(st.to||'')+'"></label>'+
+    '<label>Kategori / Sumber<select name="source"><option value="">Semua Kategori</option>'+sourceOptions.map(s=>'<option value="'+esc(s)+'" '+(st.source===s?'selected':'')+'>'+esc(s.replaceAll('_',' '))+'</option>').join('')+'</select></label>'+
     '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-    '<label>Siklus<select name="assignment" '+(!st.barn?'disabled':'')+'><option value="">Semua Siklus</option>'+assignments.filter(a=>a.barn_id===st.barn).map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label><button type="submit">Tampilkan</button></form></section>';
-  if(st.shown)html+='<section class="panel" id="cashflowPrintArea"><div class="rhpp-section-head"><div><h3>Ringkasan Arus Kas</h3></div><div class="report-actions"><button type="button" id="cashflowPrint">Cetak / PDF</button></div></div><div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Kas Masuk</span><strong>Rp '+prodFmt(masuk,0)+'</strong></div><div class="rhpp-summary-card"><span>Kas Keluar</span><strong>Rp '+prodFmt(keluar,0)+'</strong></div><div class="rhpp-summary-card"><span>Selisih Kas Periode</span><strong>Rp '+prodFmt(saldo,0)+'</strong></div><div class="rhpp-summary-card"><span>Biaya Dibayar Owner</span><strong>Rp '+prodFmt(ownerCosts,0)+'</strong><small>BOP Produksi, BOP Umum, Perawatan Kandang; di luar kas perusahaan</small></div></div>'+
-    '<h4>Rincian per Sumber</h4><p class="muted">Satu transaksi tercatat pada sumber asalnya. Cocokkan referensi dan rincian sebelum menambah biaya dari Excel.</p>'+
-    '<div class="tablewrap"><table><thead><tr><th>Sumber</th><th>Transaksi</th><th>Masuk</th><th>Keluar</th></tr></thead><tbody>'+sourceRows.map(x=>'<tr><td>'+esc(x.source)+'</td><td>'+x.count+'</td><td>Rp '+prodFmt(x.masuk,0)+'</td><td>Rp '+prodFmt(x.keluar,0)+'</td></tr>').join('')+'</tbody></table></div>'+
-    '<h4>Rincian Transaksi</h4><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Sumber</th><th>Kandang</th><th>Keterangan</th><th>Referensi</th><th>Masuk</th><th>Keluar</th></tr></thead><tbody>'+visible.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.source)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(x.detail)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+(x.type==='MASUK'?'Rp '+prodFmt(x.amount,0):'-')+'</td><td>'+(x.type==='KELUAR'?'Rp '+prodFmt(x.amount,0):'-')+'</td></tr>').join('')+'</tbody></table></div>'+(visible.length?'':'<p class="muted">Tidak ada transaksi sesuai filter.</p>')+'</section>';
-  layout(html);if(err)msg(err.message);const cashflowPrint=document.getElementById('cashflowPrint');if(cashflowPrint)cashflowPrint.onclick=()=>printFinanceDocument('cashflowPrintArea','Laporan Arus Kas Otomatis');
-  const form=document.getElementById('cashflowFilter');
-  if(form){form.elements.barn.onchange=async()=>{st.barn=form.elements.barn.value||'';st.assignment='';st.shown=false;await financeCashflowPage();};form.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(form);st.from=String(fd.get('from')||'');st.to=String(fd.get('to')||'');st.barn=String(fd.get('barn')||'');st.assignment=st.barn?String(fd.get('assignment')||''):'';if(st.from&&st.to&&st.from>st.to){const t=st.from;st.from=st.to;st.to=t}st.shown=true;await financeCashflowPage();};}
-}
+    '<label>Siklus<select name="assignment" '+(!st.barn?'disabled':'')+'><option value="">Semua Siklus</option>'+assignments.filter(a=>a.barn_id===st.barn).map(a=>'<option value="'+esc(a.id)+'" '+(st.assignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+'</select></label>'+
+    '<div class="report-actions"><button type="submit">Tampilkan</button><button type="button" id="cashflowReset">Reset</button></div>'+
+    '</form></section>';
 
+  if(st.shown)html+='<section class="panel" id="cashflowPrintArea">'+
+    '<div class="rhpp-section-head"><div><h3>Rincian Arus Kas · '+esc(categoryLabel)+'</h3>'+
+    '<p class="muted">Periode: '+esc(periodLabel)+' · '+visible.length+' transaksi</p></div>'+
+    '<div class="report-actions"><button type="button" id="cashflowPrint">Cetak / PDF</button></div></div>'+
+    '<div class="rhpp-summary-cards">'+
+      '<div class="rhpp-summary-card"><span>Kas Masuk</span><strong>Rp '+prodFmt(masuk,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Kas Keluar</span><strong>Rp '+prodFmt(keluar,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Selisih Kas Periode</span><strong>Rp '+prodFmt(saldo,0)+'</strong></div>'+
+      '<div class="rhpp-summary-card"><span>Biaya Dibayar Owner</span><strong>Rp '+prodFmt(ownerCosts,0)+'</strong><small>BOP Produksi, BOP Umum, Perawatan Kandang; di luar kas perusahaan</small></div>'+
+    '</div>'+
+    '<h4>Ringkasan per Kategori</h4>'+
+    '<div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Transaksi</th><th>Masuk</th><th>Keluar</th></tr></thead><tbody>'+
+    sourceRows.map(x=>'<tr><td>'+esc(x.source)+'</td><td>'+x.count+'</td><td>Rp '+prodFmt(x.masuk,0)+'</td><td>Rp '+prodFmt(x.keluar,0)+'</td></tr>').join('')+
+    '</tbody></table></div>'+
+    '<h4>Rincian Transaksi</h4>'+
+    '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Kandang / Siklus</th><th>Keterangan / Catatan</th><th>Referensi</th><th>Masuk</th><th>Keluar</th></tr></thead><tbody>'+
+    visible.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.source)+'</td><td>'+esc(txnLocation(x))+'</td><td>'+esc(x.detail||'-')+'</td><td>'+esc(x.reference||'-')+'</td><td>'+(x.type==='MASUK'?'Rp '+prodFmt(x.amount,0):'-')+'</td><td>'+(x.type==='KELUAR'?'Rp '+prodFmt(x.amount,0):'-')+'</td></tr>').join('')+
+    '</tbody></table></div>'+
+    (visible.length?'':'<p class="muted">Tidak ada transaksi sesuai filter.</p>')+
+  '</section>';
+
+  layout(html);
+  if(err)msg(err.message);
+  const cashflowPrint=document.getElementById('cashflowPrint');
+  if(cashflowPrint)cashflowPrint.onclick=()=>printFinanceDocument('cashflowPrintArea','Rincian Arus Kas - '+categoryLabel);
+  const form=document.getElementById('cashflowFilter');
+  const reset=document.getElementById('cashflowReset');
+  if(form){
+    form.elements.barn.onchange=async()=>{
+      st.barn=form.elements.barn.value||'';
+      st.assignment='';
+      st.shown=false;
+      await financeCashflowPage();
+    };
+    form.onsubmit=async ev=>{
+      ev.preventDefault();
+      const fd=new FormData(form);
+      st.from=String(fd.get('from')||'');
+      st.to=String(fd.get('to')||'');
+      st.source=String(fd.get('source')||'');
+      st.barn=String(fd.get('barn')||'');
+      st.assignment=st.barn?String(fd.get('assignment')||''):'';
+      if(st.from&&st.to&&st.from>st.to){const t=st.from;st.from=st.to;st.to=t;}
+      st.shown=true;
+      await financeCashflowPage();
+    };
+  }
+  if(reset)reset.onclick=async()=>{
+    st.from='';st.to='';st.source='';st.barn='';st.assignment='';st.shown=false;
+    await financeCashflowPage();
+  };
+}
 
 async function financeBarnProfitLossPage(){
   const [xr,ar,br,cr,rr]=await Promise.all([
