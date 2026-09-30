@@ -305,3 +305,21 @@ Mulai titik ini, seluruh alur bisnis yang sudah PASS dianggap FROZEN:
 - Baseline PASS akan dikunci pada branch `locked-pass-2026-09-30`.
 - Branch baseline tersebut adalah titik rollback/freeze. Revisi berikutnya dilakukan di `main` dan tidak boleh memindahkan/mengubah branch baseline.
 - Alur bisnis FLOW FREEZE tetap berlaku. Revisi normal hanya UI/menu riwayat/filter/penyeragaman form/label tanpa mengubah backend PASS.
+
+
+## UI SAFETY — GLOBAL SUBMIT GUARD — 30 SEPTEMBER 2026
+Status: PASS / UI-only; tidak mengubah alur bisnis/backend.
+
+- Semua form transaksi berbasis submit memakai pengaman global anti-double submit.
+- Saat submit pertama berjalan, submit kedua dari klik/Enter ditolak sampai proses selesai.
+- Tombol submit menampilkan status langsung:
+  - `Sedang menyimpan...`
+  - `Tersimpan ✓`
+  - `Gagal — coba lagi`
+- Pesan submit tidak lagi bergantung pada notifikasi global di bagian atas halaman.
+- Form filter/search/history dikecualikan dari submit guard supaya UX pencarian tetap normal.
+- Baseline backend/alur PASS tetap tidak berubah.
+- Frontend commit anti-double submit: `fc00ceb63ea90cbcc9fe2cdb9b4b60ccfb9b7884`
+- Frontend commit feedback tombol: `56fbb4c09117f2dd61ed4b529c0ea96abb1f08a0`
+- Cache: `main-1958.js?v=2255-button-submit-feedback`
+- Cache commit: `46e05319a833a04f13f380e62a05573a57acf542`
