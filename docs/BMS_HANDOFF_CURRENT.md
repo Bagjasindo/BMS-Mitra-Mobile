@@ -2,7 +2,7 @@
 
 Tanggal: 1 Oktober 2026
 Branch kerja: `main`
-Status: STOP / FIXED sampai titik ini.
+Status: FIXED sampai revisi Cetak RHPP profesional ini.
 Sumber lanjutan tunggal: source code live + file ini.
 
 ## ATURAN WAJIB CHAT BERIKUTNYA
@@ -35,6 +35,10 @@ Terdapat 5 halaman/menu RHPP:
 - Tidak memakai tanda kurung untuk angka normal.
 - Layout dokumen: DOC → Pakan → OVK → Penjualan/Panen → Rekap hasil → bonus/performa → keterangan/bank.
 - Data/hitungan tetap dari database BMS.
+- View Cetak RHPP direvisi menjadi UI audit profesional: Identitas Siklus, Kinerja Produksi, Biaya Sapronak, Nilai RHPP, Rincian Panen, Rincian Kiriman Pakan, dan Rincian Kiriman OVK.
+- Hasil Print/PDF Cetak RHPP dibuat lebih terbaca dan profesional; A4 portrait, hierarki section konsisten, tabel lebih lega, header BMS seragam.
+- Seluruh hasil print RHPP yang memakai shell bersama (termasuk RHPP/ABK terkait) memakai bahasa visual BMS yang seragam: header, tipografi, tabel, spacing, warna, total, serta laba/rugi.
+- Formula, sumber data, flow bisnis dan permission tidak diubah.
 - Jangan ubah hasil print ini kecuali user meminta.
 
 ### Lihat RHPP
@@ -69,13 +73,16 @@ Terdapat 5 halaman/menu RHPP:
 - Angka positif jangan diberi warna merah.
 
 ## KOMIT TERAKHIR RELEVAN
+- `a2e6fb1c0bfbb19fa92119fc3b87452529697a73` — Keep RHPP screen scope isolated to Cetak RHPP
+- `61ad66b8053865646895cdfdc99bf90d6b746802` — Bump cache for professional RHPP print UI
+- `124fa6dffa6bd3f573311359522cefa1071f865e` — Refine Cetak RHPP view and unify professional RHPP print UI
 - `70283b1e69eb0434998e599c920a68ec3f87cc69` — Unify all RHPP screen views with one BMS dashboard UI
 - `929aa999bd7e7d64615c804c2a92fd2c595e8164` — Bump cache for unified RHPP screen UI
 - `6c03b71c3032cff26113a1df7cfa8373a231830a` — Unify RHPP and RHPP ABK print templates with BMS standard
 - `0458e79c2018838349665085f81900a639781427` — Bump cache for unified RHPP print templates
 
 Cache aktif saat handoff ini dibuat:
-`main-1958.js?v=2289-rhpp-print-unified`
+`main-1958.js?v=2290-rhpp-professional-print`
 
 ## TITIK BERHENTI
 STOP di sini.
