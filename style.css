@@ -3692,253 +3692,175 @@ main select.app-select-native{
 }
 
 
-/* bms-global-typography-mobile-sync-20261001 */
+/* bms-professional-responsive-type-20261001 */
 @media screen{
   :root{
     --bms-font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    --bms-fs-body:14px;
-    --bms-fs-small:12px;
-    --bms-fs-label:13px;
-    --bms-fs-control:14px;
-    --bms-fs-button:13px;
-    --bms-fs-table:12.5px;
-    --bms-fs-table-head:11.5px;
-    --bms-fs-h2:24px;
-    --bms-fs-h3:16px;
-    --bms-fs-h4:14px;
-    --bms-lh:1.45;
+    --bms-type-body:14px;
+    --bms-type-small:12px;
+    --bms-type-label:13px;
+    --bms-type-control:14px;
+    --bms-type-button:13px;
+    --bms-type-table:12px;
+    --bms-type-table-head:11.5px;
+    --bms-type-h2:clamp(20px,1.6vw,24px);
+    --bms-type-h3:clamp(15px,1.1vw,16px);
+    --bms-type-h4:14px;
+    --bms-type-kpi:clamp(16px,1.35vw,18px);
   }
 
-  html,body,
-  .shell,
-  .shell main,
-  #appSidebar,
-  .mobile-topbar,
-  .app-confirm,
-  .mobile-select-picker,
-  .app-select-control{
+  html,body,.shell,.shell main,#appSidebar,.mobile-topbar,
+  .app-confirm,.mobile-select-picker,.app-select-control{
     font-family:var(--bms-font)!important;
   }
-  body,
-  .shell main{
-    font-size:var(--bms-fs-body)!important;
-    line-height:var(--bms-lh)!important;
+  body,.shell main{
+    font-size:var(--bms-type-body)!important;
+    line-height:1.45!important;
     font-weight:400!important;
     text-rendering:optimizeLegibility;
     -webkit-font-smoothing:antialiased;
     -moz-osx-font-smoothing:grayscale;
   }
 
+  /* Hierarki sama di semua device; ukuran heading mengalir responsif */
   .shell main header h2{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-h2)!important;
-    line-height:1.2!important;
+    font-size:var(--bms-type-h2)!important;
+    line-height:1.18!important;
     font-weight:800!important;
     letter-spacing:-.015em!important;
   }
-  .shell main .panel h3,
-  .shell main h3{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-h3)!important;
-    line-height:1.3!important;
-    font-weight:760!important;
+  .shell main h3,.shell main .panel h3{
+    font-size:var(--bms-type-h3)!important;
+    line-height:1.28!important;
+    font-weight:750!important;
     letter-spacing:-.005em!important;
   }
-  .shell main .panel h4,
-  .shell main h4{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-h4)!important;
-    line-height:1.35!important;
-    font-weight:720!important;
+  .shell main h4,.shell main .panel h4{
+    font-size:var(--bms-type-h4)!important;
+    line-height:1.32!important;
+    font-weight:700!important;
   }
-  .shell main p,
-  .shell main li,
-  .shell main .muted{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-body)!important;
-    line-height:var(--bms-lh)!important;
+  .shell main p,.shell main li,.shell main .muted{
+    font-size:var(--bms-type-body)!important;
+    line-height:1.45!important;
   }
-  .shell main small,
-  .shell main .pill,
-  .shell main .finance-status,
-  .shell main .rhpp-count,
-  .shell main .search-empty{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-small)!important;
+  .shell main small,.shell main .pill,.shell main .finance-status,
+  .shell main .rhpp-count,.shell main .search-empty{
+    font-size:var(--bms-type-small)!important;
     line-height:1.35!important;
   }
 
-  .shell main label,
-  .shell main form label,
-  .shell main .form-vertical label{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-label)!important;
+  /* Form */
+  .shell main label,.shell main form label,.shell main .form-vertical label{
+    font-size:var(--bms-type-label)!important;
     line-height:1.35!important;
     font-weight:650!important;
   }
-  .shell main input,
-  .shell main select,
-  .shell main textarea,
-  .shell main .app-select-input,
-  .mobile-select-search{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-control)!important;
+  .shell main input,.shell main select,.shell main textarea,
+  .shell main .app-select-input,.mobile-select-search{
+    font-size:var(--bms-type-control)!important;
     line-height:1.35!important;
     font-weight:500!important;
   }
-  .shell main button,
-  .shell main input[type="submit"],
-  .shell main input[type="button"],
-  .mobile-select-options button,
-  .search-suggestion{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-button)!important;
+
+  /* Tombol */
+  .shell main button,.shell main input[type="submit"],.shell main input[type="button"],
+  .mobile-select-options button,.search-suggestion{
+    font-size:var(--bms-type-button)!important;
     line-height:1.25!important;
     font-weight:700!important;
   }
 
-  .shell main table,
-  .shell main .tablewrap table{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-table)!important;
+  /* Tabel sengaja lebih padat daripada body */
+  .shell main table,.shell main .tablewrap table{
+    font-size:var(--bms-type-table)!important;
     line-height:1.35!important;
   }
-  .shell main table th,
-  .shell main .tablewrap th{
-    font-size:var(--bms-fs-table-head)!important;
+  .shell main table th,.shell main .tablewrap th{
+    font-size:var(--bms-type-table-head)!important;
     line-height:1.3!important;
     font-weight:800!important;
   }
-  .shell main table td,
-  .shell main .tablewrap td{
-    font-size:var(--bms-fs-table)!important;
+  .shell main table td,.shell main .tablewrap td{
+    font-size:var(--bms-type-table)!important;
     line-height:1.35!important;
-    font-weight:400!important;
   }
 
-  #appSidebar nav button,
-  #appSidebar nav summary,
-  #appSidebar .nav-label{
+  /* Sidebar */
+  #appSidebar nav button,#appSidebar nav summary,#appSidebar .nav-label{
     font-family:var(--bms-font)!important;
   }
-  #appSidebar nav button,
-  #appSidebar nav summary{
+  #appSidebar nav button,#appSidebar nav summary{
     font-size:12.5px!important;
     line-height:1.3!important;
   }
-  #appSidebar .nav-sub button,
-  #appSidebar .nav-child-item button,
-  #appSidebar .nav-rhpp-items button{
-    font-size:12px!important;
-  }
+  #appSidebar .nav-sub button,#appSidebar .nav-child-item button,
+  #appSidebar .nav-rhpp-items button{font-size:12px!important}
 
-  .shell main .card span,
-  .shell main .rhpp-summary-card span,
+  /* KPI */
+  .shell main .card span,.shell main .rhpp-summary-card span,
   .shell main .ui-rhpp-kpi span{
     font-size:11px!important;
     line-height:1.3!important;
     font-weight:600!important;
   }
-  .shell main .card strong,
-  .shell main .rhpp-summary-card strong,
+  .shell main .card strong,.shell main .rhpp-summary-card strong,
   .shell main .ui-rhpp-kpi strong{
-    font-size:18px!important;
-    line-height:1.2!important;
+    font-size:var(--bms-type-kpi)!important;
+    line-height:1.18!important;
     font-weight:800!important;
   }
 
-  .shell main button[data-bms-feedback-state="saving"],
-  .shell main button[data-bms-feedback-state="saved"],
-  .shell main button[data-bms-feedback-state="failed"],
+  /* Feedback tombol mengikuti ukuran tombol normal */
+  .shell main button[data-bms-feedback-state],
   .shell main input[type="submit"][data-bms-feedback-state]{
-    font-family:var(--bms-font)!important;
-    font-size:var(--bms-fs-button)!important;
+    font-size:var(--bms-type-button)!important;
     font-weight:800!important;
-    letter-spacing:0!important;
   }
 
+  /* Tablet/HP: bukan mengecilkan seluruh UI, hanya menata densitas */
   @media(max-width:900px){
     :root{
-      --bms-fs-body:13px;
-      --bms-fs-small:12px;
-      --bms-fs-label:13px;
-      --bms-fs-control:16px;
-      --bms-fs-button:13px;
-      --bms-fs-table:12px;
-      --bms-fs-table-head:11.5px;
-      --bms-fs-h2:20px;
-      --bms-fs-h3:15px;
-      --bms-fs-h4:13px;
+      --bms-type-body:14px;
+      --bms-type-small:12px;
+      --bms-type-label:13px;
+      --bms-type-button:13px;
+      --bms-type-table:11.75px;
+      --bms-type-table-head:11px;
+      --bms-type-h4:13.5px;
+      --bms-type-kpi:16px;
     }
-    body,.shell main{
-      font-size:var(--bms-fs-body)!important;
-      line-height:1.42!important;
-    }
+    .shell main{line-height:1.42!important}
     .mobile-topbar{
-      font-family:var(--bms-font)!important;
       font-size:13px!important;
       line-height:1.2!important;
     }
     .mobile-topbar strong{font-size:15px!important;font-weight:800!important}
-    #appSidebar nav button,
-    #appSidebar nav summary,
-    #appSidebar .nav-sub button,
-    #appSidebar .nav-child-item button,
+    #appSidebar nav button,#appSidebar nav summary,
+    #appSidebar .nav-sub button,#appSidebar .nav-child-item button,
     #appSidebar .nav-rhpp-items button{
       font-size:13px!important;
       line-height:1.3!important;
     }
-    .shell main input,
-    .shell main select,
-    .shell main textarea,
+
+    /* Kontrol 16px mencegah zoom otomatis iOS/Android browser */
+    .shell main input,.shell main select,.shell main textarea,
     .shell main .app-select-input{
       font-size:16px!important;
     }
-    .shell main button,
-    .shell main input[type="submit"],
-    .shell main input[type="button"]{
+    .shell main button,.shell main input[type="submit"],.shell main input[type="button"]{
       min-height:44px!important;
       font-size:13px!important;
-    }
-    .shell main table,
-    .shell main .tablewrap table{
-      font-size:12px!important;
-    }
-    .shell main table th,
-    .shell main .tablewrap th{
-      font-size:11.5px!important;
-    }
-    .shell main table td,
-    .shell main .tablewrap td{
-      font-size:12px!important;
-    }
-    .shell main .card strong,
-    .shell main .rhpp-summary-card strong,
-    .shell main .ui-rhpp-kpi strong{
-      font-size:16px!important;
     }
   }
 
   @media(max-width:560px){
     :root{
-      --bms-fs-body:13px;
-      --bms-fs-label:12.5px;
-      --bms-fs-button:13px;
-      --bms-fs-table:11.5px;
-      --bms-fs-table-head:11px;
-      --bms-fs-h2:19px;
-      --bms-fs-h3:14.5px;
-      --bms-fs-h4:13px;
+      --bms-type-table:11.5px;
+      --bms-type-table-head:10.75px;
+      --bms-type-kpi:15.5px;
     }
     .shell main header small{font-size:11px!important}
-    .shell main p,
-    .shell main .muted{font-size:13px!important}
-    .shell main .card span,
-    .shell main .rhpp-summary-card span,
-    .shell main .ui-rhpp-kpi span{font-size:11px!important}
-    .shell main .card strong,
-    .shell main .rhpp-summary-card strong,
-    .shell main .ui-rhpp-kpi strong{font-size:15px!important}
     .shell main .tablewrap.has-overflow::before{
       font-family:var(--bms-font)!important;
       font-size:11.5px!important;
