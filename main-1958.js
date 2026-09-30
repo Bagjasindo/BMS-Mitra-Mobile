@@ -446,9 +446,7 @@ function appNav(){
       if(section.label==='Logistik'&&key==='logistik_kiriman_luar'){
         const extOpen=['logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar','logistik_retur_luar'].includes(tab)?' open':'';
         return '<details class="nav-subgroup"'+extOpen+'><summary>Sapronak Luar</summary><div class="nav-child-item">'+
-          navButton('logistik_pakan_luar')+
-          navButton('logistik_doc_luar')+
-          navButton('logistik_ovk1_luar')+
+          navButton('logistik_kiriman_luar').replace('>'+esc(navLabel('logistik_kiriman_luar')||'logistik_kiriman_luar')+'<','>Beli Sapronak<')+
           navButton('logistik_retur_luar').replace('>'+esc(navLabel('logistik_retur_luar')||'logistik_retur_luar')+'<','>Retur Sapronak Luar<')+
           '</div></details>';
       }
