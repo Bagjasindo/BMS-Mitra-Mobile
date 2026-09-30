@@ -5338,14 +5338,16 @@ async function adminRhppHistoryPage(){
   }
 }
 async function financeBopPage(){
-  const [br,ar,cr,bopr]=await Promise.all([
+  const [br,ar,cr,bopr,accessr]=await Promise.all([
     db.from('barns').select('id,code,name').order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,created_at').order('start_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null),
-    db.from('bop').select('id,contract_assignment_id,barn_id,incurred_on,category,amount,paid_by,source_type,source_id,reference,notes').order('incurred_on',{ascending:false}).order('id',{ascending:false})
+    db.from('bop').select('id,contract_assignment_id,barn_id,incurred_on,category,amount,paid_by,source_type,source_id,reference,notes').order('incurred_on',{ascending:false}).order('id',{ascending:false}),
+    db.from('finance_bop_period_access').select('contract_assignment_id,is_open')
   ]);
   const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],rows=bopr.data||[];
-  const err=[br,ar,cr,bopr].find(x=>x.error)?.error;
+  const bopAccess=new Map((accessr.data||[]).map(x=>[x.contract_assignment_id,x.is_open]));
+  const err=[br,ar,cr,bopr,accessr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
   window.__financeBopState=window.__financeBopState||{barn:'',assignment:'',filterBarn:'',filterAssignment:'',from:'',to:'',shown:false,editId:''};
@@ -5367,7 +5369,7 @@ async function financeBopPage(){
     if(!a)return '-';
     const b=barns.find(x=>x.id===a.barn_id);
     const k=contractsRows.find(x=>x.id===a.master_contract_id);
-    return (b?shortBarnLabel(b):'-')+' · '+assignmentCycleLabel(assignments,a)+' · '+(k?.number||'-')+' · '+(a.active?'PROSES':'CLOSED');
+    return (b?shortBarnLabel(b):'-')+' · '+assignmentCycleLabel(assignments,a)+' · '+(k?.number||'-')+' · '+(a.active?'PROSES':bopAccess.get(a.id)?'CLOSED · BOP TERBUKA':'CLOSED · BOP TERKUNCI');
   };
 
   let html='<section class="panel"><h3>'+(editRow?'Edit BOP Produksi':'Tambah BOP Produksi')+'</h3>'+
@@ -5377,7 +5379,7 @@ async function financeBopPage(){
         barns.map(b=>'<option value="'+esc(b.id)+'" '+(selectedBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
       '</select></label>'+
       '<label>Siklus / Periode<select id="bopAssignment" name="contract_assignment_id" required '+(!selectedBarn?'disabled':'')+'><option value="">Pilih Siklus / Periode</option>'+
-        cycleOptions.map(a=>'<option value="'+esc(a.id)+'" '+(selectedAssignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+
+        cycleOptions.map(a=>'<option value="'+esc(a.id)+'" '+(selectedAssignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':bopAccess.get(a.id)?'CLOSED · BOP TERBUKA':'CLOSED · BOP TERKUNCI'))+'</option>').join('')+
       '</select></label>'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(editRow?.incurred_on||today)+'" required></label>'+
       '<label>Kategori<select name="category" required>'+
@@ -5400,13 +5402,15 @@ async function financeBopPage(){
       '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
       ''+
       '<label>Catatan<textarea name="notes" placeholder="Opsional">'+esc(editRow?.notes||'')+'</textarea></label>'+
+      '<p class="muted">Siklus CLOSED dapat dilengkapi BOP setelah ADMIN membuka pencatatan. Status produksi tetap CLOSED.</p>'+
+      (profile?.role==='ADMIN'?'<div class="report-actions"><button type="button" id="bopAccessOpen">Buka Pencatatan BOP</button><button type="button" id="bopAccessLock">Kunci Pencatatan BOP</button></div>':'')+
       '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan')+'</button>'+(editRow?'<button type="button" id="bopEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="bopKandangPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Produksi</h3></div><div class="report-actions"><button type="button" id="bopKandangPrint">Cetak / PDF</button></div></div>'+
       '<form id="bopKandangFilter" class="form-vertical">'+
         '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.filterBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
         '<label>Siklus<select name="assignment" '+(!st.filterBarn?'disabled':'')+'><option value="">Semua Siklus</option>'+
-          assignments.filter(a=>a.barn_id===st.filterBarn).map(a=>'<option value="'+esc(a.id)+'" '+(st.filterAssignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':'CLOSED'))+'</option>').join('')+
+          assignments.filter(a=>a.barn_id===st.filterBarn).map(a=>'<option value="'+esc(a.id)+'" '+(st.filterAssignment===a.id?'selected':'')+'>'+esc(assignmentCycleLabel(assignments,a)+' · '+prodDateId(a.start_date)+' · '+(a.active?'PROSES':bopAccess.get(a.id)?'CLOSED · BOP TERBUKA':'CLOSED · BOP TERKUNCI'))+'</option>').join('')+
         '</select></label>'+
         '<label>Tanggal Dari<input name="from" type="date" value="'+esc(st.from||'')+'"></label>'+
         '<label>Tanggal Sampai<input name="to" type="date" value="'+esc(st.to||'')+'"></label>'+
@@ -5432,6 +5436,20 @@ async function financeBopPage(){
   };
 
   const form=document.getElementById('bopKandangForm');
+  const setBopAccess=async isOpen=>{
+    const id=String(form?.elements.contract_assignment_id.value||'');
+    const a=assignments.find(x=>x.id===id);
+    if(!a)return msg('Pilih kandang dan siklus dahulu.');
+    if(a.active)return msg('Siklus PROSES sudah dapat dicatat BOP. Pilih siklus CLOSED.');
+    if(!await appConfirm((isOpen?'Buka':'Kunci')+' pencatatan BOP untuk '+assignmentText(id)+'? Status produksi tetap CLOSED.'))return;
+    const result=await db.rpc('admin_set_finance_bop_period_access',{p_assignment_id:id,p_is_open:isOpen});
+    if(result.error)return msg(result.error.message);
+    st.barn=a.barn_id;st.assignment=id;
+    await financeBopPage();msg(isOpen?'Pencatatan BOP dibuka; produksi tetap CLOSED.':'Pencatatan BOP dikunci kembali.',true);
+  };
+  const openBop=document.getElementById('bopAccessOpen'),lockBop=document.getElementById('bopAccessLock');
+  if(openBop)openBop.onclick=()=>setBopAccess(true);
+  if(lockBop)lockBop.onclick=()=>setBopAccess(false);
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
     const fd=new FormData(form);
