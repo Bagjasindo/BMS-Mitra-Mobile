@@ -7807,8 +7807,7 @@ async function itemMasterPage(){
       '<form id="itemMasterFilter" class="form-vertical">'+
         '<label>Kode<input name="code" placeholder="Contoh: SP-001"></label>'+
         '<label>Nama<input name="name" placeholder="Nama barang"></label>'+
-        '<label>Kategori<select name="category"><option value="">Semua Kategori</option><option value="DOC">DOC</option><option value="PAKAN">PAKAN</option><option value="OVK">OVK</option><option value="LAINNYA">LAINNYA</option></select></label>'+
-        '<label>Jenis OVK<select name="ovk_type"><option value="">Semua Jenis OVK</option><option value="OVK1">OVK1 / Obat</option><option value="OVK2">OVK2 / Peralatan</option></select></label>'+
+        '<label>Jenis<select name="category"><option value="">Semua Jenis</option><option value="DOC">DOC</option><option value="PAKAN">PAKAN</option><option value="OVK1">OVK1 / Obat</option><option value="OVK2">OVK2 / Peralatan</option><option value="LAINNYA">LAINNYA</option></select></label>'+
         '<label>Fase Pakan<select name="feed_phase"><option value="">Semua Fase Pakan</option>'+phases.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')+'</select></label>'+
         '<label>Satuan<select name="unit"><option value="">Semua Satuan</option>'+units.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')+'</select></label>'+
         '<label>Supplier<select name="supplier_id"><option value="">Semua Supplier</option>'+supplierRows.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name||x.code||'-')+'</option>').join('')+'</select></label>'+
