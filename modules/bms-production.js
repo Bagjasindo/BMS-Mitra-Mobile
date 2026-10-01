@@ -1849,7 +1849,6 @@ async function productionRecapPage(){
       chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,
       performanceBirds:chickOut,performanceKg:kg,
       cycle:Math.max(1,cycles.indexOf(a.id)+1),
-      abkCount:links.length,
       source:'LIGA_ABK'
     };
   }).sort((x,y)=>String(dateOfAssignment(x.a)).localeCompare(String(dateOfAssignment(y.a))));
@@ -1899,14 +1898,14 @@ async function productionRecapPage(){
     '<div class="rhpp-section-head"><div><h3>REKAP PRODUKSI</h3><p class="muted">'+prodDateId(from)+' s/d '+prodDateId(to)+(filterSummary?' · '+esc(filterSummary):'')+'</p></div>'+
     '<div class="report-actions"><button type="button" id="productionRecapPrint">Cetak</button><button type="button" id="productionRecapPdf">PDF</button><button type="button" id="productionRecapExcel">Excel</button></div></div>'+
     '<div class="tablewrap"><table style="min-width:1450px"><thead><tr>'+
-      '<th>NO</th><th>Kandang / Siklus / Kontrak</th><th>PPL / PIC</th><th>Status</th><th>ABK</th><th>UMUR</th><th>CHICK IN</th><th>CHICK OUT</th><th>MORT (%)</th><th>TONASE PANEN (Kg)</th><th>Rata2 (Kg)</th><th>PAKAN ABK (Kg)</th><th>FCR</th><th>IP</th>'+
+      '<th>NO</th><th>NAMA KANDANG</th><th>SIKLUS</th><th>PPL / PIC</th><th>STATUS</th><th>UMUR</th><th>CHICK IN</th><th>CHICK OUT</th><th>MORT (%)</th><th>TONASE PANEN (Kg)</th><th>BW (Kg)</th><th>PAKAN KUMULATIF ABK (Kg)</th><th>FCR</th><th>IP</th>'+
     '</tr></thead><tbody>'+
     rows.map((x,i)=>'<tr>'+
       '<td>'+(i+1)+'</td>'+
-      '<td>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,x.a))+'</td>'+
+      '<td>'+esc(x.b?shortBarnLabel(x.b):'-')+'</td>'+
+      '<td>'+esc(assignmentCycleLabel(d.assignments,x.a))+'</td>'+
       '<td>'+esc(x.ppl)+'</td>'+
       '<td>'+esc(x.status)+'</td>'+
-      '<td>'+prodFmt(x.abkCount,0)+'</td>'+
       '<td>'+prodFmt(x.age,2)+'</td>'+
       '<td>'+prodFmt(x.chickIn,0)+'</td>'+
       '<td>'+prodFmt(x.chickOut,0)+'</td>'+
