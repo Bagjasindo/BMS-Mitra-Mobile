@@ -192,7 +192,7 @@ const roles={finance_mandiri_piutang:['ADMIN','KEUANGAN'],finance_mandiri_peneri
 const visibleTabs={
   ADMIN:['dashboard','finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan','kandang','item','supplier_sapronak','supplier_daging','marketing_pelanggan','kontrak','harga_hidup','bonus_kontrak','standar_performa','reset_klasemen','karyawan','pengguna','perusahaan','logistik_kontrak','logistik_pembelian_mandiri','logistik_pengiriman','logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar','logistik_beli_peralatan','logistik_stok_barang','logistik_kirim_stok','logistik_retur_luar','logistik_retur','logistik_retur_sebagian','logistik_laporan','chick_in','recording','kunjungan','estimasi','liga_abk','ppl_liga_kandang_view','rekap_produksi','ppl_rhpp_view','ppl_rhpp_abk_view','laporan','marketing_panen_kontrak','marketing_panen_mandiri','marketing_tambah_daging','marketing_laporan','rhpp','rhpp_history','finance_rhpp_real','bop','laba_rugi_kandang','laba_rugi_global','perawatan_kandang','aset_kandang','hutang_supplier','finance_pembelian_langsung','finance_beli_stok','gaji_abk','bop_umum','expedisi_master','expedisi_usaha','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi','kasbon','cicilan','arus_kas','laporan_keuangan','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report','admin_cycle_lock','admin_log_aktivitas','arsip_data','profil'],
   LOGISTIK:['dashboard','logistik_kontrak','logistik_pembelian_mandiri','logistik_pengiriman','logistik_kiriman_luar','logistik_pakan_luar','logistik_doc_luar','logistik_ovk1_luar','logistik_beli_peralatan','logistik_stok_barang','logistik_kirim_stok','logistik_retur_luar','logistik_retur','logistik_retur_sebagian','expedisi_usaha','logistik_laporan','profil'],
-  PPL:['dashboard','kandang','kontrak','harga_hidup','bonus_kontrak','standar_performa','chick_in','recording','kunjungan','estimasi','liga_abk','ppl_liga_kandang_view','rekap_produksi','ppl_rhpp_view','ppl_rhpp_abk_view','laporan','profil'],
+  PPL:['dashboard','chick_in','recording','kunjungan','estimasi','liga_abk','ppl_liga_kandang_view','rekap_produksi','ppl_rhpp_view','ppl_rhpp_abk_view','laporan','profil'],
   MARKETING:['dashboard','kandang','kontrak','harga_hidup','marketing_pelanggan','marketing_panen_kontrak','marketing_panen_mandiri','marketing_tambah_daging','marketing_laporan','profil'],
   KEUANGAN:['dashboard','finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi','finance_rhpp_real','bop','laba_rugi_kandang','perawatan_kandang','aset_kandang','hutang_supplier','finance_pembelian_langsung','finance_beli_stok','gaji_abk','bop_umum','kasbon','cicilan','arus_kas','laporan_keuangan','profil'],
   OWNER:['dashboard','laporan_expedisi','finance_rhpp_real','laba_rugi_kandang','laba_rugi_global','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report']
@@ -559,7 +559,32 @@ const navButton=(key)=>{
   const classes=[tab===key?'active':'',allowed?'':'nav-locked'].filter(Boolean).join(' ');
   return '<button data-tab="'+key+'" class="'+classes+'"'+(allowed?'':' disabled aria-disabled="true" title="Akses dikunci untuk akun ini"')+'>'+esc(navLabel(key)||key)+'</button>';
 };
+function pplAppNav(){
+  const leagueOpen=['liga_abk','ppl_liga_kandang_view'].includes(tab)?' open':'';
+  const rhppOpen=['ppl_rhpp_view','ppl_rhpp_abk_view'].includes(tab)?' open':'';
+  let html=navButton('dashboard');
+  html+='<details class="nav-group" open><summary>Produksi / PPL</summary><div class="nav-sub">'+
+    navButton('chick_in')+
+    navButton('recording')+
+    navButton('kunjungan')+
+    navButton('estimasi')+
+    '<details class="nav-subgroup"'+leagueOpen+'><summary>Liga ABK</summary><div class="nav-child-item">'+
+      navButton('liga_abk')+
+      navButton('ppl_liga_kandang_view')+
+    '</div></details>'+
+    navButton('rekap_produksi')+
+    '<details class="nav-subgroup nav-rhpp-subgroup"'+rhppOpen+'><summary>Lihat RHPP</summary><div class="nav-rhpp-items">'+
+      navButton('ppl_rhpp_view')+
+      navButton('ppl_rhpp_abk_view')+
+    '</div></details>'+
+    navButton('laporan')+
+  '</div></details>'+
+  navButton('profil');
+  return html;
+}
+
 function appNav(){
+  if(profile?.role==='PPL')return pplAppNav();
   let html=navButton('dashboard');
   if(profile?.role==='ADMIN'){
     const adminRhppActive=['rhpp','rhpp_history','admin_cycle_lock','admin_log_aktivitas','arsip_data'].includes(tab);
@@ -1014,14 +1039,14 @@ function layout(content){
   root.innerHTML=
     '<div class="mobile-topbar">'+
       '<button type="button" id="mobileMenuToggle" class="mobile-menu-toggle" aria-label="Buka menu" aria-expanded="false">☰</button>'+
-      '<strong>BMS Mobile</strong>'+
+      '<strong>'+(profile?.role==='PPL'?'BMS Mobile · PPL':'BMS Mobile')+'</strong>'+
       '<span>'+esc(profile.role)+'</span>'+
     '</div>'+
     '<div id="mobileNavBackdrop" class="mobile-nav-backdrop"></div>'+
     '<div class="shell">'+
       '<aside id="appSidebar">'+
         '<div class="mobile-drawer-head"><strong>BMS Mobile</strong><button type="button" id="mobileMenuClose" aria-label="Tutup menu">×</button></div>'+
-        '<h1>BMS Mobile</h1><nav>'+navHtml+'</nav><footer>Bagjasindo Mandiri Sindangkasih @gunzleite</footer>'+
+        '<h1>'+(profile?.role==='PPL'?'BMS Mobile · PPL':'BMS Mobile')+'</h1><nav>'+navHtml+'</nav><footer>Bagjasindo Mandiri Sindangkasih @gunzleite</footer>'+
       '</aside>'+
       '<main><header><div><h2>'+title[tab]+'</h2><small>'+esc(profile.full_name)+' · '+esc(profile.role)+'</small></div></header><p id="message"></p>'+content+'</main>'+
     '</div>';
