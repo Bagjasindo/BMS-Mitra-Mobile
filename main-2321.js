@@ -560,27 +560,18 @@ const navButton=(key)=>{
   return '<button data-tab="'+key+'" class="'+classes+'"'+(allowed?'':' disabled aria-disabled="true" title="Akses dikunci untuk akun ini"')+'>'+esc(navLabel(key)||key)+'</button>';
 };
 function pplAppNav(){
-  const leagueOpen=['liga_abk','ppl_liga_kandang_view'].includes(tab)?' open':'';
-  const rhppOpen=['ppl_rhpp_view','ppl_rhpp_abk_view'].includes(tab)?' open':'';
-  let html=navButton('dashboard');
-  html+='<details class="nav-group" open><summary>Produksi / PPL</summary><div class="nav-sub">'+
+  return navButton('dashboard')+
     navButton('chick_in')+
     navButton('recording')+
     navButton('kunjungan')+
     navButton('estimasi')+
-    '<details class="nav-subgroup"'+leagueOpen+'><summary>Liga ABK</summary><div class="nav-child-item">'+
-      navButton('liga_abk')+
-      navButton('ppl_liga_kandang_view')+
-    '</div></details>'+
+    navButton('liga_abk')+
+    navButton('ppl_liga_kandang_view')+
     navButton('rekap_produksi')+
-    '<details class="nav-subgroup nav-rhpp-subgroup"'+rhppOpen+'><summary>Lihat RHPP</summary><div class="nav-rhpp-items">'+
-      navButton('ppl_rhpp_view')+
-      navButton('ppl_rhpp_abk_view')+
-    '</div></details>'+
+    navButton('ppl_rhpp_view')+
+    navButton('ppl_rhpp_abk_view')+
     navButton('laporan')+
-  '</div></details>'+
-  navButton('profil');
-  return html;
+    navButton('profil');
 }
 
 function appNav(){
