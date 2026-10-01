@@ -1770,7 +1770,7 @@ async function marketingExternalMeatPage(editId=null){
       if(q&&!rows.length)meatBarnSuggestions.innerHTML='<div class="search-empty">Kandang aktif tidak ditemukan.</div>';
       meatBarnSuggestions.querySelectorAll('[data-meat-barn]').forEach(btn=>btn.onclick=()=>{
         const b=allowedBarns.find(x=>x.id===btn.dataset.meatBarn);if(!b)return;
-        meatBarnId.value=b.id;meatBarnSearch.value=shortBarnLabel(b);meatBarnSuggestions.innerHTML='';
+        meatBarnId.value=b.id;meatBarnSearch.value=shortBarnLabel(b);meatBarnSuggestions.innerHTML='';contractPrice();
       });
     };
   }
