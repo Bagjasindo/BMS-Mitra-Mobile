@@ -6751,8 +6751,7 @@ async function financeBopPage(){
 
         '<option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Lainnya</option>'+
       '</select></label>'+
-      '<label>Dibayar dari<select name="paid_by"><option value="COMPANY" '+(editRow?.paid_by!=='OWNER'?'selected':'')+'>Kas Perusahaan</option><option value="OWNER" '+(editRow?.paid_by==='OWNER'?'selected':'')+'>Uang Pribadi Owner</option></select></label>'+
-      '<p class="muted">Biaya tetap mengurangi laba. Pembayaran langsung owner dicatat terpisah dan tidak mengurangi kas perusahaan.</p>'+
+      '<p class="muted">Transaksi ini mencatat biaya usaha. Sumber uang pembayaran tidak dibedakan di sistem.</p>'+
       '<label>No. Bukti / Referensi<input name="reference" value="'+esc(editRow?.reference||'')+'" placeholder="Nomor nota / transfer / bukti Excel"></label>'+
       '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
       ''+
@@ -6774,7 +6773,7 @@ async function financeBopPage(){
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total BOP</span><strong>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</strong></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop',x.id)+'</div></td></tr>';}).join('')+
+          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop',x.id)+'</div></td></tr>';}).join('')+
         '</tbody><tfoot><tr><th colspan="3">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
@@ -6813,18 +6812,17 @@ async function financeBopPage(){
     if(!a)return msg('Pilih siklus / periode.');
     const amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<0)return msg('Nominal BOP tidak valid.');
-    if(editRow?.source_type==='ABK_SALARY'&&editRow?.source_id&&fd.get('paid_by')==='OWNER')return msg('Gaji yang terhubung pembayaran ABK harus dikoreksi dari transaksi gaji asal.');
     const payload={
       contract_assignment_id:assignmentId,
       barn_id:a.barn_id,
       incurred_on:fd.get('incurred_on'),
       category:fd.get('category'),
       amount,
-      paid_by:String(fd.get('paid_by')||'COMPANY'),reference:String(fd.get('reference')||'').trim()||null,
+      paid_by:'COMPANY',reference:String(fd.get('reference')||'').trim()||null,
       notes:fd.get('notes')||null
     };
     if(payload.reference&&rows.some(x=>x.id!==editRow?.id&&String(x.reference||'').trim().toLowerCase()===payload.reference.toLowerCase()))return msg('Nomor bukti sudah tercatat di kamar ini. Periksa transaksi lama; jangan input ulang.');
-    if(!await appConfirm('Tujuan: '+'BOP Produksi · '+assignmentText(assignmentId)+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\nDibayar: '+(payload.paid_by==='OWNER'?'Owner':'Kas Perusahaan')+'\n\nSimpan transaksi?'))return;
+    if(!await appConfirm('Tujuan: '+'BOP Produksi · '+assignmentText(assignmentId)+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\n\nSimpan transaksi?'))return;
     const {error}=editRow?await db.from('bop').update(payload).eq('id',editRow.id):await db.from('bop').insert(payload);
     if(error)return msg(error.message);
     st.editId='';
@@ -6894,8 +6892,7 @@ async function financeMaintenancePage(){
       '<label>Kandang<select name="barn_id" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(editRow?.barn_id===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Tanggal<input name="incurred_on" type="date" value="'+esc(editRow?.incurred_on||today)+'" required></label>'+
       '<label>Jenis<select name="category" required><option value="">Pilih Jenis</option><option value="PERAWATAN_JANGKA_PANJANG" '+(editRow?.category==='PERAWATAN_JANGKA_PANJANG'?'selected':'')+'>Perawatan Jangka Panjang</option><option value="RENOVASI" '+(editRow?.category==='RENOVASI'?'selected':'')+'>Renovasi</option><option value="PENGGANTIAN_KOMPONEN" '+(editRow?.category==='PENGGANTIAN_KOMPONEN'?'selected':'')+'>Penggantian Komponen</option><option value="PERALATAN" '+(editRow?.category==='PERALATAN'?'selected':'')+'>Peralatan Kandang</option><option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Lainnya</option></select></label>'+
-      '<label>Dibayar dari<select name="paid_by"><option value="COMPANY" '+(editRow?.paid_by!=='OWNER'?'selected':'')+'>Kas Perusahaan</option><option value="OWNER" '+(editRow?.paid_by==='OWNER'?'selected':'')+'>Uang Pribadi Owner</option></select></label>'+
-      '<p class="muted">Biaya tetap mengurangi laba. Pembayaran langsung owner dicatat terpisah dan tidak mengurangi kas perusahaan.</p>'+
+      '<p class="muted">Transaksi ini mencatat biaya usaha. Sumber uang pembayaran tidak dibedakan di sistem.</p>'+
       '<label>No. Bukti / Referensi<input name="reference" value="'+esc(editRow?.reference||'')+'" placeholder="Nomor nota / transfer / bukti Excel"></label>'+
       '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
       '<label>Catatan<textarea name="notes" placeholder="Contoh: ganti dinamo blower">'+esc(editRow?.notes||'')+'</textarea></label>'+
@@ -6911,7 +6908,7 @@ async function financeMaintenancePage(){
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total Perawatan</span><strong>Rp '+prodFmt(totalVisible,0)+'</strong></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang</th><th>Jenis</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-          visible.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-maintenance="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('barn_maintenance_costs',x.id)+'</div></td></tr>').join('')+
+          visible.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(barnName(x.barn_id))+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-maintenance="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('barn_maintenance_costs',x.id)+'</div></td></tr>').join('')+
         '</tbody><tfoot><tr><th colspan="3">TOTAL</th><th>Rp '+prodFmt(totalVisible,0)+'</th><th></th><th></th></tr></tfoot></table></div>'+
         (visible.length?'':'<p class="muted">Belum ada perawatan sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
@@ -6927,9 +6924,9 @@ async function financeMaintenancePage(){
     if(!barns.find(x=>x.id===barnId))return msg('Pilih kandang.');
     const amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<=0)return msg('Nominal perawatan harus lebih dari 0.');
-    const payload={contract_assignment_id:null,barn_id:barnId,incurred_on:String(fd.get('incurred_on')||''),category:String(fd.get('category')||''),amount,paid_by:String(fd.get('paid_by')||'COMPANY'),reference:String(fd.get('reference')||'').trim()||null,notes:String(fd.get('notes')||'')||null};
+    const payload={contract_assignment_id:null,barn_id:barnId,incurred_on:String(fd.get('incurred_on')||''),category:String(fd.get('category')||''),amount,paid_by:'COMPANY',reference:String(fd.get('reference')||'').trim()||null,notes:String(fd.get('notes')||'')||null};
     if(payload.reference&&rows.some(x=>x.id!==editRow?.id&&String(x.reference||'').trim().toLowerCase()===payload.reference.toLowerCase()))return msg('Nomor bukti sudah tercatat di kamar ini. Periksa transaksi lama; jangan input ulang.');
-    if(!await appConfirm('Tujuan: '+'Perawatan Kandang · '+barnName(barnId)+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\nDibayar: '+(payload.paid_by==='OWNER'?'Owner':'Kas Perusahaan')+'\n\nSimpan transaksi?'))return;
+    if(!await appConfirm('Tujuan: '+'Perawatan Kandang · '+barnName(barnId)+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\n\nSimpan transaksi?'))return;
     const {error}=editRow?await db.from('barn_maintenance_costs').update(payload).eq('id',editRow.id):await db.from('barn_maintenance_costs').insert(payload);
     if(error)return msg(error.message);
     st.editId='';
@@ -7621,8 +7618,7 @@ async function financeBopGeneralPage(){
       ['GAJI','INSENTIF','BBM','PAJAK','LISTRIK','SERVIS','ATK','KONSUMSI','LANGGANAN','SUMBANGAN','LAINNYA'].map(k=>'<option value="'+k+'" '+(editRow?.category===k?'selected':'')+'>'+bopUmumLabels[k]+'</option>').join('')+
       (editRow&&['TENAGA_KERJA','TRANSPORTASI','PERBAIKAN','ADMINISTRASI'].includes(editRow.category)?'<option value="'+esc(editRow.category)+'" selected>'+esc(bopUmumLabels[editRow.category])+' (lama)</option>':'')+
       '</select></label><p id="bopScopeWarning" role="status" aria-live="polite" class="muted"></p>'+
-      '<label>Dibayar dari<select name="paid_by"><option value="COMPANY" '+(editRow?.paid_by!=='OWNER'?'selected':'')+'>Kas Perusahaan</option><option value="OWNER" '+(editRow?.paid_by==='OWNER'?'selected':'')+'>Uang Pribadi Owner</option></select></label>'+
-      '<p class="muted">Biaya tetap mengurangi laba. Pembayaran langsung owner dicatat terpisah dan tidak mengurangi kas perusahaan.</p>'+
+      '<p class="muted">Transaksi ini mencatat biaya usaha. Sumber uang pembayaran tidak dibedakan di sistem.</p>'+
       '<label>No. Bukti / Referensi<input name="reference" value="'+esc(editRow?.reference||'')+'" placeholder="Nomor nota / transfer / bukti Excel"></label>'+
       '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
       ''+
@@ -7631,7 +7627,7 @@ async function financeBopGeneralPage(){
     '</form></section>'+
     '<section class="panel" id="bopUmumPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Umum</h3></div><div class="report-actions"><button type="button" id="bopUmumPrint">Cetak / PDF</button><button type="button" id="bopUmumPrintExcel">Excel</button></div></div>'+'<label>Jenis laporan<select id="bopGeneralScopeFilter"><option value="">Semua</option><option value="KANTOR" '+(scopeFilter==='KANTOR'?'selected':'')+'>Kantor</option><option value="LUAR_KANTOR" '+(scopeFilter==='LUAR_KANTOR'?'selected':'')+'>Luar Kantor</option></select></label>'+txn.controls+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(x.expense_scope==='KANTOR'?'Kantor':x.expense_scope==='LUAR_KANTOR'?'Luar Kantor':'Belum ditentukan')+'</td><td>'+esc(bopUmumLabels[x.category]||String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
+      txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(x.expense_scope==='KANTOR'?'Kantor':x.expense_scope==='LUAR_KANTOR'?'Luar Kantor':'Belum ditentukan')+'</td><td>'+esc(bopUmumLabels[x.category]||String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
       '</tbody></table></div>'+
       (!txn.total?'<p>Belum ada data.</p>':'')+txn.pager+
     '</section>';
@@ -7664,7 +7660,7 @@ async function financeBopGeneralPage(){
       category:fd.get('category'),
       expense_scope:String(fd.get('expense_scope')||''),
       amount,
-      paid_by:String(fd.get('paid_by')||'COMPANY'),
+      paid_by:'COMPANY',
       reference:String(fd.get('reference')||'').trim()||null,
       notes:String(fd.get('notes')||'').trim()||null
     };
@@ -7673,7 +7669,7 @@ async function financeBopGeneralPage(){
     const warnings=showScopeWarning();
     if(warnings.length&&!await appConfirm('PERINGATAN TUJUAN BIAYA\n\n'+warnings.join('\n')+'\n\nPeriksa jenis, kategori, dan menu tujuan. Tetap simpan sebagai BOP Umum?'))return;
     if(payload.reference&&allRows.some(x=>x.id!==editRow?.id&&String(x.reference||'').trim().toLowerCase()===payload.reference.toLowerCase()))return msg('Nomor bukti sudah tercatat di kamar ini. Periksa transaksi lama; jangan input ulang.');
-    if(!await appConfirm('Tujuan: '+'BOP Umum'+'\nJenis: '+(payload.expense_scope==='KANTOR'?'Kantor':'Luar Kantor')+'\nKategori: '+bopUmumLabels[payload.category]+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\nDibayar: '+(payload.paid_by==='OWNER'?'Owner':'Kas Perusahaan')+'\n\nSimpan transaksi?'))return;
+    if(!await appConfirm('Tujuan: '+'BOP Umum'+'\nJenis: '+(payload.expense_scope==='KANTOR'?'Kantor':'Luar Kantor')+'\nKategori: '+bopUmumLabels[payload.category]+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\n\nSimpan transaksi?'))return;
     const {error}=editRow?await db.from('bop_outside').update(payload).eq('id',editRow.id):await db.from('bop_outside').insert(payload);
     if(error)return msg(error.message);
     editState.editId='';
@@ -9222,15 +9218,12 @@ async function financeMandiriReportPage(){
 
 
 async function financeCashflowPage(){
-  const [xr,bar,assr,cr,cpr,obr,ogr,omr,aar]=await Promise.all([
+  const [xr,bar,assr,cr,cpr,aar]=await Promise.all([
     db.rpc('finance_cashflow_entries_v6'),
     db.from('barns').select('id,code,name'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle(),
-    db.from('bop').select('incurred_on,amount,barn_id,contract_assignment_id').eq('paid_by','OWNER'),
-    db.from('bop_outside').select('incurred_on,amount').eq('paid_by','OWNER'),
-    db.from('barn_maintenance_costs').select('incurred_on,amount,barn_id').eq('paid_by','OWNER'),
     db.from('barn_assets').select('reference').not('reference','is',null)
   ]);
   const assetCashRefs=new Set((aar.data||[]).map(x=>String(x.reference||'').trim()).filter(Boolean));
@@ -9242,7 +9235,7 @@ async function financeCashflowPage(){
     detail:x.detail||'',reference:x.reference||''
   })).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const barns=bar.data||[],assignments=assr.data||[],contractsRows=cr.data||[],company=cpr.data||{};
-  const err=[xr,bar,assr,cr,cpr,obr,ogr,omr,aar].find(x=>x.error)?.error;
+  const err=[xr,bar,assr,cr,cpr,aar].find(x=>x.error)?.error;
   const sourceOptions=[
     'RHPP REAL','BOP PRODUKSI','BOP UMUM','KASBON','CICILAN KASBON','GAJI ABK',
     'BAYAR HUTANG SUPPLIER','PENJUALAN MANDIRI','BAYAR SUPPLIER MANDIRI',
@@ -9259,12 +9252,6 @@ async function financeCashflowPage(){
     (!st.assignment||x.assignment_id===st.assignment)&&
     (!st.source||x.source===st.source)
   ):[];
-  const ownerCosts=[...(obr.data||[]),...(ogr.data||[]),...(omr.data||[])].filter(x=>
-    (!st.from||x.incurred_on>=st.from)&&
-    (!st.to||x.incurred_on<=st.to)&&
-    (!st.barn||x.barn_id===st.barn)&&
-    (!st.assignment||x.contract_assignment_id===st.assignment)
-  ).reduce((n,x)=>n+prodNum(x.amount),0);
   const masuk=visible.filter(x=>x.type==='MASUK').reduce((n,x)=>n+x.amount,0);
   const keluar=visible.filter(x=>x.type==='KELUAR').reduce((n,x)=>n+x.amount,0);
   const saldo=masuk-keluar;
@@ -9306,7 +9293,7 @@ async function financeCashflowPage(){
       '<div class="rhpp-summary-card"><span>Kas Masuk</span><strong>Rp '+prodFmt(masuk,0)+'</strong></div>'+
       '<div class="rhpp-summary-card"><span>Kas Keluar</span><strong>Rp '+prodFmt(keluar,0)+'</strong></div>'+
       '<div class="rhpp-summary-card"><span>Selisih Kas Periode</span><strong>Rp '+prodFmt(saldo,0)+'</strong></div>'+
-      '<div class="rhpp-summary-card"><span>Biaya Dibayar Owner</span><strong>Rp '+prodFmt(ownerCosts,0)+'</strong><small>BOP Produksi, BOP Umum, Perawatan Kandang; di luar kas perusahaan</small></div>'+
+
     '</div>'+
     '<h4>Ringkasan per Kategori</h4>'+
     '<div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Transaksi</th><th>Masuk</th><th>Keluar</th></tr></thead><tbody>'+
