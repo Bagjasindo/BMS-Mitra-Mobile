@@ -20,3 +20,7 @@ Deployment GitHub Pages berhasil. Manifest, index.html, dan sw.js live memakai v
 Tampilan ikon Home Screen perangkat nyata belum diverifikasi.
 Setelah versi baru aktif, hapus aplikasi PWA lama saja, lalu pasang ulang dari situs yang sama. Jangan hapus data situs.
 Periksa Android dan iPhone/iPad: logo harus penuh dan proporsional.
+
+## Desktop
+
+Favicon ICO multiukuran (16–256) dan PNG 32 ditambahkan dari sumber asli; halaman juga menyediakan favicon PNG 192. Screenshot pengguna menunjukkan shortcut Windows huruf B; shortcut yang sudah tersimpan perlu dibuat ulang. Tampilan shortcut Windows baru belum diverifikasi di perangkat pengguna.
