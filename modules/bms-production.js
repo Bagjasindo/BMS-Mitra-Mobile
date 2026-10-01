@@ -1762,20 +1762,16 @@ function productionProcessSnapshot(d,a,recs,samples){
 
 async function productionRecapPage(){
   const d=await productionBase();
-  const [cpr,pr,fr,rr,sr,...feedResponses]=await Promise.all([
+  const [cpr,pr,abr,absr]=await Promise.all([
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('production_ppl_directory'),
-    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,mortality_pct,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type'),
-    db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
-    db.from('recording_weight_samples').select('recording_id,weight_g'),
-    ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
+    db.from('production_abk_results').select('*'),
+    db.from('production_abk_result_sizes').select('*').order('harvest_date',{ascending:true}).order('created_at',{ascending:true})
   ]);
   const company=cpr.data||{};
   const pplRows=pr.data||[];
-  const finals=fr.data||[];
-  const recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
-  const feedByAssignment=new Map();
-  d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
+  const abkResults=d.scopeRows(abr.data||[]);
+  const abkSizes=absr.data||[];
 
   const dateOfAssignment=a=>{
     const ci=d.chicks.find(c=>c.contract_assignment_id===a.id);
@@ -1823,40 +1819,38 @@ async function productionRecapPage(){
     cycleMap.set(a.barn_id,arr);
   });
 
-  const feedFor=a=>(feedByAssignment.get(a.id)||[]).reduce((sum,x)=>{
-    const delivered=prodNum(x.sent_units)+prodNum(x.external_units)-prodNum(x.returned_units);
-    return sum+Math.max(0,delivered)*prodNum(x.kg_per_unit);
-  },0);
-
+  // Rekap Produksi PPL memakai satu sumber yang sama dengan Liga ABK:
+  // pembagian populasi ABK, pakan ABK yang dikunci, dan rincian panen ABK.
   const rows=inRange.map(a=>{
     const ci=d.chicks.find(c=>c.contract_assignment_id===a.id);
     const b=d.barns.find(x=>x.id===a.barn_id);
     const cycles=cycleMap.get(a.barn_id)||[];
-    const final=!a.active?finals.find(f=>f.contract_assignment_id===a.id):null;
+    const links=d.links.filter(l=>l.contract_assignment_id===a.id);
+    const resultRows=abkResults.filter(r=>r.contract_assignment_id===a.id);
+    const resultIds=new Set(resultRows.map(r=>r.id));
+    const sizes=abkSizes.filter(s=>resultIds.has(s.result_id));
 
-    if(final){
-      const chickIn=prodNum(final.chick_in_birds);
-      const chickOut=prodNum(final.total_harvest_birds);
-      const mortPct=Math.max(0,Math.min(100,prodNum(final.mortality_pct)));
-      const mortBirds=chickIn*mortPct/100;
-      const kg=prodNum(final.total_harvest_kg);
-      const avg=prodNum(final.avg_bw_kg);
-      const age=prodNum(final.weighted_age);
-      const feed=prodNum(final.net_feed_kg);
-      const fcr=prodNum(final.fcr_actual);
-      const ip=prodNum(final.ip);
-      return {
-        a,b,ci,ppl:pplName(a.ppl_id),status:'CLOSED',
-        chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,performanceBirds:chickOut,performanceKg:kg,
-        cycle:Math.max(1,cycles.indexOf(a.id)+1)
-      };
-    }
+    const chickIn=links.reduce((sum,l)=>sum+prodNum(l.initial_birds),0);
+    const chickOut=sizes.reduce((sum,s)=>sum+prodNum(s.birds),0);
+    const kg=sizes.reduce((sum,s)=>sum+prodNum(s.weight_kg),0);
+    const feed=links.reduce((sum,l)=>sum+
+      (prodNum(l.feed_pre_bags)+prodNum(l.feed_starter_bags)+prodNum(l.feed_finisher_bags))*50,0);
+    const mortBirds=Math.max(0,chickIn-chickOut);
+    const mortPct=chickIn?Math.min(100,mortBirds/chickIn*100):0;
+    const avg=chickOut?kg/chickOut:0;
+    const ageWeight=ci?sizes.reduce((sum,s)=>sum+prodAge(ci.arrived_on,s.harvest_date)*prodNum(s.birds),0):0;
+    const age=chickOut?ageWeight/chickOut:0;
+    const fcr=kg?feed/kg:0;
+    const survival=chickIn?Math.min(100,chickOut/chickIn*100):0;
+    const ip=age&&fcr&&avg?(survival*avg*100)/(age*fcr):0;
 
-    const live=productionProcessSnapshot(d,a,recs,samples);
     return {
-      a,b,ci,ppl:pplName(a.ppl_id),status:'PROSES',
-      ...live,
-      cycle:Math.max(1,cycles.indexOf(a.id)+1)
+      a,b,ci,ppl:pplName(a.ppl_id),status:a.active?'PROSES':'CLOSED',
+      chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,
+      performanceBirds:chickOut,performanceKg:kg,
+      cycle:Math.max(1,cycles.indexOf(a.id)+1),
+      abkCount:links.length,
+      source:'LIGA_ABK'
     };
   }).sort((x,y)=>String(dateOfAssignment(x.a)).localeCompare(String(dateOfAssignment(y.a))));
 
@@ -1884,7 +1878,7 @@ async function productionRecapPage(){
   ].filter(Boolean).join(' · ');
 
   let html='<section class="panel"><div class="rhpp-section-head"><div><h3>Rekap Produksi PPL</h3>'+
-    '<p class="muted">'+scopeLabel+' · filter tanggal berdasarkan Chick-In. CLOSED memakai deplesi final.</p></div></div>'+
+    '<p class="muted">'+scopeLabel+' · acuan resmi: Liga ABK (populasi ABK, pakan ABK terkunci, dan panen ABK). Filter tanggal berdasarkan Chick-In.</p></div></div>'+
     '<form id="productionRecapFilter" class="form-vertical compact-form">'+
       '<label>Pilih Kandang<select name="barn"><option value="">Semua Kandang</option>'+
         filterBarns.map(b=>'<option value="'+esc(b.id)+'" '+(st.barn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+
@@ -1905,13 +1899,14 @@ async function productionRecapPage(){
     '<div class="rhpp-section-head"><div><h3>REKAP PRODUKSI</h3><p class="muted">'+prodDateId(from)+' s/d '+prodDateId(to)+(filterSummary?' · '+esc(filterSummary):'')+'</p></div>'+
     '<div class="report-actions"><button type="button" id="productionRecapPrint">Cetak</button><button type="button" id="productionRecapPdf">PDF</button><button type="button" id="productionRecapExcel">Excel</button></div></div>'+
     '<div class="tablewrap"><table style="min-width:1450px"><thead><tr>'+
-      '<th>NO</th><th>Kandang / Siklus / Kontrak</th><th>PPL / PIC</th><th>Status</th><th>UMUR</th><th>CHICK IN</th><th>CHICK OUT</th><th>MORT (%)</th><th>TONASE PANEN (Kg)</th><th>Rata2 (Kg)</th><th>PAKAN (Kg)</th><th>FCR</th><th>IP</th>'+
+      '<th>NO</th><th>Kandang / Siklus / Kontrak</th><th>PPL / PIC</th><th>Status</th><th>ABK</th><th>UMUR</th><th>CHICK IN</th><th>CHICK OUT</th><th>MORT (%)</th><th>TONASE PANEN (Kg)</th><th>Rata2 (Kg)</th><th>PAKAN ABK (Kg)</th><th>FCR</th><th>IP</th>'+
     '</tr></thead><tbody>'+
     rows.map((x,i)=>'<tr>'+
       '<td>'+(i+1)+'</td>'+
       '<td>'+esc(assignmentIdentity(d.assignments,d.barns,d.masters,x.a))+'</td>'+
       '<td>'+esc(x.ppl)+'</td>'+
       '<td>'+esc(x.status)+'</td>'+
+      '<td>'+prodFmt(x.abkCount,0)+'</td>'+
       '<td>'+prodFmt(x.age,2)+'</td>'+
       '<td>'+prodFmt(x.chickIn,0)+'</td>'+
       '<td>'+prodFmt(x.chickOut,0)+'</td>'+
@@ -1922,7 +1917,7 @@ async function productionRecapPage(){
       '<td>'+prodFmt(x.fcr,3)+'</td>'+
       '<td>'+prodFmt(x.ip,2)+'</td>'+
     '</tr>').join('')+
-    (rows.length?'<tr><th colspan="4">TOTAL</th>'+
+    (rows.length?'<tr><th colspan="5">TOTAL</th>'+
       '<th>'+prodFmt(totalAge,2)+'</th>'+
       '<th>'+prodFmt(totals.chickIn,0)+'</th>'+
       '<th>'+prodFmt(totals.chickOut,0)+'</th>'+
@@ -1936,8 +1931,7 @@ async function productionRecapPage(){
     '</section></div>';
 
   layout(html);
-  const feedErr=feedResponses.find(x=>x?.error)?.error;
-  if(d.err||cpr.error||pr.error||fr.error||rr.error||sr.error||feedErr)msg((d.err||cpr.error||pr.error||fr.error||rr.error||sr.error||feedErr).message);
+  if(d.err||cpr.error||pr.error||abr.error||absr.error)msg((d.err||cpr.error||pr.error||abr.error||absr.error).message);
 
   const form=document.getElementById('productionRecapFilter');
   if(form){
