@@ -9155,7 +9155,7 @@ async function financeMandiriReportPage(){
 
 
 async function financeCashflowPage(){
-  const [xr,bar,assr,cr,cpr,obr,ogr,omr]=await Promise.all([
+  const [xr,bar,assr,cr,cpr,obr,ogr,omr,aar]=await Promise.all([
     db.rpc('finance_cashflow_entries_v6'),
     db.from('barns').select('id,code,name'),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type'),
@@ -9163,15 +9163,19 @@ async function financeCashflowPage(){
     db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle(),
     db.from('bop').select('incurred_on,amount,barn_id,contract_assignment_id').eq('paid_by','OWNER'),
     db.from('bop_outside').select('incurred_on,amount').eq('paid_by','OWNER'),
-    db.from('barn_maintenance_costs').select('incurred_on,amount,barn_id').eq('paid_by','OWNER')
+    db.from('barn_maintenance_costs').select('incurred_on,amount,barn_id').eq('paid_by','OWNER'),
+    db.from('barn_assets').select('reference').not('reference','is',null)
   ]);
+  const assetCashRefs=new Set((aar.data||[]).map(x=>String(x.reference||'').trim()).filter(Boolean));
   const rows=(xr.data||[]).map(x=>({
-    date:x.txn_date,type:x.txn_type,source:x.source,amount:prodNum(x.amount),
+    date:x.txn_date,type:x.txn_type,
+    source:(x.source==='PERAWATAN KANDANG'&&assetCashRefs.has(String(x.reference||'').trim()))?'BELI ASET':x.source,
+    amount:prodNum(x.amount),
     barn_id:x.barn_id||'',assignment_id:x.contract_assignment_id||'',
     detail:x.detail||'',reference:x.reference||''
   })).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const barns=bar.data||[],assignments=assr.data||[],contractsRows=cr.data||[],company=cpr.data||{};
-  const err=[xr,bar,assr,cr,cpr,obr,ogr,omr].find(x=>x.error)?.error;
+  const err=[xr,bar,assr,cr,cpr,obr,ogr,omr,aar].find(x=>x.error)?.error;
   const sourceOptions=[
     'RHPP REAL','BOP PRODUKSI','BOP UMUM','KASBON','CICILAN KASBON','GAJI ABK',
     'BAYAR HUTANG SUPPLIER','PENJUALAN MANDIRI','BAYAR SUPPLIER MANDIRI',
