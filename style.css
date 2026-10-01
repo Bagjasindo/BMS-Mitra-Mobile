@@ -3235,3 +3235,27 @@ main select.app-select-native{
      Intentionally inherit the same #appSidebar nav button and .nav-sub button rules as Cetak RHPP. */
   width:100%;
 }
+
+
+/* pwa-desktop-layout-20261001 */
+@media (min-width:901px){
+  .shell{
+    display:grid!important;
+    grid-template-columns:270px minmax(0,1fr)!important;
+  }
+  .shell>aside{
+    position:relative!important;
+    width:auto!important;
+    min-width:270px!important;
+    max-width:none!important;
+    transform:none!important;
+  }
+  .shell>main{
+    min-width:0!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-left:18px!important;
+    padding-right:18px!important;
+  }
+}
