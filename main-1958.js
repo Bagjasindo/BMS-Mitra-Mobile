@@ -1011,6 +1011,7 @@ async function printFinanceDocument(sectionIds,heading){
   const reportLogo=/Expedisi/i.test(heading||'')?new URL('./assets/bms_express_logo.jpg',location.href).href:(cp.logo_url||BMS_PRINT_LOGO);
   const body=sections.map(el=>{
     const clone=el.cloneNode(true);
+    sanitizeExportNode(clone);
     clone.querySelectorAll('button,form,.report-actions').forEach(x=>x.remove());
     return clone.innerHTML;
   }).join('<div class="print-gap"></div>');
@@ -3633,6 +3634,27 @@ const financeShortReferenceDisplay=v=>{
   }
   return s;
 };
+const sanitizeExportText=v=>{
+  const original=String(v??'');
+  if(!/(Import\s+Excel|Migrasi\s+data\s+lama|Sumber\s+(?:Excel\s+)?Data\s+Lama|Sumber\s+Excel\s+lama|Import\s+Buku\s+Besar|Buku\s+Besar\s+PT\s+BMS\s+baris|sesuai\s+(?:arahan|instruksi|konfirmasi)|Koreksi\s+sumber|Reklasifikasi)/i.test(original))return original;
+  const cleaned=financeOriginalNoteDisplay(original);
+  return cleaned==='-'?'':cleaned;
+};
+const sanitizeExportHtml=html=>{
+  const t=document.createElement('template');
+  t.innerHTML=String(html??'');
+  const w=document.createTreeWalker(t.content,NodeFilter.SHOW_TEXT);
+  let n;
+  while((n=w.nextNode()))n.nodeValue=sanitizeExportText(n.nodeValue);
+  return t.innerHTML;
+};
+const sanitizeExportNode=node=>{
+  if(!node)return node;
+  const w=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
+  let n;
+  while((n=w.nextNode()))n.nodeValue=sanitizeExportText(n.nodeValue);
+  return node;
+};
 const prodToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const prodAge=(a,b)=>Math.max(1,Math.floor((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000)+1);
 const prodDateAdd=(iso,days)=>{const d=new Date(String(iso).slice(0,10)+'T00:00:00');d.setDate(d.getDate()+Number(days||0));return d.toISOString().slice(0,10)};
@@ -5626,7 +5648,7 @@ async function productionRecapPage(){
   };
   const openPrint=()=>{
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write(exportHtml());w.document.close();
+    w.document.write(sanitizeExportHtml(exportHtml()));w.document.close();
     setTimeout(()=>{w.focus();w.print();},450);
   };
   const printBtn=document.getElementById('productionRecapPrint');
@@ -5892,7 +5914,7 @@ async function pplRhppAbkViewPage(){
     };
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-      w.document.write(docHtml());w.document.close();setTimeout(()=>{w.focus();w.print();},450);
+      w.document.write(sanitizeExportHtml(docHtml()));w.document.close();setTimeout(()=>{w.focus();w.print();},450);
     };
     const pBtn=document.getElementById('pplRhppAbkPrint');
     const pdfBtn=document.getElementById('pplRhppAbkPdf');
@@ -6196,7 +6218,7 @@ async function pplRhppViewPage(){
     };
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-      w.document.write(docHtml());w.document.close();
+      w.document.write(sanitizeExportHtml(docHtml()));w.document.close();
       setTimeout(()=>{w.focus();w.print();},450);
     };
     const pBtn=document.getElementById('pplRhppPrint');
@@ -6205,7 +6227,7 @@ async function pplRhppViewPage(){
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
     if(xBtn)xBtn.onclick=()=>{
-      const blob=new Blob(['\ufeff'+docHtml()],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob(['\ufeff'+sanitizeExportHtml(docHtml())],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xls';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -6583,7 +6605,7 @@ async function adminRhppHistoryPage(){
     };
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-      w.document.write(docHtml());w.document.close();
+      w.document.write(sanitizeExportHtml(docHtml()));w.document.close();
       setTimeout(()=>{w.focus();w.print();},450);
     };
     const pBtn=document.getElementById('pplRhppPrint');
@@ -6592,7 +6614,7 @@ async function adminRhppHistoryPage(){
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
     if(xBtn)xBtn.onclick=()=>{
-      const blob=new Blob(['\ufeff'+docHtml()],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob(['\ufeff'+sanitizeExportHtml(docHtml())],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xls';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -10001,7 +10023,7 @@ async function adminDataArchivePage(){
         '<p>Total tabel: '+tableNames.length+' | Total baris: '+totalRows+'</p>'+
         sections.join('')+'</body></html>';
 
-      const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob([sanitizeExportHtml(html)],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url;a.download=fileName;document.body.appendChild(a);a.click();a.remove();
@@ -10660,7 +10682,7 @@ async function financeRhppPage(){
   };
   const rhppPrintOpen=(pdf=false)=>{
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write(rhppDocHtml(pdf));w.document.close();
+    w.document.write(sanitizeExportHtml(rhppDocHtml(pdf)));w.document.close();
     setTimeout(()=>{w.focus();w.print();},500);
   };
   const printBtn=document.getElementById('rhppPrint');
@@ -11505,7 +11527,7 @@ async function marketingReports(){
   const printOpen=(pdf=false)=>{
     renderRows();
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write(pdf?reportHtml().replace('<title>Laporan Marketing</title>','<title>Laporan_Marketing_PDF</title>'):reportHtml());w.document.close();
+    w.document.write(sanitizeExportHtml(pdf?reportHtml().replace('<title>Laporan Marketing</title>','<title>Laporan_Marketing_PDF</title>'):reportHtml()));w.document.close();
     setTimeout(()=>{w.focus();w.print();},500);
   };
   document.getElementById('marketingPrint').onclick=()=>printOpen(false);
@@ -11513,7 +11535,7 @@ async function marketingReports(){
   document.getElementById('marketingExcel').onclick=()=>{
     renderRows();
     const html=document.getElementById('marketingReportSections').innerHTML+document.getElementById('marketingReportSummary').innerHTML;
-    const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body>'+html+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const blob=new Blob(['\ufeff'+sanitizeExportHtml('<html><head><meta charset="utf-8"></head><body>'+html+'</body></html>')],{type:'application/vnd.ms-excel;charset=utf-8'});
     const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Laporan_Marketing.xls';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
 }
@@ -11949,7 +11971,7 @@ async function logisticsReports(){
     renderRows();
     const w=window.open('','_blank');
     if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write(reportHtml());
+    w.document.write(sanitizeExportHtml(reportHtml()));
     w.document.close();
     printWhenReady(w);
   };
@@ -11958,7 +11980,7 @@ async function logisticsReports(){
     renderRows();
     const w=window.open('','_blank');
     if(!w)return msg('Popup PDF diblokir browser.');
-    w.document.write(reportHtml().replace('<title>Laporan Logistik</title>','<title>Laporan_Logistik_PDF</title>'));
+    w.document.write(sanitizeExportHtml(reportHtml().replace('<title>Laporan Logistik</title>','<title>Laporan_Logistik_PDF</title>')));
     w.document.close();
     printWhenReady(w);
   };
@@ -11966,7 +11988,7 @@ async function logisticsReports(){
   document.getElementById('logisticsExcel').onclick=()=>{
     renderRows();
     const tables=(document.getElementById('logisticsReportSections')?.innerHTML||'')+(document.getElementById('logisticsReportSummary')?.innerHTML||'');
-    const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body>'+tables+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const blob=new Blob(['\ufeff'+sanitizeExportHtml('<html><head><meta charset="utf-8"></head><body>'+tables+'</body></html>')],{type:'application/vnd.ms-excel;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
