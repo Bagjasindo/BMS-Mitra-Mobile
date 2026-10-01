@@ -240,10 +240,11 @@ async function ownerProfitLossPage(){
 
 async function financeRhppPage(){
   window.__financeRhppState=window.__financeRhppState||{assignment:''};
-  const [pr,rr,hr,sr,sir,rtr,rir,ir,esr,esir,errh,erir,tir,cir,cpr]=await Promise.all([
+  const [pr,rr,hr,mr,sr,sir,rtr,rir,ir,esr,esir,errh,erir,tir,cir,cpr]=await Promise.all([
     db.rpc('finance_rhpp_summary_v6'),
     db.from('rhpp_system_final').select('*').order('created_at',{ascending:false}),
     db.from('marketing_contract_harvests').select('*').order('harvested_on',{ascending:true}).order('created_at',{ascending:true}),
+    db.from('marketing_external_meat_purchases').select('*').order('purchase_date',{ascending:true}).order('created_at',{ascending:true}),
     db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date'),
     db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
     db.from('logistics_returns').select('id,contract_assignment_id,return_date'),
@@ -257,9 +258,9 @@ async function financeRhppPage(){
     db.from('chick_ins').select('contract_assignment_id,arrived_on,received,doa'),
     db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email,website').eq('id',true).maybeSingle()
   ]);
-  const rows=pr.data||[],finals=rr.data||[],harvests=hr.data||[],ships=sr.data||[],shipItems=sir.data||[],returns=rtr.data||[],returnItems=rir.data||[],items=ir.data||[];
+  const rows=pr.data||[],finals=rr.data||[],harvests=hr.data||[],meats=mr.data||[],ships=sr.data||[],shipItems=sir.data||[],returns=rtr.data||[],returnItems=rir.data||[],items=ir.data||[];
   const extShips=esr.data||[],extShipItems=esir.data||[],extReturns=errh.data||[],extReturnItems=erir.data||[],transfersIn=tir.data||[],chickIns=cir.data||[],company=cpr.data||{};
-  const err=[pr,rr,hr,sr,sir,rtr,rir,ir,esr,esir,errh,erir,tir,cir,cpr].find(x=>x.error)?.error;
+  const err=[pr,rr,hr,mr,sr,sir,rtr,rir,ir,esr,esir,errh,erir,tir,cir,cpr].find(x=>x.error)?.error;
 
   let html=RHPP_SCREEN_STYLE+'<div class="rhpp-ui"><div class="rhpp-page" id="rhppExportArea"><section class="panel rhpp-panel rhpp-intro"><div class="rhpp-section-head"><div><h3>RHPP Otomatis</h3>'+
     '<p class="muted">RHPP dihitung langsung dari Chick-In, Logistik, Retur, Panen Marketing, Master Performa, dan Bonus Kontrak. BOP kandang tidak masuk RHPP.</p></div></div></section>';
@@ -310,6 +311,7 @@ async function financeRhppPage(){
     const ready=!fin&&!!x.active&&prodNum(x.chick_in_birds)>0&&prodNum(x.total_harvest_birds)>0&&prodNum(x.total_harvest_kg)>0&&prodNum(x.net_feed_kg)>0&&prodNum(x.sapronak_cost)>0;
     const status=fin?'CLOSED · RHPP SISTEM FINAL':ready?'SIAP DICEK & CLOSE':'BELUM SIAP';
     const hs=harvests.filter(h=>h.contract_assignment_id===x.contract_assignment_id);
+    const ms=meats.filter(m=>m.contract_assignment_id===x.contract_assignment_id);
     const ci=chickIns.find(v=>v.contract_assignment_id===x.contract_assignment_id);
     const effectiveDocPrice=prodNum(x.chick_in_birds)>0?prodNum(x.main_doc_cost)/prodNum(x.chick_in_birds):0;
 
