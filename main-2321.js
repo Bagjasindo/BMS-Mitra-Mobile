@@ -281,7 +281,7 @@ const releaseSubmitGuard=(form,feedback=null)=>{
       formId:String(form.id||''),
       ok:!!feedback.ok,
       message:String(feedback.message||''),
-      expires:Date.now()+(feedback.ok?2200:3000)
+      expires:Date.now()+(feedback.ok?4500:4000)
     };
     window.setTimeout(()=>{
       if(!btn.isConnected)return;
@@ -289,7 +289,7 @@ const releaseSubmitGuard=(form,feedback=null)=>{
       submitButtonSet(btn,original);
       delete btn.dataset.bmsOriginalLabel;
       btn.removeAttribute('title');
-    },feedback.ok?1400:2000);
+    },feedback.ok?3000:3000);
   }else if(btn){
     btn.disabled=false;
     submitButtonSet(btn,original);
