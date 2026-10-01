@@ -1,26 +1,38 @@
-const CACHE_NAME='bms-pwa-shell-v6-original-20261001';
+const CACHE_PREFIX='bms-pwa-shell-';
+const CACHE_NAME=CACHE_PREFIX+'v2326-audit';
 const SHELL=[
   './',
   './index.html',
-  './style.css?v=2218-rhpp-exact-cetak',
+  './style.css?v=2325-pwa-desktop',
+  './vendor/supabase-2.57.0.js',
+  './bms-data-config.js?v=2326-audit',
+  './bms-core.js?v=2326-audit',
+  './main-2321.js?v=2326-audit',
+  './modules/bms-master-logistics.js?v=2326-audit',
+  './modules/bms-production.js?v=2326-audit',
+  './modules/bms-finance.js?v=2326-audit',
+  './modules/bms-admin.js?v=2326-audit',
+  './modules/bms-rhpp-users.js?v=2326-audit',
+  './modules/bms-dashboard-reports.js?v=2326-audit',
+  './bms-start.js?v=2326-audit',
   './assets/bms_login_logo.jpg',
   './assets/bms_app_icon_180.png?v=6-original-20261001',
   './assets/bms_app_icon_192.png?v=6-original-20261001',
   './assets/bms_app_icon_512.png?v=6-original-20261001',
   './assets/bms_express_logo.jpg',
-  './manifest.webmanifest'
+  './assets/bms_favicon.ico?v=7-desktop',
+  './manifest.webmanifest?v=6-original-20261001'
 ];
 
 self.addEventListener('install',event=>{
-  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).catch(()=>{})
+    caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())
   );
 });
 
 self.addEventListener('activate',event=>{
   event.waitUntil(
-    caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k))))
+    caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith(CACHE_PREFIX)&&k!==CACHE_NAME).map(k=>caches.delete(k))))
       .then(()=>self.clients.claim())
   );
 });
@@ -29,14 +41,17 @@ self.addEventListener('fetch',event=>{
   const req=event.request;
   if(req.method!=='GET')return;
   const url=new URL(req.url);
+  // Never cache API responses or another application's resources.
+  if(url.origin!==self.location.origin||!url.pathname.startsWith(new URL(self.registration.scope).pathname))return;
 
   if(req.mode==='navigate'){
     event.respondWith(
       fetch(req,{cache:'no-store'}).then(res=>{
+        if(!res.ok)return res;
         const copy=res.clone();
         caches.open(CACHE_NAME).then(c=>c.put('./index.html',copy)).catch(()=>{});
         return res;
-      }).catch(()=>caches.match('./index.html'))
+      }).catch(async()=>await caches.match('./index.html')||new Response('Aplikasi belum tersedia. Sambungkan internet lalu muat ulang.',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}}))
     );
     return;
   }
@@ -48,17 +63,18 @@ self.addEventListener('fetch',event=>{
   )){
     event.respondWith(
       fetch(req,{cache:'no-store'}).then(res=>{
+        if(!res.ok)return res;
         const copy=res.clone();
         caches.open(CACHE_NAME).then(c=>c.put(req,copy)).catch(()=>{});
         return res;
-      }).catch(()=>caches.match(req))
+      }).catch(async()=>await caches.match(req)||new Response('Komponen belum tersedia.',{status:503}))
     );
     return;
   }
 
   event.respondWith(
     caches.match(req).then(hit=>hit||fetch(req).then(res=>{
-      if(url.origin===self.location.origin){
+      if(res.ok&&url.origin===self.location.origin){
         const copy=res.clone();
         caches.open(CACHE_NAME).then(c=>c.put(req,copy)).catch(()=>{});
       }

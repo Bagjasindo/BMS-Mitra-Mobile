@@ -1,0 +1,13 @@
+{
+  "name": "bms-mitra-mobile",
+  "version": "1.0.2326",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/check-syntax.cjs && node --test tests/*.test.cjs",
+    "test:browser": "node tests/browser.cjs"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "2.57.0",
+    "jsdom": "30.1.1"
+  }
+}

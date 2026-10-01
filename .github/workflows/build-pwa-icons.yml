@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'assets/bms_app_icon_source.ico'
+      - 'assets/bms_app_icon_source.png'
       - '.github/workflows/build-pwa-icons.yml'
 
 permissions:
@@ -18,12 +18,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install --quiet pillow
+      - run: python -m pip install --quiet pillow==11.3.0
       - name: Build PNG icons from supplied BMS icon
         run: |
           python - <<'PY'
           from PIL import Image
-          src=Image.open('assets/bms_app_icon_source.ico').convert('RGBA')
+          src=Image.open('assets/bms_app_icon_source.png').convert('RGBA')
           for size in (180,192,512):
               img=src.resize((size,size), Image.Resampling.LANCZOS)
               img.save(f'assets/bms_app_icon_{size}.png', optimize=True)

@@ -1,0 +1,11 @@
+node_modules/
+audit-*.json
+repair/
+tests/output/
+vendor/*.tgz
+
+__pycache__/
+*.pyc
+*.bmsbackup
+protected-recovery.json
+protected-restore.sql

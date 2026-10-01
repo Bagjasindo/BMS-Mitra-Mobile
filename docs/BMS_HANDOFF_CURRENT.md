@@ -1,3 +1,15 @@
+# Pembaruan 2026-10-01 — audit repair build 2326
+
+Perbaikan keamanan, pembayaran, idempotensi, audit, arsip, tanggal, XLSX, PWA dan modularisasi telah diterapkan. Entry klien sekarang `main-2321.js` dengan `bms-core.js`, `bms-data-config.js`, tujuh script aplikasi (entry + enam modul), dan `bms-start.js`; cache `bms-pwa-shell-2326-audit`. SDK lokal Supabase 2.57.0. `npm ci && npm run check` untuk syntax dan 8 uji.
+
+Schema aktif: `supabase/schema_current.sql`. Pemulihan: `docs/BMS_RECOVERY_RUNBOOK.md`. Patch `audit_*.sql` sudah diterapkan ke database aktif. Tampilan dan logo resmi dipertahankan.
+
+A12 belum PASS: leaked-password protection bawaan Supabase membutuhkan Pro, proyek masih Free. Belum mengaktifkan upgrade berbayar. Jangan menyatakan PASS 100%. Uji browser mencakup shell/login tanpa akun, konfirmasi, guard dan offline shell; pengujian role/data dilakukan melalui SQL terisolasi, bukan login nyata setiap pengguna.
+
+---
+
+## Catatan historis sebelum audit
+
 # BMS CURRENT STATE — 2026-10-01
 
 ## SUMBER KEBENARAN
