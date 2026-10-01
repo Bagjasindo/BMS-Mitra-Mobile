@@ -7971,7 +7971,7 @@ async function financeExpeditionBusinessPage(){
 
   html+='<section class="panel" id="fxInvoiceReport"><div class="rhpp-section-head"><div><h3>Invoice & Piutang Expedisi</h3></div><div class="report-actions"><button type="button" id="fxReportPrint">Cetak / PDF</button><button type="button" id="fxReportPrintExcel">Excel</button></div></div>'+
     '<div class="tablewrap"><table><thead><tr><th>No Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Piutang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
-      summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+prodDateId(x.invoice_date)+'</td><td>'+(x.due_date?prodDateId(x.due_date):'-')+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td><td><div class="inline-actions"><button type="button" data-fx-print="'+esc(x.invoice_id)+'">Cetak Invoice</button>'+(canOps?'<button type="button" data-edit-exp-invoice="'+esc(x.invoice_id)+'">Koreksi</button>':'')+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-exp-invoice="'+esc(x.invoice_id)+'">Hapus</button>':'')+'</div></td></tr>').join('')+
+      summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+prodDateId(x.invoice_date)+'</td><td>'+(x.due_date?prodDateId(x.due_date):'-')+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td><td><div class="inline-actions"><button type="button" data-fx-print="'+esc(x.invoice_id)+'">Cetak Invoice</button><button type="button" data-fx-excel="'+esc(x.invoice_id)+'">Excel</button>'+(canOps?'<button type="button" data-edit-exp-invoice="'+esc(x.invoice_id)+'">Koreksi</button>':'')+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-exp-invoice="'+esc(x.invoice_id)+'">Hapus</button>':'')+'</div></td></tr>').join('')+
     '</tbody></table></div>'+(summaries.length?'':'<p class="muted">Belum ada invoice Expedisi.</p>')+'</section>';
 
 
@@ -8154,6 +8154,26 @@ async function financeExpeditionBusinessPage(){
     if(error)return msg(error.message);
     window.__fxInvoiceEdit='';await financeExpeditionBusinessPage();msg('Koreksi Invoice Expedisi berhasil disimpan.',true);
   };
+
+  document.querySelectorAll('[data-fx-excel]').forEach(btn=>btn.onclick=()=>{
+    const id=btn.dataset.fxExcel,i=invoices.find(x=>x.id===id),its=invoiceTrips(id),x=sumFor(id);if(!i)return;
+    const rows=its.map((t,idx)=>{
+      const ds=detailsForTrip(t.id);
+      const dest=ds.length?ds.map(v=>v.destination_name).join(' / '):(t.destination||'-');
+      const cargo=ds.length?ds.map(v=>[v.cargo,prodNum(v.qty)?prodFmt(v.qty,Number.isInteger(prodNum(v.qty))?0:2):'',v.unit||''].filter(Boolean).join(' ')).join(' / '):(t.cargo||'-');
+      return '<tr><td>'+(idx+1)+'</td><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.rr||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td>'+esc(dest)+'</td><td>'+esc(cargo)+'</td><td>'+prodFmt(totalQtyFor(t),Number.isInteger(totalQtyFor(t))?0:2)+'</td><td>'+prodNum(t.trip_price)+'</td><td>'+prodNum(t.additional)+'</td><td>'+prodNum(t.deduction)+'</td><td>'+tripTotal(t)+'</td></tr>';
+    }).join('');
+    const html='<!doctype html><html><head><meta charset="utf-8"></head><body>'+
+      '<h2>'+esc(company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
+      '<h3>Invoice '+esc(i.invoice_number)+'</h3>'+
+      '<p>Tanggal: '+prodDateId(i.invoice_date)+' | Jatuh Tempo: '+(i.due_date?prodDateId(i.due_date):'-')+' | Pelanggan: '+esc(i.customer_name)+'</p>'+
+      '<table border="1"><thead><tr><th>No</th><th>Tanggal</th><th>MTS/SJ</th><th>RR</th><th>Sopir</th><th>Truk</th><th>Zona</th><th>Tujuan</th><th>Jenis Pakan / Qty</th><th>Total Qty</th><th>Harga Trip</th><th>Tambahan</th><th>Potongan</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<p><strong>Total Invoice: '+prodNum(x?.invoice_total||0)+'</strong></p></body></html>';
+    const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=(String(i.invoice_number||'Invoice').replace(/[^a-z0-9_-]+/gi,'_'))+'.xls';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
 
   document.querySelectorAll('[data-fx-print]').forEach(btn=>btn.onclick=()=>{
     const id=btn.dataset.fxPrint,i=invoices.find(x=>x.id===id),its=invoiceTrips(id),x=sumFor(id);if(!i)return;
