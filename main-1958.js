@@ -1011,7 +1011,6 @@ async function printFinanceDocument(sectionIds,heading){
   const reportLogo=/Expedisi/i.test(heading||'')?new URL('./assets/bms_express_logo.jpg',location.href).href:(cp.logo_url||BMS_PRINT_LOGO);
   const body=sections.map(el=>{
     const clone=el.cloneNode(true);
-    sanitizeExportNode(clone);
     clone.querySelectorAll('button,form,.report-actions').forEach(x=>x.remove());
     return clone.innerHTML;
   }).join('<div class="print-gap"></div>');
@@ -1044,6 +1043,32 @@ async function printFinanceDocument(sectionIds,heading){
   const print=()=>{if(!printed&&!w.closed){printed=true;w.focus();w.print();}};
   if(logo&&!logo.complete){logo.onload=print;logo.onerror=print;setTimeout(print,1500);}
   else setTimeout(print,100);
+}
+
+
+async function exportFinanceDocumentExcel(sectionIds,heading){
+  const ids=Array.isArray(sectionIds)?sectionIds:[sectionIds];
+  const sections=ids.map(id=>document.getElementById(id)).filter(Boolean);
+  if(!sections.length)return msg('Bagian yang akan diexport belum tersedia.');
+  const {data:company,error}=await db.from('company_profile').select('*').eq('id',true).maybeSingle();
+  if(error)return msg(error.message);
+  const cp=company||{};
+  const body=sections.map(el=>{
+    const clone=el.cloneNode(true);
+    clone.querySelectorAll('button,form,.report-actions,.inline-actions').forEach(x=>x.remove());
+    return clone.innerHTML;
+  }).join('<br>');
+  const title=String(heading||'Laporan').trim();
+  const html='<!doctype html><html><head><meta charset="utf-8"></head><body>'+
+    '<h2>'+esc(cp.company_name||cp.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
+    '<h3>'+esc(title)+'</h3>'+body+'</body></html>';
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=(title.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'')||'Laporan')+'.xls';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 async function companyProfilePage(){
@@ -3634,27 +3659,6 @@ const financeShortReferenceDisplay=v=>{
   }
   return s;
 };
-const sanitizeExportText=v=>{
-  const original=String(v??'');
-  if(!/(Import\s+Excel|Migrasi\s+data\s+lama|Sumber\s+(?:Excel\s+)?Data\s+Lama|Sumber\s+Excel\s+lama|Import\s+Buku\s+Besar|Buku\s+Besar\s+PT\s+BMS\s+baris|sesuai\s+(?:arahan|instruksi|konfirmasi)|Koreksi\s+sumber|Reklasifikasi)/i.test(original))return original;
-  const cleaned=financeOriginalNoteDisplay(original);
-  return cleaned==='-'?'':cleaned;
-};
-const sanitizeExportHtml=html=>{
-  const t=document.createElement('template');
-  t.innerHTML=String(html??'');
-  const w=document.createTreeWalker(t.content,NodeFilter.SHOW_TEXT);
-  let n;
-  while((n=w.nextNode()))n.nodeValue=sanitizeExportText(n.nodeValue);
-  return t.innerHTML;
-};
-const sanitizeExportNode=node=>{
-  if(!node)return node;
-  const w=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
-  let n;
-  while((n=w.nextNode()))n.nodeValue=sanitizeExportText(n.nodeValue);
-  return node;
-};
 const prodToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const prodAge=(a,b)=>Math.max(1,Math.floor((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000)+1);
 const prodDateAdd=(iso,days)=>{const d=new Date(String(iso).slice(0,10)+'T00:00:00');d.setDate(d.getDate()+Number(days||0));return d.toISOString().slice(0,10)};
@@ -5648,7 +5652,7 @@ async function productionRecapPage(){
   };
   const openPrint=()=>{
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write(sanitizeExportHtml(exportHtml()));w.document.close();
+    w.document.write(exportHtml());w.document.close();
     setTimeout(()=>{w.focus();w.print();},450);
   };
   const printBtn=document.getElementById('productionRecapPrint');
@@ -5914,7 +5918,7 @@ async function pplRhppAbkViewPage(){
     };
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-      w.document.write(sanitizeExportHtml(docHtml()));w.document.close();setTimeout(()=>{w.focus();w.print();},450);
+      w.document.write(docHtml());w.document.close();setTimeout(()=>{w.focus();w.print();},450);
     };
     const pBtn=document.getElementById('pplRhppAbkPrint');
     const pdfBtn=document.getElementById('pplRhppAbkPdf');
@@ -6218,7 +6222,7 @@ async function pplRhppViewPage(){
     };
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-      w.document.write(sanitizeExportHtml(docHtml()));w.document.close();
+      w.document.write(docHtml());w.document.close();
       setTimeout(()=>{w.focus();w.print();},450);
     };
     const pBtn=document.getElementById('pplRhppPrint');
@@ -6227,7 +6231,7 @@ async function pplRhppViewPage(){
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
     if(xBtn)xBtn.onclick=()=>{
-      const blob=new Blob(['\ufeff'+sanitizeExportHtml(docHtml())],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob(['\ufeff'+docHtml()],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xls';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -6605,7 +6609,7 @@ async function adminRhppHistoryPage(){
     };
     const openPrint=()=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-      w.document.write(sanitizeExportHtml(docHtml()));w.document.close();
+      w.document.write(docHtml());w.document.close();
       setTimeout(()=>{w.focus();w.print();},450);
     };
     const pBtn=document.getElementById('pplRhppPrint');
@@ -6614,7 +6618,7 @@ async function adminRhppHistoryPage(){
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
     if(xBtn)xBtn.onclick=()=>{
-      const blob=new Blob(['\ufeff'+sanitizeExportHtml(docHtml())],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob(['\ufeff'+docHtml()],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xls';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -6690,7 +6694,7 @@ async function financeBopPage(){
       (profile?.role==='ADMIN'?'<div class="report-actions"><button type="button" id="bopAccessOpen">Buka Pencatatan BOP</button><button type="button" id="bopAccessLock">Kunci Pencatatan BOP</button></div>':'')+
       '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan')+'</button>'+(editRow?'<button type="button" id="bopEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
-    '<section class="panel" id="bopKandangPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Produksi</h3></div><div class="report-actions"><button type="button" id="bopKandangPrint">Cetak / PDF</button></div></div>'+
+    '<section class="panel" id="bopKandangPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Produksi</h3></div><div class="report-actions"><button type="button" id="bopKandangPrint">Cetak / PDF</button><button type="button" id="bopKandangPrintExcel">Excel</button></div></div>'+
       '<form id="bopKandangFilter" class="form-vertical">'+
         '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.filterBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
         '<label>Siklus<select name="assignment" '+(!st.filterBarn?'disabled':'')+'><option value="">Semua Siklus</option>'+
@@ -6787,7 +6791,7 @@ async function financeBopPage(){
       await financeBopPage();
     };
   }
-  const bopPrint=document.getElementById('bopKandangPrint');if(bopPrint)bopPrint.onclick=()=>printFinanceDocument('bopKandangPrintArea','Laporan BOP Produksi');
+  const bopPrint=document.getElementById('bopKandangPrint');if(bopPrint)bopPrint.onclick=()=>printFinanceDocument('bopKandangPrintArea','Laporan BOP Produksi');const bopExcel=document.getElementById('bopKandangPrintExcel');if(bopExcel)bopExcel.onclick=()=>exportFinanceDocumentExcel('bopKandangPrintArea','Laporan BOP Produksi');
   const reset=document.getElementById('bopKandangReset');
   if(reset)reset.onclick=async()=>{
     st.filterBarn='';st.filterAssignment='';st.from='';st.to='';st.shown=false;
@@ -6828,7 +6832,7 @@ async function financeMaintenancePage(){
       '<label>Catatan<textarea name="notes" placeholder="Contoh: ganti dinamo blower">'+esc(editRow?.notes||'')+'</textarea></label>'+
       '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan Perawatan')+'</button>'+(editRow?'<button type="button" id="maintenanceEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
-    '<section class="panel" id="maintenancePrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Perawatan Kandang</h3></div><div class="report-actions"><button type="button" id="maintenancePrint">Cetak / PDF</button></div></div>'+
+    '<section class="panel" id="maintenancePrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Perawatan Kandang</h3></div><div class="report-actions"><button type="button" id="maintenancePrint">Cetak / PDF</button><button type="button" id="maintenancePrintExcel">Excel</button></div></div>'+
       '<form id="maintenanceFilter" class="form-vertical">'+
         '<label>Kandang<select name="barn"><option value="">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(st.filterBarn===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
         '<label>Tanggal Dari<input name="from" type="date" value="'+esc(st.from||'')+'"></label>'+
@@ -6884,7 +6888,7 @@ async function financeMaintenancePage(){
     await financeMaintenancePage();
   };
   const print=document.getElementById('maintenancePrint');
-  if(print)print.onclick=()=>printFinanceDocument('maintenancePrintArea','Laporan Perawatan Kandang');
+  if(print)print.onclick=()=>printFinanceDocument('maintenancePrintArea','Laporan Perawatan Kandang');const maintenanceExcel=document.getElementById('maintenancePrintExcel');if(maintenanceExcel)maintenanceExcel.onclick=()=>exportFinanceDocumentExcel('maintenancePrintArea','Laporan Perawatan Kandang');
 }
 
 async function logisticsEquipmentPurchasePage(){
@@ -7434,7 +7438,7 @@ async function financeSupplierPayablesPage(){
       '<label>Supplier<select name="supplier"><option value="">Semua Supplier</option>'+suppliers.map(x=>'<option value="'+esc(x.id)+'" '+(st.supplier===x.id?'selected':'')+'>'+esc((x.code||'')+' · '+x.name)+'</option>').join('')+'</select></label>'+
       '<label>Status<select name="status"><option value="OPEN" '+(st.status==='OPEN'?'selected':'')+'>Belum Lunas + Sebagian</option><option value="BELUM_LUNAS" '+(st.status==='BELUM_LUNAS'?'selected':'')+'>Belum Lunas</option><option value="SEBAGIAN" '+(st.status==='SEBAGIAN'?'selected':'')+'>Sebagian</option><option value="LUNAS" '+(st.status==='LUNAS'?'selected':'')+'>Lunas</option><option value="ALL" '+(st.status==='ALL'?'selected':'')+'>Semua</option></select></label>'+
       '<button type="submit">Tampilkan</button></form></section>'+
-    '<section class="panel" id="supplierPayablePrintArea"><div class="rhpp-section-head"><div><h3>Daftar Hutang Supplier</h3></div><div class="report-actions"><button type="button" id="supplierPayablePrint">Cetak / PDF</button></div></div>'+
+    '<section class="panel" id="supplierPayablePrintArea"><div class="rhpp-section-head"><div><h3>Daftar Hutang Supplier</h3></div><div class="report-actions"><button type="button" id="supplierPayablePrint">Cetak / PDF</button><button type="button" id="supplierPayablePrintExcel">Excel</button></div></div>'+
       '<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Tagihan</span><strong>Rp '+prodFmt(totalTagihan,0)+'</strong></div><div class="rhpp-summary-card"><span>Sudah Dibayar</span><strong>Rp '+prodFmt(totalBayar,0)+'</strong></div><div class="rhpp-summary-card"><span>Sisa Hutang</span><strong>Rp '+prodFmt(totalSisa,0)+'</strong></div></div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Sumber</th><th>Kandang / Siklus</th><th>Referensi</th><th>Tagihan</th><th>Dibayar</th><th>Sisa</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
       visible.map(x=>'<tr><td>'+prodDateId(x.transaction_date)+'</td><td>'+esc((x.supplier_code||'')+' · '+x.supplier_name)+'</td><td>'+esc(sourceLabel(x.source_type))+'</td><td>'+esc(payableLocation(x))+'</td><td>'+esc(x.reference||'-')+'</td><td>Rp '+prodFmt(x.total_amount,0)+'</td><td>Rp '+prodFmt(x.paid_amount,0)+'</td><td><strong>Rp '+prodFmt(x.balance,0)+'</strong></td><td><strong>'+esc(String(x.status||'').replaceAll('_',' '))+'</strong></td><td>'+(x.status!=='LUNAS'?'<button type="button" data-pay-supplier="'+esc(x.source_type+':'+x.source_id)+'">Bayar</button>':'-')+'</td></tr>').join('')+
@@ -7478,7 +7482,7 @@ async function financeSupplierPayablesPage(){
   root.querySelectorAll('[data-edit-supplier-payment]').forEach(btn=>btn.onclick=async()=>{st.editPaymentId=btn.dataset.editSupplierPayment||'';const p=payments.find(x=>x.id===st.editPaymentId);if(p)st.selected=p.source_type+':'+p.source_id;await financeSupplierPayablesPage();document.getElementById('supplierPaymentForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
   const cancel=document.getElementById('supplierPaymentCancel');if(cancel)cancel.onclick=async()=>{st.selected='';st.editPaymentId='';await financeSupplierPayablesPage();};
   bindAdminTransactionDeletes(()=>{st.editPaymentId='';return financeSupplierPayablesPage();});
-  const print=document.getElementById('supplierPayablePrint');if(print)print.onclick=()=>printFinanceDocument('supplierPayablePrintArea','Laporan Hutang Supplier');
+  const print=document.getElementById('supplierPayablePrint');if(print)print.onclick=()=>printFinanceDocument('supplierPayablePrintArea','Laporan Hutang Supplier');const supplierExcel=document.getElementById('supplierPayablePrintExcel');if(supplierExcel)supplierExcel.onclick=()=>exportFinanceDocumentExcel('supplierPayablePrintArea','Laporan Hutang Supplier');
   const form=document.getElementById('supplierPaymentForm');
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
@@ -7556,7 +7560,7 @@ async function financeBopGeneralPage(){
       '<label>Rincian transaksi<textarea name="notes" placeholder="Contoh: gaji Juli 2026 / bensin Om Burhan / kopi kantor" required>'+esc(editRow?.notes||'')+'</textarea></label>'+
       '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan')+'</button>'+(editRow?'<button type="button" id="bopOutsideEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
-    '<section class="panel" id="bopUmumPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Umum</h3></div><div class="report-actions"><button type="button" id="bopUmumPrint">Cetak / PDF</button></div></div>'+'<label>Jenis laporan<select id="bopGeneralScopeFilter"><option value="">Semua</option><option value="KANTOR" '+(scopeFilter==='KANTOR'?'selected':'')+'>Kantor</option><option value="LUAR_KANTOR" '+(scopeFilter==='LUAR_KANTOR'?'selected':'')+'>Luar Kantor</option></select></label>'+txn.controls+
+    '<section class="panel" id="bopUmumPrintArea"><div class="rhpp-section-head"><div><h3>Data BOP Umum</h3></div><div class="report-actions"><button type="button" id="bopUmumPrint">Cetak / PDF</button><button type="button" id="bopUmumPrintExcel">Excel</button></div></div>'+'<label>Jenis laporan<select id="bopGeneralScopeFilter"><option value="">Semua</option><option value="KANTOR" '+(scopeFilter==='KANTOR'?'selected':'')+'>Kantor</option><option value="LUAR_KANTOR" '+(scopeFilter==='LUAR_KANTOR'?'selected':'')+'>Luar Kantor</option></select></label>'+txn.controls+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
       txn.rows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(x.expense_scope==='KANTOR'?'Kantor':x.expense_scope==='LUAR_KANTOR'?'Luar Kantor':'Belum ditentukan')+'</td><td>'+esc(bopUmumLabels[x.category]||String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+(x.paid_by==='OWNER'?'<br><small>Dibayar Owner</small>':'')+'</td><td><div class="inline-actions"><button type="button" data-edit-bop-outside="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop_outside',x.id)+'</div></td></tr>').join('')+
       '</tbody></table></div>'+
@@ -7566,7 +7570,7 @@ async function financeBopGeneralPage(){
   layout(html);
   bindNumberInputs();
   document.getElementById('bopGeneralScopeFilter').onchange=async ev=>{editState.scopeFilter=ev.target.value;await financeBopGeneralPage();};
-  bindTxnList(txn,()=>financeBopGeneralPage());const bopUmumPrint=document.getElementById('bopUmumPrint');if(bopUmumPrint)bopUmumPrint.onclick=()=>printFinanceDocument('bopUmumPrintArea','Laporan BOP Umum');
+  bindTxnList(txn,()=>financeBopGeneralPage());const bopUmumPrint=document.getElementById('bopUmumPrint');if(bopUmumPrint)bopUmumPrint.onclick=()=>printFinanceDocument('bopUmumPrintArea','Laporan BOP Umum');const bopUmumExcel=document.getElementById('bopUmumPrintExcel');if(bopUmumExcel)bopUmumExcel.onclick=()=>exportFinanceDocumentExcel('bopUmumPrintArea','Laporan BOP Umum');
   if(error)msg(error.message);
 
   root.querySelectorAll('[data-edit-bop-outside]').forEach(btn=>btn.onclick=async()=>{editState.editId=btn.dataset.editBopOutside||'';await financeBopGeneralPage();document.getElementById('bopOutsideForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
@@ -7965,7 +7969,7 @@ async function financeExpeditionBusinessPage(){
       '</form></section>';
   }
 
-  html+='<section class="panel" id="fxInvoiceReport"><div class="rhpp-section-head"><div><h3>Invoice & Piutang Expedisi</h3></div><div class="report-actions"><button type="button" id="fxReportPrint">Cetak / PDF</button></div></div>'+
+  html+='<section class="panel" id="fxInvoiceReport"><div class="rhpp-section-head"><div><h3>Invoice & Piutang Expedisi</h3></div><div class="report-actions"><button type="button" id="fxReportPrint">Cetak / PDF</button><button type="button" id="fxReportPrintExcel">Excel</button></div></div>'+
     '<div class="tablewrap"><table><thead><tr><th>No Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Piutang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
       summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+prodDateId(x.invoice_date)+'</td><td>'+(x.due_date?prodDateId(x.due_date):'-')+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td><td><div class="inline-actions"><button type="button" data-fx-print="'+esc(x.invoice_id)+'">Cetak Invoice</button>'+(canOps?'<button type="button" data-edit-exp-invoice="'+esc(x.invoice_id)+'">Koreksi</button>':'')+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-exp-invoice="'+esc(x.invoice_id)+'">Hapus</button>':'')+'</div></td></tr>').join('')+
     '</tbody></table></div>'+(summaries.length?'':'<p class="muted">Belum ada invoice Expedisi.</p>')+'</section>';
@@ -7973,7 +7977,7 @@ async function financeExpeditionBusinessPage(){
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
-  const reportPrint=document.getElementById('fxReportPrint');if(reportPrint)reportPrint.onclick=()=>printFinanceDocument('fxInvoiceReport','Laporan Invoice dan Piutang Expedisi');
+  const reportPrint=document.getElementById('fxReportPrint');if(reportPrint)reportPrint.onclick=()=>printFinanceDocument('fxInvoiceReport','Laporan Invoice dan Piutang Expedisi');const fxReportExcel=document.getElementById('fxReportPrintExcel');if(fxReportExcel)fxReportExcel.onclick=()=>exportFinanceDocumentExcel('fxInvoiceReport','Laporan Invoice dan Piutang Expedisi');
 
   const tf=document.getElementById('fxTripForm');
   const routeSel=document.getElementById('fxRouteSelect');
@@ -8436,7 +8440,7 @@ async function financeExpeditionProfitLossPage(){
       '</tbody></table></div>'+(rows.length?'':'<p class="muted">Tidak ada transaksi kas pada filter ini.</p>');
   }
 
-  let html='<section class="panel"><div class="rhpp-section-head"><div><h3>Laporan Expedisi</h3><p class="muted">Pusat pemeriksaan Expedisi. Input tetap dilakukan dari menu operasional masing-masing.</p></div><div class="report-actions"><button type="button" id="fxReportCenterPrint">Cetak / PDF</button></div></div>'+
+  let html='<section class="panel"><div class="rhpp-section-head"><div><h3>Laporan Expedisi</h3><p class="muted">Pusat pemeriksaan Expedisi. Input tetap dilakukan dari menu operasional masing-masing.</p></div><div class="report-actions"><button type="button" id="fxReportCenterPrint">Cetak / PDF</button><button type="button" id="fxReportCenterPrintExcel">Excel</button></div></div>'+
     '<div class="form-vertical compact-form">'+
       '<label>Pilih Laporan<select id="fxReportView">'+views.map(v=>'<option value="'+v[0]+'" '+(st.view===v[0]?'selected':'')+'>'+v[1]+'</option>').join('')+'</select></label>'+
       '<label>Tanggal Dari<input id="fxReportFrom" type="date" value="'+esc(st.from||'')+'"></label>'+
@@ -8464,7 +8468,7 @@ async function financeExpeditionProfitLossPage(){
   };
   const reset=document.getElementById('fxReportReset');
   if(reset)reset.onclick=async()=>{window.__fxReportState={view:st.view,from:'',to:'',customer:'',vehicle:'',route:'',status:''};await financeExpeditionProfitLossPage();};
-  const p=document.getElementById('fxReportCenterPrint');if(p)p.onclick=()=>printFinanceDocument('fxReportCenterPrintArea','Laporan Expedisi - '+(views.find(v=>v[0]===st.view)?.[1]||'Ringkasan'));
+  const p=document.getElementById('fxReportCenterPrint');if(p)p.onclick=()=>printFinanceDocument('fxReportCenterPrintArea','Laporan Expedisi - '+(views.find(v=>v[0]===st.view)?.[1]||'Ringkasan'));const fxCenterExcel=document.getElementById('fxReportCenterPrintExcel');if(fxCenterExcel)fxCenterExcel.onclick=()=>exportFinanceDocumentExcel('fxReportCenterPrintArea','Laporan Expedisi - '+(views.find(v=>v[0]===st.view)?.[1]||'Ringkasan'));
 }
 
 async function financeExpeditionBopPage(){
@@ -8593,7 +8597,7 @@ async function financeAdvancePage(){
       '<div class="report-actions"><button type="submit">'+(editRow?'Simpan Perubahan':'Simpan Kasbon')+'</button>'+(editRow?'<button type="button" id="advanceEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="advancePrintArea">'+
-      '<div class="rhpp-section-head"><div><h3>Rincian Kasbon</h3><p class="muted">Kasbon · Sudah Bayar · Sisa Kasbon.</p></div><div class="report-actions"><button type="button" id="advancePrint">Cetak / PDF</button></div></div>'+
+      '<div class="rhpp-section-head"><div><h3>Rincian Kasbon</h3><p class="muted">Kasbon · Sudah Bayar · Sisa Kasbon.</p></div><div class="report-actions"><button type="button" id="advancePrint">Cetak / PDF</button><button type="button" id="advancePrintExcel">Excel</button></div></div>'+
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>Total Kasbon</span><strong>Rp '+prodFmt(totalKasbon,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Total Bayar</span><strong>Rp '+prodFmt(totalBayar,0)+'</strong></div>'+
@@ -8606,7 +8610,7 @@ async function financeAdvancePage(){
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
   const advancePrint=document.getElementById('advancePrint');
-  if(advancePrint)advancePrint.onclick=()=>printFinanceDocument('advancePrintArea','Rincian Kasbon Karyawan dan ABK');
+  if(advancePrint)advancePrint.onclick=()=>printFinanceDocument('advancePrintArea','Rincian Kasbon Karyawan dan ABK');const advanceExcel=document.getElementById('advancePrintExcel');if(advanceExcel)advanceExcel.onclick=()=>exportFinanceDocumentExcel('advancePrintArea','Rincian Kasbon Karyawan dan ABK');
 
   root.querySelectorAll('[data-edit-advance]').forEach(btn=>btn.onclick=async()=>{window.__financeAdvanceEdit=btn.dataset.editAdvance||'';await financeAdvancePage();document.getElementById('financeAdvanceForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
   const cancelEdit=document.getElementById('advanceEditCancel');if(cancelEdit)cancelEdit.onclick=async()=>{window.__financeAdvanceEdit='';await financeAdvancePage();};
@@ -8667,7 +8671,7 @@ async function financeAdvancePaymentPage(){
       '<div class="report-actions"><button type="submit" '+(!editPayment&&!employeeOpen.length?'disabled':'')+'>'+(editPayment?'Simpan Perubahan':'Simpan Pembayaran')+'</button>'+(editPayment?'<button type="button" id="advancePaymentEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="advancePaymentPrintArea">'+
-      '<div class="rhpp-section-head"><div><h3>Rincian Bayar Kasbon</h3></div><div class="report-actions"><button type="button" id="advancePaymentPrint">Cetak / PDF</button></div></div>'+
+      '<div class="rhpp-section-head"><div><h3>Rincian Bayar Kasbon</h3></div><div class="report-actions"><button type="button" id="advancePaymentPrint">Cetak / PDF</button><button type="button" id="advancePaymentPrintExcel">Excel</button></div></div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal Bayar</th><th>Karyawan / ABK</th><th>Tanggal Kasbon</th><th>Keterangan Kasbon</th><th>Metode</th><th>Nominal Bayar</th><th>Sisa Setelah Bayar</th><th>Aksi</th></tr></thead><tbody>'+
       payments.map(p=>{const a=advances.find(x=>x.id===p.advance_id),allFor=payments.filter(x=>x.advance_id===p.advance_id).filter(x=>String(x.paid_on||'')<=String(p.paid_on||'')).reduce((n,x)=>n+prodNum(x.amount),0),bal=Math.max(0,prodNum(a?.amount)-allFor);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(emp(a?.employee_id))+'</td><td>'+prodDateId(a?.advanced_on)+'</td><td>'+esc(a?.description||'-')+'</td><td>'+esc(String(p.method||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td><div class="inline-actions"><button type="button" data-edit-advance-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('advance_payments',p.id)+'</div></td></tr>';}).join('')+
       '</tbody></table></div>'+(payments.length?'':'<p class="muted">Belum ada pembayaran kasbon.</p>')+
@@ -8675,7 +8679,7 @@ async function financeAdvancePaymentPage(){
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
   const advancePaymentPrint=document.getElementById('advancePaymentPrint');
-  if(advancePaymentPrint)advancePaymentPrint.onclick=()=>printFinanceDocument('advancePaymentPrintArea','Rincian Bayar Kasbon');
+  if(advancePaymentPrint)advancePaymentPrint.onclick=()=>printFinanceDocument('advancePaymentPrintArea','Rincian Bayar Kasbon');const advancePaymentExcel=document.getElementById('advancePaymentPrintExcel');if(advancePaymentExcel)advancePaymentExcel.onclick=()=>exportFinanceDocumentExcel('advancePaymentPrintArea','Rincian Bayar Kasbon');
   const employeeSel=document.getElementById('advancePaymentEmployee');
   if(employeeSel)employeeSel.onchange=async()=>{
     st.employee=employeeSel.value||'';
@@ -8745,7 +8749,7 @@ async function financeSalaryPage(){
       '<label>Catatan<input name="notes" value="'+esc(editSalary?.notes||'')+'"></label>'+
       '<div class="report-actions"><button type="submit">'+(editSalary?'Simpan Koreksi':'Simpan Gaji Siklus')+'</button>'+(editSalary?'<button type="button" id="salaryEditCancel">Batal Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" id="salaryAdminDelete" class="btn-danger">Hapus</button>':''):'')+'</div>'+
     '</form></section>'+
-    '<section class="panel" id="salaryPrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Gaji ABK</h3></div><div class="report-actions"><button type="button" id="salaryPrint">Cetak / PDF</button></div></div>'+
+    '<section class="panel" id="salaryPrintArea"><div class="rhpp-section-head"><div><h3>Riwayat Gaji ABK</h3></div><div class="report-actions"><button type="button" id="salaryPrint">Cetak / PDF</button><button type="button" id="salaryPrintExcel">Excel</button></div></div>'+
       '<form id="salaryHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
         '<label>Tanggal Dari<input type="date" name="from" value="'+esc(st.historyFrom||'')+'"></label>'+
         '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(st.historyTo||'')+'"></label>'+
@@ -8761,7 +8765,7 @@ async function financeSalaryPage(){
   if(salaryHistoryFilter)salaryHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(salaryHistoryFilter);st.historyFrom=String(fd.get('from')||'');st.historyTo=String(fd.get('to')||'');if(st.historyFrom&&st.historyTo&&st.historyFrom>st.historyTo){const t=st.historyFrom;st.historyFrom=st.historyTo;st.historyTo=t}st.historyShown=true;await financeSalaryPage();};
   if(salaryHistoryReset)salaryHistoryReset.onclick=async()=>{st.historyFrom='';st.historyTo='';st.historyShown=false;await financeSalaryPage();};
 
-  const salaryPrint=document.getElementById('salaryPrint');if(salaryPrint)salaryPrint.onclick=()=>printFinanceDocument('salaryPrintArea','Laporan Gaji ABK per Siklus');
+  const salaryPrint=document.getElementById('salaryPrint');if(salaryPrint)salaryPrint.onclick=()=>printFinanceDocument('salaryPrintArea','Laporan Gaji ABK per Siklus');const salaryExcel=document.getElementById('salaryPrintExcel');if(salaryExcel)salaryExcel.onclick=()=>exportFinanceDocumentExcel('salaryPrintArea','Laporan Gaji ABK per Siklus');
   const b=document.getElementById('salaryBarn'),cy=document.getElementById('salaryCycle'),ab=document.getElementById('salaryAbk');
   if(b)b.onchange=async()=>{st.barn=b.value||'';st.assignment='';st.abk='';await financeSalaryPage();};
   if(cy)cy.onchange=async()=>{st.assignment=cy.value||'';st.abk='';await financeSalaryPage();};
@@ -9204,7 +9208,7 @@ async function financeCashflowPage(){
   if(st.shown)html+='<section class="panel" id="cashflowPrintArea">'+
     '<div class="rhpp-section-head"><div><h3>Rincian Arus Kas · '+esc(categoryLabel)+'</h3>'+
     '<p class="muted">Periode: '+esc(periodLabel)+' · '+visible.length+' transaksi</p></div>'+
-    '<div class="report-actions"><button type="button" id="cashflowPrint">Cetak / PDF</button></div></div>'+
+    '<div class="report-actions"><button type="button" id="cashflowPrint">Cetak / PDF</button><button type="button" id="cashflowPrintExcel">Excel</button></div></div>'+
     '<div class="rhpp-summary-cards">'+
       '<div class="rhpp-summary-card"><span>Kas Masuk</span><strong>Rp '+prodFmt(masuk,0)+'</strong></div>'+
       '<div class="rhpp-summary-card"><span>Kas Keluar</span><strong>Rp '+prodFmt(keluar,0)+'</strong></div>'+
@@ -9225,7 +9229,7 @@ async function financeCashflowPage(){
   layout(html);
   if(err)msg(err.message);
   const cashflowPrint=document.getElementById('cashflowPrint');
-  if(cashflowPrint)cashflowPrint.onclick=()=>printFinanceDocument('cashflowPrintArea','Rincian Arus Kas - '+categoryLabel);
+  if(cashflowPrint)cashflowPrint.onclick=()=>printFinanceDocument('cashflowPrintArea','Rincian Arus Kas - '+categoryLabel);const cashflowExcel=document.getElementById('cashflowPrintExcel');if(cashflowExcel)cashflowExcel.onclick=()=>exportFinanceDocumentExcel('cashflowPrintArea','Rincian Arus Kas - '+categoryLabel);
   const form=document.getElementById('cashflowFilter');
   const reset=document.getElementById('cashflowReset');
   if(form){
@@ -9297,7 +9301,7 @@ async function financeBarnProfitLossPage(){
 
   if(st.shown){
     html+='<section class="panel" id="barnProfitPrintArea">'+
-      '<div class="rhpp-section-head"><div><h3>Ringkasan Laba/Rugi Kandang</h3></div><div class="report-actions"><button type="button" id="barnProfitPrint">Cetak / PDF</button></div></div>'+
+      '<div class="rhpp-section-head"><div><h3>Ringkasan Laba/Rugi Kandang</h3></div><div class="report-actions"><button type="button" id="barnProfitPrint">Cetak / PDF</button><button type="button" id="barnProfitPrintExcel">Excel</button></div></div>'+
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>Pendapatan Kandang</span><strong>Rp '+prodFmt(totalRhpp,0)+'</strong><small>RHPP Real Mitra + Penjualan Mandiri</small></div>'+
         '<div class="rhpp-summary-card"><span>RHPP Real Mitra</span><strong>Rp '+prodFmt(totalRhppMitra,0)+'</strong></div>'+
@@ -9348,7 +9352,7 @@ async function financeBarnProfitLossPage(){
     };
   }
   const p=document.getElementById('barnProfitPrint');
-  if(p)p.onclick=()=>printFinanceDocument('barnProfitPrintArea','Laba Rugi Kandang');
+  if(p)p.onclick=()=>printFinanceDocument('barnProfitPrintArea','Laba Rugi Kandang');const barnProfitExcel=document.getElementById('barnProfitPrintExcel');if(barnProfitExcel)barnProfitExcel.onclick=()=>exportFinanceDocumentExcel('barnProfitPrintArea','Laba Rugi Kandang');
 }
 
 
@@ -9409,7 +9413,7 @@ async function financeGlobalProfitLossPage(){
   let html='<section class="panel" id="globalProfitPrintArea">'+
     '<div class="rhpp-section-head"><div><h3>Laba/Rugi Global</h3>'+
     '<p class="muted">Kumulatif kandang membaca MITRA + MANDIRI sebagai satu usaha kandang. Jenis siklus hanya ditampilkan sebagai identitas pada rincian, bukan dipisah dalam subtotal.</p></div>'+
-    '<div class="report-actions"><button type="button" id="globalProfitPrint">Cetak / PDF</button></div></div>'+
+    '<div class="report-actions"><button type="button" id="globalProfitPrint">Cetak / PDF</button><button type="button" id="globalProfitPrintExcel">Excel</button></div></div>'+
     '<div class="rhpp-summary-cards">'+
       '<div class="rhpp-summary-card"><span>Total Pendapatan Kandang</span><strong>Rp '+prodFmt(totalRevenue,0)+'</strong><small>'+finalRows.length+' siklus final</small></div>'+
       '<div class="rhpp-summary-card"><span>Laba/Rugi Kandang</span><strong>Rp '+prodFmt(labaKandang,0)+'</strong><small>Setelah BOP, sapronak, tambah daging</small></div>'+
@@ -9471,7 +9475,7 @@ async function financeGlobalProfitLossPage(){
 
   layout(html);if(err)msg(err.message);
   const p=document.getElementById('globalProfitPrint');
-  if(p)p.onclick=()=>printFinanceDocument('globalProfitPrintArea','Laba Rugi Global');
+  if(p)p.onclick=()=>printFinanceDocument('globalProfitPrintArea','Laba Rugi Global');const globalProfitExcel=document.getElementById('globalProfitPrintExcel');if(globalProfitExcel)globalProfitExcel.onclick=()=>exportFinanceDocumentExcel('globalProfitPrintArea','Laba Rugi Global');
 }
 
 async function financeReportPage(){
@@ -9544,7 +9548,7 @@ async function financeReportPage(){
 
   if(st.shown){
     html+='<section class="panel" id="companyProfitPrintArea">'+
-      '<div class="rhpp-section-head"><div><h3>Ringkasan</h3><p class="muted">Ringkasan hanya menjumlahkan siklus FINAL. Siklus PROSES dan MENUNGGU tidak dipaksa menjadi laba/rugi final.</p></div><div class="report-actions"><button type="button" id="financeReportPrint">Cetak / PDF</button></div></div>'+
+      '<div class="rhpp-section-head"><div><h3>Ringkasan</h3><p class="muted">Ringkasan hanya menjumlahkan siklus FINAL. Siklus PROSES dan MENUNGGU tidak dipaksa menjadi laba/rugi final.</p></div><div class="report-actions"><button type="button" id="financeReportPrint">Cetak / PDF</button><button type="button" id="financeReportPrintExcel">Excel</button></div></div>'+
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>Total Pendapatan Final</span><strong>Rp '+prodFmt(totalIncome,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Total Biaya Siklus Final</span><strong>Rp '+prodFmt(totalCost,0)+'</strong></div>'+
@@ -9602,7 +9606,7 @@ async function financeReportPage(){
 
   layout(html);if(err)msg(err.message);
   const financeReportPrint=document.getElementById('financeReportPrint');
-  if(financeReportPrint)financeReportPrint.onclick=()=>printFinanceDocument(st.assignment?['companyProfitPrintArea','cycleProfitLossPrintArea','cycleSummaryPrintArea']:['companyProfitPrintArea','cycleProfitLossPrintArea'],'Laporan Laba Rugi');
+  if(financeReportPrint)financeReportPrint.onclick=()=>printFinanceDocument(st.assignment?['companyProfitPrintArea','cycleProfitLossPrintArea','cycleSummaryPrintArea']:['companyProfitPrintArea','cycleProfitLossPrintArea'],'Laporan Laba Rugi');const financeReportExcel=document.getElementById('financeReportPrintExcel');if(financeReportExcel)financeReportExcel.onclick=()=>exportFinanceDocumentExcel(st.assignment?['companyProfitPrintArea','cycleProfitLossPrintArea','cycleSummaryPrintArea']:['companyProfitPrintArea','cycleProfitLossPrintArea'],'Laporan Laba Rugi');
   const form=document.getElementById('financeReportFilter');
   const reset=document.getElementById('financeReportReset');
   if(form){
@@ -10023,7 +10027,7 @@ async function adminDataArchivePage(){
         '<p>Total tabel: '+tableNames.length+' | Total baris: '+totalRows+'</p>'+
         sections.join('')+'</body></html>';
 
-      const blob=new Blob([sanitizeExportHtml(html)],{type:'application/vnd.ms-excel;charset=utf-8'});
+      const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url;a.download=fileName;document.body.appendChild(a);a.click();a.remove();
@@ -10133,7 +10137,7 @@ async function financeRhppRealPage(){
 
     html+='<section class="panel" id="rhppRealDetail">'+
       '<div class="rhpp-section-head"><div><h3>'+esc(assignmentIdentity(assignments,barns,contractsRows,a))+'</h3>'+
-      '<p class="muted">RHPP Sistem Close '+prodDateId(selected.closed_on)+'</p></div><div class="report-actions"><button type="button" id="rhppRealPrint">Cetak / PDF</button></div></div>'+
+      '<p class="muted">RHPP Sistem Close '+prodDateId(selected.closed_on)+'</p></div><div class="report-actions"><button type="button" id="rhppRealPrint">Cetak / PDF</button><button type="button" id="rhppRealPrintExcel">Excel</button></div></div>'+
       '<div class="tablewrap"><table><tbody>'+
         '<tr><td>RHPP Sistem Final</td><td><strong>Rp '+prodFmt(selected.system_amount,0)+'</strong></td></tr>'+
         '<tr><td>RHPP Real Diterima</td><td><strong>'+(real?'Rp '+prodFmt(real.amount,0):'MENUNGGU INPUT KEUANGAN')+'</strong></td></tr>'+
@@ -10169,7 +10173,7 @@ async function financeRhppRealPage(){
   }
 
   html+='</div>';
-  layout(html);bindNumberInputs();if(err)msg(err.message);const rhppRealPrint=document.getElementById('rhppRealPrint');if(rhppRealPrint)rhppRealPrint.onclick=()=>printFinanceDocument('rhppRealDetail','RHPP Real');
+  layout(html);bindNumberInputs();if(err)msg(err.message);const rhppRealPrint=document.getElementById('rhppRealPrint');if(rhppRealPrint)rhppRealPrint.onclick=()=>printFinanceDocument('rhppRealDetail','RHPP Real');const rhppRealExcel=document.getElementById('rhppRealPrintExcel');if(rhppRealExcel)rhppRealExcel.onclick=()=>exportFinanceDocumentExcel('rhppRealDetail','RHPP Real');
 
   const filter=document.getElementById('rhppRealFilter');
   const rhppBarn=document.getElementById('rhppRealBarn');
@@ -10682,7 +10686,7 @@ async function financeRhppPage(){
   };
   const rhppPrintOpen=(pdf=false)=>{
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write(sanitizeExportHtml(rhppDocHtml(pdf)));w.document.close();
+    w.document.write(rhppDocHtml(pdf));w.document.close();
     setTimeout(()=>{w.focus();w.print();},500);
   };
   const printBtn=document.getElementById('rhppPrint');
@@ -11527,7 +11531,7 @@ async function marketingReports(){
   const printOpen=(pdf=false)=>{
     renderRows();
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write(sanitizeExportHtml(pdf?reportHtml().replace('<title>Laporan Marketing</title>','<title>Laporan_Marketing_PDF</title>'):reportHtml()));w.document.close();
+    w.document.write(pdf?reportHtml().replace('<title>Laporan Marketing</title>','<title>Laporan_Marketing_PDF</title>'):reportHtml());w.document.close();
     setTimeout(()=>{w.focus();w.print();},500);
   };
   document.getElementById('marketingPrint').onclick=()=>printOpen(false);
@@ -11535,7 +11539,7 @@ async function marketingReports(){
   document.getElementById('marketingExcel').onclick=()=>{
     renderRows();
     const html=document.getElementById('marketingReportSections').innerHTML+document.getElementById('marketingReportSummary').innerHTML;
-    const blob=new Blob(['\ufeff'+sanitizeExportHtml('<html><head><meta charset="utf-8"></head><body>'+html+'</body></html>')],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body>'+html+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
     const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Laporan_Marketing.xls';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
 }
@@ -11971,7 +11975,7 @@ async function logisticsReports(){
     renderRows();
     const w=window.open('','_blank');
     if(!w)return msg('Popup cetak diblokir browser.');
-    w.document.write(sanitizeExportHtml(reportHtml()));
+    w.document.write(reportHtml());
     w.document.close();
     printWhenReady(w);
   };
@@ -11980,7 +11984,7 @@ async function logisticsReports(){
     renderRows();
     const w=window.open('','_blank');
     if(!w)return msg('Popup PDF diblokir browser.');
-    w.document.write(sanitizeExportHtml(reportHtml().replace('<title>Laporan Logistik</title>','<title>Laporan_Logistik_PDF</title>')));
+    w.document.write(reportHtml().replace('<title>Laporan Logistik</title>','<title>Laporan_Logistik_PDF</title>'));
     w.document.close();
     printWhenReady(w);
   };
@@ -11988,7 +11992,7 @@ async function logisticsReports(){
   document.getElementById('logisticsExcel').onclick=()=>{
     renderRows();
     const tables=(document.getElementById('logisticsReportSections')?.innerHTML||'')+(document.getElementById('logisticsReportSummary')?.innerHTML||'');
-    const blob=new Blob(['\ufeff'+sanitizeExportHtml('<html><head><meta charset="utf-8"></head><body>'+tables+'</body></html>')],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const blob=new Blob(['\ufeff<html><head><meta charset="utf-8"></head><body>'+tables+'</body></html>'],{type:'application/vnd.ms-excel;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
@@ -12118,7 +12122,7 @@ async function reports(){
     '<button type="submit">Tampilkan</button></form></section>';
 
   if(st.shown){
-    html+='<section class="panel" id="productionReportPrintArea"><div class="rhpp-section-head"><div><h3>Laporan Produksi</h3><p class="muted">Khusus data produksi. CLOSED memakai deplesi final; tidak memuat RHPP, BOP, Kasbon, atau transaksi Keuangan.</p></div><div class="report-actions"><button type="button" id="productionReportPrint">Cetak / PDF</button></div></div>'+
+    html+='<section class="panel" id="productionReportPrintArea"><div class="rhpp-section-head"><div><h3>Laporan Produksi</h3><p class="muted">Khusus data produksi. CLOSED memakai deplesi final; tidak memuat RHPP, BOP, Kasbon, atau transaksi Keuangan.</p></div><div class="report-actions"><button type="button" id="productionReportPrint">Cetak / PDF</button><button type="button" id="productionReportPrintExcel">Excel</button></div></div>'+
       '<div class="tablewrap"><table style="min-width:1500px"><thead><tr>'+
         '<th>NO</th><th>Kandang / Siklus</th><th>Jenis</th><th>PPL / PIC</th><th>Performance</th><th>Status</th><th>Umur</th><th>Chick-In</th><th>Chick-Out</th><th>Deplesi Ekor</th><th>Deplesi %</th><th>Tonase Panen (Kg)</th><th>BW Aktual</th><th>BW Standar</th><th>Selisih BW</th><th>Pakan (Kg)</th><th>FCR Aktual</th><th>FCR Standar</th><th>Selisih FCR</th><th>IP</th>'+
       '</tr></thead><tbody>'+
@@ -12201,7 +12205,7 @@ async function reports(){
   }
 
   const p=document.getElementById('productionReportPrint');
-  if(p)p.onclick=()=>printFinanceDocument('productionReportPrintArea','Laporan Produksi');
+  if(p)p.onclick=()=>printFinanceDocument('productionReportPrintArea','Laporan Produksi');const productionReportExcel=document.getElementById('productionReportPrintExcel');if(productionReportExcel)productionReportExcel.onclick=()=>exportFinanceDocumentExcel('productionReportPrintArea','Laporan Produksi');
 }
 
 start();
