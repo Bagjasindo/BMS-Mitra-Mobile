@@ -1,4 +1,4 @@
-const CACHE_NAME='bms-pwa-shell-v3';
+const CACHE_NAME='bms-pwa-shell-v4';
 const SHELL=[
   './',
   './index.html',
