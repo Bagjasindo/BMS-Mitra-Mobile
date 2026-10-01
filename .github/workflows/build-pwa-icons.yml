@@ -1,0 +1,37 @@
+name: Build PWA Icons
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/bms_app_icon_source.ico'
+      - '.github/workflows/build-pwa-icons.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --quiet pillow
+      - name: Build PNG icons from supplied BMS icon
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          src=Image.open('assets/bms_app_icon_source.ico').convert('RGBA')
+          for size in (180,192,512):
+              img=src.resize((size,size), Image.Resampling.LANCZOS)
+              img.save(f'assets/bms_app_icon_{size}.png', optimize=True)
+          PY
+      - name: Commit generated icons
+        run: |
+          git config user.name "BMS Mobile"
+          git config user.email "blessingstore69@gmail.com"
+          git add assets/bms_app_icon_180.png assets/bms_app_icon_192.png assets/bms_app_icon_512.png
+          git diff --cached --quiet || git commit -m "PWA: generate PNG icons from supplied BMS icon"
+          git push
