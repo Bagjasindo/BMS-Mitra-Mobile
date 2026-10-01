@@ -14,16 +14,16 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "./assets/bms_app_icon.svg",
+      "src": "./assets/bms_app_icon.svg?v=4",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "./assets/bms_login_logo.jpg",
-      "sizes": "2048x1326",
-      "type": "image/jpeg",
-      "purpose": "any"
+      "src": "./assets/bms_app_icon.svg?v=4",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }
