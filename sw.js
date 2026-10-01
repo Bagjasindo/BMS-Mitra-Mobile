@@ -1,12 +1,12 @@
-const CACHE_NAME='bms-pwa-shell-v5';
+const CACHE_NAME='bms-pwa-shell-v6-original-20261001';
 const SHELL=[
   './',
   './index.html',
   './style.css?v=2218-rhpp-exact-cetak',
   './assets/bms_login_logo.jpg',
-  './assets/bms_app_icon_180.png',
-  './assets/bms_app_icon_192.png',
-  './assets/bms_app_icon_512.png',
+  './assets/bms_app_icon_180.png?v=6-original-20261001',
+  './assets/bms_app_icon_192.png?v=6-original-20261001',
+  './assets/bms_app_icon_512.png?v=6-original-20261001',
   './assets/bms_express_logo.jpg',
   './manifest.webmanifest'
 ];
