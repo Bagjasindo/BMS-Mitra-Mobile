@@ -4,43 +4,60 @@ Tanggal checkpoint: 2026-10-01
 Branch: main
 Repo: Bagjasindo/BMS-Mitra-Mobile
 
-## Titik kerja resmi
+## TITIK LANJUT RESMI
 
-Checkpoint ini menggantikan checkpoint ikon PWA sebelumnya. Lanjutan pekerjaan dimulai dari audit mendalam 18 temuan: 1 kritis, 4 tinggi, 11 sedang, 2 rendah.
+Mulai hanya dari kondisi saat ini.
 
-## Status perbaikan audit
+Audit mendalam terakhir: 18 temuan — 1 kritis, 4 tinggi, 11 sedang, 2 rendah.
 
-- Otorisasi profil aktif/null-safe: DITERAPKAN.
-- Jalur perubahan role/user admin: hanya profil ADMIN aktif; self-demotion/deactivation ditolak.
-- Validasi pembayaran dan overpayment: DITERAPKAN.
-- Serialisasi transaksi pembayaran/concurrent write: DITERAPKAN.
-- Pencegahan double-submit/retry ganda: DITERAPKAN melalui operation ID + receipt.
-- Jejak koreksi/transaksi: trigger audit transaksi aktif.
-- Ekspor seluruh data: DITERAPKAN secara catalogue-driven; verifikasi 79/79 tabel public.
-- Backup harian: menggunakan sumber arsip lengkap yang sama.
-- Full recovery: dokumen recovery terenkripsi di frontend dan verification restore tersedia untuk schema terisolasi.
-- RLS public: aktif pada 79 tabel.
-- Direct write RPC: DITUTUP. 61 RPC bisnis allowlisted tidak dapat dieksekusi langsung oleh authenticated/anon/PUBLIC; write resmi melalui public.bms_execute_operation().
-- Lima write RPC yang sempat tertinggal sudah ditambahkan ke gateway: admin_reopen_production_atomic, finance_save_abk_advance_atomic, logistics_send_warehouse_stock_atomic, save_production_abk_harvest_atomic, save_production_abk_result_atomic.
+## STATUS SAAT INI
 
-## Verifikasi terakhir
+- Otorisasi profil aktif/null-safe sudah diterapkan.
+- Jalur perubahan role/user admin sudah diperketat.
+- Validasi pembayaran dan pencegahan overpayment sudah aktif.
+- Transaksi pembayaran bersamaan sudah dilindungi locking/serialization.
+- Pencegahan double input/retry sudah memakai operation ID + receipt idempotent.
+- Jejak audit transaksi dan koreksi aktif.
+- Ekspor seluruh data sudah mencakup 79/79 tabel public.
+- Backup harian menggunakan sumber arsip lengkap yang sama.
+- Full recovery terenkripsi tersedia beserta verifikasi restore terisolasi.
+- RLS aktif pada 79 tabel public.
+- 61 RPC tulis bisnis tidak dapat dipanggil langsung oleh authenticated, anon, atau PUBLIC.
+- Seluruh write RPC bisnis resmi diarahkan melalui public.bms_execute_operation().
+- Lima write RPC yang sempat tertinggal sudah dimasukkan ke gateway:
+  - admin_reopen_production_atomic
+  - finance_save_abk_advance_atomic
+  - logistics_send_warehouse_stock_atomic
+  - save_production_abk_harvest_atomic
+  - save_production_abk_result_atomic
 
-- Complete archive: 79 live tables = 79 archived tables = 79 payload tables; checksum SHA-256 tersedia.
-- Payment guard + transaction audit terpasang pada tabel pembayaran utama.
-- Direct access allowlist: authenticated=0, anon=0, PUBLIC=0.
-- Gateway: authenticated boleh execute; anon tidak.
+## VERIFIKASI TERAKHIR
+
+- Live public tables: 79.
+- Archived tables: 79.
+- Payload tables: 79.
+- Direct write RPC access: authenticated=0, anon=0, PUBLIC=0.
+- Gateway write: authenticated allowed, anon denied.
+- Payment guard dan transaction audit aktif pada tabel pembayaran utama.
 - Build aplikasi: 1.0.2326.
-- Regression suite di repo: 8 core tests termasuk lost-response idempotency, stable UUID retry, complete reads, XLSX, dan encrypted recovery.
-- Perbaikan database audit awal tercatat pada migrasi 20261001071942 s.d. 20261001083959.
-- Hardening lanjutan tercatat pada migrasi 20261001102332 dan 20261001102415.
-- SQL reproduksi hardening disimpan di supabase/20261001_audit_write_gateway_hardening.sql.
+- Regression core tests tersedia untuk idempotency, retry, complete reads, XLSX, dan encrypted recovery.
+- SQL hardening terbaru tercatat di:
+  - supabase/20261001_audit_write_gateway_hardening.sql
 
-## Catatan advisor
+## COMMIT TERKAIT CHECKPOINT INI
 
-Peringatan SECURITY DEFINER yang tersisa terutama fungsi baca/report serta gateway/export yang memang perlu callable oleh authenticated dan memiliki guard role di dalam fungsi. Empat INFO RLS-no-policy adalah objek yang deny-by-default/private atau diakses melalui fungsi terkontrol.
+- c1308f1 — route remaining business writes through idempotent gateway.
+- 3c0919d — record audit write-gateway hardening migrations.
 
-Satu peringatan platform masih ada: Supabase Auth Leaked Password Protection disabled. Commit audit sebelumnya mencatat fitur built-in tersebut tidak diaktifkan karena keterbatasan plan; tidak dilakukan upgrade berbayar.
+## CATATAN TERSISA
 
-## Aturan lanjut
+Supabase Auth Leaked Password Protection masih disabled karena batas plan. Tidak ada upgrade berbayar dilakukan.
 
-Jangan kembali ke histori audit/ikon lama kecuali ada regresi baru. Mulai pemeriksaan berikut dari checkpoint ini dan pertahankan data bisnis produksi; perubahan schema harus lewat migration dan perubahan kode harus dicatat di GitHub.
+## ATURAN LANJUT
+
+Jangan gunakan histori lama sebagai dasar kerja.
+Jangan kembali ke checkpoint ikon PWA atau audit sebelumnya.
+Lanjut hanya dari checkpoint ini.
+Pertahankan data bisnis produksi.
+Semua perubahan database harus lewat migration.
+Semua perubahan kode harus dicatat di GitHub.
