@@ -1,0 +1,26 @@
+{
+  "name": "BMS Mobile",
+  "short_name": "BMS Mobile",
+  "description": "Bagjasindo Mandiri Sindangkasih",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./assets/bms_login_logo.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/bms_login_logo.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ]
+}
