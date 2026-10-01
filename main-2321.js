@@ -265,7 +265,7 @@ const applyPendingSubmitFeedback=()=>{
     btn.disabled=false;
     submitButtonSet(btn,original||'Simpan');
     btn.removeAttribute('title');
-  },fb.ok?1400:2000);
+  },fb.ok?3000:3000);
   window.__bmsPendingSubmitFeedback=null;
 };
 const releaseSubmitGuard=(form,feedback=null)=>{
