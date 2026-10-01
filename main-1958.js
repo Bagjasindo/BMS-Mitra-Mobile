@@ -655,7 +655,7 @@ async function adminCycleLockPage(){
       '<label>Pilih Kandang<select id="adminCycleBarn"><option value="">Pilih Kandang</option><option value="__ALL__">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(barnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Pilih Siklus<select id="adminCycleAssignment" disabled><option value="">Pilih Siklus</option></select></label>'+
       '<div id="adminCycleState" class="panel" style="margin:0" hidden></div>'+
-      '<div class="report-actions"><button type="button" id="adminCycleAction" disabled>Pilih Siklus</button><button type="button" id="adminBopAllOpen" hidden>Buka BOP Semua Siklus CLOSED</button><button type="button" id="adminBopAllLock" hidden>Kunci BOP Semua Siklus CLOSED</button></div>'+
+      '<div class="report-actions"><button type="button" id="adminCycleAction" disabled>Pilih Siklus</button><button type="button" id="adminBopAllOpen" hidden>Buka BOP Semua Siklus CLOSED</button><button type="button" id="adminBopAllClean" hidden>Bersihkan Data Lama BOP CLOSED</button><button type="button" id="adminBopAllLock" hidden>Kunci BOP Semua Siklus CLOSED</button></div>'+
     '</div></section>';
   layout(html);
   if(err)msg(err.message);
@@ -665,6 +665,7 @@ async function adminCycleLockPage(){
   const state=document.getElementById('adminCycleState');
   const action=document.getElementById('adminCycleAction');
   const openAll=document.getElementById('adminBopAllOpen');
+  const cleanAll=document.getElementById('adminBopAllClean');
   const lockAll=document.getElementById('adminBopAllLock');
 
   const selectedAssignment=()=>assignments.find(x=>x.id===cycleSel.value)||null;
@@ -680,12 +681,13 @@ async function adminCycleLockPage(){
       '<p>CLOSED: <strong>'+closed.length+'</strong> · BOP terbuka: <strong>'+opened+'</strong> · BOP terkunci: <strong>'+(closed.length-opened)+'</strong> · PROSES tidak disentuh: <strong>'+process+'</strong></p>';
     action.hidden=true;
     openAll.hidden=false;
+    cleanAll.hidden=false;
     lockAll.hidden=false;
   };
 
   const renderState=()=>{
     if(barnSel.value==='__ALL__'){renderBulkState();return;}
-    action.hidden=false;openAll.hidden=true;lockAll.hidden=true;
+    action.hidden=false;openAll.hidden=true;cleanAll.hidden=true;lockAll.hidden=true;
     const a=selectedAssignment();
     if(!a){
       state.hidden=true;
@@ -742,6 +744,19 @@ async function adminCycleLockPage(){
     msg(isOpen?'BOP semua siklus CLOSED berhasil dibuka. Siklus PROSES tidak disentuh.':'BOP semua siklus CLOSED berhasil dikunci kembali. Siklus PROSES tidak disentuh.',true);
   };
   openAll.onclick=()=>setAllBopAccess(true);
+  cleanAll.onclick=async()=>{
+    if(!await appConfirm('Bersihkan data lama BOP pada semua siklus CLOSED yang pencatatan BOP-nya sedang terbuka?\n\nYang dibersihkan hanya catatan teknis lama, penanda MIGRATION BB-197, dan 2 baris Rp0 sisa pemindahan. Siklus PROSES tidak disentuh.'))return;
+    if(!actionButtonStart(cleanAll,'Membersihkan BOP...'))return;
+    const result=await db.rpc('admin_cleanup_closed_bop_legacy_v1');
+    if(result.error){
+      await actionButtonFinish(cleanAll,false,'','Gagal');
+      return msg(result.error.message);
+    }
+    const x=result.data||{};
+    await logAppActivity('ADMIN_BOP_CLEANUP_CLOSED','admin_cycle_lock',x);
+    await actionButtonFinish(cleanAll,true,'Data BOP Bersih ✓');
+    msg('BOP CLOSED selesai dibersihkan. Catatan: '+Number(x.notes_cleaned||0)+' · MIGRATION: '+Number(x.migration_cleared||0)+' · Rp0 dihapus: '+Number(x.zero_rows_deleted||0)+'.',true);
+  };
   lockAll.onclick=()=>setAllBopAccess(false);
 
   action.onclick=async()=>{
