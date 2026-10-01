@@ -1,4 +1,4 @@
-const CACHE_NAME='bms-pwa-shell-v1';
+const CACHE_NAME='bms-pwa-shell-v2';
 const SHELL=[
   './',
   './index.html',
@@ -62,4 +62,9 @@ self.addEventListener('fetch',event=>{
       return res;
     }))
   );
+});
+
+
+self.addEventListener('message',event=>{
+  if(event.data&&event.data.type==='SKIP_WAITING')self.skipWaiting();
 });
