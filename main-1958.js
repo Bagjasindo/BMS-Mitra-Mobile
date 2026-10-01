@@ -457,15 +457,57 @@ function login(){
         msg(detail.includes('invalid login')?'Email atau kata sandi salah.':detail.includes('fetch')||detail.includes('network')?'Koneksi bermasalah. Coba lagi.':'Gagal masuk. Periksa akun atau hubungi Administrator.');
         return;
       }
+      resetAppSessionState();
       await start();
       await logAppActivity('LOGIN',tab,{role:profile?.role||''});
     }catch(_){msg('Koneksi bermasalah. Coba lagi.')}
     finally{if(button.isConnected){button.disabled=false;button.textContent='Masuk'}}
   };
 }
-async function logout(){await logAppActivity('LOGOUT',tab,{role:profile?.role||''});await db.auth.signOut();session=null;profile=null;login()}
 let legacyDataLoaded=false;
 let dashboardDataLoaded=false;
+
+function resetAppSessionState(){
+  if(window.__legacyTxnDeleteCapture){
+    root.removeEventListener('click',window.__legacyTxnDeleteCapture,true);
+  }
+  const stateKeys=[
+    '__adminRhppHistoryState','__bmsDashboardChicks','__bmsPendingSubmitFeedback','__bmsSubmittingForm','__bmsTxnList',
+    '__chickInEdit','__closedCycleFilter','__companyFeedMoveEdit','__companyFeedMoveHistoryFilter',
+    '__equipmentPurchaseHistoryFilter','__externalReturnTransferHistoryFilter','__financeAdvanceEdit',
+    '__financeAdvancePaymentState','__financeAssetHistory','__financeBarnProfitState','__financeBopGeneralState',
+    '__financeBopState','__financeCashflowState','__financeGoodsHistory','__financeMaintenanceState',
+    '__financeMandiriReceiptState','__financeMandiriSupplierPaymentState','__financeReportState',
+    '__financeRhppRealState','__financeRhppState','__financeSalaryState','__fxBopFilter','__fxBopSelected',
+    '__fxInvoiceEdit','__fxMaintenanceEdit','__fxPaymentEdit','__fxPaymentHistory','__fxReportState','__fxTripEdit',
+    '__leagueAbkHistoryFilter','__leagueAbkState','__leagueByBarnState','__legacyTxnDeleteCapture',
+    '__logisticsDraftItems','__logisticsReturnDraftItems','__mandiriPurchaseHistoryFilter','__partialReturnEdit',
+    '__partialReturnHistoryFilter','__pplEstimateAssignment','__pplRecordingAssignment','__pplRecordingHistoryAssignment',
+    '__pplRhppAbkViewState','__pplRhppViewState','__pplVisitAssignment','__productionRecapState',
+    '__productionReportState','__shippingHistoryFilter','__supplierPayableState','__warehouseSendHistoryFilter'
+  ];
+  stateKeys.forEach(k=>{try{delete window[k]}catch(_){window[k]=undefined}});
+  try{sessionStorage.removeItem('bms_perf_template')}catch(_){}
+  try{sessionStorage.removeItem('bms_selected_contract_template')}catch(_){}
+  if(typeof searchableSelectObservers!=='undefined'){
+    searchableSelectObservers.splice(0).forEach(o=>{try{o.disconnect()}catch(_){}})
+  }
+  tab='dashboard';
+  assignments=[];barns=[];items=[];suppliers=[];employees=[];advances=[];pplUsers=[];contracts=[];contractReadiness=[];
+  legacyDataLoaded=false;
+  dashboardDataLoaded=false;
+  navInitialCollapsePending=true;
+  session=null;
+  profile=null;
+  document.body.classList.remove('mobile-menu-open');
+}
+
+async function logout(){
+  await logAppActivity('LOGOUT',tab,{role:profile?.role||''});
+  await db.auth.signOut();
+  resetAppSessionState();
+  login();
+}
 async function load(){
   legacyDataLoaded=false;
   dashboardDataLoaded=false;
