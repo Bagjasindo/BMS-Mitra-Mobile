@@ -11068,6 +11068,8 @@ function renderDashboardTemplate(cfg){
 async function buildDashboardModel(){
   const d=await productionBase();
   const leagueSetting=await loadAbkLeagueSetting();
+  const globalLeagueR=profile?.role==='PPL'?await db.rpc('get_abk_leaderboard_data_v1'):{data:null,error:null};
+  const globalLeague=globalLeagueR.data||null;
   const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,extShipR,extShipItemR,returnR,returnItemR,itemR]=await Promise.all([
     db.from('recordings').select('*').not('contract_assignment_id','is',null).order('recorded_on',{ascending:true}),
     db.from('recording_weight_samples').select('*'),
@@ -11086,16 +11088,29 @@ async function buildDashboardModel(){
     db.from('logistics_return_items').select('return_id,item_id,quantity,quantity_kg,unit_price'),
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit')
   ]);
-  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,extShipR,extShipItemR,returnR,returnItemR,itemR].find(x=>x?.error)?.error;
+  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,extShipR,extShipItemR,returnR,returnItemR,itemR,globalLeagueR].find(x=>x?.error)?.error;
   const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=rhppFinalR.data||[];
   const dashShipments=d.scopeRows(shipR.data||[]),dashShipmentItems=shipItemR.data||[];
   const dashExternalShipments=d.scopeRows(extShipR.data||[]),dashExternalShipmentItems=extShipItemR.data||[];
   const dashReturns=d.scopeRows(returnR.data||[]),dashReturnItems=returnItemR.data||[],dashItems=itemR.data||[];
   const closedFinalAssignmentIds=new Set(rhppFinalRows.map(x=>x.contract_assignment_id).filter(Boolean));
+
+  // Klasemen ABK khusus PPL bersifat read-only global; transaksi PPL tetap memakai scope kandang miliknya.
+  const leagueAssignments=globalLeague?.assignments||d.assignments;
+  const leagueBarns=globalLeague?.barns||d.barns;
+  const leagueChicks=globalLeague?.chicks||d.chicks;
+  const leagueLinks=globalLeague?.links||d.links;
+  const leagueAbks=globalLeague?.abks||d.abks;
+  const leagueResults=(globalLeague?.results||abkResults).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00'));
+  const leagueSizes=globalLeague?.sizes||abkSizes;
+  const leagueContracts=globalLeague?.contracts||costContracts;
+  const leagueBonuses=globalLeague?.bonuses||bonusRows;
+  const leagueLivePrices=globalLeague?.live_prices||d.livePrices;
+  const leagueClosedFinalAssignmentIds=new Set((globalLeague?.finals||rhppFinalRows).map(x=>x.contract_assignment_id).filter(Boolean));
   const abkReferenceContractId=a=>{
     if(a?.master_contract_id)return a.master_contract_id;
     if(a?.cycle_type!=='MANDIRI')return '';
-    const ids=[...new Set((d.livePrices||[]).map(p=>p.contract_id).filter(Boolean))];
+    const ids=[...new Set((leagueLivePrices||[]).map(p=>p.contract_id).filter(Boolean))];
     return ids.length===1?ids[0]:'';
   };
   const active=d.assignments.filter(a=>a.active&&d.chicks.some(ci=>ci.contract_assignment_id===a.id));
@@ -11329,9 +11344,9 @@ async function buildDashboardModel(){
       '</div></article>';
   }).join('');
 
-  const leagueRaw=abkResults.map(x=>{
-    const a=d.assignments.find(v=>v.id===x.contract_assignment_id),ci=d.chicks.find(v=>v.contract_assignment_id===x.contract_assignment_id),link=d.links.find(v=>v.contract_assignment_id===x.contract_assignment_id&&v.abk_id===x.abk_id);
-    const sz=abkSizes.filter(v=>v.result_id===x.id);
+  const leagueRaw=leagueResults.map(x=>{
+    const a=leagueAssignments.find(v=>v.id===x.contract_assignment_id),ci=leagueChicks.find(v=>v.contract_assignment_id===x.contract_assignment_id),link=leagueLinks.find(v=>v.contract_assignment_id===x.contract_assignment_id&&v.abk_id===x.abk_id);
+    const sz=leagueSizes.filter(v=>v.result_id===x.id);
     const birds=sz.reduce((s,v)=>s+prodNum(v.birds),0),kg=sz.reduce((s,v)=>s+prodNum(v.weight_kg),0),bw=birds?kg/birds:0;
     const feed=(prodNum(link?.feed_pre_bags)+prodNum(link?.feed_starter_bags)+prodNum(link?.feed_finisher_bags))*50;
     const fcr=kg?feed/kg:0;
@@ -11342,26 +11357,26 @@ async function buildDashboardModel(){
     let revenue=0;
     for(const s of sz){
       const av=prodNum(s.birds)?prodNum(s.weight_kg)/prodNum(s.birds):0;
-      const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
+      const p=leagueLivePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
       revenue+=prodNum(s.weight_kg)*prodNum(p?.price_per_kg);
     }
-    const cc=costContracts.find(v=>v.id===refContractId);
+    const cc=leagueContracts.find(v=>v.id===refContractId);
     const cost=initial*prodNum(cc?.doc_price)+prodNum(link?.feed_pre_bags)*50*prodNum(cc?.pre_starter_price)+prodNum(link?.feed_starter_bags)*50*prodNum(cc?.starter_price)+prodNum(link?.feed_finisher_bags)*50*prodNum(cc?.finisher_price);
-    const match=(metric,value)=>prodNum(bonusRows.find(v=>v.contract_id===refContractId&&v.metric===metric&&(v.min_value==null||value>=prodNum(v.min_value))&&(v.max_value==null||value<prodNum(v.max_value)))?.rupiah_per_kg);
+    const match=(metric,value)=>prodNum(leagueBonuses.find(v=>v.contract_id===refContractId&&v.metric===metric&&(v.min_value==null||value>=prodNum(v.min_value))&&(v.max_value==null||value<prodNum(v.max_value)))?.rupiah_per_kg);
     const ipBonus=kg*match('IP',ip);
     const profit=revenue-cost+ipBonus;
     const perBird=birds?profit/birds:0;
     return {...x,a,birds,kg,bw,fcr,ip,perBird,feed,profit,initialPopulation:initial,complete:!!link?.basics_locked_at&&initial>0&&birds>0&&kg>0&&feed>0};
-  }).filter(x=>x.complete&&x.a?.active===false&&closedFinalAssignmentIds.has(x.contract_assignment_id));
+  }).filter(x=>x.complete&&x.a?.active===false&&leagueClosedFinalAssignmentIds.has(x.contract_assignment_id));
   const abkChickInCycles=abkId=>{
-    const refs=(d.links||[])
+    const refs=(leagueLinks||[])
       .filter(l=>l.abk_id===abkId)
       .map(l=>{
-        const a=d.assignments.find(v=>v.id===l.contract_assignment_id);
-        const ci=d.chicks.find(v=>v.contract_assignment_id===l.contract_assignment_id);
+        const a=leagueAssignments.find(v=>v.id===l.contract_assignment_id);
+        const ci=leagueChicks.find(v=>v.contract_assignment_id===l.contract_assignment_id);
         return {link:l,a,ci,date:String(ci?.arrived_on||a?.start_date||'')};
       })
-      .filter(x=>x.a&&x.ci&&x.a.active===false&&closedFinalAssignmentIds.has(x.a.id))
+      .filter(x=>x.a&&x.ci&&x.a.active===false&&leagueClosedFinalAssignmentIds.has(x.a.id))
       .sort((u,v)=>u.date.localeCompare(v.date)||String(u.a.created_at||'').localeCompare(String(v.a.created_at||'')));
     return refs;
   };
@@ -11392,17 +11407,17 @@ async function buildDashboardModel(){
       ip:g.birds?g.ipWeighted/g.birds:0,
       perBird:g.birds?g.profit/g.birds:0
     };
-  }).filter(g=>d.abks.find(e=>e.id===g.abk_id)?.active!==false);
+  }).filter(g=>leagueAbks.find(e=>e.id===g.abk_id)?.active!==false);
   const max=k=>Math.max(...league.map(x=>prodNum(x[k])),0),min=k=>Math.min(...league.map(x=>prodNum(x[k])).filter(v=>v>0),0);
   league.forEach(x=>{const hi=k=>max(k)?prodNum(x[k])/max(k):0,lo=k=>prodNum(x[k])>0&&min(k)>0?min(k)/prodNum(x[k]):0;x.score=hi('perBird')*.50+lo('fcr')*.30+hi('ip')*.20});
   league.sort((a,b)=>b.score-a.score);
   const leagueRows=league.map((x,i)=>{
-    const e=d.abks.find(v=>v.id===x.abk_id),b=d.barns.find(v=>v.id===x.a?.barn_id);
+    const e=leagueAbks.find(v=>v.id===x.abk_id),b=leagueBarns.find(v=>v.id===x.a?.barn_id);
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
     return '<tr><td class="owner-rank">'+medal+'</td><td>'+esc(leagueAbkName(e))+'</td><td>'+esc(b?shortBarnLabel(b):'-')+'</td><td class="num"><strong>'+prodFmt(x.periods,0)+'</strong></td><td class="num">'+prodFmt(x.totalPopulation,0)+'</td><td class="num">'+prodFmt(x.harvestBirds,0)+'</td><td class="num">Rp '+prodFmt(x.perBird,0)+'</td><td class="num">'+prodFmt(x.ip,1)+'</td><td class="num">'+prodFmt(x.fcr,3)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td></tr>';
   }).join('');
   const leagueCards=league.map((x,i)=>{
-    const e=d.abks.find(v=>v.id===x.abk_id),b=d.barns.find(v=>v.id===x.a?.barn_id);
+    const e=leagueAbks.find(v=>v.id===x.abk_id),b=leagueBarns.find(v=>v.id===x.a?.barn_id);
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
     return '<article class="owner-league-card"><div class="owner-league-rank">'+medal+'</div><div class="owner-league-main"><strong>'+esc(leagueAbkName(e))+'</strong><small>'+esc(b?shortBarnLabel(b):'-')+'</small></div>'+
       '<div class="owner-league-stats"><div><span>Siklus ABK</span><b>'+prodFmt(x.abkCycleNo,0)+'</b></div><div><span>Populasi</span><b>'+prodFmt(x.totalPopulation,0)+'</b></div><div><span>Ekor Panen</span><b>'+prodFmt(x.harvestBirds,0)+'</b></div><div><span>Rp/Ekor</span><b>'+prodFmt(x.perBird,0)+'</b></div><div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div><div><span>FCR</span><b>'+prodFmt(x.fcr,3)+'</b></div><div><span>BW</span><b>'+prodFmt(x.bw,3)+'</b></div></div></article>';
