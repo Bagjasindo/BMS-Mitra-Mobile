@@ -5,22 +5,25 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["standalone", "window-controls-overlay"],
+  "display_override": [
+    "standalone",
+    "window-controls-overlay"
+  ],
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "./assets/bms_login_logo.jpg",
+      "src": "./assets/bms_app_icon.svg",
       "sizes": "any",
-      "type": "image/jpeg",
-      "purpose": "any"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     },
     {
       "src": "./assets/bms_login_logo.jpg",
-      "sizes": "any",
+      "sizes": "2048x1326",
       "type": "image/jpeg",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ]
 }
