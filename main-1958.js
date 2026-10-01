@@ -6801,12 +6801,14 @@ async function financeBopPage(){
 
 
 async function financeMaintenancePage(){
-  const [br,mr]=await Promise.all([
+  const [br,mr,ar]=await Promise.all([
     db.from('barns').select('id,code,name').order('code',{ascending:true}),
-    db.from('barn_maintenance_costs').select('id,barn_id,incurred_on,category,amount,paid_by,reference,notes,created_at').order('incurred_on',{ascending:false}).order('created_at',{ascending:false})
+    db.from('barn_maintenance_costs').select('id,barn_id,incurred_on,category,amount,paid_by,reference,notes,created_at').order('incurred_on',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('barn_assets').select('reference').not('reference','is',null)
   ]);
-  const barns=br.data||[],rows=mr.data||[];
-  const err=[br,mr].find(x=>x.error)?.error;
+  const assetRefs=new Set((ar.data||[]).map(x=>String(x.reference||'').trim()).filter(Boolean));
+  const barns=br.data||[],rows=(mr.data||[]).filter(x=>!assetRefs.has(String(x.reference||'').trim()));
+  const err=[br,mr,ar].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   window.__financeMaintenanceState=window.__financeMaintenanceState||{filterBarn:'',from:'',to:'',shown:false,editId:''};
   const st=window.__financeMaintenanceState;
