@@ -16,6 +16,7 @@ Logo dipakai persis; hanya resize, tanpa crop, redesign, atau perubahan warna/pr
 
 ## Verifikasi yang masih diperlukan
 
-Deployment dan tampilan ikon Home Screen perangkat nyata belum diverifikasi pada checkpoint ini.
+Deployment GitHub Pages berhasil. Manifest, index.html, dan sw.js live memakai versi baru. Ketiga PNG live berhasil dibuka, dimensinya benar, dan pixel-nya cocok dengan aset hasil resize sumber asli.
+Tampilan ikon Home Screen perangkat nyata belum diverifikasi.
 Setelah versi baru aktif, hapus aplikasi PWA lama saja, lalu pasang ulang dari situs yang sama. Jangan hapus data situs.
 Periksa Android dan iPhone/iPad: logo harus penuh dan proporsional.
