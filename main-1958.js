@@ -633,13 +633,15 @@ function appNav(){
 async function adminCycleLockPage(){
   if(profile?.role!=='ADMIN')return layout('<section class="panel"><h3>Akses Ditolak</h3><p>Hanya Administrator.</p></section>');
 
-  const [br,ar,cr]=await Promise.all([
+  const [br,ar,cr,far]=await Promise.all([
     db.from('barns').select('id,code,name,active').order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,start_date,active,created_at,cycle_type').order('start_date',{ascending:false}).order('created_at',{ascending:false}),
-    db.from('contracts').select('id,number').is('cycle_id',null)
+    db.from('contracts').select('id,number').is('cycle_id',null),
+    db.from('finance_bop_period_access').select('contract_assignment_id,is_open')
   ]);
-  const err=[br,ar,cr].find(x=>x.error)?.error;
+  const err=[br,ar,cr,far].find(x=>x.error)?.error;
   const barns=br.data||[], assignments=ar.data||[], contracts=cr.data||[];
+  const bopAccess=new Map((far.data||[]).map(x=>[x.contract_assignment_id,!!x.is_open]));
   const barnLabel=b=>b?shortBarnLabel(b):'-';
   const contractLabel=a=>{
     if((a.cycle_type||'MITRA')==='MANDIRI')return 'MANDIRI';
@@ -648,12 +650,12 @@ async function adminCycleLockPage(){
   };
 
   let html='<section class="panel"><h3>Buka / Tutup Siklus</h3>'+
-    '<p class="muted">Khusus Administrator. Pilih kandang lalu siklus. Saat dibuka, transaksi pada siklus itu dapat dikoreksi sesuai hak menu masing-masing. Siklus lain tetap terkunci.</p>'+
+    '<p class="muted">Khusus Administrator. Pilih satu kandang untuk membuka / menutup satu siklus. Pilih <strong>Semua Kandang</strong> untuk membuka / mengunci <strong>BOP semua siklus CLOSED saja</strong>. Siklus yang masih PROSES tidak disentuh.</p>'+
     '<div class="form-vertical">'+
-      '<label>Pilih Kandang<select id="adminCycleBarn"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(barnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Pilih Kandang<select id="adminCycleBarn"><option value="">Pilih Kandang</option><option value="__ALL__">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(barnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Pilih Siklus<select id="adminCycleAssignment" disabled><option value="">Pilih Siklus</option></select></label>'+
       '<div id="adminCycleState" class="panel" style="margin:0" hidden></div>'+
-      '<button type="button" id="adminCycleAction" disabled>Pilih Siklus</button>'+
+      '<div class="report-actions"><button type="button" id="adminCycleAction" disabled>Pilih Siklus</button><button type="button" id="adminBopAllOpen" hidden>Buka BOP Semua Siklus CLOSED</button><button type="button" id="adminBopAllLock" hidden>Kunci BOP Semua Siklus CLOSED</button></div>'+
     '</div></section>';
   layout(html);
   if(err)msg(err.message);
@@ -662,10 +664,28 @@ async function adminCycleLockPage(){
   const cycleSel=document.getElementById('adminCycleAssignment');
   const state=document.getElementById('adminCycleState');
   const action=document.getElementById('adminCycleAction');
+  const openAll=document.getElementById('adminBopAllOpen');
+  const lockAll=document.getElementById('adminBopAllLock');
 
   const selectedAssignment=()=>assignments.find(x=>x.id===cycleSel.value)||null;
+  const closedAssignments=()=>assignments.filter(a=>!a.active);
+
+  const renderBulkState=()=>{
+    const closed=closedAssignments();
+    const process=assignments.filter(a=>a.active).length;
+    const opened=closed.filter(a=>bopAccess.get(a.id)).length;
+    state.hidden=false;
+    state.innerHTML='<strong>Semua Kandang · BOP Siklus CLOSED</strong>'+
+      '<div class="muted">Aksi massal ini hanya mengubah akses pencatatan BOP. Siklus PROSES tetap aktif dan tidak disentuh.</div>'+
+      '<p>CLOSED: <strong>'+closed.length+'</strong> · BOP terbuka: <strong>'+opened+'</strong> · BOP terkunci: <strong>'+(closed.length-opened)+'</strong> · PROSES tidak disentuh: <strong>'+process+'</strong></p>';
+    action.hidden=true;
+    openAll.hidden=false;
+    lockAll.hidden=false;
+  };
 
   const renderState=()=>{
+    if(barnSel.value==='__ALL__'){renderBulkState();return;}
+    action.hidden=false;openAll.hidden=true;lockAll.hidden=true;
     const a=selectedAssignment();
     if(!a){
       state.hidden=true;
@@ -683,6 +703,12 @@ async function adminCycleLockPage(){
   };
 
   barnSel.onchange=()=>{
+    if(barnSel.value==='__ALL__'){
+      cycleSel.disabled=true;
+      cycleSel.innerHTML='<option value="">Semua Siklus CLOSED</option>';
+      renderBulkState();
+      return;
+    }
     const rows=assignments.filter(a=>a.barn_id===barnSel.value);
     cycleSel.disabled=!barnSel.value;
     cycleSel.innerHTML='<option value="">Pilih Siklus</option>'+rows.map(a=>
@@ -691,6 +717,32 @@ async function adminCycleLockPage(){
     renderState();
   };
   cycleSel.onchange=renderState;
+
+  const setAllBopAccess=async isOpen=>{
+    const targets=closedAssignments().filter(a=>bopAccess.get(a.id)!==isOpen);
+    if(!targets.length)return msg(isOpen?'Semua BOP siklus CLOSED sudah terbuka.':'Semua BOP siklus CLOSED sudah terkunci.');
+    const verb=isOpen?'Buka':'Kunci';
+    if(!await appConfirm(verb+' pencatatan BOP untuk '+targets.length+' siklus CLOSED di semua kandang?\n\nSiklus PROSES tidak disentuh. Status produksi semua siklus CLOSED tetap CLOSED.'))return;
+    const btn=isOpen?openAll:lockAll;
+    if(!actionButtonStart(btn,verb+' '+targets.length+' siklus...'))return;
+    let ok=0,failed=[];
+    for(const a of targets){
+      const result=await db.rpc('admin_set_finance_bop_period_access',{p_assignment_id:a.id,p_is_open:isOpen});
+      if(result.error)failed.push(result.error.message);
+      else ok++;
+    }
+    await logAppActivity(isOpen?'ADMIN_BOP_ALL_OPEN':'ADMIN_BOP_ALL_LOCK','admin_cycle_lock',{count:ok,failed:failed.length});
+    if(failed.length){
+      await actionButtonFinish(btn,false,'','Gagal '+failed.length+' siklus');
+      msg(ok+' berhasil, '+failed.length+' gagal. '+failed[0]);
+      return;
+    }
+    await actionButtonFinish(btn,true,isOpen?'BOP Semua Terbuka ✓':'BOP Semua Terkunci ✓');
+    await adminCycleLockPage();
+    msg(isOpen?'BOP semua siklus CLOSED berhasil dibuka. Siklus PROSES tidak disentuh.':'BOP semua siklus CLOSED berhasil dikunci kembali. Siklus PROSES tidak disentuh.',true);
+  };
+  openAll.onclick=()=>setAllBopAccess(true);
+  lockAll.onclick=()=>setAllBopAccess(false);
 
   action.onclick=async()=>{
     const a=selectedAssignment();
