@@ -57,10 +57,7 @@ async function buildDashboardModel(){
     const ids=[...new Set((leagueLivePrices||[]).map(p=>p.contract_id).filter(Boolean))];
     return ids.length===1?ids[0]:'';
   };
-  // Status Kandang Aktif mengikuti status siklus/assignment, bukan keberadaan Chick-In.
-  // Siklus yang belum Chick-In tetap AKTIF; kartu performa baru tampil setelah Chick-In tersedia.
-  const active=d.assignments.filter(a=>a.active);
-  const performanceActive=active.filter(a=>d.chicks.some(ci=>ci.contract_assignment_id===a.id));
+  const active=d.assignments.filter(a=>a.active&&d.chicks.some(ci=>ci.contract_assignment_id===a.id));
   const ownerParityIssue=profile.role==='OWNER'&&(
     (!d.assignments.length&&(recs.length||estimates.length||abkResults.length))||
     (!d.chicks.length&&recs.length)
@@ -92,7 +89,7 @@ async function buildDashboardModel(){
     };
   }
 
-  const metrics=performanceActive.map(a=>{
+  const metrics=active.map(a=>{
     const ci=d.chicks.find(x=>x.contract_assignment_id===a.id);
     const rows=recs.filter(x=>x.contract_assignment_id===a.id).sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
     const latest=rows[rows.length-1]||null,prev=rows[rows.length-2]||null;
@@ -176,7 +173,7 @@ async function buildDashboardModel(){
       '<div class="owner-card-foot"><strong>Populasi Awal '+prodFmt(x.initial,0)+' ekor</strong> · Terpanen sampai hari ini '+prodFmt(x.liveHarvested,0)+' ekor · Sisa Ayam '+prodFmt(x.livePopulation,0)+' ekor<br>Deplesi '+prodFmt(x.dep,2)+'% · <span class="'+(x.fcLow?'owner-fc-low':'owner-fc-ok')+'">FC '+prodFmt(x.fc,0)+' g/ekor'+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</span> · Pakan '+prodFmt(x.feed,0)+' Kg</div></article>';
   }).join('');
 
-  const latestEst=performanceActive.map(a=>estimates.find(e=>e.contract_assignment_id===a.id)).filter(Boolean);
+  const latestEst=active.map(a=>estimates.find(e=>e.contract_assignment_id===a.id)).filter(Boolean);
   const latestEstStockResponses=await Promise.all(latestEst.map(e=>
     db.rpc('production_feed_stock_as_of',{
       p_contract_assignment_id:e.contract_assignment_id,
