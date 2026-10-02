@@ -1762,16 +1762,18 @@ function productionProcessSnapshot(d,a,recs,samples){
 
 async function productionRecapPage(){
   const d=await productionBase();
-  const [cpr,pr,abr,absr]=await Promise.all([
+  const [cpr,pr,abr,absr,fr]=await Promise.all([
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('production_ppl_directory'),
     db.from('production_abk_results').select('*'),
-    db.from('production_abk_result_sizes').select('*').order('harvest_date',{ascending:true}).order('created_at',{ascending:true})
+    db.from('production_abk_result_sizes').select('*').order('harvest_date',{ascending:true}).order('created_at',{ascending:true}),
+    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,mortality_pct,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type')
   ]);
   const company=cpr.data||{};
   const pplRows=pr.data||[];
   const abkResults=d.scopeRows(abr.data||[]);
   const abkSizes=absr.data||[];
+  const finals=fr.data||[];
 
   const dateOfAssignment=a=>{
     const ci=d.chicks.find(c=>c.contract_assignment_id===a.id);
@@ -1819,8 +1821,9 @@ async function productionRecapPage(){
     cycleMap.set(a.barn_id,arr);
   });
 
-  // Rekap Produksi PPL memakai satu sumber yang sama dengan Liga ABK:
-  // pembagian populasi ABK, pakan ABK yang dikunci, dan rincian panen ABK.
+  // Acuan utama Rekap Produksi PPL adalah Liga ABK.
+  // Untuk siklus historis CLOSED yang belum pernah memiliki data Liga ABK,
+  // gunakan snapshot final produksi yang sudah tersimpan agar tidak tampil 0 palsu.
   const rows=inRange.map(a=>{
     const ci=d.chicks.find(c=>c.contract_assignment_id===a.id);
     const b=d.barns.find(x=>x.id===a.barn_id);
@@ -1829,6 +1832,30 @@ async function productionRecapPage(){
     const resultRows=abkResults.filter(r=>r.contract_assignment_id===a.id);
     const resultIds=new Set(resultRows.map(r=>r.id));
     const sizes=abkSizes.filter(s=>resultIds.has(s.result_id));
+    const hasLeagueData=resultRows.length>0&&sizes.some(s=>prodNum(s.birds)>0||prodNum(s.weight_kg)>0);
+
+    if(!hasLeagueData&&!a.active){
+      const final=finals.find(f=>f.contract_assignment_id===a.id);
+      if(final){
+        const chickIn=prodNum(final.chick_in_birds);
+        const chickOut=prodNum(final.total_harvest_birds);
+        const mortPct=Math.max(0,Math.min(100,prodNum(final.mortality_pct)));
+        const mortBirds=Math.max(0,chickIn-chickOut);
+        const kg=prodNum(final.total_harvest_kg);
+        const avg=prodNum(final.avg_bw_kg);
+        const age=prodNum(final.weighted_age);
+        const feed=prodNum(final.net_feed_kg);
+        const fcr=prodNum(final.fcr_actual);
+        const ip=prodNum(final.ip);
+        return {
+          a,b,ci,ppl:pplName(a.ppl_id),status:'CLOSED',
+          chickIn,chickOut,mortBirds,mortPct,kg,avg,age,feed,fcr,ip,
+          performanceBirds:chickOut,performanceKg:kg,
+          cycle:Math.max(1,cycles.indexOf(a.id)+1),
+          source:'FINAL_HISTORIS'
+        };
+      }
+    }
 
     const chickIn=links.reduce((sum,l)=>sum+prodNum(l.initial_birds),0);
     const chickOut=sizes.reduce((sum,s)=>sum+prodNum(s.birds),0);
@@ -1930,7 +1957,7 @@ async function productionRecapPage(){
     '</section></div>';
 
   layout(html);
-  if(d.err||cpr.error||pr.error||abr.error||absr.error)msg((d.err||cpr.error||pr.error||abr.error||absr.error).message);
+  if(d.err||cpr.error||pr.error||abr.error||absr.error||fr.error)msg((d.err||cpr.error||pr.error||abr.error||absr.error||fr.error).message);
 
   const form=document.getElementById('productionRecapFilter');
   if(form){
