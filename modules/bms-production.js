@@ -352,7 +352,7 @@ async function chickInPage(){
     if(allocations.some(x=>x.initial_birds<=0))return msg('Populasi Awal setiap ABK wajib lebih dari 0.');
     if(new Set(allocations.map(x=>x.abk_id)).size!==allocations.length)return msg('ABK tidak boleh dipilih dua kali.');
 
-    const net=received-doa;
+    const net=received;
     const total=allocations.reduce((s,x)=>s+x.initial_birds,0);
     if(total!==net)return msg('Total Populasi Awal ABK '+fmtNumber(total)+' harus sama dengan DOC In/Kedatangan '+fmtNumber(net)+' ekor.');
 
