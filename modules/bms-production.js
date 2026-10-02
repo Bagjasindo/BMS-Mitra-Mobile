@@ -187,7 +187,7 @@ async function chickInPage(){
     '<label>Nomor DO<input name="delivery_number" value="'+esc(editRow&&String(editRow.delivery_number||'').match(/^DOC-PLACEHOLDER-/i)?'':(editRow?.delivery_number||''))+'" placeholder="Opsional"></label>'+
     '<p id="prodChickNet" class="muted">Populasi awal bersih: 0 ekor</p>'+
     '<section class="panel" style="margin:0"><h4>Pembagian ABK</h4>'+
-      '<p class="muted">Pilih ABK kandang dan bagi Populasi Awal. Total ABK wajib sama dengan Populasi Awal Bersih. Data ini langsung menjadi dasar Liga ABK.</p>'+
+      '<p class="muted">Pilih ABK kandang dan bagi jumlah DOC datang. Total ABK wajib sama dengan DOC In/Kedatangan. DOC Mati Box tetap dicatat terpisah. Data ini langsung menjadi dasar Liga ABK.</p>'+
       '<div id="chickAbkRows"></div>'+
       '<button type="button" id="addChickAbk">+ Tambah ABK</button>'+
       '<p id="chickAbkTotal" class="muted">Pembagian ABK: 0 / 0 ekor</p>'+
@@ -248,12 +248,12 @@ async function chickInPage(){
     });
   };
 
-  const netPopulation=()=>Math.max(0,(normalizeInputID(form.received.value)||0)-(normalizeInputID(form.doa.value)||0));
+  const netPopulation=()=>Math.max(0,(normalizeInputID(form.received.value)||0));
 
   const updateTotals=()=>{
     const net=netPopulation();
     const total=chickAbks.reduce((s,x)=>s+Math.max(0,Math.trunc(prodNum(x.initial_birds))),0);
-    netEl.textContent='Populasi awal bersih: '+net.toLocaleString('id-ID')+' ekor';
+    netEl.textContent='Dasar Pembagian ABK / DOC Datang: '+net.toLocaleString('id-ID')+' ekor';
     const diff=net-total;
     abkTotalEl.innerHTML='Pembagian ABK: <strong>'+total.toLocaleString('id-ID')+' / '+net.toLocaleString('id-ID')+' ekor</strong>'+(diff===0&&net>0?' · SESUAI':(' · Sisa '+diff.toLocaleString('id-ID')+' ekor'));
   };
@@ -354,7 +354,7 @@ async function chickInPage(){
 
     const net=received-doa;
     const total=allocations.reduce((s,x)=>s+x.initial_birds,0);
-    if(total!==net)return msg('Total Populasi Awal ABK '+fmtNumber(total)+' harus sama dengan Populasi Awal Bersih '+fmtNumber(net)+' ekor.');
+    if(total!==net)return msg('Total Populasi Awal ABK '+fmtNumber(total)+' harus sama dengan DOC In/Kedatangan '+fmtNumber(net)+' ekor.');
 
     const rawDo=String(form.delivery_number.value||'').trim();
     const {error}=await db.rpc('save_chick_in_with_abks_v1',{
