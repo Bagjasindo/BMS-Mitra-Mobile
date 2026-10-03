@@ -1157,7 +1157,7 @@ async function printFinanceDocument(sectionIds,heading){
     cashflowPrintCss+
     '</style></head><body>'+
     '<div class="print-head">'+'<img src="'+esc(reportLogo)+'" style="max-height:42px;float:right;object-fit:contain">'+
-    '<h2>'+esc(cp.company_name||cp.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
+    '<h2>'+esc(cp.company_name||cp.legal_name||'Nama perusahaan belum diisi')+'</h2>'+
     (cp.address?'<div>'+esc(cp.address)+'</div>':'')+
     (cp.phone?'<div>Tel/WA: '+esc(cp.phone)+'</div>':'')+
     (cp.email?'<div>Email: '+esc(cp.email)+'</div>':'')+
@@ -1186,7 +1186,7 @@ async function exportFinanceDocumentExcel(sectionIds,heading){
   }).join('<br>');
   const title=String(heading||'Laporan').trim();
   const html='<!doctype html><html><head><meta charset="utf-8"></head><body>'+
-    '<h2>'+esc(cp.company_name||cp.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
+    '<h2>'+esc(cp.company_name||cp.legal_name||'Nama perusahaan belum diisi')+'</h2>'+
     '<h3>'+esc(title)+'</h3>'+body+'</body></html>';
   const blob=BMSCore.excelBlob(['\ufeff'+html]);
   const url=URL.createObjectURL(blob);
