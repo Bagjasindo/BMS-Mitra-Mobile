@@ -13,3 +13,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Browser smoke test
+        shell: bash
+        run: |
+          BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$BROWSER" ]; then
+            echo "Chromium/Chrome not found on runner" >&2
+            exit 1
+          fi
+          BMS_TEST_CHROMIUM="$BROWSER" npm run test:browser
