@@ -1686,13 +1686,6 @@ async function financeExpeditionProfitLossPage(){
   const vehicles=[...new Set(trips.map(x=>x.vehicle).filter(Boolean).concat(maintenance.map(x=>x.vehicle).filter(Boolean)))].sort((a,b)=>String(a).localeCompare(String(b)));
   const customerNames=[...new Set(customers.map(x=>x.name).filter(Boolean).concat(invoices.map(x=>x.customer_name).filter(Boolean)))].sort((a,b)=>String(a).localeCompare(String(b)));
   const inDate=(d)=>!d?false:(!st.from||String(d)>=st.from)&&(!st.to||String(d)<=st.to);
-  const matchTrip=(t)=>{
-    if(!t)return true;
-    if(st.vehicle&&String(t.vehicle||'')!==st.vehicle)return false;
-    if(st.route&&String(t.zone||'')!==st.route)return false;
-    if(st.customer&&customerForTrip(t.id)!==st.customer)return false;
-    return true;
-  };
   const tripIdsForInvoice=id=>links.filter(x=>x.invoice_id===id).map(x=>x.trip_id);
   const invoiceMatches=(inv)=>{
     if(!inv)return false;
