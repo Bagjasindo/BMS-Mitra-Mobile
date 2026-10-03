@@ -2196,7 +2196,7 @@ async function pplRhppAbkViewPage(){
         '</tbody></table></div></section>';
       html+='<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>OVK ABK</h3><p class="muted">Format disamakan dengan RHPP utama. Saat ini OVK tidak dialokasikan per ABK di Liga ABK, sehingga tidak dimasukkan ke nilai RHPP ABK.</p></div></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Jenis</th><th class="num">Qty</th><th>Satuan</th><th class="num">Harga</th><th class="num">Total</th></tr></thead><tbody>'+
-          '<tr><td>OVK</td><td class="num">-</td><td>-</td><td class="num">-</td><td class="num">Rp 0</td></tr>'+
+          '<tr><td>OVK</td><td class="num">-</td><td>-</td><td class="num">-</td><td class="num">Tidak dialokasikan</td></tr>'+
         '</tbody></table></div></section>';
 
 
@@ -2290,7 +2290,8 @@ async function pplRhppAbkViewPage(){
     const exportAbkExcel=()=>{
       const clone=exportArea?.cloneNode(true);if(!clone)return;
       clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-      const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>PT Bagjasindo Mandiri Sindangkasih</h2><h3>RHPP ABK</h3>'+clone.innerHTML+'</body></html>']);
+      const exportCompany=company.company_name||company.legal_name||'BMS Mobile';
+      const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(exportCompany)+'</h2><h3>RHPP ABK</h3>'+clone.innerHTML+'</body></html>']);
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xlsx';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -2385,8 +2386,8 @@ const RHPP_PRINT_STYLE='<style>'+
 '@media print{html,body{font-size:10px}.panel,.ui-rhpp-card,.rhpp-panel,.ui-rhpp-kpi,.rhpp-summary-card{break-inside:avoid}.tablewrap table,.ui-rhpp-table table{break-inside:auto}tr{break-inside:avoid;break-after:auto}thead{display:table-header-group}}'+
 '</style>';
 const rhppPrintShell=(title,company,body)=>{
-  const logo=new URL('./assets/bms_login_logo.jpg',location.href).href;
-  const companyName='PT Bagjasindo Mandiri Sindangkasih';
+  const logo=company?.logo_url||BMS_PRINT_LOGO;
+  const companyName=company?.company_name||company?.legal_name||'BMS Mobile';
   const addr=company?.address||'';
   const phone=company?.phone?('Tel/WA: '+company.phone):'';
   const email=company?.email||'';
@@ -2899,9 +2900,9 @@ async function adminRhppHistoryPage(){
       });
       const ovkTotal=ovkRows.length?ovkRows.reduce((n,x)=>n+prodNum(x.total),0):prodNum(src.main_ovk_cost);
 
-      const bmsLogo=new URL('./assets/bms_login_logo.jpg',location.href).href;
+      const bmsLogo=company?.logo_url||BMS_PRINT_LOGO;
       const companyHeader=[
-        'PT Bagjasindo Mandiri Sindangkasih',
+        company.company_name||company.legal_name||'BMS Mobile',
         company.address||'',
         company.phone?('Tel/WA: '+company.phone):'',
         company.email||''
@@ -2915,9 +2916,10 @@ async function adminRhppHistoryPage(){
         '<tr><th>PPL</th><td>'+esc(pplName)+'</td></tr>'+
       '</tbody></table>';
 
-      const docRows='<tr><td>'+prodDateId(fin?.chick_in_date||ci?.arrived_on)+'</td><td>'+esc(ci?.hatchery||ci?.strain||'DOC')+'</td><td>'+esc(ci?.delivery_number||'-')+'</td><td class="n">'+prodFmt(chickIn,0)+'</td><td>Ekor</td><td class="n">'+money(docPrice)+'</td><td class="n">'+money(src.main_doc_cost)+'</td></tr>'+
-        '<tr><td></td><td>KOMPLAIN DOC</td><td></td><td class="n">0</td><td>Ekor</td><td></td><td class="n">0</td></tr>'+
-        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(chickIn,0)+'</td><td></td><td></td><td class="n">'+money(src.main_doc_cost)+'</td></tr>';
+      const docCostKnown=src.main_doc_cost!==null&&src.main_doc_cost!==undefined&&src.main_doc_cost!=='';
+      const docPriceKnown=Number.isFinite(Number(docPrice))&&Number(docPrice)>0;
+      const docRows='<tr><td>'+prodDateId(fin?.chick_in_date||ci?.arrived_on)+'</td><td>'+esc(ci?.hatchery||ci?.strain||'DOC')+'</td><td>'+esc(ci?.delivery_number||'-')+'</td><td class="n">'+prodFmt(chickIn,0)+'</td><td>Ekor</td><td class="n">'+(docPriceKnown?money(docPrice):'-')+'</td><td class="n">'+(docCostKnown?money(src.main_doc_cost):'-')+'</td></tr>'+
+        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(chickIn,0)+'</td><td></td><td></td><td class="n">'+(docCostKnown?money(src.main_doc_cost):'-')+'</td></tr>';
 
       const feedRowsHtml=(feedTxnRows.length?feedTxnRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.sj)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.dir)+'</td><td class="n">'+n2(x.mut)+'</td><td class="n">'+money(x.price)+'</td><td class="n">'+money(x.total)+'</td></tr>').join(''):'<tr><td colspan="8" class="c">Tidak ada rincian pakan.</td></tr>')+
         '<tr class="total"><td colspan="3"></td><td class="n">'+n2(totalFeedQty)+'</td><td></td><td class="n">'+n2(totalFeedMut)+'</td><td></td><td class="n">'+money(src.main_feed_cost)+'</td></tr>'+
