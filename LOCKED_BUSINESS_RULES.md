@@ -75,3 +75,16 @@ Setiap perubahan terhadap LOCK-001 s/d LOCK-009 harus:
 4. lulus `npm run check`.
 
 Jika hanya “refactor”, “audit”, “rapikan”, atau “perbaikan UI”, aturan LOCKED tetap tidak boleh berubah.
+
+
+## OPERATIONAL BASELINE LOCK
+Baseline operasional dikunci pada **build 2340-dead-code-cleanup**, audit 2026-10-03.
+Detail bukti audit: `AUDIT_HULU_HILIR_LOCK_20261003.md`.
+
+Setiap perubahan setelah baseline ini wajib lulus:
+- `npm run check`
+- seluruh locked business rule guards
+- audit lock guards
+- Chromium browser smoke test
+
+Build yang gagal Verify application tidak boleh dianggap siap operasi.
