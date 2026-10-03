@@ -2049,7 +2049,12 @@ async function pplRhppAbkViewPage(){
   const abkRows=st.assignment?d.abks.filter(a=>assignmentAbkIds.has(a.id)):[];
   if(st.abk&&!abkRows.some(a=>a.id===st.abk))st.abk='';
 
-  const abkReferenceContractId=a=>a?.master_contract_id||'';
+  const abkReferenceContractId=a=>{
+    if(a?.master_contract_id)return a.master_contract_id;
+    if(a?.cycle_type!=='MANDIRI')return '';
+    const ids=[...new Set((d.livePrices||[]).map(p=>p.contract_id).filter(Boolean))];
+    return ids.length===1?ids[0]:'';
+  };
   const calcResult=x=>{
     const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
     const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
@@ -2066,34 +2071,26 @@ async function pplRhppAbkViewPage(){
     const survival=initial?Math.min(100,birds/initial*100):0;
     const mortality=Math.max(0,100-survival);
     const ip=initial&&age&&fcr?(survival*bw*100)/(age*fcr):0;
-    const contract=leagueContracts.find(c=>c.id===refContractId);
-    let monetaryReady=!!contract&&!!refContractId;
     let revenue=0;
-    if(monetaryReady){
-      for(const z of sz){
-        const av=prodNum(z.birds)?prodNum(z.weight_kg)/prodNum(z.birds):0;
-        const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
-        if(!p||prodNum(p.price_per_kg)<=0){monetaryReady=false;break;}
-        revenue+=prodNum(z.weight_kg)*prodNum(p.price_per_kg);
-      }
+    for(const z of sz){
+      const av=prodNum(z.birds)?prodNum(z.weight_kg)/prodNum(z.birds):0;
+      const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
+      revenue+=prodNum(z.weight_kg)*prodNum(p?.price_per_kg);
     }
-    const hasContractCosts=!!contract&&
-      contract.doc_price!=null&&contract.pre_starter_price!=null&&contract.starter_price!=null&&contract.finisher_price!=null;
-    const docCost=monetaryReady&&hasContractCosts?initial*prodNum(contract.doc_price):null;
-    const feedCost=monetaryReady&&hasContractCosts?(
-      prodNum(link?.feed_pre_bags)*50*prodNum(contract.pre_starter_price)+
-      prodNum(link?.feed_starter_bags)*50*prodNum(contract.starter_price)+
-      prodNum(link?.feed_finisher_bags)*50*prodNum(contract.finisher_price)
-    ):null;
-    const sapronakCost=docCost!=null&&feedCost!=null?docCost+feedCost:null;
-    if(!monetaryReady)revenue=null;
+    const contract=leagueContracts.find(c=>c.id===refContractId);
+    const docCost=initial*prodNum(contract?.doc_price);
+    const feedCost=
+      prodNum(link?.feed_pre_bags)*50*prodNum(contract?.pre_starter_price)+
+      prodNum(link?.feed_starter_bags)*50*prodNum(contract?.starter_price)+
+      prodNum(link?.feed_finisher_bags)*50*prodNum(contract?.finisher_price);
+    const sapronakCost=docCost+feedCost;
     const matchBonus=(metric,value)=>prodNum(leagueBonuses.find(b=>
       b.contract_id===refContractId&&b.metric===metric&&
       (b.min_value==null||value>=prodNum(b.min_value))&&
       (b.max_value==null||value<prodNum(b.max_value))
     )?.rupiah_per_kg);
-    const ipRate=monetaryReady?matchBonus('IP',ip):null;
-    const ipBonus=monetaryReady?kg*prodNum(ipRate):null;
+    const ipRate=matchBonus('IP',ip);
+    const ipBonus=kg*ipRate;
     const perfRows=d.standards
       .filter(v=>(a?.cycle_type==='MANDIRI'||v.contract_id===a?.master_contract_id)&&v.template_name===a?.performance_template_name&&v.std_fcr!=null)
       .sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
@@ -2111,12 +2108,12 @@ async function pplRhppAbkViewPage(){
       }
     }
     const fcrDiff=stdFcr?stdFcr-fcr:0;
-    const fcrRate=monetaryReady?(fcrDiff>0?matchBonus('FCR_DIFFERENCE',fcrDiff):0):null;
-    const fcrBonus=monetaryReady?(fcrDiff>0?kg*prodNum(fcrRate):0):null;
-    const baseProfit=revenue!=null&&sapronakCost!=null?revenue-sapronakCost:null;
-    const profit=baseProfit!=null?baseProfit+prodNum(ipBonus)+prodNum(fcrBonus):null;
-    const perBird=birds&&profit!=null?profit/birds:null;
-    const avgLivePrice=kg&&revenue!=null?revenue/kg:null;
+    const fcrRate=fcrDiff>0?matchBonus('FCR_DIFFERENCE',fcrDiff):0;
+    const fcrBonus=fcrDiff>0?kg*fcrRate:0;
+    const baseProfit=revenue-sapronakCost;
+    const profit=baseProfit+ipBonus+fcrBonus;
+    const perBird=birds?profit/birds:0;
+    const avgLivePrice=kg?revenue/kg:0;
     const feedPerBird=initial?feed*1000/initial:0;
     return {...x,a,ci,link,birds,kg,bw,feed,feedPerBird,fcr,stdFcr,age,initial,survival,mortality,ip,revenue,docCost,feedCost,sapronakCost,ipRate,ipBonus,fcrDiff,fcrRate,fcrBonus,baseProfit,profit,perBird,avgLivePrice};
   };
