@@ -513,19 +513,6 @@ async function load(){
   dashboardDataLoaded=false;
   await render();
 }
-async function ensureDashboardData(force=false){
-  if(dashboardDataLoaded&&!force)return;
-  const [ar,b,cr,ci]=await Promise.all([
-    db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,start_date,active,created_at,ppl_id,cycle_type').order('created_at',{ascending:false}),
-    db.from('barns').select('id,code,name'),
-    db.from('contracts').select('id,number,doc_price,pre_starter_price,starter_price,finisher_price').is('cycle_id',null),
-    db.from('chick_ins').select('id,contract_assignment_id,received,doa')
-  ]);
-  const err=[ar,b,cr,ci].find(x=>x.error)?.error;if(err)throw err;
-  assignments=ar.data||[];barns=b.data||[];contracts=cr.data||[];
-  window.__bmsDashboardChicks=ci.data||[];
-  dashboardDataLoaded=true;
-}
 async function ensureLegacyData(){
   if(legacyDataLoaded)return;
   const [ar,b,i,su,e,a,p,k]=await Promise.all([
