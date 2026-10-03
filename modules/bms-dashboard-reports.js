@@ -255,20 +255,6 @@ async function buildDashboardModel(){
     return {e,a,b,ci,initial,outBirds,age,totalProjectedKg,mort,feedKg,bw:avgProjectedBw,fc,fcStd,ip,revenuePerBird};
   });
 
-  const estimateRows=estimateDashboardData.map(x=>{
-    return '<tr>'+
-      '<td>'+esc(x.b?shortBarnLabel(x.b):'-')+'</td>'+
-      '<td>'+prodDateId(x.e.estimated_on)+'</td>'+
-      '<td>'+x.age+' hari</td>'+
-      '<td class="num">'+prodFmt(x.initial,0)+'</td>'+
-      '<td class="num">'+prodFmt(x.outBirds,0)+'</td>'+
-      '<td class="num">'+prodFmt(x.fc,0)+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+' g/ekor</td>'+
-      '<td class="num">'+prodFmt(x.mort,2)+'%</td>'+
-      '<td class="num">'+prodFmt(x.ip,1)+'</td>'+
-      '<td class="num">Rp '+prodFmt(x.revenuePerBird,0)+'</td>'+
-      '</tr>';
-  }).join('');
-
   const estimateCards=estimateDashboardData.map(x=>{
     const canOpenEstimate=canViewTab('estimasi');
     return '<article class="owner-estimate-card'+(canOpenEstimate?' owner-estimate-link':'')+'"'+
