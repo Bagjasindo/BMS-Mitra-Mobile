@@ -88,3 +88,11 @@ Setiap perubahan setelah baseline ini wajib lulus:
 - Chromium browser smoke test
 
 Build yang gagal Verify application tidak boleh dianggap siap operasi.
+
+
+## OWNER CHANGE CONTROL
+Mulai baseline build 2340, **setiap perubahan kode atau database harus mendapat persetujuan eksplisit Owner terlebih dahulu**.
+
+Permintaan seperti **cek, audit, lihat, analisa, cari masalah** adalah read-only dan **bukan izin untuk melakukan perubahan**.
+
+Dokumen governance: `OWNER_CHANGE_CONTROL.md`.
