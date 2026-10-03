@@ -78,7 +78,7 @@ Jika hanya “refactor”, “audit”, “rapikan”, atau “perbaikan UI”, 
 
 
 ## OPERATIONAL BASELINE LOCK
-Baseline operasional dikunci pada **build 2340-dead-code-cleanup**, audit 2026-10-03.
+Baseline operasional dikunci pada **build 2341-recording-photo-compress**, audit 2026-10-03.
 Detail bukti audit: `AUDIT_HULU_HILIR_LOCK_20261003.md`.
 
 Setiap perubahan setelah baseline ini wajib lulus:
