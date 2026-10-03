@@ -13,7 +13,7 @@ def table(s,t):return q(ns(s))+'.'+q(t)
 def rewrite(s):
  for a,b in mapping.items():s=re.sub(r'\b'+a+r'\.',b+'.',s)
  return s
-out=['-- BMS schema snapshot 2026-10-03, build 2340. No business rows or credentials.','-- Fresh Supabase project only. Managed auth/storage schemas must already exist.','BEGIN;','SET LOCAL check_function_bodies = off;']
+out=['-- BMS schema snapshot 2026-10-03, build 2341. No business rows or credentials.','-- Fresh Supabase project only. Managed auth/storage schemas must already exist.','BEGIN;','SET LOCAL check_function_bodies = off;']
 for s in ['private','bms_backup']+(['public'] if verify else []):out.append('CREATE SCHEMA IF NOT EXISTS '+q(ns(s))+';')
 for e in p['enums']:
  out.append('CREATE TYPE '+table('public',e['name'])+' AS ENUM ('+', '.join(map(lit,e['values']))+');')
