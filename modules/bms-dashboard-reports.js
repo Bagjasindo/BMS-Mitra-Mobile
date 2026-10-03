@@ -1103,16 +1103,13 @@ async function logisticsReports(){
 
 async function reports(){
   const d=await productionBase();
-  const [pr,fr,rr,sr,...feedResponses]=await Promise.all([
+  const [pr,fr,rr,sr]=await Promise.all([
     db.rpc('production_ppl_directory'),
     db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,avg_bw_kg,weighted_age,net_feed_kg,fcr_actual,ip,closed_on,cycle_type'),
     db.from('recordings').select('id,contract_assignment_id,recorded_on,age_days,mortality,culling,feed_kg,avg_weight_kg').not('contract_assignment_id','is',null).order('recorded_on'),
-    db.from('recording_weight_samples').select('recording_id,weight_g'),
-    ...d.assignments.map(a=>db.rpc('production_feed_stock',{p_contract_assignment_id:a.id}))
+    db.from('recording_weight_samples').select('recording_id,weight_g')
   ]);
   const pplRows=pr.data||[],finals=fr.data||[],recs=d.scopeRows(rr.data||[]),samples=sr.data||[];
-  const feedByAssignment=new Map();
-  d.assignments.forEach((a,i)=>feedByAssignment.set(a.id,feedResponses[i]?.data||[]));
 
   window.__productionReportState=window.__productionReportState||{barn:'',assignment:'',type:'',status:'',ppl:'',shown:false};
   const st=window.__productionReportState;
@@ -1267,8 +1264,7 @@ async function reports(){
   }
 
   layout(html);
-  const feedErr=feedResponses.find(x=>x?.error)?.error;
-  if(d.err||pr.error||fr.error||rr.error||sr.error||feedErr)msg((d.err||pr.error||fr.error||rr.error||sr.error||feedErr).message);
+  if(d.err||pr.error||fr.error||rr.error||sr.error)msg((d.err||pr.error||fr.error||rr.error||sr.error).message);
 
   const form=document.getElementById('productionReportFilter');
   if(form){
