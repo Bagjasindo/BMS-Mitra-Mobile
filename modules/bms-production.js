@@ -389,7 +389,7 @@ async function recordingPplPage(){
       '<p id="prodRecKg" class="muted">Pemakaian: 0 Kg</p>'+
       '<label>Ayam Mati Hari Ini (ekor)<input type="number" name="mortality" min="0" value="0" required></label>'+
       '<label>Afkir / Dimusnahkan Hari Ini (ekor)<input type="number" name="culling" min="0" value="0" required></label>'+
-      '<div><strong>Bobot Sampel Ayam</strong><p class="muted">Isi dalam Kg. Contoh 0,85 = 850 gram. Minimal satu sampel.</p><div id="weightRows"></div><button type="button" id="addWeight">+ Tambah Sampel Ayam</button></div>'+
+      '<div><strong>Bobot Sampel Ayam (Kg/ekor)</strong><p class="muted">Isi dalam Kg desimal. Contoh: 500 gram = 0,50 · 630 gram = 0,63 · 850 gram = 0,85 · 1.200 gram = 1,20. Minimal satu sampel.</p><div id="weightRows"></div><button type="button" id="addWeight">+ Tambah Sampel Ayam</button></div>'+
     '</div>'+
     '<div class="panel" style="padding:14px"><h4>3. Simpan</h4>'+
       '<label>Catatan (opsional)<textarea name="notes" placeholder="Contoh: ayam aktif, litter kering"></textarea></label>'+
@@ -476,7 +476,7 @@ async function recordingPplPage(){
     wr.querySelectorAll('[data-weight]').forEach(x=>{const i=Number(x.dataset.weight);if(weights[i]!=null)weights[i]=prodNum(x.value)});
   };
   const renderWeights=()=>{
-    wr.innerHTML=weights.map((v,i)=>'<div class="inline-actions"><input type="number" min="0.01" step="0.01" data-weight="'+i+'" placeholder="Contoh: 0.85" value="'+(v||'')+'" required><span class="muted">Kg/ekor</span>'+(weights.length>1?'<button type="button" data-del-weight="'+i+'">Hapus</button>':'')+'</div>').join('');
+    wr.innerHTML=weights.map((v,i)=>'<div class="inline-actions"><input type="number" min="0.01" step="0.01" inputmode="decimal" data-weight="'+i+'" placeholder="Contoh: 0,63" value="'+(v||'')+'" required><span class="muted">Kg/ekor</span>'+(weights.length>1?'<button type="button" data-del-weight="'+i+'">Hapus</button>':'')+'</div>').join('');
     wr.querySelectorAll('[data-weight]').forEach(x=>x.oninput=()=>weights[Number(x.dataset.weight)]=prodNum(x.value));
     wr.querySelectorAll('[data-del-weight]').forEach(x=>x.onclick=()=>{syncWeightsFromDom();weights.splice(Number(x.dataset.delWeight),1);renderWeights()});
   };
