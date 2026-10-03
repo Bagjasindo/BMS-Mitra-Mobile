@@ -17,7 +17,7 @@ Jangan memakai handoff lama, histori chat lama, checkpoint lama, percobaan lama,
 
 - Verify application: **PASS**
 - GitHub Pages deployment: **PASS**
-- PWA/cache aktif: **v2340-dead-code-cleanup**
+- PWA/cache aktif: **v2341-recording-photo-compress**
 - Browser Chromium smoke test: **PASS**
 - Login shell: **PASS**
 - Offline application shell: **PASS**
