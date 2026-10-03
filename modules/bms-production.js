@@ -2454,11 +2454,16 @@ async function pplRhppViewPage(){
     const auditContract=rhppContracts.find(x=>x.id===a?.master_contract_id)||contract;
     const auditLivePrices=(d.livePrices||[]).filter(x=>x.contract_id===a?.master_contract_id);
     const auditBonuses=rhppBonuses.filter(x=>x.contract_id===a?.master_contract_id);
+    const isMandiri=String(a?.cycle_type||'').toUpperCase()==='MANDIRI'||!a?.master_contract_id;
     const auditHarvestRows=(d.harvests||[]).filter(x=>x.contract_assignment_id===selectedAssignment).map(x=>{
       const birds=prodNum(x.birds),kg=prodNum(x.net_weight_kg),bw=prodNum(x.avg_weight_kg)||(birds?kg/birds:0);
       const priceRow=auditLivePrices.find(p=>bw>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||bw<prodNum(p.max_weight_kg)));
+      const savedPrice=prodNum(x.price_per_kg)>0?prodNum(x.price_per_kg):(kg>0&&prodNum(x.total_amount)>0?prodNum(x.total_amount)/kg:0);
       const contractPrice=prodNum(priceRow?.price_per_kg);
-      return {...x,bw,contractPrice,contractValue:kg*contractPrice};
+      const rhppPrice=isMandiri?savedPrice:(contractPrice>0?contractPrice:savedPrice);
+      const savedValue=prodNum(x.total_amount);
+      const rhppValue=isMandiri?(savedValue>0?savedValue:kg*rhppPrice):(rhppPrice>0?kg*rhppPrice:savedValue);
+      return {...x,bw,rhppPrice,rhppValue};
     });
     const closed=!!fin;
     const src=closed?{
@@ -2496,9 +2501,14 @@ async function pplRhppViewPage(){
     const feedKg=prodNum(src?.net_feed_kg);
     const feedPerBird=chickIn>0?feedKg*1000/chickIn:0;
     const avgLivePrice=harvestKg>0?prodNum(src?.harvest_value)/harvestKg:0;
-    const docUnitPrice=chickIn>0?prodNum(src?.main_doc_cost)/chickIn:prodNum(contract?.doc_price);
-    const feedUnitPrice=feedKg>0?prodNum(src?.main_feed_cost)/feedKg:0;
+    const hasValue=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
+    const docUnitPrice=hasValue(src?.main_doc_cost)&&chickIn>0?prodNum(src.main_doc_cost)/chickIn:(hasValue(contract?.doc_price)?prodNum(contract.doc_price):null);
+    const feedUnitPrice=hasValue(src?.main_feed_cost)&&feedKg>0?prodNum(src.main_feed_cost)/feedKg:null;
     const money=v=>'Rp '+prodFmt(v,0);
+    const moneyMaybe=v=>hasValue(v)?money(v):'-';
+    const numMaybe=(v,digits=2,suffix='')=>hasValue(v)?prodFmt(v,digits)+suffix:'-';
+    const harvestPriceLabel=isMandiri?'Harga Aktual/Kg':'Harga RHPP/Kg';
+    const harvestValueLabel=isMandiri?'Nilai Aktual':'Nilai RHPP';
     const profit=prodNum(src?.farmer_profit);
     const profitClass=profit<0?'ui-rhpp-loss':'ui-rhpp-profit';
     const assignmentShipIds=new Set(rhppShipments.filter(x=>x.contract_assignment_id===selectedAssignment).map(x=>x.id));
@@ -2535,20 +2545,20 @@ async function pplRhppViewPage(){
         '<div class="ui-rhpp-card"><h3>Identitas Siklus</h3><table><tbody>'+
           '<tr><td>Kandang</td><td>'+esc(b?shortBarnLabel(b):'-')+'</td></tr>'+
           '<tr><td>Tanggal Chick-In</td><td>'+prodDateId(closed?fin?.chick_in_date:ci?.arrived_on)+'</td></tr>'+
-          '<tr><td>Harga DOC</td><td>'+money(docUnitPrice)+'</td></tr>'+
-          '<tr><td>Harga Pakan Rata-rata</td><td>'+money(feedUnitPrice)+'</td></tr>'+
+          '<tr><td>Harga DOC</td><td>'+moneyMaybe(docUnitPrice)+'</td></tr>'+
+          '<tr><td>Harga Pakan Rata-rata</td><td>'+moneyMaybe(feedUnitPrice)+'</td></tr>'+
         '</tbody></table></div>'+
         '<div class="ui-rhpp-card"><h3>Kinerja Produksi</h3><table><tbody>'+
           '<tr><td>Mortalitas</td><td>'+prodFmt(src?.mortality_pct,2)+' %</td></tr>'+
           '<tr><td>Total Pakan</td><td>'+prodFmt(feedKg,2)+' kg</td></tr>'+
           '<tr><td>Pakan / Ekor</td><td>'+prodFmt(feedPerBird,0)+' gr</td></tr>'+
           '<tr><td>Umur Panen</td><td>'+prodFmt(src?.weighted_age,2)+' hari</td></tr>'+
-          '<tr><td>FCR Standar</td><td>'+prodFmt(src?.fcr_standard,3)+'</td></tr>'+
+          '<tr><td>FCR Standar</td><td>'+numMaybe(src?.fcr_standard,3)+'</td></tr>'+
         '</tbody></table></div>'+
         '<div class="ui-rhpp-card"><h3>Biaya Sapronak</h3><table><tbody>'+
-          '<tr><td>DOC</td><td>'+money(src?.main_doc_cost)+'</td></tr>'+
-          '<tr><td>Pakan</td><td>'+money(src?.main_feed_cost)+'</td></tr>'+
-          '<tr><td>Retur</td><td>'+money(src?.main_return_cost)+'</td></tr>'+
+          '<tr><td>DOC</td><td>'+moneyMaybe(src?.main_doc_cost)+'</td></tr>'+
+          '<tr><td>Pakan</td><td>'+moneyMaybe(src?.main_feed_cost)+'</td></tr>'+
+          '<tr><td>Retur</td><td>'+moneyMaybe(src?.main_return_cost)+'</td></tr>'+
           '<tr><td>Total Sapronak</td><td>'+money(src?.sapronak_cost)+'</td></tr>'+
           '<tr><td>Nilai Produksi</td><td>'+money(src?.harvest_value)+'</td></tr>'+
         '</tbody></table></div>'+
@@ -2560,12 +2570,12 @@ async function pplRhppViewPage(){
           '<tr><td><strong>Hasil RHPP</strong></td><td class="'+profitClass+'">'+money(profit)+'</td></tr>'+
           '<tr><td>Hasil / Ekor</td><td>'+money(src?.profit_per_chick_in)+'</td></tr>'+
         '</tbody></table></div>'+
-        '<div class="ui-rhpp-card ui-rhpp-wide"><h3>Rincian Panen</h3><div class="ui-rhpp-table"><table><thead><tr><th>Tanggal</th><th class="num">Ekor</th><th class="num">Kg</th><th class="num">BW</th><th class="num">Harga Kontrak/Kg</th><th class="num">Nilai Kontrak</th></tr></thead><tbody>'+
-          auditHarvestRows.map(x=>'<tr><td>'+prodDateId(x.harvested_on)+'</td><td>'+prodFmt(x.birds,0)+'</td><td>'+prodFmt(x.net_weight_kg,2)+'</td><td>'+prodFmt(x.bw,3)+'</td><td>'+money(x.contractPrice)+'</td><td>'+money(x.contractValue)+'</td></tr>').join('')+
+        '<div class="ui-rhpp-card ui-rhpp-wide"><h3>Rincian Panen</h3><div class="ui-rhpp-table"><table><thead><tr><th>Tanggal</th><th class="num">Ekor</th><th class="num">Kg</th><th class="num">BW</th><th class="num">'+harvestPriceLabel+'</th><th class="num">'+harvestValueLabel+'</th></tr></thead><tbody>'+
+          auditHarvestRows.map(x=>'<tr><td>'+prodDateId(x.harvested_on)+'</td><td>'+prodFmt(x.birds,0)+'</td><td>'+prodFmt(x.net_weight_kg,2)+'</td><td>'+prodFmt(x.bw,3)+'</td><td>'+moneyMaybe(x.rhppPrice||null)+'</td><td>'+moneyMaybe(x.rhppValue||null)+'</td></tr>').join('')+
           '<tr class="rhpp-total-row"><th>TOTAL PANEN</th><th class="num">'+prodFmt(harvestBirds,0)+'</th><th class="num">'+prodFmt(harvestKg,2)+'</th><th class="num">'+prodFmt(avgBw,3)+'</th><th></th><th class="num">'+money(src?.harvest_value)+'</th></tr>'+
         '</tbody></table></div></div>'+
         '<div class="ui-rhpp-card ui-rhpp-wide"><h3>DOC</h3><div class="ui-rhpp-table"><table><thead><tr><th>Tanggal DOC</th><th class="num">Qty Ekor</th><th class="num">Harga/Ekor</th><th class="num">Total</th></tr></thead><tbody>'+
-          '<tr><td>'+prodDateId(closed?fin?.chick_in_date:ci?.arrived_on)+'</td><td class="num">'+prodFmt(chickIn,0)+'</td><td class="num">'+money(docUnitPrice)+'</td><td class="num">'+money(src?.main_doc_cost)+'</td></tr>'+
+          '<tr><td>'+prodDateId(closed?fin?.chick_in_date:ci?.arrived_on)+'</td><td class="num">'+prodFmt(chickIn,0)+'</td><td class="num">'+moneyMaybe(docUnitPrice)+'</td><td class="num">'+moneyMaybe(src?.main_doc_cost)+'</td></tr>'+
         '</tbody></table></div></div>'+
         '<div class="ui-rhpp-card ui-rhpp-wide"><h3>Pemakaian / Kiriman Pakan</h3><div class="ui-rhpp-table"><table><thead><tr><th>Tanggal</th><th>Pakan</th><th>No. Surat Jalan</th><th class="num">Qty</th><th>Satuan</th><th class="num">Berat (Kg)</th></tr></thead><tbody>'+
           (feedDetailRows.length?feedDetailRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.sj)+'</td><td class="num">'+prodFmt(x.qty,2)+'</td><td>'+esc(x.unit)+'</td><td class="num">'+prodFmt(x.kg,2)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Belum ada rincian kiriman pakan.</td></tr>')+
