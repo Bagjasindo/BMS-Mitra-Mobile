@@ -545,7 +545,6 @@ async function financeRhppPage(){
     // Tambah Sapronak/Pakan perusahaan sengaja tidak dimasukkan ke rincian pakan RHPP kontrak.
     const feedOrder=['Free Starter','Starter','Finisher','Suplayer Lain'];
     const feedRows=feedOrder.map(n=>feed.get(n)||{name:n,inQty:0,inKg:0,retQty:0,retKg:0,priceKg:0});
-    const cleanZak=feedRows.reduce((s,v)=>s+v.inQty-v.retQty,0);
     const cleanKg=feedRows.reduce((s,v)=>s+v.inKg-v.retKg,0);
     const returnDetail=[];
     returnItems.filter(v=>retIds.has(v.return_id)).forEach(v=>{
@@ -562,14 +561,7 @@ async function financeRhppPage(){
     const chickIn=prodNum(x.chick_in_birds||((ci?.received||0)-(ci?.doa||0)));
     const feedPerBird=chickIn>0?prodNum(x.net_feed_kg)*1000/chickIn:0;
     const docPrice=chickIn>0?prodNum(x.main_doc_cost)/chickIn:0;
-    const grossSapronak=prodNum(x.sapronak_cost)+prodNum(x.main_return_cost);
     const title=pdf?'RHPP_Sistem_PDF':'RHPP Sistem';
-    const harvestRows=hs.map(h=>'<tr><td>'+prodDateId(h.harvested_on)+'</td><td>'+esc(h.buyer_name||'-')+'</td><td>'+esc(h.vehicle_number||'-')+'</td><td class="n">'+prodFmt(h.birds,0)+'</td><td class="n">'+num2(h.net_weight_kg)+'</td><td class="n">'+num2(h.avg_weight_kg)+'</td><td class="n">'+money(h.price_per_kg)+'</td><td class="n">'+money(h.total_amount)+'</td></tr>').join('');
-    const feedHtml=feedRows.map(v=>{
-      const netQty=v.inQty-v.retQty,netKg=v.inKg-v.retKg,price=v.priceKg||0;
-      return '<tr><td>'+esc(v.name)+'</td><td class="n">'+num2(v.inQty)+'</td><td class="n">'+num2(v.retQty)+'</td><td class="n">'+num2(netQty)+'</td><td class="n">'+num2(netQty?netKg/netQty:0)+'</td><td class="n">'+num2(netKg)+'</td><td class="n">'+(price?money(price):'-')+'</td><td class="n">'+(price?money(netKg*price):'-')+'</td></tr>';
-    }).join('');
-    const retHtml=(returnDetail.length?returnDetail:[{name:'Retur Finisher',qty:0,kg:0,value:0}]).map(v=>'<tr><td>'+esc(v.name)+'</td><td class="n">'+num2(v.qty)+'</td><td class="n">'+num2(v.kg)+'</td><td class="n">'+money(v.value)+'</td></tr>').join('');
     const fin=finals.find(v=>v.contract_assignment_id===selectedAssignment);
     const closeLabel=fin?.closed_on?prodDateId(fin.closed_on):'BELUM CLOSE';
     const statusLabel=fin?'FINAL / CLOSED':'RHPP SISTEM / PROSES';
