@@ -1227,7 +1227,6 @@ async function financeExpeditionBusinessPage(){
   const err=[tr,tdr,ir,iir,pr,sr,cpr,dr,vr,cur,rr,der,itr].find(x=>x.error)?.error;
   const role=profile?.role||'';
   const canOps=['ADMIN','LOGISTIK'].includes(role);
-  const canFinance=['ADMIN','KEUANGAN'].includes(role);
   const canReport=['ADMIN','LOGISTIK','KEUANGAN','OWNER'].includes(role);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const used=new Set(links.map(x=>x.trip_id));
@@ -1706,9 +1705,7 @@ async function financeExpeditionProfitLossPage(){
     return true;
   };
 
-  const reportTrips=trips.filter(t=>matchTrip(t));
   const reportInvoices=invoices.filter(invoiceMatches);
-  const reportInvoiceIds=new Set(reportInvoices.map(x=>x.id));
   const reportPayments=payments.filter(p=>{
     const inv=invoiceById(p.invoice_id); if(!inv||!inDate(p.paid_on))return false;
     if(st.customer&&inv.customer_name!==st.customer)return false;
