@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2341';
-  assert.match(index,new RegExp('v='+build+'-recording-photo-compress'));
-  assert.match(sw,new RegExp('v'+build+'-recording-photo-compress'));
+  const build='2342';
+  assert.match(index,new RegExp('v='+build+'-recording-photo-gram-help'));
+  assert.match(sw,new RegExp('v'+build+'-recording-photo-gram-help'));
   assert.match(schema,new RegExp('build '+build));
   assert.match(runbook,new RegExp('build '+build));
 });
@@ -31,4 +31,13 @@ test('AUDIT-LOCK CI always includes browser smoke test and locked business rules
   assert.match(workflow,/npm run check/);
   assert.match(workflow,/npm run test:browser/);
   assert.ok(pkg.scripts.check.includes('node --test tests/*.test.cjs'));
+});
+
+
+test('AUDIT-LOCK PPL sample weight keeps gram precision and photo compression',()=>{
+  const production=read('modules/bms-production.js');
+  assert.match(production,/63 gram = 0,063/);
+  assert.match(production,/min="0\.001" step="0\.001"/);
+  assert.match(production,/compressRecordingPhoto/);
+  assert.match(production,/targetBytes=30\*1024/);
 });
