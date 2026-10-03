@@ -580,9 +580,9 @@ async function financeRhppPage(){
     const avgFeedPrice=cleanKg>0?prodNum(x.main_feed_cost)/cleanKg:0;
     const ovkValue=prodNum(x.main_ovk_cost);
     const printStamp=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date())+' WIB';
-    const companyName=company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih';
+    const companyName=company.company_name||company.legal_name||'Nama perusahaan belum diisi';
     const companyContact=[company.address,company.phone?('Tel/WA: '+company.phone):'',company.email||'',company.website||''].filter(Boolean).map(esc).join('<br>');
-    const logo='<img class="logo" src="'+BMS_PRINT_LOGO+'" alt="Logo BMS">';
+    const logo='<img class="logo" src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'" alt="Logo Perusahaan">';
     const sig=(role)=>'<div class="sig"><strong>'+esc(role)+'</strong><div class="sig-space"></div><div class="sig-line"></div><span>Nama &amp; Tanda Tangan</span></div>';
     return '<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
       '<style>'+
