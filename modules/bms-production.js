@@ -394,6 +394,7 @@ async function recordingPplPage(){
     '<div class="panel" style="padding:14px"><h4>3. Simpan</h4>'+
       '<label>Catatan (opsional)<textarea name="notes" placeholder="Contoh: ayam aktif, litter kering"></textarea></label>'+
       '<label>Foto (opsional)<input type="file" name="photo" accept="image/*"></label>'+
+      '<p class="muted">Foto dikompres otomatis sebelum disimpan · target sekitar 30 KB.</p>'+
       '<div class="inline-actions"><button id="prodRecSave">Simpan Data Hari Ini</button><button type="button" id="prodRecCancel" style="display:none">Batal Edit</button></div>'+
     '</div></form></section>';
 
@@ -481,6 +482,61 @@ async function recordingPplPage(){
   };
   document.getElementById('addWeight').onclick=()=>{syncWeightsFromDom();weights.push(0);renderWeights()};
   renderWeights();
+
+  const compressRecordingPhoto=async(file,targetBytes=30*1024)=>{
+    if(!file)return null;
+    if(!String(file.type||'').startsWith('image/'))throw new Error('File foto harus berupa gambar.');
+    if(file.size>15*1024*1024)throw new Error('Foto sumber maksimal 15 MB.');
+    const objectUrl=URL.createObjectURL(file);
+    try{
+      const img=await new Promise((resolve,reject)=>{
+        const el=new Image();
+        el.onload=()=>resolve(el);
+        el.onerror=()=>reject(new Error('Foto tidak dapat dibaca.'));
+        el.src=objectUrl;
+      });
+      let width=img.naturalWidth||img.width;
+      let height=img.naturalHeight||img.height;
+      if(!width||!height)throw new Error('Ukuran foto tidak valid.');
+      const maxSide=800;
+      const initialScale=Math.min(1,maxSide/Math.max(width,height));
+      width=Math.max(1,Math.round(width*initialScale));
+      height=Math.max(1,Math.round(height*initialScale));
+
+      const toBlob=(canvas,quality)=>new Promise((resolve,reject)=>{
+        canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Kompresi foto gagal.')),'image/jpeg',quality);
+      });
+      let best=null;
+      for(let sizePass=0;sizePass<5;sizePass++){
+        const canvas=document.createElement('canvas');
+        canvas.width=width;
+        canvas.height=height;
+        const ctx=canvas.getContext('2d',{alpha:false});
+        if(!ctx)throw new Error('Browser tidak mendukung kompresi foto.');
+        ctx.fillStyle='#fff';
+        ctx.fillRect(0,0,width,height);
+        ctx.drawImage(img,0,0,width,height);
+
+        for(const quality of [0.78,0.68,0.58,0.48,0.38,0.30]){
+          const blob=await toBlob(canvas,quality);
+          best=blob;
+          if(blob.size<=targetBytes)break;
+        }
+        if(best&&best.size<=targetBytes)break;
+        width=Math.max(320,Math.round(width*0.82));
+        height=Math.max(240,Math.round(height*0.82));
+      }
+      if(!best)throw new Error('Kompresi foto gagal.');
+      return await new Promise((resolve,reject)=>{
+        const rd=new FileReader();
+        rd.onload=()=>resolve({dataUrl:String(rd.result||''),bytes:best.size});
+        rd.onerror=()=>reject(new Error('Hasil kompresi foto gagal dibaca.'));
+        rd.readAsDataURL(best);
+      });
+    }finally{
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
 
   const todayID=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const realAgeFor=assignmentId=>{
@@ -635,11 +691,20 @@ async function recordingPplPage(){
     if(!editingId&&recs.some(r=>r.contract_assignment_id===a.id&&prodNum(r.age_days)===currentDay)){
       return msg('Recording Hari '+currentDay+' sudah diisi. Gunakan tombol Edit pada riwayat recording.');
     }
+    const wasEdit=!!editingId;
     let photo=editingId?(recs.find(x=>x.id===editingId)?.photo_data||null):null;
     const file=f.photo.files?.[0];
-    if(file){if(file.size>1024*1024)return msg('Foto maksimal 1 MB.');photo=await new Promise(res=>{const rd=new FileReader();rd.onload=()=>res(String(rd.result||''));rd.readAsDataURL(file)})}
+    if(file){
+      try{
+        saveBtn.textContent='Mengompres foto...';
+        const compressed=await compressRecordingPhoto(file);
+        photo=compressed.dataUrl;
+      }catch(error){
+        saveBtn.textContent=wasEdit?'Simpan Perubahan':'Simpan Data Hari Ini';
+        return msg(error.message||'Kompresi foto gagal.');
+      }
+    }
     const avg=weights.reduce((s,x)=>s+x,0)/weights.length;
-    const wasEdit=!!editingId;
     const {error:saveError}=await db.rpc('save_recording_atomic',{
       p_id:editingId||null,
       p_assignment_id:a.id,
