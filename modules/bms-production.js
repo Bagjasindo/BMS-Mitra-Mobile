@@ -2113,7 +2113,6 @@ async function pplRhppAbkViewPage(){
   const selectedContractId=abkReferenceContractId(selectedAssignment);
   const selectedContract=selectedContractId?leagueContracts.find(x=>x.id===selectedContractId):null;
   const selectedLivePrices=selectedContractId?(d.livePrices||[]).filter(x=>x.contract_id===selectedContractId):[];
-  const selectedBonuses=selectedContractId?leagueBonuses.filter(x=>x.contract_id===selectedContractId):[];
   const selectedHarvestRows=selectedResult
     ?sizes.filter(x=>x.result_id===selectedResult.id).map(x=>{
       const birds=prodNum(x.birds),kg=prodNum(x.weight_kg),bw=birds?kg/birds:0;
@@ -2442,9 +2441,7 @@ async function pplRhppViewPage(){
     const fin=finals.find(x=>x.contract_assignment_id===selectedAssignment);
     const live=summaries.find(x=>x.contract_assignment_id===selectedAssignment);
     const contract=d.masters.find(x=>x.id===a?.master_contract_id);
-    const auditContract=rhppContracts.find(x=>x.id===a?.master_contract_id)||contract;
     const auditLivePrices=(d.livePrices||[]).filter(x=>x.contract_id===a?.master_contract_id);
-    const auditBonuses=rhppBonuses.filter(x=>x.contract_id===a?.master_contract_id);
     const isMandiri=String(a?.cycle_type||'').toUpperCase()==='MANDIRI'||!a?.master_contract_id;
     const auditHarvestRows=(d.harvests||[]).filter(x=>x.contract_assignment_id===selectedAssignment).map(x=>{
       const birds=prodNum(x.birds),kg=prodNum(x.net_weight_kg),bw=prodNum(x.avg_weight_kg)||(birds?kg/birds:0);
