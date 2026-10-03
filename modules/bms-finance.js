@@ -1535,11 +1535,11 @@ async function financeExpeditionBusinessPage(){
       return '<tr><td>'+(idx+1)+'</td><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.rr||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td>'+esc(dest)+'</td><td>'+esc(cargo)+'</td><td>'+prodFmt(totalQtyFor(t),Number.isInteger(totalQtyFor(t))?0:2)+'</td><td>'+prodNum(t.trip_price)+'</td><td>'+prodNum(t.additional)+'</td><td>'+prodNum(t.deduction)+'</td><td>'+tripTotal(t)+'</td></tr>';
     }).join('');
     const html='<!doctype html><html><head><meta charset="utf-8"></head><body>'+
-      '<h2>'+esc(company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih')+'</h2>'+
+      '<h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2>'+
       '<h3>Invoice '+esc(i.invoice_number)+'</h3>'+
       '<p>Tanggal: '+prodDateId(i.invoice_date)+' | Jatuh Tempo: '+(i.due_date?prodDateId(i.due_date):'-')+' | Pelanggan: '+esc(i.customer_name)+'</p>'+
       '<table border="1"><thead><tr><th>No</th><th>Tanggal</th><th>MTS/SJ</th><th>RR</th><th>Sopir</th><th>Truk</th><th>Zona</th><th>Tujuan</th><th>Jenis Pakan / Qty</th><th>Total Qty</th><th>Harga Trip</th><th>Tambahan</th><th>Potongan</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<p><strong>Total Invoice: '+prodNum(x?.invoice_total||0)+'</strong></p></body></html>';
+      '<p><strong>Total Invoice: '+(x?.invoice_total===null||x?.invoice_total===undefined?'-':prodNum(x.invoice_total))+'</strong></p></body></html>';
     const blob=BMSCore.excelBlob(['\ufeff'+html]);
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=(String(i.invoice_number||'Invoice').replace(/[^a-z0-9_-]+/gi,'_'))+'.xlsx';
@@ -1561,8 +1561,8 @@ async function financeExpeditionBusinessPage(){
     }).join('');
     const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
     const logo=new URL('./assets/bms_express_logo.jpg',location.href).href;
-    const comp=company.company_name||company.legal_name||'Bagjasindo Mandiri Sindangkasih';
-    const sign=company.signatory_name||'Bagjasindo Mandiri Sindangkasih';
+    const comp=company.company_name||company.legal_name||'Nama perusahaan belum diisi';
+    const sign=company.signatory_name||'-';
     w.document.write('<html><head><meta charset="utf-8"><title>'+esc(i.invoice_number)+'</title><style>'+
       '@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;color:#222;font-size:9px}'+
       '.top{display:grid;grid-template-columns:1fr 1fr;align-items:start;border-bottom:1px solid #aaa;padding-bottom:12px;margin-bottom:12px}.brand{display:flex;gap:12px;align-items:flex-start}.brand img{width:78px;height:78px;object-fit:contain}.brand h2{font-size:18px;margin:8px 0 5px}.invoice{text-align:right}.invoice h1{font-size:28px;margin:4px 0 10px}.invoice div{margin:3px 0;font-size:11px}'+
