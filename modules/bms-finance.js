@@ -1364,7 +1364,6 @@ async function financeExpeditionBusinessPage(){
   const destWrap=document.getElementById('fxTripDestinations');
   const addDestBtn=document.getElementById('fxAddDestination');
   const destinationOptions='<option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('');
-  const cargoLabel=x=>x.name.trim()+(x.feed_phase?' · '+x.feed_phase:'')+(x.unit?' · '+String(x.unit).toLowerCase():'');
   const addDestinationRow=()=>{
     if(!destWrap)return;
     const row=document.createElement('div');row.className='fx-destination-row';row.style.cssText='display:flex;flex-direction:column;gap:8px;margin:10px 0;padding:12px;border:1px solid #d7dde5;border-radius:10px;background:#fff';
