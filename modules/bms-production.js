@@ -2290,7 +2290,7 @@ async function pplRhppAbkViewPage(){
     const exportAbkExcel=()=>{
       const clone=exportArea?.cloneNode(true);if(!clone)return;
       clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-      const exportCompany=company.company_name||company.legal_name||'BMS Mobile';
+      const exportCompany=company.company_name||company.legal_name||'Nama perusahaan belum diisi';
       const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(exportCompany)+'</h2><h3>RHPP ABK</h3>'+clone.innerHTML+'</body></html>']);
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xlsx';document.body.appendChild(link);link.click();link.remove();
@@ -2842,25 +2842,28 @@ async function adminRhppHistoryPage(){
       const contract=printContracts.find(x=>x.id===a?.master_contract_id)||d.masters.find(x=>x.id===a?.master_contract_id)||{};
       const src=fin||live||{};
       const hs=harvestDetails.filter(h=>h.contract_assignment_id===selectedAssignment).slice().sort((u,v)=>String(u.harvested_on||'').localeCompare(String(v.harvested_on||'')));
+      const hasValue=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
       const chickIn=prodNum(src.chick_in_birds||((ci?.received||0)-(ci?.doa||0)));
-      const feedKg=prodNum(src.net_feed_kg);
-      const docPrice=chickIn>0?prodNum(src.main_doc_cost)/chickIn:prodNum(contract?.doc_price);
+      const feedKg=hasValue(src.net_feed_kg)?prodNum(src.net_feed_kg):0;
+      const docPrice=hasValue(src.main_doc_cost)&&chickIn>0?prodNum(src.main_doc_cost)/chickIn:(hasValue(contract?.doc_price)?prodNum(contract.doc_price):null);
       const harvestBirds=prodNum(src.total_harvest_birds);
       const harvestKg=prodNum(src.total_harvest_kg);
       const avgBw=prodNum(src.avg_bw_kg);
-      const avgLivePrice=harvestKg>0?prodNum(src.harvest_value)/harvestKg:0;
-      const fcrDiff=prodNum(src.fcr_actual)-prodNum(src.fcr_standard);
-      const hasilPlasma=prodNum(src.system_amount||src.farmer_profit);
+      const avgLivePrice=harvestKg>0&&hasValue(src.harvest_value)?prodNum(src.harvest_value)/harvestKg:null;
+      const fcrDiff=hasValue(src.fcr_actual)&&hasValue(src.fcr_standard)?prodNum(src.fcr_actual)-prodNum(src.fcr_standard):null;
+      const hasilPlasma=hasValue(src.system_amount)?prodNum(src.system_amount):(hasValue(src.farmer_profit)?prodNum(src.farmer_profit):null);
       const pplName=printPpl.find(x=>x.user_id===a?.ppl_id)?.full_name||'-';
       const barnLocation=printBarnDetails.find(x=>x.id===a?.barn_id)?.location||'-';
       const money=v=>prodFmt(v,0);
+      const moneySafe=v=>hasValue(v)?money(v):'-';
       const n2=v=>prodFmt(v,2);
+      const nSafe=(v,d=2)=>hasValue(v)?prodFmt(v,d):'-';
       const priceForPhase=phase=>{
         const p=String(phase||'').toUpperCase();
-        if(p==='PRE_STARTER')return prodNum(contract.pre_starter_price);
-        if(p==='STARTER')return prodNum(contract.starter_price);
-        if(p==='FINISHER')return prodNum(contract.finisher_price);
-        return 0;
+        if(p==='PRE_STARTER')return hasValue(contract.pre_starter_price)?prodNum(contract.pre_starter_price):null;
+        if(p==='STARTER')return hasValue(contract.starter_price)?prodNum(contract.starter_price):null;
+        if(p==='FINISHER')return hasValue(contract.finisher_price)?prodNum(contract.finisher_price):null;
+        return null;
       };
       const phaseLabel=phase=>{
         const p=String(phase||'').toUpperCase();
@@ -2876,20 +2879,24 @@ async function adminRhppHistoryPage(){
         const item=printFeedItems.find(i=>i.id===x.item_id); if(!item)return;
         const ship=shipments.find(r=>r.id===x.shipment_id);
         const kg=prodNum(x.quantity_kg)||prodNum(x.quantity)*prodNum(item.kg_per_unit);
-        const price=priceForPhase(item.feed_phase)||(prodNum(item.kg_per_unit)>0?prodNum(x.unit_price)/prodNum(item.kg_per_unit):prodNum(x.unit_price));
+        const phasePrice=priceForPhase(item.feed_phase);
+        const savedUnitPrice=hasValue(x.unit_price)?prodNum(x.unit_price):null;
+        const price=phasePrice!==null?phasePrice:(savedUnitPrice!==null?(prodNum(item.kg_per_unit)>0?savedUnitPrice/prodNum(item.kg_per_unit):savedUnitPrice):null);
         feedTxnRows.push({date:ship?.shipment_date,name:item.name||phaseLabel(item.feed_phase),sj:ship?.shipping_note_number||'-',qty:prodNum(x.quantity),dir:'',mut:0,price,total:kg*price});
       });
       returnItems.filter(x=>assignmentReturnIds.has(x.return_id)).forEach(x=>{
         const item=printFeedItems.find(i=>i.id===x.item_id); if(!item)return;
         const ret=returns.find(r=>r.id===x.return_id);
         const kg=prodNum(x.quantity_kg)||prodNum(x.quantity)*prodNum(item.kg_per_unit);
-        const price=priceForPhase(item.feed_phase)||(prodNum(item.kg_per_unit)>0?prodNum(x.unit_price)/prodNum(item.kg_per_unit):prodNum(x.unit_price));
+        const phasePrice=priceForPhase(item.feed_phase);
+        const savedUnitPrice=hasValue(x.unit_price)?prodNum(x.unit_price):null;
+        const price=phasePrice!==null?phasePrice:(savedUnitPrice!==null?(prodNum(item.kg_per_unit)>0?savedUnitPrice/prodNum(item.kg_per_unit):savedUnitPrice):null);
         feedTxnRows.push({date:ret?.return_date,name:item.name||phaseLabel(item.feed_phase),sj:ret?.reference||'-',qty:0,dir:'Ke Retur',mut:-prodNum(x.quantity),price,total:kg*price});
       });
       feedTxnRows.sort((u,v)=>String(u.date||'').localeCompare(String(v.date||'')));
       const totalFeedQty=feedTxnRows.reduce((n,x)=>n+prodNum(x.qty),0);
       const totalFeedMut=feedTxnRows.reduce((n,x)=>n+prodNum(x.mut),0);
-      const avgFeedPrice=feedKg>0?prodNum(src.main_feed_cost)/feedKg:0;
+      const avgFeedPrice=feedKg>0&&hasValue(src.main_feed_cost)?prodNum(src.main_feed_cost)/feedKg:null;
 
       const ovkRows=[];
       shipmentItems.filter(x=>assignmentShipIds.has(x.shipment_id)).forEach(x=>{
@@ -2898,11 +2905,11 @@ async function adminRhppHistoryPage(){
         const supplier=printSuppliers.find(v=>v.id===item.supplier_id)?.name||'-';
         ovkRows.push({date:ship?.shipment_date,name:item.name||'OVK',qty:prodNum(x.quantity),unit:item.unit||'-',sj:ship?.shipping_note_number||'-',supplier,price:prodNum(x.unit_price),total:prodNum(x.quantity)*prodNum(x.unit_price)});
       });
-      const ovkTotal=ovkRows.length?ovkRows.reduce((n,x)=>n+prodNum(x.total),0):prodNum(src.main_ovk_cost);
+      const ovkTotal=ovkRows.length?ovkRows.reduce((n,x)=>n+prodNum(x.total),0):(hasValue(src.main_ovk_cost)?prodNum(src.main_ovk_cost):null);
 
       const bmsLogo=company?.logo_url||BMS_PRINT_LOGO;
       const companyHeader=[
-        company.company_name||company.legal_name||'BMS Mobile',
+        company.company_name||company.legal_name||'Nama perusahaan belum diisi',
         company.address||'',
         company.phone?('Tel/WA: '+company.phone):'',
         company.email||''
@@ -2918,15 +2925,15 @@ async function adminRhppHistoryPage(){
 
       const docCostKnown=src.main_doc_cost!==null&&src.main_doc_cost!==undefined&&src.main_doc_cost!=='';
       const docPriceKnown=Number.isFinite(Number(docPrice))&&Number(docPrice)>0;
-      const docRows='<tr><td>'+prodDateId(fin?.chick_in_date||ci?.arrived_on)+'</td><td>'+esc(ci?.hatchery||ci?.strain||'DOC')+'</td><td>'+esc(ci?.delivery_number||'-')+'</td><td class="n">'+prodFmt(chickIn,0)+'</td><td>Ekor</td><td class="n">'+(docPriceKnown?money(docPrice):'-')+'</td><td class="n">'+(docCostKnown?money(src.main_doc_cost):'-')+'</td></tr>'+
-        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(chickIn,0)+'</td><td></td><td></td><td class="n">'+(docCostKnown?money(src.main_doc_cost):'-')+'</td></tr>';
+      const docRows='<tr><td>'+prodDateId(fin?.chick_in_date||ci?.arrived_on)+'</td><td>'+esc(ci?.hatchery||ci?.strain||'DOC')+'</td><td>'+esc(ci?.delivery_number||'-')+'</td><td class="n">'+prodFmt(chickIn,0)+'</td><td>Ekor</td><td class="n">'+(docPriceKnown?money(docPrice):'-')+'</td><td class="n">'+(docCostKnown?moneySafe(src.main_doc_cost):'-')+'</td></tr>'+
+        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(chickIn,0)+'</td><td></td><td></td><td class="n">'+(docCostKnown?moneySafe(src.main_doc_cost):'-')+'</td></tr>';
 
       const feedRowsHtml=(feedTxnRows.length?feedTxnRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.sj)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.dir)+'</td><td class="n">'+n2(x.mut)+'</td><td class="n">'+money(x.price)+'</td><td class="n">'+money(x.total)+'</td></tr>').join(''):'<tr><td colspan="8" class="c">Tidak ada rincian pakan.</td></tr>')+
-        '<tr class="total"><td colspan="3"></td><td class="n">'+n2(totalFeedQty)+'</td><td></td><td class="n">'+n2(totalFeedMut)+'</td><td></td><td class="n">'+money(src.main_feed_cost)+'</td></tr>'+
-        '<tr class="total"><td colspan="5"></td><td class="n">'+n2(feedKg)+'</td><td class="n">'+money(avgFeedPrice)+'</td><td></td></tr>';
+        '<tr class="total"><td colspan="3"></td><td class="n">'+n2(totalFeedQty)+'</td><td></td><td class="n">'+n2(totalFeedMut)+'</td><td></td><td class="n">'+moneySafe(src.main_feed_cost)+'</td></tr>'+
+        '<tr class="total"><td colspan="5"></td><td class="n">'+n2(feedKg)+'</td><td class="n">'+moneySafe(avgFeedPrice)+'</td><td></td></tr>';
 
-      const ovkRowsHtml=ovkRows.length?ovkRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.unit)+'</td><td>'+esc(x.sj)+'</td><td>'+esc(x.supplier)+'</td><td class="n">'+money(x.price)+'</td><td class="n">'+money(x.total)+'</td></tr>').join('')+'<tr class="total"><td colspan="2"></td><td class="n">'+n2(ovkRows.reduce((n,x)=>n+x.qty,0))+'</td><td colspan="4"></td><td class="n">'+money(ovkTotal)+'</td></tr>':
-        '<tr><td>-</td><td>OVK</td><td class="n">-</td><td>-</td><td>-</td><td>-</td><td class="n">-</td><td class="n">'+money(ovkTotal)+'</td></tr>';
+      const ovkRowsHtml=ovkRows.length?ovkRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td class="n">'+n2(x.qty)+'</td><td>'+esc(x.unit)+'</td><td>'+esc(x.sj)+'</td><td>'+esc(x.supplier)+'</td><td class="n">'+money(x.price)+'</td><td class="n">'+money(x.total)+'</td></tr>').join('')+'<tr class="total"><td colspan="2"></td><td class="n">'+n2(ovkRows.reduce((n,x)=>n+x.qty,0))+'</td><td colspan="4"></td><td class="n">'+moneySafe(ovkTotal)+'</td></tr>':
+        '<tr><td>-</td><td>OVK</td><td class="n">-</td><td>-</td><td>-</td><td>-</td><td class="n">-</td><td class="n">'+moneySafe(ovkTotal)+'</td></tr>';
 
       const chickInDate=String(fin?.chick_in_date||ci?.arrived_on||'');
       const ageAtHarvest=date=>{
@@ -2936,27 +2943,27 @@ async function adminRhppHistoryPage(){
         return Number.isFinite(days)?days:'';
       };
       const harvestRowsHtml=hs.map(h=>'<tr><td>'+prodDateId(h.harvested_on)+'</td><td>'+esc(h.id?String(h.id).slice(0,6).toUpperCase():'-')+'</td><td>'+esc(h.buyer_name||'-')+'</td><td class="n">'+prodFmt(h.birds,0)+'</td><td class="n">'+n2(h.net_weight_kg)+'</td><td class="n">'+n2(h.avg_weight_kg)+'</td><td class="n">'+prodFmt(ageAtHarvest(h.harvested_on),0)+'</td><td class="n">'+money(h.price_per_kg)+'</td><td class="n">'+money(h.total_amount)+'</td></tr>').join('')+
-        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(harvestBirds,0)+'</td><td class="n">'+n2(harvestKg)+'</td><td class="n">'+n2(avgBw)+'</td><td class="n">'+n2(src.weighted_age)+'</td><td class="n">'+money(avgLivePrice)+'</td><td class="n">'+money(src.harvest_value)+'</td></tr>';
+        '<tr class="total"><td colspan="3"></td><td class="n">'+prodFmt(harvestBirds,0)+'</td><td class="n">'+n2(harvestKg)+'</td><td class="n">'+n2(avgBw)+'</td><td class="n">'+n2(src.weighted_age)+'</td><td class="n">'+money(avgLivePrice)+'</td><td class="n">'+moneySafe(src.harvest_value)+'</td></tr>';
 
       const bonusDepletion=prodNum(src.bonus_depletion||src.bonus_mortality);
       const bonusDepletionRate=prodNum(src.bonus_depletion_rate||src.bonus_mortality_rate);
       const profitClass=v=>prodNum(v)<0?'loss-total':'profit-total';
       const resultRows=
-        '<tr><td>Penjualan Ayam</td><td class="n">'+money(src.harvest_value)+'</td></tr>'+
-        '<tr><td>Pembelian Sapronak</td><td class="n">'+money(src.sapronak_cost)+'</td></tr>'+
+        '<tr><td>Penjualan Ayam</td><td class="n">'+moneySafe(src.harvest_value)+'</td></tr>'+
+        '<tr><td>Pembelian Sapronak</td><td class="n">'+moneySafe(src.sapronak_cost)+'</td></tr>'+
         '<tr><td>Total Kenaikan Harga Kontrak Dari Pasar</td><td class="n">-</td></tr>'+
-        '<tr><td>Total Tambahan Harga Kontrak Dari FCR</td><td class="n">'+money(src.bonus_fc)+'</td></tr>'+
-        '<tr><td>Total Tambahan Harga Kontrak Dari IP</td><td class="n">'+money(src.bonus_ip)+'</td></tr>'+
+        '<tr><td>Total Tambahan Harga Kontrak Dari FCR</td><td class="n">'+moneySafe(src.bonus_fc)+'</td></tr>'+
+        '<tr><td>Total Tambahan Harga Kontrak Dari IP</td><td class="n">'+moneySafe(src.bonus_ip)+'</td></tr>'+
         '<tr><td>Total Tambahan Harga Kontrak Dari Deplesi</td><td class="n">'+money(bonusDepletion)+'</td></tr>'+
         '<tr class="'+profitClass(hasilPlasma)+'"><td>Hasil Plasma</td><td class="n">'+money(hasilPlasma)+'</td></tr>'+
-        '<tr class="'+profitClass(src.profit_per_chick_in)+'"><td>Hasil Plasma Per Ekor</td><td class="n">'+money(src.profit_per_chick_in)+'</td></tr>'+
+        '<tr class="'+profitClass(src.profit_per_chick_in)+'"><td>Hasil Plasma Per Ekor</td><td class="n">'+moneySafe(src.profit_per_chick_in)+'</td></tr>'+
         '<tr><td>Potongan Jaminan</td><td class="n">-</td></tr>'+
         '<tr class="'+profitClass(hasilPlasma)+'"><td>Hasil Plasma Akhir Setelah Dikurangi Pot.</td><td class="n">'+money(hasilPlasma)+'</td></tr>';
 
       const bonusRows=
         '<tr><td>PERHITUNGAN SELISIH PASAR</td><td class="n">-</td><td class="n">-</td><td class="n">-</td><td class="n">-</td><td class="n">-</td></tr>'+
-        '<tr><td>PERHITUNGAN FCR</td><td class="n">'+prodFmt(src.fcr_actual,3)+'</td><td class="n">'+prodFmt(src.fcr_standard,3)+'</td><td class="n">'+prodFmt(fcrDiff,3)+'</td><td class="n">'+money(src.bonus_fc_rate)+'</td><td class="n">'+money(src.bonus_fc)+'</td></tr>'+
-        '<tr><td>PERHITUNGAN IP</td><td class="n">'+prodFmt(src.ip,0)+'</td><td class="n">-</td><td class="n">-</td><td class="n">'+money(src.bonus_ip_rate)+'</td><td class="n">'+money(src.bonus_ip)+'</td></tr>'+
+        '<tr><td>PERHITUNGAN FCR</td><td class="n">'+prodFmt(src.fcr_actual,3)+'</td><td class="n">'+nSafe(src.fcr_standard,3)+'</td><td class="n">'+nSafe(fcrDiff,3)+'</td><td class="n">'+moneySafe(src.bonus_fc_rate)+'</td><td class="n">'+moneySafe(src.bonus_fc)+'</td></tr>'+
+        '<tr><td>PERHITUNGAN IP</td><td class="n">'+prodFmt(src.ip,0)+'</td><td class="n">-</td><td class="n">-</td><td class="n">'+moneySafe(src.bonus_ip_rate)+'</td><td class="n">'+moneySafe(src.bonus_ip)+'</td></tr>'+
         '<tr><td>PERHITUNGAN DEPLESI</td><td class="n">'+prodFmt(src.mortality_pct,2)+'</td><td class="n">-</td><td class="n">-</td><td class="n">'+money(bonusDepletionRate)+'</td><td class="n">'+money(bonusDepletion)+'</td></tr>';
 
       return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(fileBase)+'</title><style>'+
@@ -2971,11 +2978,11 @@ async function adminRhppHistoryPage(){
         '</tbody></table>'+
         '<div class="section-label">KINERJA PRODUKSI</div>'+
         '<table class="tbl"><thead><tr><th>Panen Ekor</th><th>Total Kg</th><th>BW</th><th>Mortalitas</th><th>Umur</th><th>FCR Aktual</th><th>FCR Standar</th><th>IP</th></tr></thead><tbody>'+
-          '<tr><td class="n">'+prodFmt(harvestBirds,0)+'</td><td class="n">'+n2(harvestKg)+'</td><td class="n">'+prodFmt(avgBw,3)+'</td><td class="n">'+prodFmt(src.mortality_pct,2)+'%</td><td class="n">'+prodFmt(src.weighted_age,2)+'</td><td class="n">'+prodFmt(src.fcr_actual,3)+'</td><td class="n">'+prodFmt(src.fcr_standard,3)+'</td><td class="n">'+prodFmt(src.ip,0)+'</td></tr>'+
+          '<tr><td class="n">'+prodFmt(harvestBirds,0)+'</td><td class="n">'+n2(harvestKg)+'</td><td class="n">'+prodFmt(avgBw,3)+'</td><td class="n">'+prodFmt(src.mortality_pct,2)+'%</td><td class="n">'+prodFmt(src.weighted_age,2)+'</td><td class="n">'+prodFmt(src.fcr_actual,3)+'</td><td class="n">'+nSafe(src.fcr_standard,3)+'</td><td class="n">'+prodFmt(src.ip,0)+'</td></tr>'+
         '</tbody></table>'+
         '<div class="section-label">BIAYA SAPRONAK</div>'+
         '<table class="tbl"><thead><tr><th>DOC</th><th>Pakan</th><th>OVK</th><th>Retur</th><th>Tambah Sapronak</th><th>Total Sapronak</th></tr></thead><tbody>'+
-          '<tr><td class="n">'+money(src.main_doc_cost)+'</td><td class="n">'+money(src.main_feed_cost)+'</td><td class="n">'+money(ovkTotal)+'</td><td class="n">- '+money(src.main_return_cost)+'</td><td class="n">'+money(src.external_sapronak_cost)+'</td><td class="n"><strong>'+money(src.sapronak_cost)+'</strong></td></tr>'+
+          '<tr><td class="n">'+moneySafe(src.main_doc_cost)+'</td><td class="n">'+moneySafe(src.main_feed_cost)+'</td><td class="n">'+moneySafe(ovkTotal)+'</td><td class="n">- '+moneySafe(src.main_return_cost)+'</td><td class="n">'+moneySafe(src.external_sapronak_cost)+'</td><td class="n"><strong>'+moneySafe(src.sapronak_cost)+'</strong></td></tr>'+
         '</tbody></table>'+
         '<div class="section-label">DOC</div>'+
         '<table class="tbl"><thead><tr><th style="width:12%">Tanggal</th><th style="width:32%">DOC</th><th style="width:23%">No. SJ</th><th style="width:8%">Qty</th><th style="width:8%">Satuan</th><th style="width:8%">Harga</th><th style="width:9%">Total</th></tr></thead><tbody>'+docRows+'</tbody></table>'+
