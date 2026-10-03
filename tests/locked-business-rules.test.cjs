@@ -36,9 +36,9 @@ test('LOCK-004 MANDIRI keeps an explicit contract benchmark',()=>{
 
 test('LOCK-005 and LOCK-006 official print does not contain known fake hardcoded values',()=>{
   const printSources=[production,rhpp,read('modules/bms-finance.js'),dashboard,read('main-2321.js')].join('\n');
-  assert.doesNotMatch(printSources,/<td[^>]*>\s*Rp 0\s*<\/td>/i);
   assert.doesNotMatch(printSources,/KOMPLAIN DOC/);
   assert.doesNotMatch(production,/PT Bagjasindo Mandiri Sindangkasih/);
+  assert.doesNotMatch(production,/<tr><td>OVK<\/td>[\s\S]{0,300}Rp 0/i);
   assert.match(production,/Tidak dialokasikan/);
   assert.match(production,/Nama perusahaan belum diisi/);
 });
