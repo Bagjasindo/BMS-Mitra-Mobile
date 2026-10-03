@@ -37,7 +37,7 @@ async function until(expression){for(let i=0;i<100;i++){if(await evaluate(expres
   assert.deepEqual(await evaluate('window.__auditErrors'),[]);
   assert.equal(await evaluate("document.querySelector('.login-logo').getAttribute('alt')"),'Logo BMS');
   assert.equal(await evaluate("(await caches.keys()).includes('another-app-cache')"),true);
-  const shell=await evaluate("(await (await caches.open('bms-pwa-shell-v2326-audit')).keys()).map(r=>new URL(r.url).pathname)");
+  const shell=await evaluate("const keys=(await caches.keys()).filter(k=>k.startsWith('bms-pwa-shell-'));if(keys.length!==1)throw new Error('Expected exactly one active BMS cache, got '+keys.join(','));return (await (await caches.open(keys[0])).keys()).map(r=>new URL(r.url).pathname)");
   for(const name of ['/main-2321.js','/bms-core.js','/bms-data-config.js','/vendor/supabase-2.57.0.js'])assert.ok(shell.includes(name),name+' was not cached');
   console.log('PASS: login loads without errors, local dependencies cached, other app cache preserved');
 
