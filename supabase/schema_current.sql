@@ -1,4 +1,4 @@
--- BMS schema snapshot 2026-10-03, build 2341. No business rows or credentials.
+-- BMS schema snapshot 2026-10-03, build 2342. No business rows or credentials.
 
 -- Fresh Supabase project only. Managed auth/storage schemas must already exist.
 
