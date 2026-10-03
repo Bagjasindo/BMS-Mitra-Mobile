@@ -1,6 +1,6 @@
-# Pemulihan BMS — build 2326
+# Pemulihan BMS — build 2340
 
-Sumber aplikasi dan schema ada di repository. `supabase/schema_current.sql` adalah snapshot schema setelah perbaikan 2026-10-01; berisi 79 tabel public, 11 view, fungsi, trigger, indeks, RLS dan grant. Tidak berisi baris bisnis atau password. SQL patch `audit_*.sql` sudah diterapkan pada proyek aktif; jangan menjalankan semua SQL historis secara berurutan.
+Sumber aplikasi dan schema ada di repository. `supabase/schema_current.sql` adalah snapshot schema tersinkron sampai audit hulu-hilir 2026-10-03; berisi 79 tabel public, 11 view, fungsi, trigger, indeks, RLS dan grant. Tidak berisi baris bisnis atau password. SQL patch `audit_*.sql` sudah diterapkan pada proyek aktif; jangan menjalankan semua SQL historis secara berurutan.
 
 ## Backup
 
