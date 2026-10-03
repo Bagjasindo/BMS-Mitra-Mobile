@@ -21,4 +21,12 @@ jobs:
             echo "Chromium/Chrome not found on runner" >&2
             exit 1
           fi
-          BMS_TEST_CHROMIUM="$BROWSER" npm run test:browser
+          mkdir -p tests/output
+          set -o pipefail
+          BMS_TEST_CHROMIUM="$BROWSER" npm run test:browser 2>&1 | tee tests/output/browser-smoke.log
+      - name: Upload browser smoke failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-smoke-failure
+          path: tests/output/
