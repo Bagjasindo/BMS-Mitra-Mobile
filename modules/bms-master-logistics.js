@@ -2503,14 +2503,6 @@ function attachListFilter({tableId,fields}){
   };
 }
 
-function logisticsMenuPage(kind){
-  const map={
-    logistik_retur:['Retur','Form dan daftar retur Logistik akan dibangun pada tahap berikutnya.']
-  };
-  const x=map[kind];
-  layout('<section class="panel"><h3>'+x[0]+'</h3><p class="muted">'+x[1]+'</p></section>');
-}
-
 async function supplierMasterPage(type){
   const isMeat=type==='DAGING';
   const label=isMeat?'Supplier Daging':'Supplier Sapronak';
