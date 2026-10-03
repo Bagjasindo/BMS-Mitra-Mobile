@@ -465,7 +465,6 @@ function login(){
   };
 }
 let legacyDataLoaded=false;
-let dashboardDataLoaded=false;
 
 function resetAppSessionState(){
   if(window.__legacyTxnDeleteCapture){
@@ -495,7 +494,6 @@ function resetAppSessionState(){
   tab='dashboard';
   assignments=[];barns=[];items=[];suppliers=[];employees=[];advances=[];pplUsers=[];contracts=[];contractReadiness=[];
   legacyDataLoaded=false;
-  dashboardDataLoaded=false;
   navInitialCollapsePending=true;
   session=null;
   profile=null;
@@ -510,7 +508,6 @@ async function logout(){
 }
 async function load(){
   legacyDataLoaded=false;
-  dashboardDataLoaded=false;
   await render();
 }
 async function ensureLegacyData(){
@@ -528,7 +525,6 @@ async function ensureLegacyData(){
   const err=[ar,b,i,su,e,a,p,k].find(x=>x.error)?.error;
   if(err)throw err;
   assignments=ar.data||[];barns=b.data||[];items=i.data||[];suppliers=su.data||[];employees=e.data||[];advances=a.data||[];pplUsers=p.data||[];contracts=k.data||[];contractReadiness=[];
-  dashboardDataLoaded=true;
   legacyDataLoaded=true;
 }
 
