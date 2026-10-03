@@ -2001,8 +2001,8 @@ async function productionRecapPage(){
     clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
     return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(fileBase)+'</title>'+
       '<style>@page{size:A4 landscape;margin:6mm}body{font-family:Arial,sans-serif;color:#111;font-size:7.5px}.head{border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:8px}.head h2{margin:0 0 3px;font-size:14px}.head div{font-size:8px}.panel{border:0!important;padding:0!important}.muted{color:#333}table{width:100%;border-collapse:collapse}th,td{border:1px solid #444;padding:3px;text-align:center;white-space:nowrap}th:nth-child(2),td:nth-child(2),th:nth-child(3),td:nth-child(3){text-align:left}.tablewrap{overflow:visible!important}</style></head><body>'+
-      '<div class="head">'+'<img src="'+BMS_PRINT_LOGO+'" style="max-height:36px;float:left;margin-right:9px;object-fit:contain">'+
-      '<h2>'+esc(company.company_name||company.legal_name||'BAGJASINDO MANDIRI SINDANGKASIH')+'</h2>'+
+      '<div class="head">'+'<img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'" style="max-height:36px;float:left;margin-right:9px;object-fit:contain">'+
+      '<h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2>'+
       (company.address?'<div>'+esc(company.address)+'</div>':'')+
       (company.phone?'<div>Tel/WA: '+esc(company.phone)+'</div>':'')+
       '</div>'+clone.innerHTML+'</body></html>';
@@ -2020,7 +2020,7 @@ async function productionRecapPage(){
   if(excelBtn)excelBtn.onclick=()=>{
     const clone=exportArea?.cloneNode(true);if(!clone)return;
     clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-    const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(company.company_name||'BMS Mobile')+'</h2><h3>Rekap Produksi PPL</h3><p>'+prodDateId(from)+' s/d '+prodDateId(to)+(filterSummary?' · '+esc(filterSummary):'')+'</p>'+clone.innerHTML+'</body></html>']);
+    const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><h3>Rekap Produksi PPL</h3><p>'+prodDateId(from)+' s/d '+prodDateId(to)+(filterSummary?' · '+esc(filterSummary):'')+'</p>'+clone.innerHTML+'</body></html>']);
     const url=URL.createObjectURL(blob),link=document.createElement('a');
     link.href=url;link.download=fileBase+'.xlsx';document.body.appendChild(link);link.click();link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -2049,12 +2049,7 @@ async function pplRhppAbkViewPage(){
   const abkRows=st.assignment?d.abks.filter(a=>assignmentAbkIds.has(a.id)):[];
   if(st.abk&&!abkRows.some(a=>a.id===st.abk))st.abk='';
 
-  const abkReferenceContractId=a=>{
-    if(a?.master_contract_id)return a.master_contract_id;
-    if(a?.cycle_type!=='MANDIRI')return '';
-    const ids=[...new Set((d.livePrices||[]).map(p=>p.contract_id).filter(Boolean))];
-    return ids.length===1?ids[0]:'';
-  };
+  const abkReferenceContractId=a=>a?.master_contract_id||'';
   const calcResult=x=>{
     const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
     const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
@@ -2071,26 +2066,34 @@ async function pplRhppAbkViewPage(){
     const survival=initial?Math.min(100,birds/initial*100):0;
     const mortality=Math.max(0,100-survival);
     const ip=initial&&age&&fcr?(survival*bw*100)/(age*fcr):0;
-    let revenue=0;
-    for(const z of sz){
-      const av=prodNum(z.birds)?prodNum(z.weight_kg)/prodNum(z.birds):0;
-      const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
-      revenue+=prodNum(z.weight_kg)*prodNum(p?.price_per_kg);
-    }
     const contract=leagueContracts.find(c=>c.id===refContractId);
-    const docCost=initial*prodNum(contract?.doc_price);
-    const feedCost=
-      prodNum(link?.feed_pre_bags)*50*prodNum(contract?.pre_starter_price)+
-      prodNum(link?.feed_starter_bags)*50*prodNum(contract?.starter_price)+
-      prodNum(link?.feed_finisher_bags)*50*prodNum(contract?.finisher_price);
-    const sapronakCost=docCost+feedCost;
+    let monetaryReady=!!contract&&!!refContractId;
+    let revenue=0;
+    if(monetaryReady){
+      for(const z of sz){
+        const av=prodNum(z.birds)?prodNum(z.weight_kg)/prodNum(z.birds):0;
+        const p=d.livePrices.find(p=>p.contract_id===refContractId&&av>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||av<prodNum(p.max_weight_kg)));
+        if(!p||prodNum(p.price_per_kg)<=0){monetaryReady=false;break;}
+        revenue+=prodNum(z.weight_kg)*prodNum(p.price_per_kg);
+      }
+    }
+    const hasContractCosts=!!contract&&
+      contract.doc_price!=null&&contract.pre_starter_price!=null&&contract.starter_price!=null&&contract.finisher_price!=null;
+    const docCost=monetaryReady&&hasContractCosts?initial*prodNum(contract.doc_price):null;
+    const feedCost=monetaryReady&&hasContractCosts?(
+      prodNum(link?.feed_pre_bags)*50*prodNum(contract.pre_starter_price)+
+      prodNum(link?.feed_starter_bags)*50*prodNum(contract.starter_price)+
+      prodNum(link?.feed_finisher_bags)*50*prodNum(contract.finisher_price)
+    ):null;
+    const sapronakCost=docCost!=null&&feedCost!=null?docCost+feedCost:null;
+    if(!monetaryReady)revenue=null;
     const matchBonus=(metric,value)=>prodNum(leagueBonuses.find(b=>
       b.contract_id===refContractId&&b.metric===metric&&
       (b.min_value==null||value>=prodNum(b.min_value))&&
       (b.max_value==null||value<prodNum(b.max_value))
     )?.rupiah_per_kg);
-    const ipRate=matchBonus('IP',ip);
-    const ipBonus=kg*ipRate;
+    const ipRate=monetaryReady?matchBonus('IP',ip):null;
+    const ipBonus=monetaryReady?kg*prodNum(ipRate):null;
     const perfRows=d.standards
       .filter(v=>(a?.cycle_type==='MANDIRI'||v.contract_id===a?.master_contract_id)&&v.template_name===a?.performance_template_name&&v.std_fcr!=null)
       .sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
@@ -2108,12 +2111,12 @@ async function pplRhppAbkViewPage(){
       }
     }
     const fcrDiff=stdFcr?stdFcr-fcr:0;
-    const fcrRate=fcrDiff>0?matchBonus('FCR_DIFFERENCE',fcrDiff):0;
-    const fcrBonus=fcrDiff>0?kg*fcrRate:0;
-    const baseProfit=revenue-sapronakCost;
-    const profit=baseProfit+ipBonus+fcrBonus;
-    const perBird=birds?profit/birds:0;
-    const avgLivePrice=kg?revenue/kg:0;
+    const fcrRate=monetaryReady?(fcrDiff>0?matchBonus('FCR_DIFFERENCE',fcrDiff):0):null;
+    const fcrBonus=monetaryReady?(fcrDiff>0?kg*prodNum(fcrRate):0):null;
+    const baseProfit=revenue!=null&&sapronakCost!=null?revenue-sapronakCost:null;
+    const profit=baseProfit!=null?baseProfit+prodNum(ipBonus)+prodNum(fcrBonus):null;
+    const perBird=birds&&profit!=null?profit/birds:null;
+    const avgLivePrice=kg&&revenue!=null?revenue/kg:null;
     const feedPerBird=initial?feed*1000/initial:0;
     return {...x,a,ci,link,birds,kg,bw,feed,feedPerBird,fcr,stdFcr,age,initial,survival,mortality,ip,revenue,docCost,feedCost,sapronakCost,ipRate,ipBonus,fcrDiff,fcrRate,fcrBonus,baseProfit,profit,perBird,avgLivePrice};
   };
@@ -2150,6 +2153,7 @@ async function pplRhppAbkViewPage(){
     const link=d.links.find(x=>x.contract_assignment_id===st.assignment&&x.abk_id===st.abk);
     const r=selectedResult;
     const money=v=>'Rp '+prodFmt(v,0);
+    const moneyMaybe=v=>v===null||v===undefined||v===''?'-':money(v);
 
     html+='<style>.ui-abk-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}.ui-abk-head h2{margin:0;color:#0b5f8f}.rhpp-page .rhpp-panel{border:1px solid #d7e5ec!important;border-radius:10px!important;padding:14px!important;background:#fff!important}.rhpp-page .rhpp-section-head h3,.rhpp-page .rhpp-panel h3{color:#0b5f8f}.rhpp-page table{font-size:13px}.rhpp-page th,.rhpp-page td{padding:8px 10px!important}.rhpp-page thead th{background:#12a8d4!important;color:#fff!important}.rhpp-page{display:grid;gap:12px}.rhpp-page .rhpp-summary-card{border-radius:9px}.rhpp-page .rhpp-control{margin-top:0!important}</style><section class="panel"><div class="ui-abk-head"><div><h2>RHPP ABK</h2><div class="muted">Tampilan audit per ABK · sumber Liga ABK</div></div><div class="report-actions"><button type="button" id="pplRhppAbkPrintTop">Print</button><button type="button" id="pplRhppAbkPdfTop">PDF</button><button type="button" id="pplRhppAbkExcelTop">Excel</button></div></div></section><div class="rhpp-page" id="pplRhppAbkExportArea">'+
       '<section class="panel rhpp-panel rhpp-head"><h3>'+esc(leagueAbkName(e))+' · '+esc(b?shortBarnLabel(b):'-')+'</h3>'+
@@ -2171,20 +2175,20 @@ async function pplRhppAbkViewPage(){
           '<th>Tanggal</th><th class="num">Ekor</th><th class="num">Berat (Kg)</th><th class="num">BW</th><th class="num">Harga Kontrak/Kg</th><th class="num rhpp-money-col">Nilai Produksi</th>'+
         '</tr></thead><tbody>'+
           selectedHarvestRows.map(x=>'<tr><td>'+prodDateId(x.harvest_date)+'</td><td class="num">'+prodFmt(x.birds,0)+'</td><td class="num">'+prodFmt(x.weight_kg,2)+'</td><td class="num">'+prodFmt(x.bw,3)+'</td><td class="num">'+money(x.price)+'</td><td class="num rhpp-money-col">'+money(x.value)+'</td></tr>').join('')+
-          '<tr class="rhpp-total-row"><th>TOTAL PANEN</th><th class="num">'+prodFmt(r.birds,0)+'</th><th class="num">'+prodFmt(r.kg,2)+'</th><th class="num">'+prodFmt(r.bw,3)+'</th><th></th><th class="num">'+money(r.revenue)+'</th></tr>'+
+          '<tr class="rhpp-total-row"><th>TOTAL PANEN</th><th class="num">'+prodFmt(r.birds,0)+'</th><th class="num">'+prodFmt(r.kg,2)+'</th><th class="num">'+prodFmt(r.bw,3)+'</th><th></th><th class="num">'+moneyMaybe(r.revenue)+'</th></tr>'+
         '</tbody></table></div>'+
         '<div class="rhpp-summary-cards">'+
           '<div class="rhpp-summary-card"><span>Total Ekor</span><strong>'+prodFmt(r.birds,0)+'</strong></div>'+
           '<div class="rhpp-summary-card"><span>Total Berat</span><strong>'+prodFmt(r.kg,2)+' Kg</strong></div>'+
           '<div class="rhpp-summary-card"><span>BW Rata-rata</span><strong>'+prodFmt(r.bw,3)+' Kg</strong></div>'+
-          '<div class="rhpp-summary-card rhpp-summary-value"><span>Nilai Produksi</span><strong>'+money(r.revenue)+'</strong></div>'+
+          '<div class="rhpp-summary-card rhpp-summary-value"><span>Nilai Produksi</span><strong>'+moneyMaybe(r.revenue)+'</strong></div>'+
         '</div></section>';
 
 
 
       html+='<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>DOC ABK</h3><p class="muted">Biaya DOC mengikuti populasi awal ABK dan harga DOC kontrak.</p></div></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Tanggal DOC</th><th>ABK</th><th class="num">Qty Ekor</th><th class="num">Harga/Ekor</th><th class="num">Total</th></tr></thead><tbody>'+
-          '<tr><td>'+prodDateId(r.ci?.arrived_on)+'</td><td>'+esc(leagueAbkName(e))+'</td><td class="num">'+prodFmt(r.initial,0)+'</td><td class="num">'+money(selectedContract?.doc_price)+'</td><td class="num">'+money(r.docCost)+'</td></tr>'+
+          '<tr><td>'+prodDateId(r.ci?.arrived_on)+'</td><td>'+esc(leagueAbkName(e))+'</td><td class="num">'+prodFmt(r.initial,0)+'</td><td class="num">'+moneyMaybe(selectedContract?.doc_price)+'</td><td class="num">'+moneyMaybe(r.docCost)+'</td></tr>'+
         '</tbody></table></div></section>';
 
             html+='<section class="panel rhpp-panel rhpp-wide rhpp-feed-panel"><h3>Pemakaian Pakan ABK</h3>'+
@@ -2192,7 +2196,7 @@ async function pplRhppAbkViewPage(){
           '<tr><td>Pre Starter</td><td class="num">'+prodFmt(link?.feed_pre_bags,2)+'</td><td class="num">'+prodFmt(prodNum(link?.feed_pre_bags)*50,2)+'</td><td class="num">'+money(selectedContract?.pre_starter_price)+'</td><td class="num">'+money(prodNum(link?.feed_pre_bags)*50*prodNum(selectedContract?.pre_starter_price))+'</td></tr>'+
           '<tr><td>Starter</td><td class="num">'+prodFmt(link?.feed_starter_bags,2)+'</td><td class="num">'+prodFmt(prodNum(link?.feed_starter_bags)*50,2)+'</td><td class="num">'+money(selectedContract?.starter_price)+'</td><td class="num">'+money(prodNum(link?.feed_starter_bags)*50*prodNum(selectedContract?.starter_price))+'</td></tr>'+
           '<tr><td>Finisher</td><td class="num">'+prodFmt(link?.feed_finisher_bags,2)+'</td><td class="num">'+prodFmt(prodNum(link?.feed_finisher_bags)*50,2)+'</td><td class="num">'+money(selectedContract?.finisher_price)+'</td><td class="num">'+money(prodNum(link?.feed_finisher_bags)*50*prodNum(selectedContract?.finisher_price))+'</td></tr>'+
-          '<tr class="rhpp-total-row"><th>TOTAL PAKAN</th><th class="num">'+prodFmt(prodNum(link?.feed_pre_bags)+prodNum(link?.feed_starter_bags)+prodNum(link?.feed_finisher_bags),2)+'</th><th class="num">'+prodFmt(r.feed,2)+'</th><th></th><th class="num">'+money(r.feedCost)+'</th></tr>'+
+          '<tr class="rhpp-total-row"><th>TOTAL PAKAN</th><th class="num">'+prodFmt(prodNum(link?.feed_pre_bags)+prodNum(link?.feed_starter_bags)+prodNum(link?.feed_finisher_bags),2)+'</th><th class="num">'+prodFmt(r.feed,2)+'</th><th></th><th class="num">'+moneyMaybe(r.feedCost)+'</th></tr>'+
         '</tbody></table></div></section>';
       html+='<section class="panel rhpp-panel rhpp-wide"><div class="rhpp-section-head"><div><h3>OVK ABK</h3><p class="muted">Format disamakan dengan RHPP utama. Saat ini OVK tidak dialokasikan per ABK di Liga ABK, sehingga tidak dimasukkan ke nilai RHPP ABK.</p></div></div>'+
         '<div class="tablewrap"><table><thead><tr><th>Jenis</th><th class="num">Qty</th><th>Satuan</th><th class="num">Harga</th><th class="num">Total</th></tr></thead><tbody>'+
@@ -2223,17 +2227,17 @@ async function pplRhppAbkViewPage(){
           '<tr><td>Indeks Prestasi</td><td>'+prodFmt(r.ip,2)+'</td></tr>'+
         '</tbody></table></div></section>'+
         '<section class="panel rhpp-panel"><h3>Perhitungan RHPP ABK</h3><div class="tablewrap"><table><tbody>'+
-          '<tr><td>Nilai Produksi</td><td>'+money(r.revenue)+'</td></tr>'+
-          '<tr><td>DOC</td><td>'+money(r.docCost)+'</td></tr>'+
-          '<tr><td>Pakan</td><td>'+money(r.feedCost)+'</td></tr>'+
-          '<tr><td>Total Sapronak</td><td>'+money(r.sapronakCost)+'</td></tr>'+
-          '<tr><td>Laba Dasar</td><td>'+money(r.baseProfit)+'</td></tr>'+
+          '<tr><td>Nilai Produksi</td><td>'+moneyMaybe(r.revenue)+'</td></tr>'+
+          '<tr><td>DOC</td><td>'+moneyMaybe(r.docCost)+'</td></tr>'+
+          '<tr><td>Pakan</td><td>'+moneyMaybe(r.feedCost)+'</td></tr>'+
+          '<tr><td>Total Sapronak</td><td>'+moneyMaybe(r.sapronakCost)+'</td></tr>'+
+          '<tr><td>Laba Dasar</td><td>'+moneyMaybe(r.baseProfit)+'</td></tr>'+
         '</tbody></table></div></section>'+
         '<section class="panel rhpp-panel"><h3>Nilai RHPP ABK</h3><div class="tablewrap"><table><tbody>'+
-          '<tr><td>Bonus IP</td><td>'+money(r.ipBonus)+' ('+prodFmt(r.ipRate,0)+'/kg)</td></tr>'+
-          '<tr><td>Bonus FCR</td><td>'+money(r.fcrBonus)+' ('+prodFmt(r.fcrRate,0)+'/kg)</td></tr>'+
-          '<tr><td><strong>RHPP ABK</strong></td><td><strong>'+money(r.profit)+'</strong></td></tr>'+
-          '<tr><td>Hasil / Ekor Panen</td><td>'+money(r.perBird)+'</td></tr>'+
+          '<tr><td>Bonus IP</td><td>'+moneyMaybe(r.ipBonus)+' ('+prodFmt(r.ipRate,0)+'/kg)</td></tr>'+
+          '<tr><td>Bonus FCR</td><td>'+moneyMaybe(r.fcrBonus)+' ('+prodFmt(r.fcrRate,0)+'/kg)</td></tr>'+
+          '<tr><td><strong>RHPP ABK</strong></td><td><strong>'+moneyMaybe(r.profit)+'</strong></td></tr>'+
+          '<tr><td>Hasil / Ekor Panen</td><td>'+moneyMaybe(r.perBird)+'</td></tr>'+
         '</tbody></table></div></section>'+
       '</div>';
     }else{
