@@ -618,7 +618,7 @@ async function marketingReports(){
     const b=barns.find(x=>x.id===barnId),supplier=suppliers.find(x=>x.id===supplierId);
     return '<!doctype html><html><head><meta charset="utf-8"><title>Laporan Marketing</title>'+
       '<style>@page{size:A4 landscape;margin:5mm}html,body{margin:0;padding:0;font-family:Arial,sans-serif;font-size:9px;line-height:1.15}h2{margin:0 0 3px;font-size:13px}h3{margin:4px 0 2px;font-size:10px}p{margin:2px 0 4px}table{width:100%;border-collapse:collapse;font-size:8.5px}th,td{border:1px solid #999;padding:2px 3px;text-align:left;white-space:nowrap}thead{display:table-header-group}tr{break-inside:avoid}.print-letterhead{display:flex;align-items:center;gap:8px;border-bottom:1.5px solid #222;padding-bottom:3px;margin-bottom:3px}.print-letterhead img{width:50px;height:50px;object-fit:contain}</style></head><body>'+
-      '<div class="print-letterhead">'+'<img src="'+BMS_PRINT_LOGO+'">'+'<div><h2>'+esc(company.company_name||company.legal_name||'Laporan Marketing')+'</h2><div style="white-space:pre-line">'+esc(company.address||'')+'</div>'+(company.phone?'<div>Tel/WA: '+esc(company.phone)+'</div>':'')+(company.email?'<div>'+esc(company.email)+'</div>':'')+'</div></div>'+
+      '<div class="print-letterhead">'+'<img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'">'+'<div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div style="white-space:pre-line">'+esc(company.address||'')+'</div>'+(company.phone?'<div>Tel/WA: '+esc(company.phone)+'</div>':'')+(company.email?'<div>'+esc(company.email)+'</div>':'')+'</div></div>'+
       '<h2>Laporan Marketing</h2><p>Periode: '+esc(String(from))+' s/d '+esc(String(to))+' · Kandang: '+esc(b?shortBarnLabel(b):'Semua Kandang')+' · Siklus: '+esc(String(cycleType))+' · Jenis: '+esc(String(kind))+' · Pembeli: '+esc(String(buyer))+' · Supplier: '+esc(supplier?.name||'Semua')+'</p>'+
       document.getElementById('marketingReportSections').innerHTML+
       document.getElementById('marketingReportSummary').innerHTML+
@@ -1044,8 +1044,8 @@ async function logisticsReports(){
       '<style>@page{size:A4 landscape;margin:5mm}html,body{margin:0;padding:0;font-family:Arial,sans-serif;font-size:9px;line-height:1.15}h2{margin:0 0 3px;font-size:13px}h3{margin:4px 0 2px;font-size:10px}p{margin:2px 0 4px}table{width:100%;border-collapse:collapse;font-size:8.5px;table-layout:auto}th,td{border:1px solid #999;padding:2px 3px;text-align:left;white-space:nowrap}th{font-weight:700}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}.report-section-block{margin-bottom:3px}.report-section-block h3{margin:2px 0 1px}.print-letterhead{display:flex;align-items:center;gap:8px;border-bottom:1.5px solid #222;padding-bottom:3px;margin-bottom:3px}.print-letterhead img{width:50px!important;height:50px!important}.print-letterhead h2{font-size:12px!important}.print-letterhead div{line-height:1.08}@media print{button{display:none}}</style>'+
       '</head><body>'+
       '<div class="print-letterhead">'+
-        '<img src="'+BMS_PRINT_LOGO+'" style="object-fit:contain">'+
-        '<div><h2 style="margin:0">'+esc(company.company_name||company.legal_name||'Laporan Logistik')+'</h2>'+
+        '<img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'" style="object-fit:contain">'+
+        '<div><h2 style="margin:0">'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2>'+
         '<div style="white-space:pre-line">'+esc(company.address||'')+'</div>'+
         (company.phone?'<div>Tel/WA: '+esc(company.phone)+'</div>':'')+
         (company.email?'<div>'+esc(company.email)+'</div>':'')+
