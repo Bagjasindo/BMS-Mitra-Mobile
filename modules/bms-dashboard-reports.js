@@ -1128,10 +1128,7 @@ async function reports(){
     (!st.ppl||a.ppl_id===st.ppl)&&
     (!st.type||(a.cycle_type||'MITRA')===st.type)
   );
-  const feedFor=a=>(feedByAssignment.get(a.id)||[]).reduce((sum,x)=>{
-    const delivered=prodNum(x.sent_units)+prodNum(x.external_units)-prodNum(x.returned_units);
-    return sum+Math.max(0,delivered)*prodNum(x.kg_per_unit);
-  },0);
+
 
   const assignments=d.assignments.filter(a=>
     (!st.barn||a.barn_id===st.barn)&&
