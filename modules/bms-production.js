@@ -66,15 +66,6 @@ function estimateFeedPricePerKg(contract,item){
   if(phase.includes('fin'))return prodNum(contract?.finisher_price);
   return 0;
 }
-function estimateUsedFeedCost(d,a,recs){
-  const contract=d.masters.find(c=>c.id===a?.master_contract_id);
-  let cost=0;
-  for(const r of recs||[]){
-    const item=d.feedItems.find(i=>i.id===r.feed_item_id);
-    cost+=prodNum(r.feed_kg)*estimateFeedPricePerKg(contract,item);
-  }
-  return cost;
-}
 function estimateSapronakSnapshot({d,a,ci,recToDate,shipments,shipmentItems,externalShipments,externalShipmentItems,returns,returnItems,items,estimatedOn,officialFeedStock=[]}){
   const contract=d.masters.find(c=>c.id===a?.master_contract_id);
   const until=String(estimatedOn||'');
@@ -168,9 +159,6 @@ function prodAssignmentOption(d,a){
 }
 function prodActiveBarnOption(d,a){
   return assignmentIdentity(d.assignments,d.barns,d.masters,a);
-}
-function prodSelectAssignments(d,onlyActive=true){
-  return d.assignments.filter(a=>!onlyActive||a.active).map(a=>'<option value="'+esc(a.id)+'">'+esc(onlyActive?prodActiveBarnOption(d,a):prodAssignmentOption(d,a))+'</option>').join('');
 }
 async function chickInPage(){
   const d=await productionBase();
