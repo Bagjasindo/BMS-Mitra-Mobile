@@ -2405,14 +2405,19 @@ const rhppPrintShell=(title,company,body)=>{
 
 async function pplRhppViewPage(){
   const d=await productionBase();
-  const [fr,cpr,sr,cr,br]=await Promise.all([
+  const [fr,cpr,sr,cr,br,shr,shir,itr,supr]=await Promise.all([
     db.from('production_cycle_final_unified').select('*').order('created_at',{ascending:false}),
     db.from('company_profile').select('company_name,legal_name,address,phone,email,website,logo_url').eq('id',true).maybeSingle(),
     db.rpc('finance_rhpp_summary_v6'),
     db.from('contracts').select('id,number,contract_date,performance_template_name,doc_price,pre_starter_price,starter_price,finisher_price'),
-    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg')
+    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
+    db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date,shipping_note_number'),
+    db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
+    db.from('items').select('id,name,category,feed_phase,unit,kg_per_unit,supplier_id'),
+    db.from('suppliers').select('id,name')
   ]);
   const finals=fr.data||[],company=cpr.data||{},summaries=sr.data||[],rhppContracts=cr.data||[],rhppBonuses=br.data||[];
+  const rhppShipments=shr.data||[],rhppShipmentItems=shir.data||[],rhppItems=itr.data||[],rhppSuppliers=supr.data||[];
   const barnsForAssignments=[...new Map(d.assignments.map(a=>{
     const b=d.barns.find(x=>x.id===a.barn_id);
     return b?[b.id,b]:null;
@@ -2496,6 +2501,22 @@ async function pplRhppViewPage(){
     const money=v=>'Rp '+prodFmt(v,0);
     const profit=prodNum(src?.farmer_profit);
     const profitClass=profit<0?'ui-rhpp-loss':'ui-rhpp-profit';
+    const assignmentShipIds=new Set(rhppShipments.filter(x=>x.contract_assignment_id===selectedAssignment).map(x=>x.id));
+    const feedDetailRows=rhppShipmentItems.filter(x=>assignmentShipIds.has(x.shipment_id)).map(x=>{
+      const item=rhppItems.find(i=>i.id===x.item_id);
+      if(!item||String(item.category||'').toUpperCase()!=='PAKAN')return null;
+      const ship=rhppShipments.find(s=>s.id===x.shipment_id);
+      const kg=prodNum(x.quantity_kg)||prodNum(x.quantity)*prodNum(item.kg_per_unit);
+      return {date:ship?.shipment_date,sj:ship?.shipping_note_number||'-',name:item.name||'Pakan',qty:prodNum(x.quantity),unit:item.unit||'-',kg};
+    }).filter(Boolean).sort((u,v)=>String(u.date||'').localeCompare(String(v.date||'')));
+    const ovkDetailRows=rhppShipmentItems.filter(x=>assignmentShipIds.has(x.shipment_id)).map(x=>{
+      const item=rhppItems.find(i=>i.id===x.item_id);
+      const cat=String(item?.category||'').toUpperCase();
+      if(!item||!['OVK','OVK1'].includes(cat))return null;
+      const ship=rhppShipments.find(s=>s.id===x.shipment_id);
+      const supplier=rhppSuppliers.find(s=>s.id===item.supplier_id)?.name||'-';
+      return {date:ship?.shipment_date,sj:ship?.shipping_note_number||'-',name:item.name||'OVK',qty:prodNum(x.quantity),unit:item.unit||'-',supplier};
+    }).filter(Boolean).sort((u,v)=>String(u.date||'').localeCompare(String(v.date||'')));
     html+='<style>'+
       '.ui-rhpp-shell{display:grid;gap:14px}.ui-rhpp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}.ui-rhpp-title h2{margin:0;color:#0b5f8f}.ui-rhpp-status{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;background:#e9f7fb;color:#0b5f8f;font-weight:700;font-size:12px}.ui-rhpp-kpis{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}.ui-rhpp-kpi{border:1px solid #d7e5ec;border-radius:10px;padding:12px;background:#fff}.ui-rhpp-kpi span{display:block;color:#64748b;font-size:12px;margin-bottom:4px}.ui-rhpp-kpi strong{font-size:18px;color:#102a43}.ui-rhpp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.ui-rhpp-card{border:1px solid #d7e5ec;border-radius:10px;background:#fff;overflow:hidden}.ui-rhpp-card h3{margin:0;padding:10px 12px;background:#eef8fc;color:#0b5f8f;font-size:14px}.ui-rhpp-card table{width:100%;border-collapse:collapse}.ui-rhpp-card td,.ui-rhpp-card th{padding:8px 10px;border-top:1px solid #edf2f5;font-size:13px}.ui-rhpp-card td:last-child,.ui-rhpp-card th.num{text-align:right;font-weight:700}.ui-rhpp-wide{grid-column:1/-1}.ui-rhpp-table{overflow:auto}.ui-rhpp-table table{min-width:760px}.ui-rhpp-table thead th{background:#12a8d4;color:#fff;border-top:0}.ui-rhpp-profit{color:#111!important;font-weight:800!important}.ui-rhpp-loss{color:#d9272e!important;font-weight:800!important}@media(max-width:980px){.ui-rhpp-kpis{grid-template-columns:repeat(3,1fr)}.ui-rhpp-grid{grid-template-columns:1fr}}@media(max-width:600px){.ui-rhpp-kpis{grid-template-columns:repeat(2,1fr)}}'+
     '</style>'+
@@ -2541,6 +2562,17 @@ async function pplRhppViewPage(){
         '</tbody></table></div>'+
         '<div class="ui-rhpp-card ui-rhpp-wide"><h3>Rincian Panen</h3><div class="ui-rhpp-table"><table><thead><tr><th>Tanggal</th><th class="num">Ekor</th><th class="num">Kg</th><th class="num">BW</th><th class="num">Harga Kontrak/Kg</th><th class="num">Nilai Kontrak</th></tr></thead><tbody>'+
           auditHarvestRows.map(x=>'<tr><td>'+prodDateId(x.harvested_on)+'</td><td>'+prodFmt(x.birds,0)+'</td><td>'+prodFmt(x.net_weight_kg,2)+'</td><td>'+prodFmt(x.bw,3)+'</td><td>'+money(x.contractPrice)+'</td><td>'+money(x.contractValue)+'</td></tr>').join('')+
+          '<tr class="rhpp-total-row"><th>TOTAL PANEN</th><th class="num">'+prodFmt(harvestBirds,0)+'</th><th class="num">'+prodFmt(harvestKg,2)+'</th><th class="num">'+prodFmt(avgBw,3)+'</th><th></th><th class="num">'+money(src?.harvest_value)+'</th></tr>'+
+        '</tbody></table></div></div>'+
+        '<div class="ui-rhpp-card ui-rhpp-wide"><h3>DOC</h3><div class="ui-rhpp-table"><table><thead><tr><th>Tanggal DOC</th><th class="num">Qty Ekor</th><th class="num">Harga/Ekor</th><th class="num">Total</th></tr></thead><tbody>'+
+          '<tr><td>'+prodDateId(closed?fin?.chick_in_date:ci?.arrived_on)+'</td><td class="num">'+prodFmt(chickIn,0)+'</td><td class="num">'+money(docUnitPrice)+'</td><td class="num">'+money(src?.main_doc_cost)+'</td></tr>'+
+        '</tbody></table></div></div>'+
+        '<div class="ui-rhpp-card ui-rhpp-wide"><h3>Pemakaian / Kiriman Pakan</h3><div class="ui-rhpp-table"><table><thead><tr><th>Tanggal</th><th>Pakan</th><th>No. Surat Jalan</th><th class="num">Qty</th><th>Satuan</th><th class="num">Berat (Kg)</th></tr></thead><tbody>'+
+          (feedDetailRows.length?feedDetailRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.sj)+'</td><td class="num">'+prodFmt(x.qty,2)+'</td><td>'+esc(x.unit)+'</td><td class="num">'+prodFmt(x.kg,2)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Belum ada rincian kiriman pakan.</td></tr>')+
+          '<tr class="rhpp-total-row"><th colspan="5">TOTAL PAKAN RHPP</th><th class="num">'+prodFmt(feedKg,2)+'</th></tr>'+
+        '</tbody></table></div></div>'+
+        '<div class="ui-rhpp-card ui-rhpp-wide"><h3>OVK</h3><div class="ui-rhpp-table"><table><thead><tr><th>Tanggal</th><th>OVK</th><th>No. Surat Jalan</th><th>Supplier</th><th class="num">Qty</th><th>Satuan</th></tr></thead><tbody>'+
+          (ovkDetailRows.length?ovkDetailRows.map(x=>'<tr><td>'+prodDateId(x.date)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.sj)+'</td><td>'+esc(x.supplier)+'</td><td class="num">'+prodFmt(x.qty,2)+'</td><td>'+esc(x.unit)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Belum ada rincian OVK.</td></tr>')+
         '</tbody></table></div></div>'+
 
       '</div>'+
@@ -2551,7 +2583,7 @@ async function pplRhppViewPage(){
 
   html+='</div>';
   layout(html);
-  if(d.err||fr.error||cpr.error||sr.error||cr.error||br.error)msg((d.err||fr.error||cpr.error||sr.error||cr.error||br.error).message);
+  if(d.err||fr.error||cpr.error||sr.error||cr.error||br.error||shr.error||shir.error||itr.error||supr.error)msg((d.err||fr.error||cpr.error||sr.error||cr.error||br.error||shr.error||shir.error||itr.error||supr.error).message);
   const barnSel=document.getElementById('pplRhppBarn');
   const cycleSel=document.getElementById('pplRhppCycle');
   if(barnSel)barnSel.onchange=async()=>{
