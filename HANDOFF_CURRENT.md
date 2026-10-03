@@ -3,7 +3,7 @@
 Tanggal checkpoint: **2026-10-03**  
 Repository: **Bagjasindo/BMS-Mitra-Mobile**  
 Branch: **main**  
-Baseline aktif: **build 2340-dead-code-cleanup**  
+Baseline aktif: **build 2341-recording-photo-compress**  
 Status: **PASS — DEPLOYED — LOCKED**
 
 ## SUMBER KEBENARAN
