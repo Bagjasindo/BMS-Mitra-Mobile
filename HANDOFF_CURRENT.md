@@ -3,7 +3,7 @@
 Tanggal checkpoint: **2026-10-03**  
 Repository: **Bagjasindo/BMS-Mitra-Mobile**  
 Branch: **main**  
-Baseline aktif: **build 2342-recording-photo-gram-help**  
+Baseline aktif: **build 2343-recording-age-h1-after-arrival**  
 Status: **PASS — DEPLOYED — LOCKED**
 
 ## SUMBER KEBENARAN
@@ -17,7 +17,7 @@ Jangan memakai handoff lama, histori chat lama, checkpoint lama, percobaan lama,
 
 - Verify application: **PASS**
 - GitHub Pages deployment: **PASS**
-- PWA/cache aktif: **v2342-recording-photo-gram-help**
+- PWA/cache aktif: **v2343-recording-age-h1-after-arrival**
 - Browser Chromium smoke test: **PASS**
 - Login shell: **PASS**
 - Offline application shell: **PASS**
@@ -35,6 +35,7 @@ Sumber aturan resmi:
 - `OWNER_CHANGE_CONTROL.md`
 
 Aturan penting yang tetap berlaku:
+- Hari DOC datang = Hari 0; Recording PPL Hari 1 dimulai H+1 setelah DOC datang.
 - Dashboard Kandang Aktif dihitung setelah Chick-In.
 - Pembagian ABK memakai jumlah DOC datang, tidak dikurangi Mati Box.
 - Rekap Produksi PPL memakai Liga ABK; CLOSED historis tanpa Liga memakai snapshot final nyata.
