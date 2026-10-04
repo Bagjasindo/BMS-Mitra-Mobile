@@ -1,22 +1,28 @@
 async function financeBopPage(){
-  const [br,ar,cr,bopr,accessr]=await Promise.all([
+  const [br,ar,cr,bopr,accessr,abr,er]=await Promise.all([
     db.from('barns').select('id,code,name').order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,created_at').order('start_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.from('bop').select('id,contract_assignment_id,barn_id,incurred_on,category,amount,paid_by,source_type,source_id,reference,notes').order('incurred_on',{ascending:false}).order('id',{ascending:false}),
-    db.from('finance_bop_period_access').select('contract_assignment_id,is_open')
+    db.from('finance_bop_period_access').select('contract_assignment_id,is_open'),
+    db.from('logistics_contract_assignment_abks').select('contract_assignment_id,abk_id'),
+    db.from('employees').select('id,code,name,kind').eq('kind','ABK')
   ]);
-  const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],rows=bopr.data||[];
+  const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],rows=bopr.data||[],abkLinks=abr.data||[],abkEmployees=er.data||[];
   const bopAccess=new Map((accessr.data||[]).map(x=>[x.contract_assignment_id,x.is_open]));
-  const err=[br,ar,cr,bopr,accessr].find(x=>x.error)?.error;
+  const err=[br,ar,cr,bopr,accessr,abr,er].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
-  window.__financeBopState=window.__financeBopState||{barn:'',assignment:'',filterBarn:'',filterAssignment:'',from:'',to:'',shown:false,editId:''};
+  window.__financeBopState=window.__financeBopState||{barn:'',assignment:'',abk:'',filterBarn:'',filterAssignment:'',from:'',to:'',shown:false,editId:''};
   const st=window.__financeBopState;
   const editRow=rows.find(x=>x.id===st.editId)||null;
   const selectedBarn=editRow?.barn_id||st.barn||'';
   const cycleOptions=selectedBarn?assignments.filter(a=>a.barn_id===selectedBarn):[];
   const selectedAssignment=editRow?.contract_assignment_id||st.assignment||'';
+  const selectedAbk=(editRow?.source_type==='ABK_WAGE'?editRow.source_id:st.abk)||'';
+  const assignmentAbkIds=new Set(abkLinks.filter(x=>x.contract_assignment_id===selectedAssignment).map(x=>x.abk_id));
+  const assignmentAbks=abkEmployees.filter(x=>assignmentAbkIds.has(x.id));
+  const abkName=id=>{const e=abkEmployees.find(x=>x.id===id);return e?(e.code?e.code+' · ':'')+e.name:'-';};
 
   const filterRows=st.shown?rows.filter(x=>
     (!st.filterBarn||x.barn_id===st.filterBarn)&&
@@ -46,7 +52,8 @@ async function financeBopPage(){
       '<label>Kategori<select name="category" required>'+
         '<option value="">Pilih Kategori</option>'+
         '<option value="OVK" '+(editRow?.category==='OVK'?'selected':'')+'>OVK</option>'+
-        '<option value="TENAGA_KERJA" '+(editRow?.category==='TENAGA_KERJA'?'selected':'')+'>Tenaga Kerja</option>'+
+        '<option value="UPAH_ABK" '+(editRow?.category==='UPAH_ABK'?'selected':'')+'>Upah ABK</option>'+
+        (editRow?.category==='TENAGA_KERJA'?'<option value="TENAGA_KERJA" selected>Tenaga Kerja (histori lama)</option>':'')+
         '<option value="TRANSPORTASI" '+(editRow?.category==='TRANSPORTASI'?'selected':'')+'>Transportasi</option>'+
         '<option value="LISTRIK" '+(editRow?.category==='LISTRIK'?'selected':'')+'>Listrik</option>'+
         '<option value="GAS" '+(editRow?.category==='GAS'?'selected':'')+'>Gas</option>'+
@@ -57,7 +64,10 @@ async function financeBopPage(){
 
         '<option value="LAINNYA" '+(editRow?.category==='LAINNYA'?'selected':'')+'>Lainnya</option>'+
       '</select></label>'+
-      '<p class="muted">Transaksi ini mencatat biaya usaha. Sumber uang pembayaran tidak dibedakan di sistem.</p>'+
+      '<label id="bopAbkWrap" style="display:'+(editRow?.category==='UPAH_ABK'?'':'none')+'">Nama ABK<select id="bopAbk" name="abk_id"><option value="">Pilih ABK</option>'+
+        assignmentAbks.map(e=>'<option value="'+esc(e.id)+'" '+(selectedAbk===e.id?'selected':'')+'>'+esc((e.code?e.code+' · ':'')+e.name)+'</option>').join('')+
+      '</select></label>'+
+      '<p class="muted">Untuk kategori Upah ABK, Nama ABK wajib dipilih dari ABK yang terdaftar pada siklus tersebut. Transaksi tetap menjadi BOP Produksi dan masuk Arus Kas sebagai pengeluaran.</p>'+
       '<label>No. Bukti / Referensi<input name="reference" value="'+esc(editRow?.reference||'')+'" placeholder="Nomor nota / transfer / bukti Excel"></label>'+
       '<label>Nominal (Rp)<input name="amount" type="text" inputmode="decimal" data-number="1" value="'+(editRow?fmtNumber(editRow.amount):'')+'" required></label>'+
       ''+
@@ -78,9 +88,9 @@ async function financeBopPage(){
       '</form>'+
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total BOP</span><strong>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</strong></div>'+
-        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
-          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop',x.id)+'</div></td></tr>';}).join('')+
-        '</tbody><tfoot><tr><th colspan="3">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
+        '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>ABK</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
+          filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>'+esc(x.source_type==='ABK_WAGE'?abkName(x.source_id):'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop',x.id)+'</div></td></tr>';}).join('')+
+        '</tbody><tfoot><tr><th colspan="4">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
         :'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
 
@@ -91,9 +101,16 @@ async function financeBopPage(){
   const barnSel=document.getElementById('bopBarn');
   if(barnSel)barnSel.onchange=async()=>{
     st.barn=barnSel.value||'';
-    st.assignment='';
+    st.assignment='';st.abk='';
     await financeBopPage();
   };
+  const assignmentSel=document.getElementById('bopAssignment');
+  if(assignmentSel)assignmentSel.onchange=async()=>{st.assignment=assignmentSel.value||'';st.abk='';await financeBopPage();};
+  const categorySel=document.querySelector('#bopKandangForm select[name="category"]');
+  const abkWrap=document.getElementById('bopAbkWrap'),abkSel=document.getElementById('bopAbk');
+  const syncBopAbk=()=>{const wage=categorySel?.value==='UPAH_ABK';if(abkWrap)abkWrap.style.display=wage?'':'none';if(abkSel)abkSel.required=!!wage;};
+  if(categorySel)categorySel.onchange=syncBopAbk;
+  syncBopAbk();
 
   const form=document.getElementById('bopKandangForm');
   const setBopAccess=async isOpen=>{
@@ -118,14 +135,19 @@ async function financeBopPage(){
     if(!a)return msg('Pilih siklus / periode.');
     const amount=normalizeInputID(fd.get('amount'));
     if(amount===null||amount<0)return msg('Nominal BOP tidak valid.');
+    const category=String(fd.get('category')||'');
+    const abkId=String(fd.get('abk_id')||'');
+    if(category==='UPAH_ABK'&&!assignmentAbks.some(x=>x.id===abkId))return msg('Pilih Nama ABK yang terdaftar pada siklus ini.');
     const payload={
       contract_assignment_id:assignmentId,
       barn_id:a.barn_id,
       incurred_on:fd.get('incurred_on'),
-      category:fd.get('category'),
+      category,
       amount,
       paid_by:'COMPANY',reference:String(fd.get('reference')||'').trim()||null,
-      notes:fd.get('notes')||null
+      notes:fd.get('notes')||null,
+      source_type:category==='UPAH_ABK'?'ABK_WAGE':(editRow?.source_type==='ABK_WAGE'?null:editRow?.source_type||null),
+      source_id:category==='UPAH_ABK'?abkId:(editRow?.source_type==='ABK_WAGE'?null:editRow?.source_id||null)
     };
     if(payload.reference&&rows.some(x=>x.id!==editRow?.id&&String(x.reference||'').trim().toLowerCase()===payload.reference.toLowerCase()))return msg('Nomor bukti sudah tercatat di kamar ini. Periksa transaksi lama; jangan input ulang.');
     if(!await appConfirm('Tujuan: '+'BOP Produksi · '+assignmentText(assignmentId)+'\nTanggal: '+payload.incurred_on+'\nNominal: Rp '+prodFmt(amount,0)+'\n\nSimpan transaksi?'))return;
