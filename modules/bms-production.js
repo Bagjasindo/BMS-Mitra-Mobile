@@ -541,10 +541,10 @@ async function recordingPplPage(){
   const todayID=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const realAgeFor=assignmentId=>{
     const ci=d.chicks.find(x=>x.contract_assignment_id===assignmentId);
-    if(!ci?.arrived_on)return 1;
+    if(!ci?.arrived_on)return 0;
     const start=Date.parse(ci.arrived_on+'T00:00:00Z');
     const today=Date.parse(todayID()+'T00:00:00Z');
-    return Math.max(1,Math.floor((today-start)/86400000)+1);
+    return Math.max(0,Math.floor((today-start)/86400000));
   };
   const missingDaysFor=assignmentId=>{
     const age=realAgeFor(assignmentId);
@@ -560,19 +560,24 @@ async function recordingPplPage(){
   let currentDay=1;
 
   const calc=()=>{
-    const actualAge=f.assignment.value?realAgeFor(f.assignment.value):1;
-    currentDay=editingId?editingDay:(f.assignment.value?targetDayFor(f.assignment.value):1);
+    const actualAge=f.assignment.value?realAgeFor(f.assignment.value):0;
+    currentDay=editingId?editingDay:(f.assignment.value?targetDayFor(f.assignment.value):0);
     const ageBox=document.getElementById('prodRecAge');
     const dayTitle=document.getElementById('prodRecDayTitle');
-    if(dayTitle)dayTitle.textContent='2. Isi Data Hari ke-'+currentDay;
+    if(dayTitle)dayTitle.textContent=currentDay>0?'2. Isi Data Hari ke-'+currentDay:'2. Recording dimulai H+1 setelah DOC datang';
     if(ageBox){
       if(editingId){
         ageBox.innerHTML='<span>Hari Recording</span><strong>'+currentDay+' Hari · Mode Edit</strong>';
       }else if(f.assignment.value){
         const missing=missingDaysFor(f.assignment.value);
-        ageBox.innerHTML='<span>Umur Saat Ini</span><strong>'+actualAge+' Hari</strong>'+
-          (missing.length?'<small class="muted" style="display:block;margin-top:6px">Belum terisi: Hari '+missing.join(', ')+'</small>':'<small class="muted" style="display:block;margin-top:6px">Recording sampai hari ini lengkap.</small>')+
-          '<small style="display:block;margin-top:6px"><strong>Form ini akan mengisi Hari '+currentDay+'</strong></small>';
+        if(actualAge===0){
+          ageBox.innerHTML='<span>Umur Saat Ini</span><strong>Hari 0 · DOC baru datang</strong>'+
+            '<small class="muted" style="display:block;margin-top:6px">Recording Hari 1 dimulai besok (H+1 setelah DOC datang).</small>';
+        }else{
+          ageBox.innerHTML='<span>Umur Saat Ini</span><strong>'+actualAge+' Hari</strong>'+
+            (missing.length?'<small class="muted" style="display:block;margin-top:6px">Belum terisi: Hari '+missing.join(', ')+'</small>':'<small class="muted" style="display:block;margin-top:6px">Recording sampai hari ini lengkap.</small>')+
+            '<small style="display:block;margin-top:6px"><strong>Form ini akan mengisi Hari '+currentDay+'</strong></small>';
+        }
       }else{
         ageBox.innerHTML='<span>Umur Saat Ini</span><strong>1 Hari</strong><small class="muted" style="display:block;margin-top:6px">Pilih kandang untuk melihat umur dan hari yang belum terisi.</small>';
       }
@@ -688,6 +693,7 @@ async function recordingPplPage(){
       return msg('Pemakaian melebihi sisa stok terbaru. Sisa '+prodFmt(latestStock.remaining_units,2)+' '+(latestStock.unit||'Satuan')+'.');
     }
     currentDay=editingId?editingDay:targetDayFor(a.id);
+    if(!editingId&&currentDay<1)return msg('Hari DOC datang adalah Hari 0. Recording Hari 1 baru dapat diisi mulai besok.');
     if(!editingId&&recs.some(r=>r.contract_assignment_id===a.id&&prodNum(r.age_days)===currentDay)){
       return msg('Recording Hari '+currentDay+' sudah diisi. Gunakan tombol Edit pada riwayat recording.');
     }
@@ -709,7 +715,7 @@ async function recordingPplPage(){
       p_id:editingId||null,
       p_assignment_id:a.id,
       p_barn_id:a.barn_id,
-      p_recorded_on:prodDateAdd(ci.arrived_on,currentDay-1),
+      p_recorded_on:prodDateAdd(ci.arrived_on,currentDay),
       p_age_days:currentDay,
       p_mortality:Math.trunc(prodNum(f.mortality.value)),
       p_culling:Math.trunc(prodNum(f.culling.value)),
