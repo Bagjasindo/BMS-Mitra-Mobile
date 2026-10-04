@@ -844,11 +844,31 @@ async function productionEstimatePage(){
   const eligibleAssignments=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
   const estimateAssignmentId=window.__pplEstimateAssignment||(eligibleAssignments.length===1?eligibleAssignments[0].id:'');
   if(estimateAssignmentId)window.__pplEstimateAssignment=estimateAssignmentId;
-  const historyEstimates=estimateAssignmentId?rows.filter(x=>x.contract_assignment_id===estimateAssignmentId):[];
-  window.__bmsTxnList=window.__bmsTxnList||{};
-  const oldEstimatePage=window.__bmsTxnList.pplEstimate?.page||0;
-  window.__bmsTxnList.pplEstimate={from:'',to:'',barn:'',assignment:'',status:'',page:oldEstimatePage};
-  const txnEstimate=txnListState(historyEstimates,'pplEstimate','estimated_on',5,null,'barn_id',{}),pageRows=txnEstimate.rows;
+
+  // Riwayat Estimasi berdiri sendiri dari form input: pilih Kandang -> Siklus -> Tampilkan.
+  // Siklus historis/CLOSED tetap tersedia selama mempunyai Chick-In. Hanya data estimasi nyata umur >= 23 yang ditampilkan.
+  const historyAssignments=d.assignments.filter(a=>d.chicks.some(c=>c.contract_assignment_id===a.id));
+  const historyBarns=d.barns.filter(b=>historyAssignments.some(a=>a.barn_id===b.id));
+  window.__pplEstimateHistory=window.__pplEstimateHistory||{barn:'',assignment:'',shown:false};
+  const estimateHistoryState=window.__pplEstimateHistory;
+  if(estimateHistoryState.assignment&&!historyAssignments.some(a=>a.id===estimateHistoryState.assignment)){
+    estimateHistoryState.assignment='';estimateHistoryState.shown=false;
+  }
+  if(estimateHistoryState.barn&&!historyBarns.some(b=>b.id===estimateHistoryState.barn)){
+    estimateHistoryState.barn='';estimateHistoryState.assignment='';estimateHistoryState.shown=false;
+  }
+  const historyEstimates=estimateHistoryState.shown&&estimateHistoryState.assignment
+    ?rows.filter(x=>{
+      if(x.contract_assignment_id!==estimateHistoryState.assignment)return false;
+      const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
+      return ci&&prodAge(ci.arrived_on,x.estimated_on)>=23;
+    }).sort((x,y)=>{
+      const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
+      return prodAge(ci?.arrived_on,x.estimated_on)-prodAge(ci?.arrived_on,y.estimated_on)
+        ||String(x.estimated_on||'').localeCompare(String(y.estimated_on||''));
+    })
+    :[];
+  const pageRows=historyEstimates;
   const historyStockResponses=await Promise.all(pageRows.map(x=>
     db.rpc('production_feed_stock_as_of',{
       p_contract_assignment_id:x.contract_assignment_id,
@@ -888,7 +908,7 @@ async function productionEstimatePage(){
     '<div class="inline-actions"><button id="estSave">Simpan Estimasi</button><button type="button" id="estCancel" style="display:none">Batal Edit</button></div>'+
     '</form></section>';
 
-  const selectedEstimateAssignment=d.assignments.find(a=>a.id===estimateAssignmentId);
+  const selectedEstimateHistoryAssignment=d.assignments.find(a=>a.id===estimateHistoryState.assignment);
   const estimateHistoryCards=pageRows.map(x=>{
     const a=d.assignments.find(a=>a.id===x.contract_assignment_id);
     const ci=d.chicks.find(c=>c.contract_assignment_id===x.contract_assignment_id);
@@ -992,7 +1012,7 @@ async function productionEstimatePage(){
         '<div class="estimate-economy-total"><span>Pend./Ekor</span><strong>Rp '+prodFmt(revenuePerBird,0)+'</strong></div>'+
       '</div>';
     return '<article class="estimate-history-card">'+
-      '<div class="estimate-history-head"><div><h4>'+esc(a?prodAssignmentOption(d,a):'-')+'</h4><p>'+prodDateId(x.estimated_on)+'</p></div><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></div>'+
+      '<div class="estimate-history-head"><div><h4>Umur '+prodAge(ci?.arrived_on,x.estimated_on)+' hari</h4><p>'+prodDateId(x.estimated_on)+' · '+esc(a?prodAssignmentOption(d,a):'-')+'</p></div><div class="inline-actions"><button type="button" data-edit-est="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('production_estimates',x.id)+'</div></div>'+
       '<div class="estimate-history-grid estimate-history-performance">'+
         '<div><span>IN</span><strong>'+prodFmt(initial,0)+'</strong></div>'+
         '<div><span>OUT</span><strong>'+prodFmt(outBirds,0)+'</strong></div>'+
@@ -1012,17 +1032,57 @@ async function productionEstimatePage(){
     '</article>';
   }).join('');
 
+  const historyAssignmentOptions=historyAssignments
+    .filter(a=>!estimateHistoryState.barn||a.barn_id===estimateHistoryState.barn)
+    .sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));
   html+='<section class="panel"><div class="rhpp-section-head"><div><h3>Riwayat Estimasi</h3>'+
-    '<p class="muted">'+(selectedEstimateAssignment?'Menampilkan riwayat estimasi kandang yang sedang dipilih.':'Pilih kandang aktif untuk menampilkan riwayat estimasi.')+'</p></div>'+
-    (selectedEstimateAssignment?'<span class="pill">'+historyEstimates.length+' estimasi</span>':'')+'</div>'+
-    '<div class="estimate-history-list">'+(estimateHistoryCards||'<p class="muted">Belum ada riwayat estimasi untuk kandang ini.</p>')+'</div>'+
-    txnEstimate.pager+
-    '<p class="muted estimate-history-foot">Sumber sistematis Estimasi: stok pakan memakai mesin resmi production_feed_stock_as_of (logika sama dengan Recording); pemakaian dari Recording; harga dari Kontrak; DOC dari Chick-In; panen dari Marketing. Semua tampilan dan Pend./Ekor memakai snapshot sumber yang sama. Estimasi tidak mengubah RHPP.</p></section>';
+    '<p class="muted">Pilih Kandang dan Siklus untuk melihat seluruh isian Estimasi yang tersimpan mulai umur 23 hari sampai estimasi terakhir/panen.</p></div>'+
+    (estimateHistoryState.shown&&selectedEstimateHistoryAssignment?'<span class="pill">'+historyEstimates.length+' estimasi</span>':'')+'</div>'+
+    '<form id="estimateHistoryFilter" class="form-vertical" data-no-submit-guard="1">'+
+      '<label>Kandang<select name="barn" required><option value="">Pilih Kandang</option>'+
+        historyBarns.map(b=>'<option value="'+esc(b.id)+'" '+(estimateHistoryState.barn===b.id?'selected':'')+'>'+esc(b.name||'-')+'</option>').join('')+
+      '</select></label>'+
+      '<label>Siklus<select name="assignment" required '+(estimateHistoryState.barn?'':'disabled')+'><option value="">Pilih Siklus</option>'+
+        historyAssignmentOptions.map(a=>'<option value="'+esc(a.id)+'" '+(estimateHistoryState.assignment===a.id?'selected':'')+'>'+esc(prodAssignmentOption(d,a))+'</option>').join('')+
+      '</select></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button></div>'+
+    '</form>'+
+    '<div class="estimate-history-list">'+(
+      !estimateHistoryState.shown
+        ?'<p class="muted">Pilih Kandang dan Siklus, lalu tekan Tampilkan.</p>'
+        :(estimateHistoryCards||'<p class="muted">Belum ada isian Estimasi tersimpan mulai umur 23 hari pada siklus ini.</p>')
+    )+'</div>'+
+    '<p class="muted estimate-history-foot">Urutan riwayat berdasarkan umur ayam: Hari 23, 24, 25, dan seterusnya. Hari yang tidak pernah mempunyai isian Estimasi tidak dibuat sebagai data. Sumber sistematis Estimasi tetap memakai data tersimpan dan Estimasi tidak mengubah RHPP.</p></section>';
 
   layout(html);
   if(d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||extShipR.error||extShipItemR.error||returnR.error||returnItemR.error||itemR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||extShipR.error||extShipItemR.error||returnR.error||returnItemR.error||itemR.error).message);
 
   bindAdminTransactionDeletes(()=>productionEstimatePage());
+
+  const historyFilter=document.getElementById('estimateHistoryFilter');
+  if(historyFilter){
+    const hb=historyFilter.elements.barn,ha=historyFilter.elements.assignment;
+    hb.onchange=()=>{
+      const bid=hb.value||'';
+      estimateHistoryState.barn=bid;
+      estimateHistoryState.assignment='';
+      estimateHistoryState.shown=false;
+      const opts=historyAssignments
+        .filter(a=>a.barn_id===bid)
+        .sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));
+      ha.disabled=!bid;
+      ha.innerHTML='<option value="">Pilih Siklus</option>'+opts.map(a=>'<option value="'+esc(a.id)+'">'+esc(prodAssignmentOption(d,a))+'</option>').join('');
+    };
+    ha.onchange=()=>{estimateHistoryState.assignment=ha.value||'';estimateHistoryState.shown=false;};
+    historyFilter.onsubmit=async e=>{
+      e.preventDefault();
+      estimateHistoryState.barn=hb.value||'';
+      estimateHistoryState.assignment=ha.value||'';
+      if(!estimateHistoryState.barn||!estimateHistoryState.assignment)return msg('Pilih Kandang dan Siklus.');
+      estimateHistoryState.shown=true;
+      await productionEstimatePage();
+    };
+  }
 
   const f=document.getElementById('prodEst');
   const holder=document.getElementById('estSizes');
