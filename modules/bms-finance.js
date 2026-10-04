@@ -1981,8 +1981,19 @@ async function financeAdvancePage(){
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const paid=id=>payments.filter(x=>x.advance_id===id).reduce((n,x)=>n+prodNum(x.amount),0);
   const emp=id=>{const x=employees.find(e=>e.id===id);return x?x.code+' · '+x.name:'-'};
-  const totalKasbon=rows.reduce((n,x)=>n+prodNum(x.amount),0);
-  const totalBayar=rows.reduce((n,x)=>n+paid(x.id),0);
+  window.__financeAdvanceFilter=window.__financeAdvanceFilter||{employee:'',from:'',to:'',status:''};
+  const af=window.__financeAdvanceFilter;
+  const filteredRows=rows.filter(x=>{
+    const bal=Math.max(0,prodNum(x.amount)-paid(x.id));
+    if(af.employee&&x.employee_id!==af.employee)return false;
+    if(af.from&&String(x.advanced_on||'')<af.from)return false;
+    if(af.to&&String(x.advanced_on||'')>af.to)return false;
+    if(af.status==='OPEN'&&bal<=0.0001)return false;
+    if(af.status==='PAID'&&bal>0.0001)return false;
+    return true;
+  });
+  const totalKasbon=filteredRows.reduce((n,x)=>n+prodNum(x.amount),0);
+  const totalBayar=filteredRows.reduce((n,x)=>n+paid(x.id),0);
   const totalSisa=Math.max(0,totalKasbon-totalBayar);
   window.__financeAdvanceEdit=window.__financeAdvanceEdit||'';
   const editId=window.__financeAdvanceEdit,editRow=rows.find(x=>x.id===editId)||null;
@@ -2000,17 +2011,28 @@ async function financeAdvancePage(){
     '</form></section>'+
     '<section class="panel" id="advancePrintArea">'+
       '<div class="rhpp-section-head"><div><h3>Rincian Kasbon</h3><p class="muted">Kasbon · Sudah Bayar · Sisa Kasbon.</p></div><div class="report-actions"><button type="button" id="advancePrint">Cetak / PDF</button><button type="button" id="advancePrintExcel">Excel</button></div></div>'+
+      '<form id="advanceFilterForm" class="filter-grid">'+
+        '<label>Karyawan / ABK<select name="employee"><option value="">Semua</option>'+employees.map(e=>'<option value="'+esc(e.id)+'" '+(af.employee===e.id?'selected':'')+'>'+esc(e.code+' · '+e.name)+'</option>').join('')+'</select></label>'+
+        '<label>Dari Tanggal<input type="date" name="from" value="'+esc(af.from)+'"></label>'+
+        '<label>Sampai Tanggal<input type="date" name="to" value="'+esc(af.to)+'"></label>'+
+        '<label>Status<select name="status"><option value="">Semua</option><option value="OPEN" '+(af.status==='OPEN'?'selected':'')+'>Belum Lunas</option><option value="PAID" '+(af.status==='PAID'?'selected':'')+'>Lunas</option></select></label>'+
+        '<div class="report-actions"><button type="submit">Tampilkan</button><button type="button" id="advanceFilterReset">Reset</button></div>'+
+      '</form>'+
       '<div class="rhpp-summary-cards">'+
         '<div class="rhpp-summary-card"><span>Total Kasbon</span><strong>Rp '+prodFmt(totalKasbon,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Total Bayar</span><strong>Rp '+prodFmt(totalBayar,0)+'</strong></div>'+
         '<div class="rhpp-summary-card"><span>Sisa Kasbon</span><strong>Rp '+prodFmt(totalSisa,0)+'</strong></div>'+
       '</div>'+
       '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Karyawan / ABK</th><th>Keterangan</th><th>Kasbon</th><th>Sudah Bayar</th><th>Sisa Kasbon</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
-      rows.map(x=>{const p=paid(x.id),bal=Math.max(0,prodNum(x.amount)-p);return '<tr><td>'+prodDateId(x.advanced_on)+'</td><td>'+esc(emp(x.employee_id))+'</td><td>'+esc(x.description||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>Rp '+prodFmt(p,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td>'+(bal<=0.0001?'<strong>LUNAS</strong>':'BELUM LUNAS')+'</td><td><div class="inline-actions"><button type="button" data-edit-advance="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('advances',x.id)+'</div></td></tr>';}).join('')+
-      '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada kasbon.</p>')+
+      filteredRows.map(x=>{const p=paid(x.id),bal=Math.max(0,prodNum(x.amount)-p);return '<tr><td>'+prodDateId(x.advanced_on)+'</td><td>'+esc(emp(x.employee_id))+'</td><td>'+esc(x.description||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>Rp '+prodFmt(p,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td>'+(bal<=0.0001?'<strong>LUNAS</strong>':'BELUM LUNAS')+'</td><td><div class="inline-actions"><button type="button" data-edit-advance="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('advances',x.id)+'</div></td></tr>';}).join('')+
+      '</tbody></table></div>'+(filteredRows.length?'':'<p class="muted">Tidak ada data kasbon sesuai filter.</p>')+
     '</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  const advanceFilterForm=document.getElementById('advanceFilterForm');
+  if(advanceFilterForm)advanceFilterForm.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(advanceFilterForm);af.employee=String(fd.get('employee')||'');af.from=String(fd.get('from')||'');af.to=String(fd.get('to')||'');af.status=String(fd.get('status')||'');await financeAdvancePage();};
+  const advanceFilterReset=document.getElementById('advanceFilterReset');
+  if(advanceFilterReset)advanceFilterReset.onclick=async()=>{window.__financeAdvanceFilter={employee:'',from:'',to:'',status:''};await financeAdvancePage();};
   const advancePrint=document.getElementById('advancePrint');
   if(advancePrint)advancePrint.onclick=()=>printFinanceDocument('advancePrintArea','Rincian Kasbon Karyawan dan ABK');const advanceExcel=document.getElementById('advancePrintExcel');if(advanceExcel)advanceExcel.onclick=()=>exportFinanceDocumentExcel('advancePrintArea','Rincian Kasbon Karyawan dan ABK');
 
@@ -2053,11 +2075,12 @@ async function financeAdvancePaymentPage(){
   const open=advances.map(a=>({...a,balance:Math.max(0,prodNum(a.amount)-paid(a.id))})).filter(a=>a.balance>0.0001);
   const emp=id=>{const e=employees.find(x=>x.id===id);return e?e.code+' · '+e.name:'-'};
 
-  window.__financeAdvancePaymentState=window.__financeAdvancePaymentState||{employee:'',editId:''};
+  window.__financeAdvancePaymentState=window.__financeAdvancePaymentState||{employee:'',editId:'',filterEmployee:'',from:'',to:''};
   const st=window.__financeAdvancePaymentState;
   const editPayment=payments.find(x=>x.id===st.editId)||null;
   if(editPayment){const ea=advances.find(x=>x.id===editPayment.advance_id);if(ea)st.employee=ea.employee_id;}
   const employeeOpen=st.employee?open.filter(a=>a.employee_id===st.employee):[];
+  const filteredPayments=payments.filter(p=>{const a=advances.find(x=>x.id===p.advance_id);if(st.filterEmployee&&a?.employee_id!==st.filterEmployee)return false;if(st.from&&String(p.paid_on||'')<st.from)return false;if(st.to&&String(p.paid_on||'')>st.to)return false;return true;});
 
   let html='<section class="panel"><h3>'+(editPayment?'Edit Bayar Kasbon':'Bayar Kasbon')+'</h3><p class="muted">Pilih karyawan/ABK, pilih kasbon yang masih memiliki sisa, lalu catat pembayaran.</p>'+
     '<form id="advancePaymentForm" class="form-vertical">'+
@@ -2073,13 +2096,23 @@ async function financeAdvancePaymentPage(){
       '<div class="report-actions"><button type="submit" '+(!editPayment&&!employeeOpen.length?'disabled':'')+'>'+(editPayment?'Simpan Perubahan':'Simpan Pembayaran')+'</button>'+(editPayment?'<button type="button" id="advancePaymentEditCancel">Batal Edit</button>':'')+'</div>'+
     '</form></section>'+
     '<section class="panel" id="advancePaymentPrintArea">'+
-      '<div class="rhpp-section-head"><div><h3>Rincian Bayar Kasbon</h3></div><div class="report-actions"><button type="button" id="advancePaymentPrint">Cetak / PDF</button><button type="button" id="advancePaymentPrintExcel">Excel</button></div></div>'+
-      '<div class="tablewrap"><table><thead><tr><th>Tanggal Bayar</th><th>Karyawan / ABK</th><th>Tanggal Kasbon</th><th>Keterangan Kasbon</th><th>Metode</th><th>Nominal Bayar</th><th>Sisa Setelah Bayar</th><th>Aksi</th></tr></thead><tbody>'+
-      payments.map(p=>{const a=advances.find(x=>x.id===p.advance_id),allFor=payments.filter(x=>x.advance_id===p.advance_id).filter(x=>String(x.paid_on||'')<=String(p.paid_on||'')).reduce((n,x)=>n+prodNum(x.amount),0),bal=Math.max(0,prodNum(a?.amount)-allFor);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(emp(a?.employee_id))+'</td><td>'+prodDateId(a?.advanced_on)+'</td><td>'+esc(a?.description||'-')+'</td><td>'+esc(String(p.method||'').replaceAll('_',' '))+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td><div class="inline-actions"><button type="button" data-edit-advance-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('advance_payments',p.id)+'</div></td></tr>';}).join('')+
-      '</tbody></table></div>'+(payments.length?'':'<p class="muted">Belum ada pembayaran kasbon.</p>')+
+      '<div class="rhpp-section-head"><div><h3>Rincian Bayar Kasbon</h3><p class="muted">Menampilkan asal kasbon dan setiap transaksi pembayarannya.</p></div><div class="report-actions"><button type="button" id="advancePaymentPrint">Cetak / PDF</button><button type="button" id="advancePaymentPrintExcel">Excel</button></div></div>'+
+      '<form id="advancePaymentFilterForm" class="filter-grid">'+
+        '<label>Karyawan / ABK<select name="employee"><option value="">Semua</option>'+employees.map(e=>'<option value="'+esc(e.id)+'" '+(st.filterEmployee===e.id?'selected':'')+'>'+esc(e.code+' · '+e.name)+'</option>').join('')+'</select></label>'+
+        '<label>Tanggal Bayar Dari<input type="date" name="from" value="'+esc(st.from)+'"></label>'+
+        '<label>Tanggal Bayar Sampai<input type="date" name="to" value="'+esc(st.to)+'"></label>'+
+        '<div class="report-actions"><button type="submit">Tampilkan</button><button type="button" id="advancePaymentFilterReset">Reset</button></div>'+
+      '</form>'+
+      '<div class="tablewrap"><table><thead><tr><th>Karyawan / ABK</th><th>Tanggal Kasbon</th><th>Nominal Kasbon</th><th>Keterangan Kasbon</th><th>Tanggal Bayar</th><th>Nominal Bayar</th><th>Metode</th><th>Sisa Setelah Bayar</th><th>Aksi</th></tr></thead><tbody>'+
+      filteredPayments.map(p=>{const a=advances.find(x=>x.id===p.advance_id),allFor=payments.filter(x=>x.advance_id===p.advance_id).filter(x=>String(x.paid_on||'')<=String(p.paid_on||'')).reduce((n,x)=>n+prodNum(x.amount),0),bal=Math.max(0,prodNum(a?.amount)-allFor);return '<tr><td>'+esc(emp(a?.employee_id))+'</td><td>'+prodDateId(a?.advanced_on)+'</td><td>Rp '+prodFmt(a?.amount,0)+'</td><td>'+esc(a?.description||'-')+'</td><td>'+prodDateId(p.paid_on)+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(String(p.method||'').replaceAll('_',' '))+'</td><td><strong>Rp '+prodFmt(bal,0)+'</strong></td><td><div class="inline-actions"><button type="button" data-edit-advance-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('advance_payments',p.id)+'</div></td></tr>';}).join('')+
+      '</tbody></table></div>'+(filteredPayments.length?'':'<p class="muted">Tidak ada pembayaran kasbon sesuai filter.</p>')+
     '</section>';
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
+  const advancePaymentFilterForm=document.getElementById('advancePaymentFilterForm');
+  if(advancePaymentFilterForm)advancePaymentFilterForm.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(advancePaymentFilterForm);st.filterEmployee=String(fd.get('employee')||'');st.from=String(fd.get('from')||'');st.to=String(fd.get('to')||'');await financeAdvancePaymentPage();};
+  const advancePaymentFilterReset=document.getElementById('advancePaymentFilterReset');
+  if(advancePaymentFilterReset)advancePaymentFilterReset.onclick=async()=>{st.filterEmployee='';st.from='';st.to='';await financeAdvancePaymentPage();};
   const advancePaymentPrint=document.getElementById('advancePaymentPrint');
   if(advancePaymentPrint)advancePaymentPrint.onclick=()=>printFinanceDocument('advancePaymentPrintArea','Rincian Bayar Kasbon');const advancePaymentExcel=document.getElementById('advancePaymentPrintExcel');if(advancePaymentExcel)advancePaymentExcel.onclick=()=>exportFinanceDocumentExcel('advancePaymentPrintArea','Rincian Bayar Kasbon');
   const employeeSel=document.getElementById('advancePaymentEmployee');
