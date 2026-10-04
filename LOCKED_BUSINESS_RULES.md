@@ -78,7 +78,7 @@ Jika hanya “refactor”, “audit”, “rapikan”, atau “perbaikan UI”, 
 
 
 ## OPERATIONAL BASELINE LOCK
-Baseline operasional dikunci pada **build 2342-recording-photo-gram-help**, audit 2026-10-03.
+Baseline operasional dikunci pada **build 2343-recording-age-h1-after-arrival**, audit 2026-10-03.
 Detail bukti audit: `AUDIT_HULU_HILIR_LOCK_20261003.md`.
 
 Setiap perubahan setelah baseline ini wajib lulus:
@@ -96,3 +96,10 @@ Mulai baseline build 2340, **setiap perubahan kode atau database harus mendapat 
 Permintaan seperti **cek, audit, lihat, analisa, cari masalah** adalah read-only dan **bukan izin untuk melakukan perubahan**.
 
 Dokumen governance: `OWNER_CHANGE_CONTROL.md`.
+
+
+## LOCK-010 — Umur Recording PPL
+Tanggal DOC datang adalah **Hari 0**.
+Recording PPL **Hari 1 dimulai H+1 / sehari setelah DOC datang**.
+Tanggal recording untuk Hari N = tanggal DOC datang + N hari.
+Histori recording yang sudah tersimpan tidak boleh digeser massal hanya karena aturan ini.
