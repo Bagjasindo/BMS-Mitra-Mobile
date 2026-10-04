@@ -119,12 +119,15 @@ async function buildDashboardModel(){
     const fc=initial>0?feed*1000/initial:0;
     const fcStd=prodNum(st?.std_feed_g_per_bird);
     const fcLow=!!(latest&&fcStd>0&&fc<fcStd);
+    const currentAge=ci?.arrived_on?prodAge(ci.arrived_on,prodToday()):0;
+    const recordingAge=latest?(prodNum(latest.age_days)||prodAge(ci?.arrived_on,latest.recorded_on)):0;
     const alerts=[];
-    if(!latest)alerts.push('Belum recording');
+    if(currentAge>=1&&!latest)alerts.push('Recording belum diisi · umur saat ini '+currentAge+' hari');
+    if(latest&&currentAge>recordingAge)alerts.push('Recording terakhir umur '+recordingAge+' hari · umur saat ini '+currentAge+' hari');
     if(latest&&st?.std_body_weight_g&&bwg<prodNum(st.std_body_weight_g))alerts.push('BW di bawah standar');
     if(latest&&st?.std_fcr&&fcr>prodNum(st.std_fcr))alerts.push('FCR di atas standar');
     if(fcLow)alerts.push('FC di bawah standar');
-    return {a,ci,latest,initial,harvested,population,liveHarvested,livePopulation,feed,fc,fcStd,fcLow,bwg,bw,fcr,dep,age,ip,prevBwg,st,alerts};
+    return {a,ci,latest,initial,harvested,population,liveHarvested,livePopulation,feed,fc,fcStd,fcLow,bwg,bw,fcr,dep,age,currentAge,recordingAge,ip,prevBwg,st,alerts};
   });
   const valid=metrics.filter(x=>x.latest);
   const avg=k=>valid.length?valid.reduce((s,x)=>s+prodNum(x[k]),0)/valid.length:0;
@@ -165,10 +168,10 @@ async function buildDashboardModel(){
 
   const performanceCards=metrics.map(x=>{
     const b=d.barns.find(v=>v.id===x.a.barn_id);
-    const currentAge=x.ci?.arrived_on?prodAge(x.ci.arrived_on,prodToday()):x.age;
+    const currentAge=x.currentAge;
     const trend=!x.latest?'':x.prevBwg?(x.bwg>x.prevBwg?'↑':x.bwg<x.prevBwg?'↓':'→'):'→';
     const isSim=String(x.latest?.notes||'').includes('SIMULASI DASHBOARD KPI'); const alert=isSim?'<span class="owner-sim">SIMULASI</span>':(x.alerts.length?'<span class="owner-alert">'+esc(x.alerts[0])+'</span>':'<span class="owner-ok">Normal</span>');
-    return '<article class="owner-barn-card"><div class="owner-barn-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+'</strong><small>Umur saat ini '+(currentAge||'-')+' hari · Update data umur '+(x.age||'-')+' hari · '+(x.latest?prodDateId(x.latest.recorded_on):'-')+'</small></div>'+alert+'</div>'+
+    return '<article class="owner-barn-card"><div class="owner-barn-head"><div><strong>'+esc(b?shortBarnLabel(b):'-')+'</strong><small>Umur saat ini <strong>'+(currentAge||0)+' hari</strong> · Recording masuk <strong>'+(x.latest?'umur '+x.recordingAge+' hari':'belum ada')+'</strong> · '+(x.latest?prodDateId(x.latest.recorded_on):'-')+'</small></div>'+alert+'</div>'+
       '<div class="owner-metrics"><div><span>Sisa Ayam Saat Ini</span><b>'+prodFmt(x.livePopulation,0)+'</b></div><div><span>BW</span><b>'+prodFmt(x.bw,3)+' kg '+trend+'</b></div><div><span>FCR</span><b>'+prodFmt(x.fcr,3)+'</b></div><div><span>IP</span><b>'+prodFmt(x.ip,1)+'</b></div></div>'+
       '<div class="owner-card-foot"><strong>Populasi Awal '+prodFmt(x.initial,0)+' ekor</strong> · Terpanen sampai hari ini '+prodFmt(x.liveHarvested,0)+' ekor · Sisa Ayam '+prodFmt(x.livePopulation,0)+' ekor<br>Deplesi '+prodFmt(x.dep,2)+'% · <span class="'+(x.fcLow?'owner-fc-low':'owner-fc-ok')+'">FC '+prodFmt(x.fc,0)+' g/ekor'+(x.fcStd>0?' / Std '+prodFmt(x.fcStd,0):'')+'</span> · Pakan '+prodFmt(x.feed,0)+' Kg</div></article>';
   }).join('');
@@ -359,13 +362,17 @@ async function buildDashboardModel(){
   active.forEach(a=>{
     const b=d.barns.find(v=>v.id===a.barn_id);
     const name=b?shortBarnLabel(b):'-';
+    const ci=d.chicks.find(v=>v.contract_assignment_id===a.id);
+    const currentAge=ci?.arrived_on?prodAge(ci.arrived_on,todayIso):0;
+    // Estimasi baru wajib mulai umur 23. Sebelum itu bukan kondisi masalah.
+    if(currentAge<23)return;
     const e=estimates.find(v=>v.contract_assignment_id===a.id);
     if(!e){
-      estimateAttention.push({barn:name,text:'Belum ada estimasi produksi',level:'danger'});
+      estimateAttention.push({barn:name,text:'Belum ada estimasi produksi · umur saat ini '+currentAge+' hari',level:'danger'});
       return;
     }
     const ageDays=dayDiff(e.estimated_on,todayIso);
-    if(ageDays>=3)estimateAttention.push({barn:name,text:'Estimasi terakhir '+prodDateId(e.estimated_on)+' · perlu diperbarui',level:'warning'});
+    if(ageDays>=3)estimateAttention.push({barn:name,text:'Estimasi terakhir '+prodDateId(e.estimated_on)+' · umur saat ini '+currentAge+' hari · perlu diperbarui',level:'warning'});
     // Nilai perhatian Estimasi hanya memakai data yang benar-benar diisi/dihitung modul Estimasi PPL.
     // Jangan membuat alert laba dari kolom placeholder yang tidak dipakai modul Estimasi PPL.
   });
