@@ -30,6 +30,11 @@ async function financeBopPage(){
     (!st.from||String(x.incurred_on||'')>=st.from)&&
     (!st.to||String(x.incurred_on||'')<=st.to)
   ):[];
+  const wageRows=filterRows.filter(x=>x.category==='UPAH_ABK'&&x.source_type==='ABK_WAGE'&&x.source_id);
+  const wageByAbk=new Map();
+  wageRows.forEach(x=>wageByAbk.set(x.source_id,(wageByAbk.get(x.source_id)||0)+prodNum(x.amount)));
+  const wageRecap=[...wageByAbk.entries()].map(([abkId,amount])=>({abkId,amount})).sort((a,b)=>abkName(a.abkId).localeCompare(abkName(b.abkId),'id'));
+  const wageTotal=wageRecap.reduce((n,x)=>n+x.amount,0);
 
   const assignmentText=id=>{
     const a=assignments.find(x=>x.id===id);
@@ -88,6 +93,12 @@ async function financeBopPage(){
       '</form>'+
       (st.shown?
         '<div class="rhpp-summary-card"><span>Total BOP</span><strong>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</strong></div>'+
+        '<div class="rhpp-section-head"><div><h4>Rekap Upah ABK</h4><p class="muted">Hanya transaksi kategori Upah ABK pada hasil filter ini.</p></div></div>'+
+        (wageRecap.length?
+          '<div class="tablewrap"><table><thead><tr><th>Nama ABK</th><th>Total Upah Tercatat</th></tr></thead><tbody>'+
+            wageRecap.map(x=>'<tr><td>'+esc(abkName(x.abkId))+'</td><td><strong>Rp '+prodFmt(x.amount,0)+'</strong></td></tr>').join('')+
+          '</tbody><tfoot><tr><th>TOTAL UPAH ABK</th><th>Rp '+prodFmt(wageTotal,0)+'</th></tr></tfoot></table></div>'
+          :'<p class="muted">Belum ada transaksi Upah ABK pada hasil filter ini.</p>')+
         '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siklus</th><th>Kategori</th><th>ABK</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
           filterRows.map(x=>{const a=assignments.find(v=>v.id===x.contract_assignment_id);return '<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(a?assignmentCycleLabel(assignments,a):'-')+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>'+esc(x.source_type==='ABK_WAGE'?abkName(x.source_id):'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(financeOriginalNoteDisplay(x.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-bop="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('bop',x.id)+'</div></td></tr>';}).join('')+
         '</tbody><tfoot><tr><th colspan="4">TOTAL BOP</th><th>Rp '+prodFmt(filterRows.reduce((n,x)=>n+prodNum(x.amount),0),0)+'</th><th></th><th></th></tr></tfoot></table></div>'+(filterRows.length?'':'<p class="muted">Tidak ada BOP sesuai filter.</p>')
