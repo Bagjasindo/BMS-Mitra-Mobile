@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2342';
-  assert.match(index,new RegExp('v='+build+'-recording-photo-gram-help'));
-  assert.match(sw,new RegExp('v'+build+'-recording-photo-gram-help'));
+  const build='2343';
+  assert.match(index,new RegExp('v='+build+'-recording-age-h1-after-arrival'));
+  assert.match(sw,new RegExp('v'+build+'-recording-age-h1-after-arrival'));
   assert.match(schema,new RegExp('build '+build));
   assert.match(runbook,new RegExp('build '+build));
 });
@@ -40,4 +40,13 @@ test('AUDIT-LOCK PPL sample weight keeps gram precision and photo compression',(
   assert.match(production,/min="0\.001" step="0\.001"/);
   assert.match(production,/compressRecordingPhoto/);
   assert.match(production,/targetBytes=30\*1024/);
+});
+
+
+test('AUDIT-LOCK Recording PPL starts day 1 after DOC arrival',()=>{
+  const production=read('modules/bms-production.js');
+  assert.match(production,/return Math\.max\(0,Math\.floor\(\(today-start\)\/86400000\)\);/);
+  assert.match(production,/Hari DOC datang adalah Hari 0/);
+  assert.match(production,/p_recorded_on:prodDateAdd\(ci\.arrived_on,currentDay\)/);
+  assert.doesNotMatch(production,/p_recorded_on:prodDateAdd\(ci\.arrived_on,currentDay-1\)/);
 });
