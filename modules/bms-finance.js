@@ -58,6 +58,7 @@ async function financeBopPage(){
         '<option value="">Pilih Kategori</option>'+
         '<option value="OVK" '+(editRow?.category==='OVK'?'selected':'')+'>OVK</option>'+
         '<option value="UPAH_ABK" '+(editRow?.category==='UPAH_ABK'?'selected':'')+'>Upah ABK</option>'+
+        '<option value="KONSUMSI" '+(editRow?.category==='KONSUMSI'?'selected':'')+'>Konsumsi</option>'+
         (editRow?.category==='TENAGA_KERJA'?'<option value="TENAGA_KERJA" selected>Tenaga Kerja (histori lama)</option>':'')+
         '<option value="TRANSPORTASI" '+(editRow?.category==='TRANSPORTASI'?'selected':'')+'>Transportasi</option>'+
         '<option value="LISTRIK" '+(editRow?.category==='LISTRIK'?'selected':'')+'>Listrik</option>'+
