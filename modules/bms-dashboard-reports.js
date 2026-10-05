@@ -254,7 +254,7 @@ async function buildDashboardModel(){
   });
 
   const estimateCards=estimateDashboardData.map(x=>{
-    const canOpenEstimate=canViewTab('estimasi');
+    const canOpenEstimate=false; // Dashboard monitoring dibuat identik/read-only untuk semua role.
     return '<article class="owner-estimate-card'+(canOpenEstimate?' owner-estimate-link':'')+'"'+
       (canOpenEstimate?' data-open-estimate="'+esc(x.e.contract_assignment_id)+'" role="button" tabindex="0" aria-label="Buka data estimasi '+esc(x.b?shortBarnLabel(x.b):'kandang')+'"':'')+'>'+
       '<div class="owner-estimate-head"><div><strong>'+esc(x.b?shortBarnLabel(x.b):'-')+'</strong><small>'+prodDateId(x.e.estimated_on)+'</small></div><span>'+(canOpenEstimate?'Lihat Estimasi':'Estimasi')+'</span></div>'+
@@ -420,7 +420,7 @@ async function buildDashboardModel(){
 async function dashboard(){
   const model=await buildDashboardModel();
   if(tab!=='dashboard'||!model)return;
-  model.eyebrow=profile.role==='OWNER'?'OWNER · PRODUKSI':profile.role;
+  model.eyebrow='DASHBOARD PRODUKSI';
   renderDashboardTemplate(model);
   root.querySelectorAll('[data-open-estimate]').forEach(card=>{
     const openEstimate=()=>{
