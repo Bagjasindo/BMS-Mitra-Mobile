@@ -2864,7 +2864,7 @@ async function financeGlobalProfitLossPage(){
     db.from('contracts').select('id,number').is('cycle_id',null),
     db.rpc('finance_expedition_profit_loss_v2'),
     db.from('finance_expedition_maintenance').select('incurred_on,category,vehicle,amount,notes'),
-    db.from('bop_outside').select('incurred_on,category,amount,notes'),
+    db.from('bop_outside').select('incurred_on,expense_scope,category,amount,notes'),
     db.from('barn_maintenance_costs').select('barn_id,incurred_on,category,amount,notes')
   ]);
   const rows=xr.data||[],assignments=ar.data||[],barns=br.data||[],contractsRows=cr.data||[];
@@ -2892,9 +2892,13 @@ async function financeGlobalProfitLossPage(){
   const bopExp=prodNum(exp.operational_bop);
   const labaExp=prodNum(exp.operational_profit);
   const perawatanExp=prodNum(exp.maintenance_bop);
-  const bopUmum=bopUmumRows.reduce((n,x)=>n+prodNum(x.amount),0);
+  const bopKantorRows=bopUmumRows.filter(x=>x.expense_scope==='KANTOR');
+  const bopLuarKantorRows=bopUmumRows.filter(x=>x.expense_scope!=='KANTOR');
+  const bopKantor=bopKantorRows.reduce((n,x)=>n+prodNum(x.amount),0);
+  const bopLuarKantor=bopLuarKantorRows.reduce((n,x)=>n+prodNum(x.amount),0);
+  const bopUmum=bopKantor+bopLuarKantor;
   const labaUsaha=labaKandang+labaExp;
-  const biayaGlobal=perawatanKandang+perawatanExp+bopUmum;
+  const biayaGlobal=perawatanKandang+perawatanExp+bopKantor+bopLuarKantor;
   const labaGlobal=labaUsaha-biayaGlobal;
 
   const groupTotal=(rows,key)=>{
@@ -2907,7 +2911,8 @@ async function financeGlobalProfitLossPage(){
   };
   const barnMaintGroup=groupTotal(barnMaintRows,'category');
   const expMaintGroup=groupTotal(expMaint,'category');
-  const bopUmumGroup=groupTotal(bopUmumRows,'category');
+  const bopKantorGroup=groupTotal(bopKantorRows,'category');
+  const bopLuarKantorGroup=groupTotal(bopLuarKantorRows,'category');
 
   let html='<section class="panel" id="globalProfitPrintArea">'+
     '<div class="rhpp-section-head"><div><h3>Laba/Rugi Global</h3>'+
@@ -2954,13 +2959,16 @@ async function financeGlobalProfitLossPage(){
     '<div class="tablewrap"><table><tbody>'+
       '<tr><td>Perawatan Kandang</td><td>Rp '+prodFmt(perawatanKandang,0)+'</td></tr>'+
       '<tr><td>Perawatan Expedisi</td><td>Rp '+prodFmt(perawatanExp,0)+'</td></tr>'+
-      '<tr><td>BOP Umum</td><td>Rp '+prodFmt(bopUmum,0)+'</td></tr>'+
+      '<tr><td>BOP Kantor</td><td>Rp '+prodFmt(bopKantor,0)+'</td></tr>'+
+      '<tr><td>BOP Umum / Luar Kantor</td><td>Rp '+prodFmt(bopLuarKantor,0)+'</td></tr>'+
+      '<tr><td><strong>Total BOP Umum</strong></td><td><strong>Rp '+prodFmt(bopUmum,0)+'</strong></td></tr>'+
 
       '<tr><td><strong>Total Biaya Global</strong></td><td><strong>Rp '+prodFmt(biayaGlobal,0)+'</strong></td></tr>'+
     '</tbody></table></div>'+
     (barnMaintGroup.length?'<h4>Rincian Perawatan Kandang</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+barnMaintGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
     (expMaintGroup.length?'<h4>Rincian Perawatan Expedisi</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+expMaintGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
-    (bopUmumGroup.length?'<h4>Rincian BOP Umum</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+bopUmumGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
+    (bopKantorGroup.length?'<h4>Rincian BOP Kantor</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+bopKantorGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
+    (bopLuarKantorGroup.length?'<h4>Rincian BOP Umum / Luar Kantor</h4><div class="tablewrap"><table><thead><tr><th>Kategori</th><th>Nominal</th></tr></thead><tbody>'+bopLuarKantorGroup.map(x=>'<tr><td>'+esc(x[0])+'</td><td>Rp '+prodFmt(x[1],0)+'</td></tr>').join('')+'</tbody></table></div>':'')+
 
     '<h3>4. Hasil Akhir Global</h3>'+
     '<div class="tablewrap"><table><tbody>'+
