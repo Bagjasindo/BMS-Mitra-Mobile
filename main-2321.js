@@ -384,7 +384,17 @@ const bindAdminTransactionDeletes=(rerender)=>{
     if(!ok)return;
     if(!actionButtonStart(btn,'Menghapus...'))return;
     const {error}=await db.rpc('role_delete_transaction_v1',{p_table:table,p_id:String(id)});
-    if(error){await actionButtonFinish(btn,false);return;}
+    if(error){
+      const detail=String(error.message||'Transaksi gagal dihapus.');
+      msg(detail);
+      await actionButtonFinish(btn,false,'Terhapus ✓','Gagal');
+      if(btn.dataset.mobileActionIcon==='1'){
+        btn.textContent='🗑️';
+        btn.setAttribute('aria-label',btn.dataset.mobileActionLabel||'Hapus');
+        btn.setAttribute('title',detail);
+      }
+      return;
+    }
     await actionButtonFinish(btn,true);
     if(typeof rerender==='function')await rerender();
   });
