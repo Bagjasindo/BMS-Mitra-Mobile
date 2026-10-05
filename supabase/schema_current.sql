@@ -10667,7 +10667,7 @@ ALTER TABLE "public"."finance_expedition_bop" ADD CONSTRAINT "finance_expedition
 
 ALTER TABLE "public"."barn_maintenance_costs" ADD CONSTRAINT "barn_maintenance_costs_amount_check" CHECK ((amount > (0)::numeric));
 
-ALTER TABLE "public"."barn_maintenance_costs" ADD CONSTRAINT "barn_maintenance_category_check" CHECK ((category = ANY (ARRAY['PERAWATAN_JANGKA_PANJANG'::text, 'RENOVASI'::text, 'PENGGANTIAN_KOMPONEN'::text, 'PERALATAN'::text, 'LAINNYA'::text])));
+ALTER TABLE "public"."barn_maintenance_costs" ADD CONSTRAINT "barn_maintenance_category_check" CHECK ((category = ANY (ARRAY['PERAWATAN_JANGKA_PANJANG'::text, 'RENOVASI'::text, 'PENGGANTIAN_KOMPONEN'::text, 'PERALATAN'::text, 'TENAGA_KERJA_PERAWATAN'::text, 'PERBAIKAN_BANGUNAN'::text, 'PERBAIKAN_LISTRIK'::text, 'PERBAIKAN_AIR'::text, 'PERBAIKAN_PERALATAN'::text, 'LAINNYA'::text])));
 
 ALTER TABLE "public"."bop" ADD CONSTRAINT "bop_category_production_only_check" CHECK ((category = ANY (ARRAY['OVK'::text, 'TENAGA_KERJA'::text, 'UPAH_ABK'::text, 'KONSUMSI'::text, 'TRANSPORTASI'::text, 'LISTRIK'::text, 'GAS'::text, 'AIR'::text, 'SEKAM'::text, 'SANITASI'::text, 'EKSPEDISI'::text, 'OPERASIONAL'::text, 'LAINNYA'::text])));
 
