@@ -624,7 +624,7 @@ async function marketingReports(){
   document.getElementById('marketingExcel').onclick=()=>{
     renderRows();
     const html=document.getElementById('marketingReportSections').innerHTML+document.getElementById('marketingReportSummary').innerHTML;
-    const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body>'+html+'</body></html>']);
+    const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml('<html><head><meta charset="utf-8"></head><body>'+html+'</body></html>')]);
     const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Laporan_Marketing.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
 }
@@ -1077,7 +1077,7 @@ async function logisticsReports(){
   document.getElementById('logisticsExcel').onclick=()=>{
     renderRows();
     const tables=(document.getElementById('logisticsReportSections')?.innerHTML||'')+(document.getElementById('logisticsReportSummary')?.innerHTML||'');
-    const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body>'+tables+'</body></html>']);
+    const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml('<html><head><meta charset="utf-8"></head><body>'+tables+'</body></html>')]);
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
