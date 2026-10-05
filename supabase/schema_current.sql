@@ -16338,4 +16338,43 @@ $function$
 REVOKE ALL ON FUNCTION public.get_dashboard_global_data_v1() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_dashboard_global_data_v1() TO authenticated;
 
+
+CREATE OR REPLACE FUNCTION public.role_delete_transaction_v1(p_table text, p_id text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private', 'pg_temp'
+AS $function$
+declare
+ v_role public.bms_role; v_old jsonb; v_deleted int:=0; v_assignment uuid; v_active boolean; v_allowed boolean:=false;
+begin
+ if auth.uid() is null then raise exception 'Sesi login tidak ditemukan.'; end if;
+ select role into v_role from public.profiles where user_id=auth.uid() and active=true;
+ if v_role is null then raise exception 'Akun tidak aktif.'; end if;
+ v_allowed := v_role='ADMIN'
+ or (v_role='PPL' and p_table=any(array['chick_ins','recordings','visits','production_estimates']))
+ or (v_role='MARKETING' and p_table=any(array['marketing_contract_harvests','marketing_external_meat_purchases']))
+ or (v_role='LOGISTIK' and p_table=any(array['logistics_shipments','logistics_external_shipments','logistics_returns','logistics_external_returns','logistics_mandiri_purchases']))
+ or (v_role='KEUANGAN' and p_table=any(array['bop','barn_maintenance_costs','bop_outside','finance_expedition_trips','finance_expedition_invoices','finance_expedition_payments','finance_expedition_bop','finance_expedition_maintenance','advances','advance_payments','supplier_payments','finance_mandiri_sales_receipts','finance_mandiri_supplier_payments','rhpp_real','abk_cycle_salaries']));
+ if not v_allowed then raise exception 'Role % tidak berwenang menghapus transaksi %.',v_role,p_table; end if;
+ if not p_table=any(array['logistics_shipments','logistics_external_shipments','logistics_returns','logistics_external_returns','logistics_mandiri_purchases','marketing_contract_harvests','marketing_external_meat_purchases','chick_ins','recordings','visits','production_estimates','bop','barn_maintenance_costs','bop_outside','finance_expedition_trips','finance_expedition_invoices','finance_expedition_payments','finance_expedition_bop','finance_expedition_maintenance','advances','advance_payments','supplier_payments','finance_mandiri_sales_receipts','finance_mandiri_supplier_payments','rhpp_real','abk_cycle_salaries']) then raise exception 'Tabel % tidak diizinkan.',p_table; end if;
+ execute format('select to_jsonb(t) from public.%I t where id::text=$1',p_table) into v_old using p_id;
+ if v_old is null then raise exception 'Transaksi tidak ditemukan atau sudah terhapus.'; end if;
+ if nullif(v_old->>'contract_assignment_id','') is not null then v_assignment:=(v_old->>'contract_assignment_id')::uuid; end if;
+ if v_assignment is not null then
+   select active into v_active from public.logistics_contract_assignments where id=v_assignment;
+   if coalesce(v_active,false)=false then raise exception 'Siklus sudah CLOSED. Transaksi terkunci dan tidak dapat dihapus.'; end if;
+ end if;
+ if p_table='rhpp_real' then perform set_config('bms.allow_rhpp_real_delete','1',true); end if;
+ begin execute format('delete from public.%I where id::text=$1',p_table) using p_id; get diagnostics v_deleted=row_count;
+ exception when foreign_key_violation then raise exception 'Transaksi tidak dapat dihapus karena masih dipakai data lain. Koreksi atau hapus transaksi turunannya terlebih dahulu.'; end;
+ if v_deleted=0 then raise exception 'Transaksi tidak ditemukan atau sudah terhapus.'; end if;
+ insert into public.audit_events(actor,action,table_name,record_id,old_data,new_data) values(auth.uid(),'DELETE_ROLE_ACTIVE',p_table,p_id,v_old,null);
+ return true;
+end
+$function$;
+REVOKE ALL ON FUNCTION public.role_delete_transaction_v1(text,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.role_delete_transaction_v1(text,text) FROM anon;
+GRANT EXECUTE ON FUNCTION public.role_delete_transaction_v1(text,text) TO authenticated;
+
 COMMIT;
