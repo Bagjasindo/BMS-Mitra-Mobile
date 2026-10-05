@@ -367,16 +367,23 @@ const transactionDeleteImpact=(table)=>{
   };
   return impacts[table]||'laporan dan saldo yang memakai transaksi ini dapat berubah';
 };
-const adminDeleteTxnButton=(table,id,label='Hapus')=>profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-admin-delete-table="'+esc(table)+'" data-admin-delete-id="'+esc(id)+'">'+esc(label)+'</button>':'';
+const roleDeleteTables={
+  PPL:['chick_ins','recordings','visits','production_estimates'],
+  MARKETING:['marketing_contract_harvests','marketing_external_meat_purchases'],
+  LOGISTIK:['logistics_shipments','logistics_external_shipments','logistics_returns','logistics_external_returns','logistics_mandiri_purchases'],
+  KEUANGAN:['bop','barn_maintenance_costs','bop_outside','finance_expedition_trips','finance_expedition_invoices','finance_expedition_payments','finance_expedition_bop','finance_expedition_maintenance','advances','advance_payments','supplier_payments','finance_mandiri_sales_receipts','finance_mandiri_supplier_payments','rhpp_real','abk_cycle_salaries']
+};
+const canRoleDeleteTxn=table=>profile?.role==='ADMIN'||(roleDeleteTables[profile?.role]||[]).includes(table);
+const adminDeleteTxnButton=(table,id,label='Hapus')=>canRoleDeleteTxn(table)?'<button type="button" class="btn-danger" data-admin-delete-table="'+esc(table)+'" data-admin-delete-id="'+esc(id)+'">'+esc(label)+'</button>':'';
 const bindAdminTransactionDeletes=(rerender)=>{
   root.querySelectorAll('[data-admin-delete-table]').forEach(btn=>btn.onclick=async()=>{
-    if(profile?.role!=='ADMIN')return msg('Hanya ADMIN yang boleh menghapus transaksi.');
     const table=btn.dataset.adminDeleteTable||'',id=btn.dataset.adminDeleteId||'';
+    if(!canRoleDeleteTxn(table))return msg('Akun ini tidak berwenang menghapus transaksi tersebut.');
     const impact=transactionDeleteImpact(table);
-    const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nJika transaksi ini dihapus, '+impact+'.\n\nPenghapusan tidak boleh dilakukan hanya untuk merapikan tampilan. Pastikan data memang salah dan tidak lagi diperlukan.\n\nLanjutkan hapus?');
+    const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nJika transaksi ini dihapus, '+impact+'.\n\nTransaksi pada siklus CLOSED tetap terkunci. Pastikan data memang salah dan tidak lagi diperlukan.\n\nLanjutkan hapus?');
     if(!ok)return;
     if(!actionButtonStart(btn,'Menghapus...'))return;
-    const {error}=await db.rpc('admin_delete_transaction_v1',{p_table:table,p_id:String(id)});
+    const {error}=await db.rpc('role_delete_transaction_v1',{p_table:table,p_id:String(id)});
     if(error){await actionButtonFinish(btn,false);return;}
     await actionButtonFinish(btn,true);
     if(typeof rerender==='function')await rerender();
