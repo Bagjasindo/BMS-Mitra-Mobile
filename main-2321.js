@@ -1197,6 +1197,27 @@ async function printFinanceDocument(sectionIds,heading){
 }
 
 
+const BMS_EXCEL_EXPORT_STYLE='<style>'+
+'body{font-family:Arial,sans-serif;font-size:11pt;color:#111;background:#fff}'+
+'h1,h2,h3{margin:4px 0 8px 0;font-weight:700}'+
+'table{border-collapse:collapse!important;width:auto!important;table-layout:auto!important;margin:8px 0 14px 0}'+
+'th,td{border:1px solid #b7c3cc!important;padding:5px 8px!important;vertical-align:middle!important;white-space:nowrap}'+
+'th{font-weight:700!important;text-align:center!important;background:#e8f1f5!important}'+
+'td.num,.num{text-align:right!important;mso-number-format:#,##0.00}'+
+'td:first-child,th:first-child{min-width:42px}'+
+'td:nth-child(2),th:nth-child(2){min-width:90px}'+
+'td:nth-child(3),th:nth-child(3){min-width:110px}'+
+'td:nth-child(n+4),th:nth-child(n+4){min-width:95px}'+
+'td:last-child,th:last-child{max-width:320px}'+
+'.muted,small{font-size:10pt}'+
+'.tablewrap{overflow:visible!important}'+
+'.report-actions,.inline-actions,button,form{display:none!important}'+
+'</style>';
+function bmsExcelHtml(html){
+  const src=String(html||'');
+  return src.includes('</head>')?src.replace('</head>',BMS_EXCEL_EXPORT_STYLE+'</head>'):BMS_EXCEL_EXPORT_STYLE+src;
+}
+
 async function exportFinanceDocumentExcel(sectionIds,heading){
   const ids=Array.isArray(sectionIds)?sectionIds:[sectionIds];
   const sections=ids.map(id=>document.getElementById(id)).filter(Boolean);
@@ -1210,9 +1231,9 @@ async function exportFinanceDocumentExcel(sectionIds,heading){
     return clone.innerHTML;
   }).join('<br>');
   const title=String(heading||'Laporan').trim();
-  const html='<!doctype html><html><head><meta charset="utf-8"></head><body>'+
+  const html=bmsExcelHtml('<!doctype html><html><head><meta charset="utf-8"></head><body>'+
     '<h2>'+esc(cp.company_name||cp.legal_name||'Nama perusahaan belum diisi')+'</h2>'+
-    '<h3>'+esc(title)+'</h3>'+body+'</body></html>';
+    '<h3>'+esc(title)+'</h3>'+body+'</body></html>');
   const blob=BMSCore.excelBlob(['\ufeff'+html]);
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
