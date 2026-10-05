@@ -1078,10 +1078,12 @@ function layout(content){
     'delete-ext-return':'logistics_external_returns',
     'delete-return':'logistics_returns'
   };
-  const legacyTxnSelectors=Object.keys(legacyTxnDeleteMap).map(k=>'[data-'+k+']').concat('[data-delete-abk-harvest]');
-  if(profile?.role!=='ADMIN'){
-    root.querySelectorAll(legacyTxnSelectors.join(',')).forEach(el=>el.remove());
-  }else{
+  const legacyTxnSelectors=Object.keys(legacyTxnDeleteMap).map(k=>'[data-'+k+']');
+  Object.entries(legacyTxnDeleteMap).forEach(([attr,table])=>{
+    if(!canRoleDeleteTxn(table))root.querySelectorAll('[data-'+attr+']').forEach(el=>el.remove());
+  });
+  if(profile?.role!=='ADMIN')root.querySelectorAll('[data-delete-abk-harvest]').forEach(el=>el.remove());
+  {
     if(window.__legacyTxnDeleteCapture)root.removeEventListener('click',window.__legacyTxnDeleteCapture,true);
     window.__legacyTxnDeleteCapture=async ev=>{
       const btn=ev.target?.closest?.(legacyTxnSelectors.join(','));
@@ -1089,6 +1091,7 @@ function layout(content){
       ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
       const attr=Object.keys(legacyTxnDeleteMap).find(k=>btn.hasAttribute('data-'+k));
       if(btn.hasAttribute('data-delete-abk-harvest')){
+        if(profile?.role!=='ADMIN')return;
         const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nPanen ABK ini memengaruhi klasemen/kinerja ABK dan rekap produksi. Pastikan transaksi memang salah.\n\nLanjutkan hapus?');
         if(!ok)return;
         if(!actionButtonStart(btn,'Menghapus...'))return;
@@ -1113,16 +1116,9 @@ function layout(content){
   applyPendingSubmitFeedback();
   if(profile?.role!=='ADMIN'){
     root.querySelectorAll([
-      '[data-delete-shipment]',
-      '[data-delete-return]',
-      '[data-delete-external-shipment]',
-      '[data-delete-external-return]',
-      '[data-delete-mandiri-purchase]',
       '[data-delete-exp-trip]',
       '[data-delete-exp-invoice]',
       '[data-delete-abk-harvest]',
-      '[data-delete-harvest]',
-      '[data-delete-bl]',
       '[data-remove-abk]',
       '#fxTripCorrectionDelete',
       '#fxInvoiceCorrectionDelete'
