@@ -16454,3 +16454,34 @@ DROP TRIGGER IF EXISTS trg_expedition_finance_first ON public.finance_expedition
 CREATE TRIGGER trg_expedition_finance_first BEFORE INSERT ON public.finance_expedition_trips FOR EACH ROW EXECUTE FUNCTION public.enforce_expedition_finance_first_v1();
 
 COMMIT;
+
+-- Standalone Finance Cash Request Form (administrative only; no BOP/cashflow posting)
+CREATE TABLE IF NOT EXISTS public.finance_cash_requests (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ request_number text NOT NULL UNIQUE,
+ request_date date NOT NULL,
+ subject text NOT NULL DEFAULT 'PENGAJUAN KAS',
+ status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','DIAJUKAN','BATAL')),
+ notes text,
+ created_by uuid NOT NULL DEFAULT auth.uid(),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.finance_cash_request_items (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ request_id uuid NOT NULL REFERENCES public.finance_cash_requests(id) ON DELETE CASCADE,
+ group_name text NOT NULL,
+ description text NOT NULL,
+ amount numeric(18,2) NOT NULL CHECK (amount>=0),
+ remarks text,
+ sort_order integer NOT NULL DEFAULT 0,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.finance_cash_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.finance_cash_request_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS finance_cash_requests_role ON public.finance_cash_requests;
+CREATE POLICY finance_cash_requests_role ON public.finance_cash_requests FOR ALL TO authenticated USING (private.my_bms_role() IN ('ADMIN','KEUANGAN')) WITH CHECK (private.my_bms_role() IN ('ADMIN','KEUANGAN'));
+DROP POLICY IF EXISTS finance_cash_request_items_role ON public.finance_cash_request_items;
+CREATE POLICY finance_cash_request_items_role ON public.finance_cash_request_items FOR ALL TO authenticated USING (private.my_bms_role() IN ('ADMIN','KEUANGAN')) WITH CHECK (private.my_bms_role() IN ('ADMIN','KEUANGAN'));
+REVOKE ALL ON public.finance_cash_requests, public.finance_cash_request_items FROM anon;
+GRANT SELECT,INSERT,UPDATE,DELETE ON public.finance_cash_requests, public.finance_cash_request_items TO authenticated;
