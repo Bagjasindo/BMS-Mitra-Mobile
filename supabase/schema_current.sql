@@ -16346,7 +16346,8 @@ CREATE OR REPLACE FUNCTION public.role_delete_transaction_v1(p_table text, p_id 
  SET search_path TO 'public', 'private', 'pg_temp'
 AS $function$
 declare
- v_role public.bms_role; v_old jsonb; v_deleted int:=0; v_assignment uuid; v_active boolean; v_allowed boolean:=false;
+ v_role public.bms_role; v_old jsonb; v_deleted int:=0; v_assignment uuid; v_active boolean;
+ v_allowed boolean:=false; v_parent_id uuid;
 begin
  if auth.uid() is null then raise exception 'Sesi login tidak ditemukan.'; end if;
  select role into v_role from public.profiles where user_id=auth.uid() and active=true;
@@ -16360,14 +16361,26 @@ begin
  if not p_table=any(array['logistics_shipments','logistics_external_shipments','logistics_returns','logistics_external_returns','logistics_mandiri_purchases','marketing_contract_harvests','marketing_external_meat_purchases','chick_ins','recordings','visits','production_estimates','bop','barn_maintenance_costs','bop_outside','finance_expedition_trips','finance_expedition_invoices','finance_expedition_payments','finance_expedition_bop','finance_expedition_maintenance','advances','advance_payments','supplier_payments','finance_mandiri_sales_receipts','finance_mandiri_supplier_payments','rhpp_real','abk_cycle_salaries']) then raise exception 'Tabel % tidak diizinkan.',p_table; end if;
  execute format('select to_jsonb(t) from public.%I t where id::text=$1',p_table) into v_old using p_id;
  if v_old is null then raise exception 'Transaksi tidak ditemukan atau sudah terhapus.'; end if;
- if nullif(v_old->>'contract_assignment_id','') is not null then v_assignment:=(v_old->>'contract_assignment_id')::uuid; end if;
+ if nullif(v_old->>'contract_assignment_id','') is not null then
+   v_assignment:=(v_old->>'contract_assignment_id')::uuid;
+ elsif p_table='advance_payments' and nullif(v_old->>'advance_id','') is not null then
+   v_parent_id:=(v_old->>'advance_id')::uuid;
+   select contract_assignment_id into v_assignment from public.advances where id=v_parent_id;
+ elsif p_table='finance_mandiri_sales_receipts' and nullif(v_old->>'harvest_id','') is not null then
+   v_parent_id:=(v_old->>'harvest_id')::uuid;
+   select contract_assignment_id into v_assignment from public.marketing_contract_harvests where id=v_parent_id;
+ end if;
  if v_assignment is not null then
    select active into v_active from public.logistics_contract_assignments where id=v_assignment;
    if coalesce(v_active,false)=false then raise exception 'Siklus sudah CLOSED. Transaksi terkunci dan tidak dapat dihapus.'; end if;
  end if;
  if p_table='rhpp_real' then perform set_config('bms.allow_rhpp_real_delete','1',true); end if;
- begin execute format('delete from public.%I where id::text=$1',p_table) using p_id; get diagnostics v_deleted=row_count;
- exception when foreign_key_violation then raise exception 'Transaksi tidak dapat dihapus karena masih dipakai data lain. Koreksi atau hapus transaksi turunannya terlebih dahulu.'; end;
+ begin
+   execute format('delete from public.%I where id::text=$1',p_table) using p_id;
+   get diagnostics v_deleted=row_count;
+ exception when foreign_key_violation then
+   raise exception 'Transaksi tidak dapat dihapus karena masih dipakai data lain. Hapus/koreksi transaksi turunannya terlebih dahulu.';
+ end;
  if v_deleted=0 then raise exception 'Transaksi tidak ditemukan atau sudah terhapus.'; end if;
  insert into public.audit_events(actor,action,table_name,record_id,old_data,new_data) values(auth.uid(),'DELETE_ROLE_ACTIVE',p_table,p_id,v_old,null);
  return true;
