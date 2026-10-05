@@ -1105,8 +1105,9 @@ function layout(content){
       const ok=await appConfirm('PERINGATAN HAPUS TRANSAKSI\n\nJika transaksi ini dihapus, '+transactionDeleteImpact(table)+'.\n\nPastikan data memang salah dan tidak lagi diperlukan.\n\nLanjutkan hapus?');
       if(!ok)return;
       if(!actionButtonStart(btn,'Menghapus...'))return;
-      const {error}=await db.rpc('admin_delete_transaction_v1',{p_table:table,p_id:String(id||'')});
-      if(error){await actionButtonFinish(btn,false);return;}
+      if(!canRoleDeleteTxn(table))return msg('Akun ini tidak berwenang menghapus transaksi tersebut.');
+      const {error}=await db.rpc('role_delete_transaction_v1',{p_table:table,p_id:String(id||'')});
+      if(error){msg(String(error.message||'Transaksi gagal dihapus.'));await actionButtonFinish(btn,false,'Terhapus ✓','Gagal');return;}
       await actionButtonFinish(btn,true);
       await render();
     };
