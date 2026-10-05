@@ -1264,7 +1264,7 @@ async function financeExpeditionBusinessPage(){
   const canReport=['ADMIN','LOGISTIK','KEUANGAN','OWNER'].includes(role);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const used=new Set(links.map(x=>x.trip_id));
-  const unbilled=trips.filter(x=>!used.has(x.id));
+  const unbilled=trips.filter(x=>!used.has(x.id)&&x.reference!=='KAS_JALAN_PENDING_SJ');
   const tripTotal=t=>prodNum(t.trip_price)+prodNum(t.additional)-prodNum(t.deduction);
   const detailsForTrip=id=>tripDetails.filter(x=>x.trip_id===id).sort((a,b)=>prodNum(a.line_no)-prodNum(b.line_no));
   const destinationText=t=>{const ds=detailsForTrip(t.id);return ds.length?ds.map(x=>x.destination_name).join(' • '):(t.destination||'-');};
@@ -1405,6 +1405,7 @@ async function financeExpeditionBusinessPage(){
 
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  if(role==='LOGISTIK')document.getElementById('fxTripForm')?.closest('section')?.remove();
 
   root.querySelectorAll('[data-complete-sj]').forEach(btn=>btn.onclick=async()=>{window.__fxSjPendingEdit=btn.dataset.completeSj||'';await financeExpeditionBusinessPage();document.getElementById('fxCompleteSjForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
   const sjCancel=document.getElementById('fxCompleteSjCancel');if(sjCancel)sjCancel.onclick=async()=>{window.__fxSjPendingEdit='';await financeExpeditionBusinessPage();};
