@@ -1005,6 +1005,33 @@ function appConfirm(message){
     shade.querySelector('[data-cancel]').focus();
   });
 }
+function decorateMobileActionIcons(scope=root){
+  const mobile=window.matchMedia('(max-width:700px)').matches;
+  scope.querySelectorAll('button').forEach(btn=>{
+    if(!mobile){if(btn.dataset.mobileActionIcon==='1'){btn.textContent=btn.dataset.mobileActionLabel||btn.textContent;delete btn.dataset.mobileActionIcon;}return;}
+    if(btn.closest('nav,.mobile-topbar,.mobile-drawer-head,.app-confirm-actions,.app-select-results,.search-suggestions'))return;
+    const label=String(btn.textContent||'').trim();
+    if(!label||btn.dataset.mobileActionIcon==='1')return;
+    const low=label.toLowerCase();
+    let icon='';
+    if(/hapus|delete|remove/.test(low))icon='🗑️';
+    else if(/edit|koreksi|ubah/.test(low))icon='✏️';
+    else if(/cetak|print/.test(low))icon='🖨️';
+    else if(/excel/.test(low))icon='📊';
+    else if(/pdf|dokumen/.test(low))icon='📄';
+    else if(/lihat|detail|view/.test(low))icon='👁️';
+    else if(/lengkapi/.test(low))icon='📝';
+    else return;
+    btn.dataset.mobileActionLabel=label;
+    btn.dataset.mobileActionIcon='1';
+    btn.textContent=icon;
+    btn.setAttribute('aria-label',label);
+    btn.setAttribute('title',label);
+    btn.classList.add('mobile-icon-action');
+  });
+}
+window.addEventListener('resize',()=>requestAnimationFrame(()=>decorateMobileActionIcons(root)));
+
 function updateTableScrollHints(){
   root.querySelectorAll('.tablewrap').forEach(el=>{
     const overflow=el.scrollWidth>el.clientWidth+2;
@@ -1092,6 +1119,7 @@ function layout(content){
     ].join(',')).forEach(el=>el.remove());
   }
   enhanceSearchableSelects();
+  decorateMobileActionIcons(root);
   requestAnimationFrame(updateTableScrollHints);
   if(navInitialCollapsePending){root.querySelectorAll('details.nav-group').forEach(d=>d.open=false);navInitialCollapsePending=false;}
   const sidebar=document.getElementById('appSidebar');
