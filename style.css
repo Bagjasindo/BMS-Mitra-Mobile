@@ -3259,3 +3259,28 @@ main select.app-select-native{
     padding-right:18px!important;
   }
 }
+
+
+/* mobile-icon-actions-20261005
+   Phone only: keep transaction handlers/permissions unchanged; compact common action labels to icons. */
+@media(max-width:700px){
+  button.mobile-icon-action{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:38px!important;
+    min-width:38px!important;
+    max-width:38px!important;
+    height:38px!important;
+    min-height:38px!important;
+    padding:0!important;
+    margin:2px!important;
+    border-radius:8px!important;
+    font-size:18px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+  }
+  .inline-actions button.mobile-icon-action,
+  .report-actions button.mobile-icon-action{flex:0 0 38px!important}
+}
