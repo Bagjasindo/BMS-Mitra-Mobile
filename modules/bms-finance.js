@@ -1280,12 +1280,37 @@ async function financeExpeditionBusinessPage(){
   window.__fxInvoiceEdit=window.__fxInvoiceEdit||'';
   const selectedTripEdit=trips.find(x=>x.id===window.__fxTripEdit)||null;
   const selectedInvoiceEdit=invoices.find(x=>x.id===window.__fxInvoiceEdit)||null;
+  window.__fxSjPendingEdit=window.__fxSjPendingEdit||'';
+  const pendingSj=trips.filter(x=>x.reference==='KAS_JALAN_PENDING_SJ');
+  const selectedSj=pendingSj.find(x=>x.id===window.__fxSjPendingEdit)||null;
   const selectedInvoiceTripIds=new Set(selectedInvoiceEdit?links.filter(x=>x.invoice_id===selectedInvoiceEdit.id).map(x=>x.trip_id):[]);
   const invoiceAvailable=selectedInvoiceEdit?trips.filter(t=>!used.has(t.id)||selectedInvoiceTripIds.has(t.id)):unbilled;
 
   let html='<section class="panel"><h3>Expedisi</h3><p class="muted"><strong>Unit usaha terpisah dari RHPP/Kandang.</strong> '+
     (role==='LOGISTIK'?'Logistik mengelola Trip dan Invoice.':role==='KEUANGAN'?'Keuangan mengelola Pembayaran, Piutang dan BOP Expedisi.':role==='OWNER'?'Owner melihat laporan Expedisi.':'Administrator memiliki akses penuh.')+
     '</p></section>';
+
+  if(canOps&&pendingSj.length){
+    html+='<section class="panel"><h3>Antrean Surat Jalan dari Keuangan</h3><p class="muted">Kas Jalan sudah dicatat Keuangan. Logistik melengkapi SJ/MTS setelah dokumen kembali.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Sopir</th><th>Truk</th><th>Rute</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+      pendingSj.map(t=>'<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(t.zone||'-')+'</td><td><span class="finance-status finance-status-wait">MENUNGGU SURAT JALAN</span></td><td><button type="button" data-complete-sj="'+esc(t.id)+'">Lengkapi SJ</button></td></tr>').join('')+
+      '</tbody></table></div></section>';
+  }
+  if(canOps&&selectedSj){
+    const route=routes.find(x=>x.route_name===selectedSj.zone);
+    html+='<section class="panel"><h3>Lengkapi Surat Jalan / MTS</h3><form id="fxCompleteSjForm" class="form-vertical">'+
+      '<label>Tanggal Trip<input type="text" value="'+esc(prodDateId(selectedSj.trip_date))+'" readonly></label>'+
+      '<label>Sopir / Truk<input type="text" value="'+esc((selectedSj.driver||'-')+' · '+(selectedSj.vehicle||'-'))+'" readonly></label>'+
+      '<label>Rute<input type="text" value="'+esc(selectedSj.zone||'-')+'" readonly></label>'+
+      '<label>No. Surat Jalan / MTS<input name="mts_sj" required></label><label>RR<input name="rr"></label>'+
+      '<label>Tujuan<select name="destination_id" required><option value="">Pilih Tujuan</option>'+destinations.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
+      '<label>Muatan<select name="cargo" required><option value="">Pilih Muatan</option>'+feedItems.map(x=>'<option value="'+esc(x.name.trim())+'">'+esc(x.name.trim())+'</option>').join('')+'</select></label>'+
+      '<label>Qty<input name="qty" type="text" inputmode="decimal"></label><label>Satuan<select name="unit"><option value="zak">zak</option><option value="kg">kg</option><option value="ekor">ekor</option><option value="unit">unit</option></select></label>'+
+      '<label>Harga Trip<input name="trip_price" type="text" inputmode="decimal" data-number="1" value="'+fmtNumber(route?.default_trip_price||0)+'" required></label>'+
+      '<label>Tambahan<input name="additional" type="text" inputmode="decimal" data-number="1" value="0"></label><label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
+      '<label>Catatan<textarea name="notes">'+esc(selectedSj.notes||'')+'</textarea></label>'+
+      '<div class="inline-actions"><button type="submit">Simpan & Tandai Lengkap</button><button type="button" id="fxCompleteSjCancel" class="btn-secondary">Batal</button></div></form></section>';
+  }
 
   if(canReport){
     html+='<section class="panel"><h3>Ringkasan Expedisi</h3><div class="rhpp-summary-cards">'+
@@ -1380,6 +1405,16 @@ async function financeExpeditionBusinessPage(){
 
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+
+  root.querySelectorAll('[data-complete-sj]').forEach(btn=>btn.onclick=async()=>{window.__fxSjPendingEdit=btn.dataset.completeSj||'';await financeExpeditionBusinessPage();document.getElementById('fxCompleteSjForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
+  const sjCancel=document.getElementById('fxCompleteSjCancel');if(sjCancel)sjCancel.onclick=async()=>{window.__fxSjPendingEdit='';await financeExpeditionBusinessPage();};
+  const sjForm=document.getElementById('fxCompleteSjForm');
+  if(sjForm&&selectedSj)sjForm.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(sjForm),dest=destinations.find(x=>x.id===String(fd.get('destination_id')||'')),qtyRaw=String(fd.get('qty')||''),qty=qtyRaw?normalizeInputID(qtyRaw):null,tripPrice=normalizeInputID(fd.get('trip_price')),additional=normalizeInputID(fd.get('additional'))||0,deduction=normalizeInputID(fd.get('deduction'))||0;
+    if(!dest)return msg('Pilih tujuan.');if(tripPrice===null||tripPrice<0)return msg('Harga Trip tidak valid.');
+    const detail=[{destination_id:dest.id,destination_name:dest.name,cargo:String(fd.get('cargo')||''),qty,unit:String(fd.get('unit')||'zak'),notes:null,line_no:1}];
+    const {error}=await db.rpc('logistics_complete_expedition_sj_v1',{p_trip_id:selectedSj.id,p_mts_sj:String(fd.get('mts_sj')||''),p_rr:String(fd.get('rr')||'')||null,p_trip_price:tripPrice,p_additional:additional,p_deduction:deduction,p_notes:String(fd.get('notes')||'')||null,p_destinations:detail});
+    if(error)return msg(error.message);window.__fxSjPendingEdit='';await financeExpeditionBusinessPage();msg('Surat Jalan/MTS lengkap. Trip siap diproses berikutnya.',true);
+  };
 
   const reportPrint=document.getElementById('fxReportPrint');if(reportPrint)reportPrint.onclick=()=>printFinanceDocument('fxInvoiceReport','Laporan Invoice dan Piutang Expedisi');const fxReportExcel=document.getElementById('fxReportPrintExcel');if(fxReportExcel)fxReportExcel.onclick=()=>exportFinanceDocumentExcel('fxInvoiceReport','Laporan Invoice dan Piutang Expedisi');
 
@@ -1886,11 +1921,14 @@ async function financeExpeditionProfitLossPage(){
 }
 
 async function financeExpeditionBopPage(){
-  const [br,tr]=await Promise.all([
+  const [br,tr,dr,vr,rr]=await Promise.all([
     db.from('finance_expedition_bop').select('*').order('incurred_on',{ascending:false}).order('created_at',{ascending:false}),
-    db.from('finance_expedition_trips').select('id,trip_date,mts_sj,driver,vehicle,zone,destination,reference').order('trip_date',{ascending:false}).order('created_at',{ascending:false})
+    db.from('finance_expedition_trips').select('id,trip_date,mts_sj,driver,vehicle,zone,destination,reference').order('trip_date',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('expedition_drivers').select('id,code,name').eq('active',true).order('name',{ascending:true}),
+    db.from('expedition_vehicles').select('id,plate_number,vehicle_type').eq('active',true).order('plate_number',{ascending:true}),
+    db.from('expedition_routes').select('id,code,route_name').eq('active',true).order('route_name',{ascending:true})
   ]);
-  const rows=br.data||[],trips=tr.data||[],err=[br,tr].find(x=>x.error)?.error;
+  const rows=br.data||[],trips=tr.data||[],drivers=dr.data||[],vehicles=vr.data||[],routes=rr.data||[],err=[br,tr,dr,vr,rr].find(x=>x.error)?.error;
   const autoRows=rows.filter(x=>x.reference==='AUTO_TRIP');
   const autoTotalFor=id=>autoRows.filter(x=>x.trip_id===id).reduce((n,x)=>n+prodNum(x.amount),0);
   const isHistorical=t=>String(t.reference||'').startsWith('HIST-BRU-')||String(t.zone||'').trim().toUpperCase()==='HISTORIS BRU';
@@ -1911,7 +1949,15 @@ async function financeExpeditionBopPage(){
   const countDone=physicalTrips.filter(t=>autoTotalFor(t.id)>0).length;
   const countPending=physicalTrips.length-countDone;
 
-  let html='<section class="panel"><h3>BOP Expedisi</h3><p class="muted">Pilih trip pada daftar, lalu isi atau koreksi BOP melalui satu form. Trip rekonsiliasi HISTORIS BRU tidak masuk antrean BOP.</p></section>';
+  let html='<section class="panel"><h3>BOP / Kas Jalan Expedisi</h3><p class="muted">Keuangan mencatat Kas Jalan saat diajukan sopir. Data otomatis masuk antrean Logistik dengan status MENUNGGU SURAT JALAN. Logistik melengkapi SJ/MTS setelah dokumen kembali.</p></section>'+
+    '<section class="panel"><h3>Input Kas Jalan</h3><form id="fxKasJalanForm" class="form-vertical">'+
+      '<label>Tanggal Jalan<input name="trip_date" type="date" required></label>'+
+      '<label>Sopir<select name="driver" required><option value="">Pilih Sopir</option>'+drivers.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.code+' · '+x.name)+'</option>').join('')+'</select></label>'+
+      '<label>Truk<select name="vehicle" required><option value="">Pilih Truk</option>'+vehicles.map(x=>'<option value="'+esc(x.plate_number)+'">'+esc(x.plate_number+(x.vehicle_type?' · '+x.vehicle_type:''))+'</option>').join('')+'</select></label>'+
+      '<label>Rute<select name="zone" required><option value="">Pilih Rute</option>'+routes.map(x=>'<option value="'+esc(x.route_name)+'">'+esc(x.code+' · '+x.route_name)+'</option>').join('')+'</select></label>'+
+      '<label>Nominal Kas Jalan<input name="amount" type="text" inputmode="decimal" data-number="1" placeholder="Contoh: 685.000" required></label>'+
+      '<label>Catatan<textarea name="notes" placeholder="Opsional"></textarea></label>'+
+      '<button type="submit">Simpan Kas Jalan</button></form></section>';
 
   if(selectedTrip){
     html+='<section class="panel"><h3>'+(selectedDone?'Koreksi BOP Expedisi':'Isi BOP Expedisi')+'</h3>'+
@@ -1941,6 +1987,16 @@ async function financeExpeditionBopPage(){
     '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">'+(bopFilter==='BELUM'&&countPending===0?'Semua trip sudah masuk BOP. Tidak ada trip yang menunggu input.':'Tidak ada trip pada filter ini.')+'</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+
+  const kasForm=document.getElementById('fxKasJalanForm');
+  if(kasForm){
+    const d=kasForm.elements.trip_date;if(d&&!d.value)d.value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    kasForm.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(kasForm),amount=normalizeInputID(fd.get('amount'));
+      if(amount===null||amount<=0)return msg('Nominal Kas Jalan harus lebih dari nol.');
+      const {error}=await db.rpc('finance_create_expedition_kas_jalan_v1',{p_trip_date:String(fd.get('trip_date')||''),p_driver:String(fd.get('driver')||''),p_vehicle:String(fd.get('vehicle')||''),p_zone:String(fd.get('zone')||''),p_amount:amount,p_notes:String(fd.get('notes')||'')||null});
+      if(error)return msg(error.message);await financeExpeditionBopPage();msg('Kas Jalan tersimpan dan masuk antrean Surat Jalan Logistik.',true);
+    };
+  }
 
   const filter=document.getElementById('fxBopStatusFilter');
   if(filter)filter.onchange=async()=>{
