@@ -2139,7 +2139,7 @@ async function productionRecapPage(){
   if(excelBtn)excelBtn.onclick=()=>{
     const clone=exportArea?.cloneNode(true);if(!clone)return;
     clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
-    const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><h3>Rekap Produksi PPL</h3><p>'+prodDateId(from)+' s/d '+prodDateId(to)+(filterSummary?' · '+esc(filterSummary):'')+'</p>'+clone.innerHTML+'</body></html>']);
+    const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml('<html><head><meta charset="utf-8"></head><body><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><h3>Rekap Produksi PPL</h3><p>'+prodDateId(from)+' s/d '+prodDateId(to)+(filterSummary?' · '+esc(filterSummary):'')+'</p>'+clone.innerHTML+'</body></html>')]);
     const url=URL.createObjectURL(blob),link=document.createElement('a');
     link.href=url;link.download=fileBase+'.xlsx';document.body.appendChild(link);link.click();link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -2411,7 +2411,7 @@ async function pplRhppAbkViewPage(){
       const clone=exportArea?.cloneNode(true);if(!clone)return;
       clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
       const exportCompany=company.company_name||company.legal_name||'Nama perusahaan belum diisi';
-      const blob=BMSCore.excelBlob(['\ufeff<html><head><meta charset="utf-8"></head><body><h2>'+esc(exportCompany)+'</h2><h3>RHPP ABK</h3>'+clone.innerHTML+'</body></html>']);
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml('<html><head><meta charset="utf-8"></head><body><h2>'+esc(exportCompany)+'</h2><h3>RHPP ABK</h3>'+clone.innerHTML+'</body></html>')]);
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xlsx';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -2749,7 +2749,7 @@ async function pplRhppViewPage(){
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
     if(xBtn)xBtn.onclick=()=>{
-      const blob=BMSCore.excelBlob(['\ufeff'+docHtml()]);
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(docHtml())]);
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xlsx';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -3144,7 +3144,7 @@ async function adminRhppHistoryPage(){
     if(pBtn)pBtn.onclick=openPrint;
     if(pdfBtn)pdfBtn.onclick=openPrint;
     if(xBtn)xBtn.onclick=()=>{
-      const blob=BMSCore.excelBlob(['\ufeff'+docHtml()]);
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(docHtml())]);
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=fileBase+'.xlsx';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
