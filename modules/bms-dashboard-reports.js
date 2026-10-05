@@ -10,33 +10,28 @@ function renderDashboardTemplate(cfg){
 }
 
 async function buildDashboardModel(){
-  const d=await productionBase();
+  // Dashboard adalah monitoring global read-only yang sama untuk seluruh role resmi.
+  // Hak transaksi/menu tetap dikendalikan RLS dan visibleTabs masing-masing role.
+  const globalR=await db.rpc('get_dashboard_global_data_v1');
+  if(globalR.error)throw globalR.error;
+  const g=globalR.data||{};
+  const d={
+    err:null,
+    assignments:g.assignments||[],barns:g.barns||[],masters:g.contracts||[],
+    chicks:g.chicks||[],links:g.links||[],abks:g.abks||[],items:g.items||[],
+    feedItems:(g.items||[]).filter(i=>i.category==='PAKAN'),
+    standards:g.standards||[],harvests:g.harvests||[],livePrices:g.live_prices||[],
+    rhppCosts:g.rhpp_costs||[],scopeRows:rows=>rows||[]
+  };
   const leagueSetting=await loadAbkLeagueSetting();
-  const globalLeagueR=profile?.role==='PPL'?await db.rpc('get_abk_leaderboard_data_v1'):{data:null,error:null};
-  const globalLeague=globalLeagueR.data||null;
-  const [rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,extShipR,extShipItemR,returnR,returnItemR,itemR]=await Promise.all([
-    db.from('recordings').select('*').not('contract_assignment_id','is',null).order('recorded_on',{ascending:true}),
-    db.from('recording_weight_samples').select('*'),
-    db.from('production_estimates').select('*').order('estimated_on',{ascending:false}),
-    db.from('production_estimate_sizes').select('*'),
-    db.from('production_abk_results').select('*'),
-    db.from('production_abk_result_sizes').select('*'),
-    db.from('contracts').select('id,doc_price,pre_starter_price,starter_price,finisher_price'),
-    db.from('contract_bonuses').select('contract_id,metric,min_value,max_value,rupiah_per_kg'),
-    db.from('production_cycle_final_unified').select('contract_assignment_id,chick_in_birds,depletion_birds,total_harvest_birds,total_harvest_kg,weighted_age,net_feed_kg,ip,closed_on,cycle_type'),
-    db.from('logistics_shipments').select('id,contract_assignment_id,shipment_date'),
-    db.from('logistics_shipment_items').select('shipment_id,item_id,quantity,quantity_kg,unit_price'),
-    db.from('logistics_external_shipments').select('id,contract_assignment_id,shipment_date'),
-    db.from('logistics_external_shipment_items').select('external_shipment_id,item_id,quantity,quantity_kg,purchase_unit_price'),
-    db.from('logistics_returns').select('id,contract_assignment_id,return_date'),
-    db.from('logistics_return_items').select('return_id,item_id,quantity,quantity_kg,unit_price'),
-    db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit')
-  ]);
-  const err=[{error:d.err},rr,sr,er,esr,abr,absr,cr,br,rhppFinalR,shipR,shipItemR,extShipR,extShipItemR,returnR,returnItemR,itemR,globalLeagueR].find(x=>x?.error)?.error;
-  const recs=rr.data||[],samples=sr.data||[],estimates=er.data||[],estSizes=esr.data||[],abkResults=(abr.data||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),abkSizes=absr.data||[],costContracts=cr.data||[],bonusRows=br.data||[],rhppFinalRows=rhppFinalR.data||[];
-  const dashShipments=d.scopeRows(shipR.data||[]),dashShipmentItems=shipItemR.data||[];
-  const dashExternalShipments=d.scopeRows(extShipR.data||[]),dashExternalShipmentItems=extShipItemR.data||[];
-  const dashReturns=d.scopeRows(returnR.data||[]),dashReturnItems=returnItemR.data||[],dashItems=itemR.data||[];
+  const globalLeagueR={data:null,error:null},globalLeague=null;
+  const recs=g.recordings||[],samples=g.weight_samples||[],estimates=g.estimates||[],estSizes=g.estimate_sizes||[],
+    abkResults=(g.abk_results||[]).filter(x=>String(x.harvest_date||'')>=(leagueSetting.data?.season_start||'0000-00-00')),
+    abkSizes=g.abk_result_sizes||[],costContracts=g.contracts||[],bonusRows=g.bonuses||[],rhppFinalRows=g.finals||[];
+  const dashShipments=g.shipments||[],dashShipmentItems=g.shipment_items||[];
+  const dashExternalShipments=g.external_shipments||[],dashExternalShipmentItems=g.external_shipment_items||[];
+  const dashReturns=g.returns||[],dashReturnItems=g.return_items||[],dashItems=g.items||[];
+  const err=null;
   const closedFinalAssignmentIds=new Set(rhppFinalRows.map(x=>x.contract_assignment_id).filter(Boolean));
 
   // Klasemen ABK khusus PPL bersifat read-only global; transaksi PPL tetap memakai scope kandang miliknya.
