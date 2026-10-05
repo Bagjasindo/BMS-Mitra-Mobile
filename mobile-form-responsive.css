@@ -1,0 +1,97 @@
+/* mobile-form-responsive-20261005
+   Phone-only layout correction. Presentation only: no handlers, IDs, data attributes,
+   permissions, database calls, or transaction flow are changed. */
+@media (max-width:700px){
+  /* Prevent form controls and nested panels from forcing the viewport wider. */
+  main,.panel,form,.form-vertical,.form-grid,.compact-form,
+  .cash-request-group,#cashRequestGroups{
+    min-width:0!important;
+    max-width:100%!important;
+    width:100%!important;
+  }
+  form .form-grid,
+  .cash-request-group .form-grid{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:10px!important;
+  }
+  form label,
+  form input,
+  form select,
+  form textarea{
+    min-width:0!important;
+    max-width:100%!important;
+    width:100%!important;
+  }
+
+  /* Cash request details become vertical cards on phone only. */
+  .cash-request-group>.tablewrap{
+    overflow:visible!important;
+    border:0!important;
+    background:transparent!important;
+  }
+  .cash-request-group>.tablewrap table,
+  .cash-request-group>.tablewrap thead,
+  .cash-request-group>.tablewrap tbody,
+  .cash-request-group>.tablewrap tr,
+  .cash-request-group>.tablewrap th,
+  .cash-request-group>.tablewrap td{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .cash-request-group>.tablewrap thead{display:none!important}
+  .cash-request-group>.tablewrap tbody{
+    display:grid!important;
+    gap:10px!important;
+  }
+  .cash-request-group>.tablewrap tr{
+    padding:10px!important;
+    border:1px solid #e2e6ea!important;
+    border-radius:9px!important;
+    background:#fbfcfd!important;
+  }
+  .cash-request-group>.tablewrap td{
+    padding:4px 0!important;
+    border:0!important;
+    white-space:normal!important;
+  }
+  .cash-request-group>.tablewrap td:first-child{
+    padding-bottom:7px!important;
+    color:#6b7280!important;
+    font-size:12px!important;
+    font-weight:700!important;
+  }
+  .cash-request-group>.tablewrap td:nth-child(2)::before{content:"Uraian";display:block;margin-bottom:4px;font-size:12px;font-weight:700;color:#4b5563}
+  .cash-request-group>.tablewrap td:nth-child(3)::before{content:"Jumlah";display:block;margin-bottom:4px;font-size:12px;font-weight:700;color:#4b5563}
+  .cash-request-group>.tablewrap td:nth-child(4)::before{content:"Keterangan";display:block;margin-bottom:4px;font-size:12px;font-weight:700;color:#4b5563}
+  .cash-request-group>.tablewrap td:nth-child(5)::before{content:"Aksi";display:block;margin-bottom:4px;font-size:12px;font-weight:700;color:#4b5563}
+  .cash-request-group>.tablewrap td input,
+  .cash-request-group>.tablewrap td select,
+  .cash-request-group>.tablewrap td textarea{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  .cash-request-group>.tablewrap td button{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:40px!important;
+  }
+  .cash-request-group>.inline-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    width:100%!important;
+  }
+  .cash-request-group>.inline-actions button{
+    width:100%!important;
+    max-width:100%!important;
+  }
+
+  /* Generic form action rows may wrap down instead of extending sideways. */
+  form>.inline-actions,
+  form .form-actions{
+    max-width:100%!important;
+    flex-wrap:wrap!important;
+  }
+}
