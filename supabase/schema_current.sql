@@ -16377,4 +16377,67 @@ REVOKE ALL ON FUNCTION public.role_delete_transaction_v1(text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.role_delete_transaction_v1(text,text) FROM anon;
 GRANT EXECUTE ON FUNCTION public.role_delete_transaction_v1(text,text) TO authenticated;
 
+
+-- Finance-first Expedisi workflow: Kas Jalan -> Logistik completes Surat Jalan/MTS.
+CREATE OR REPLACE FUNCTION public.finance_create_expedition_kas_jalan_v1(p_trip_date date,p_driver text,p_vehicle text,p_zone text,p_amount numeric,p_notes text DEFAULT NULL::text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','private','pg_temp' AS $function$
+declare v_id uuid;
+begin
+ if not exists(select 1 from public.profiles where user_id=auth.uid() and active and role in ('ADMIN','KEUANGAN')) then raise exception 'Akses ditolak.'; end if;
+ if p_trip_date is null then raise exception 'Tanggal Kas Jalan wajib.'; end if;
+ if nullif(trim(p_driver),'') is null or nullif(trim(p_vehicle),'') is null or nullif(trim(p_zone),'') is null then raise exception 'Sopir, kendaraan, dan rute wajib.'; end if;
+ if p_amount is null or p_amount<=0 then raise exception 'Nominal Kas Jalan harus lebih dari nol.'; end if;
+ insert into public.finance_expedition_trips(trip_date,mts_sj,rr,driver,vehicle,zone,destination,cargo,total_qty,trip_price,additional,deduction,reference,notes,created_by)
+ values(p_trip_date,null,null,trim(p_driver),trim(p_vehicle),trim(p_zone),'MENUNGGU SURAT JALAN',null,null,0,0,0,'KAS_JALAN_PENDING_SJ',nullif(trim(coalesce(p_notes,'')),''),auth.uid()) returning id into v_id;
+ insert into public.finance_expedition_bop(incurred_on,category,amount,trip_id,driver,vehicle,route,reference,notes,created_by)
+ values(p_trip_date,'OPERASIONAL',p_amount,v_id,trim(p_driver),trim(p_vehicle),trim(p_zone),'AUTO_TRIP','Kas Jalan diajukan sopir - menunggu Surat Jalan/MTS dari Logistik',auth.uid());
+ insert into public.audit_events(actor,action,table_name,record_id,new_data) values(auth.uid(),'CREATE_KAS_JALAN','finance_expedition_trips',v_id::text,jsonb_build_object('status','MENUNGGU_SURAT_JALAN','amount',p_amount,'driver',trim(p_driver),'vehicle',trim(p_vehicle),'route',trim(p_zone)));
+ return v_id;
+end $function$;
+REVOKE ALL ON FUNCTION public.finance_create_expedition_kas_jalan_v1(date,text,text,text,numeric,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.finance_create_expedition_kas_jalan_v1(date,text,text,text,numeric,text) FROM anon;
+GRANT EXECUTE ON FUNCTION public.finance_create_expedition_kas_jalan_v1(date,text,text,text,numeric,text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.logistics_complete_expedition_sj_v1(p_trip_id uuid,p_mts_sj text,p_rr text DEFAULT NULL::text,p_trip_price numeric DEFAULT 0,p_additional numeric DEFAULT 0,p_deduction numeric DEFAULT 0,p_notes text DEFAULT NULL::text,p_destinations jsonb DEFAULT '[]'::jsonb)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','private','pg_temp' AS $function$
+declare v_trip public.finance_expedition_trips%rowtype; v_line jsonb; v_no int:=0; v_dest text; v_cargo text; v_qty numeric; v_unit text; v_total numeric:=0; v_first text; v_legacy text;
+begin
+ if not exists(select 1 from public.profiles where user_id=auth.uid() and active and role in ('ADMIN','LOGISTIK')) then raise exception 'Akses ditolak.'; end if;
+ select * into v_trip from public.finance_expedition_trips where id=p_trip_id for update;
+ if not found then raise exception 'Trip tidak ditemukan.'; end if;
+ if v_trip.reference<>'KAS_JALAN_PENDING_SJ' then raise exception 'Trip ini bukan antrean Surat Jalan dari Keuangan.'; end if;
+ if nullif(trim(p_mts_sj),'') is null then raise exception 'Nomor Surat Jalan/MTS wajib.'; end if;
+ if p_trip_price is null or p_trip_price<0 or coalesce(p_additional,0)<0 or coalesce(p_deduction,0)<0 then raise exception 'Nilai trip tidak valid.'; end if;
+ if p_destinations is null or jsonb_typeof(p_destinations)<>'array' or jsonb_array_length(p_destinations)=0 then raise exception 'Minimal satu tujuan wajib.'; end if;
+ for v_line in select value from jsonb_array_elements(p_destinations) loop
+  v_no:=v_no+1; v_dest:=nullif(trim(v_line->>'destination_name'),''); v_cargo:=nullif(trim(v_line->>'cargo'),''); v_qty:=nullif(v_line->>'qty','')::numeric; v_unit:=nullif(trim(v_line->>'unit'),'');
+  if v_dest is null then raise exception 'Tujuan baris % wajib.',v_no; end if; if v_cargo is null then raise exception 'Muatan baris % wajib.',v_no; end if; if v_qty is not null and v_qty<0 then raise exception 'Qty baris % tidak valid.',v_no; end if;
+  if v_no=1 then v_first:=v_dest; end if; v_total:=v_total+coalesce(v_qty,0);
+  v_legacy:=concat_ws(' • ',v_legacy,trim(concat(v_dest,' - ',v_cargo,case when v_qty is not null then ' '||trim(to_char(v_qty,'FM999999990.##')) else '' end,case when v_unit is not null then ' '||v_unit else '' end)));
+ end loop;
+ update public.finance_expedition_trips set mts_sj=trim(p_mts_sj),rr=nullif(trim(coalesce(p_rr,'')),''),destination=v_first,cargo=v_legacy,total_qty=v_total,trip_price=p_trip_price,additional=coalesce(p_additional,0),deduction=coalesce(p_deduction,0),reference='KAS_JALAN_SJ_COMPLETE',notes=nullif(trim(coalesce(p_notes,v_trip.notes,'')),'') where id=p_trip_id;
+ delete from public.finance_expedition_trip_destinations where trip_id=p_trip_id;
+ v_no:=0;
+ for v_line in select value from jsonb_array_elements(p_destinations) loop
+  v_no:=v_no+1;
+  insert into public.finance_expedition_trip_destinations(trip_id,line_no,destination_id,destination_name,cargo,qty,unit,notes,created_by)
+  values(p_trip_id,v_no,nullif(v_line->>'destination_id','')::uuid,trim(v_line->>'destination_name'),nullif(trim(v_line->>'cargo'),''),nullif(v_line->>'qty','')::numeric,nullif(trim(v_line->>'unit'),''),nullif(trim(v_line->>'notes'),''),auth.uid());
+ end loop;
+ insert into public.audit_events(actor,action,table_name,record_id,old_data,new_data) values(auth.uid(),'COMPLETE_SURAT_JALAN','finance_expedition_trips',p_trip_id::text,jsonb_build_object('reference',v_trip.reference,'mts_sj',v_trip.mts_sj),jsonb_build_object('reference','KAS_JALAN_SJ_COMPLETE','mts_sj',trim(p_mts_sj)));
+ return true;
+end $function$;
+REVOKE ALL ON FUNCTION public.logistics_complete_expedition_sj_v1(uuid,text,text,numeric,numeric,numeric,text,jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.logistics_complete_expedition_sj_v1(uuid,text,text,numeric,numeric,numeric,text,jsonb) FROM anon;
+GRANT EXECUTE ON FUNCTION public.logistics_complete_expedition_sj_v1(uuid,text,text,numeric,numeric,numeric,text,jsonb) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.enforce_expedition_finance_first_v1() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp' AS $function$
+declare v_role public.bms_role;
+begin
+ select role into v_role from public.profiles where user_id=auth.uid() and active=true;
+ if v_role='LOGISTIK' then raise exception 'Trip baru harus dimulai dari Kas Jalan Keuangan. Logistik hanya melengkapi Surat Jalan/MTS.'; end if;
+ return new;
+end $function$;
+DROP TRIGGER IF EXISTS trg_expedition_finance_first ON public.finance_expedition_trips;
+CREATE TRIGGER trg_expedition_finance_first BEFORE INSERT ON public.finance_expedition_trips FOR EACH ROW EXECUTE FUNCTION public.enforce_expedition_finance_first_v1();
+
 COMMIT;
