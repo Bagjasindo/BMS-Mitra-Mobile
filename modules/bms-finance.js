@@ -3126,3 +3126,50 @@ async function financeReportPage(){
   }
   if(reset)reset.onclick=async()=>{st.barn='';st.assignment='';st.kind='';st.status='';st.from='';st.to='';st.shown=false;await financeReportPage();};
 }
+
+
+async function financeCashRequestPage(){
+  const [rr,ir,br,cr]=await Promise.all([
+    db.from('finance_cash_requests').select('*').order('request_date',{ascending:false}).order('created_at',{ascending:false}),
+    db.from('finance_cash_request_items').select('*').order('sort_order',{ascending:true}),
+    db.from('barns').select('id,code,name,location').order('code',{ascending:true}),
+    db.from('company_profile').select('*').eq('id',true).maybeSingle()
+  ]);
+  const err=[rr,ir,br,cr].find(x=>x.error)?.error;if(err)return layout('<section class="panel"><h3>Form Pengajuan Kas</h3><p class="error">'+esc(err.message)+'</p></section>');
+  const requests=rr.data||[],items=ir.data||[],barnRows=br.data||[],company=cr.data||{};
+  window.__cashRequestDraft=window.__cashRequestDraft||[{group_name:'',description:'',amount:'',remarks:''}];
+  const draft=window.__cashRequestDraft;
+  const groupOptions='<option value="">Pilih Kandang / Proyek</option>'+barnRows.map(b=>'<option value="'+esc('KANDANG '+(b.name||b.code||b.location||''))+'">'+esc('KANDANG '+(b.name||b.code||b.location||''))+'</option>').join('')+'<option value="PROYEK">PROYEK / LAINNYA</option>';
+  const draftRows=draft.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><select data-cr-group="'+i+'">'+groupOptions.replace('value="'+esc(x.group_name)+'"','value="'+esc(x.group_name)+'" selected')+'</select><input data-cr-group-text="'+i+'" placeholder="Nama proyek/kelompok" value="'+esc(x.group_name==='PROYEK'?'':(x.group_name&&!x.group_name.startsWith('KANDANG ')?x.group_name:''))+'"></td><td><input data-cr-desc="'+i+'" value="'+esc(x.description||'')+'" placeholder="Uraian kebutuhan"></td><td><input data-cr-amount="'+i+'" type="number" min="0" step="1" value="'+esc(x.amount||'')+'"></td><td><input data-cr-remarks="'+i+'" value="'+esc(x.remarks||'')+'" placeholder="Keterangan"></td><td><button type="button" data-cr-remove="'+i+'">Hapus</button></td></tr>').join('');
+  const history=requests.map(r=>{
+    const total=items.filter(x=>x.request_id===r.id).reduce((s,x)=>s+Number(x.amount||0),0);
+    return '<tr><td>'+prodDateId(r.request_date)+'</td><td>'+esc(r.request_number)+'</td><td>'+esc(r.status)+'</td><td>Rp '+prodFmt(total,0)+'</td><td class="inline-actions"><button type="button" data-cr-view="'+r.id+'">Lihat</button><button type="button" data-cr-print="'+r.id+'">Cetak</button><button type="button" data-cr-excel="'+r.id+'">Excel</button>'+(r.status==='DRAFT'?'<button type="button" data-cr-delete="'+r.id+'">Hapus</button>':'')+'</td></tr>';
+  }).join('');
+  layout('<section class="panel"><h3>Form Pengajuan Kas</h3><p class="muted">Dokumen administratif pengajuan saja. Tidak memposting BOP, Arus Kas, Kasbon, Hutang, RHPP, atau Laba/Rugi.</p><form id="cashRequestForm"><div class="form-vertical compact-form"><label>Tanggal Pengajuan<input id="crDate" type="date" required value="'+new Date().toISOString().slice(0,10)+'"></label><label>Perihal<input id="crSubject" value="PENGAJUAN KAS" required></label><label>Catatan<input id="crNotes"></label></div><div class="tablewrap"><table><thead><tr><th>No</th><th>Kandang / Proyek</th><th>Uraian</th><th>Jumlah</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>'+draftRows+'</tbody></table></div><div class="inline-actions"><button type="button" id="crAddRow">Tambah Baris</button><button type="submit">Simpan Draft</button></div></form></section><section class="panel"><h3>Riwayat Pengajuan Kas</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>No. Pengajuan</th><th>Status</th><th>Total</th><th>Aksi</th></tr></thead><tbody>'+history+'</tbody></table></div></section>');
+  const readDraft=()=>draft.map((x,i)=>{
+    const sel=root.querySelector('[data-cr-group="'+i+'"]'),txt=root.querySelector('[data-cr-group-text="'+i+'"]');
+    const sv=sel?.value||'',tv=txt?.value.trim()||'';
+    return {group_name:sv==='PROYEK'?(tv||'PROYEK'):sv||tv,description:root.querySelector('[data-cr-desc="'+i+'"]')?.value.trim()||'',amount:Number(root.querySelector('[data-cr-amount="'+i+'"]')?.value||0),remarks:root.querySelector('[data-cr-remarks="'+i+'"]')?.value.trim()||''};
+  });
+  document.getElementById('crAddRow').onclick=()=>{window.__cashRequestDraft=readDraft();window.__cashRequestDraft.push({group_name:'',description:'',amount:'',remarks:''});financeCashRequestPage();};
+  root.querySelectorAll('[data-cr-remove]').forEach(btn=>btn.onclick=()=>{window.__cashRequestDraft=readDraft();window.__cashRequestDraft.splice(Number(btn.dataset.crRemove),1);if(!window.__cashRequestDraft.length)window.__cashRequestDraft=[{group_name:'',description:'',amount:'',remarks:''}];financeCashRequestPage();});
+  document.getElementById('cashRequestForm').onsubmit=async e=>{
+    e.preventDefault();const rows=readDraft().filter(x=>x.group_name&&x.description&&x.amount>0);if(!rows.length)return msg('Isi minimal satu rincian pengajuan.');
+    const date=document.getElementById('crDate').value,subject=document.getElementById('crSubject').value.trim(),notes=document.getElementById('crNotes').value.trim();
+    const no='PK-'+String(date).replaceAll('-','')+'-'+String(Date.now()).slice(-6);
+    const {data:req,error}=await db.from('finance_cash_requests').insert({request_number:no,request_date:date,subject,notes,status:'DRAFT'}).select('id').single();
+    if(error)return msg(error.message);
+    const {error:ie}=await db.from('finance_cash_request_items').insert(rows.map((x,i)=>({...x,request_id:req.id,sort_order:i+1})));
+    if(ie){await db.from('finance_cash_requests').delete().eq('id',req.id);return msg(ie.message);}
+    window.__cashRequestDraft=[{group_name:'',description:'',amount:'',remarks:''}];msg('Draft pengajuan tersimpan.');await financeCashRequestPage();
+  };
+  const docHtml=id=>{
+    const r=requests.find(x=>x.id===id);if(!r)return '';const its=items.filter(x=>x.request_id===id),groups=[...new Set(its.map(x=>x.group_name))],total=its.reduce((s,x)=>s+Number(x.amount||0),0);
+    const body=groups.map(g=>'<tr><th colspan="4">'+esc(g)+'</th></tr>'+its.filter(x=>x.group_name===g).map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.description)+'</td><td style="text-align:right">'+prodFmt(x.amount,0)+'</td><td>'+esc(x.remarks||'')+'</td></tr>').join('')).join('');
+    return '<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif} .head{text-align:center} table{width:100%;border-collapse:collapse}th,td{border:1px solid #111;padding:6px} .total{font-weight:700}</style></head><body><div class="head"><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><hr><h3>FORM PENGAJUAN KAS</h3></div><p><b>No:</b> '+esc(r.request_number)+'<br><b>Perihal:</b> '+esc(r.subject)+'<br><b>Tgl. Pengajuan:</b> '+prodDateId(r.request_date)+'</p><table><thead><tr><th>NO</th><th>URAIAN</th><th>JUMLAH</th><th>KET.</th></tr></thead><tbody>'+body+'<tr class="total"><td colspan="2">TOTAL</td><td style="text-align:right">'+prodFmt(total,0)+'</td><td></td></tr></tbody></table></body></html>';
+  };
+  root.querySelectorAll('[data-cr-view],[data-cr-print]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.crView||btn.dataset.crPrint,w=window.open('','_blank');if(!w)return msg('Popup diblokir browser.');w.document.write(docHtml(id));w.document.close();if(btn.dataset.crPrint)setTimeout(()=>w.print(),300);});
+  root.querySelectorAll('[data-cr-excel]').forEach(btn=>btn.onclick=()=>{const html=bmsExcelHtml(docHtml(btn.dataset.crExcel)),blob=BMSCore.excelBlob(['\ufeff'+html]),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Form_Pengajuan_Kas.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+  root.querySelectorAll('[data-cr-delete]').forEach(btn=>btn.onclick=async()=>{if(!await appConfirm('Hapus draft pengajuan ini?'))return;const {error}=await db.from('finance_cash_requests').delete().eq('id',btn.dataset.crDelete).eq('status','DRAFT');if(error)return msg(error.message);await financeCashRequestPage();});
+}
+
