@@ -1608,7 +1608,7 @@ async function financeExpeditionBusinessPage(){
       '<p>Tanggal: '+prodDateId(i.invoice_date)+' | Jatuh Tempo: '+(i.due_date?prodDateId(i.due_date):'-')+' | Pelanggan: '+esc(i.customer_name)+'</p>'+
       '<table border="1"><thead><tr><th>No</th><th>Tanggal</th><th>MTS/SJ</th><th>RR</th><th>Sopir</th><th>Truk</th><th>Zona</th><th>Tujuan</th><th>Jenis Pakan / Qty</th><th>Total Qty</th><th>Harga Trip</th><th>Tambahan</th><th>Potongan</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<p><strong>Total Invoice: '+(x?.invoice_total===null||x?.invoice_total===undefined?'-':prodNum(x.invoice_total))+'</strong></p></body></html>';
-    const blob=BMSCore.excelBlob(['\ufeff'+html]);
+    const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=(String(i.invoice_number||'Invoice').replace(/[^a-z0-9_-]+/gi,'_'))+'.xlsx';
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
