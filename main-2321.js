@@ -577,7 +577,7 @@ function pplAppNav(){
 function appNav(){
   if(profile?.role==='PPL')return pplAppNav();
   let html=navButton('dashboard');
-  if(profile?.role==='ADMIN'){
+  if(['ADMIN','OWNER'].includes(profile?.role)){
     const adminRhppActive=['rhpp','rhpp_history','admin_cycle_lock','admin_log_aktivitas','arsip_data'].includes(tab);
     html+='<details class="nav-group"'+(adminRhppActive?' open':'')+'><summary>Administrator</summary><div class="nav-sub">'+
       navButton('rhpp')+
@@ -689,7 +689,8 @@ function appNav(){
 }
 
 async function adminCycleLockPage(){
-  if(profile?.role!=='ADMIN')return layout('<section class="panel"><h3>Akses Ditolak</h3><p>Hanya Administrator.</p></section>');
+  if(!['ADMIN','OWNER'].includes(profile?.role))return layout('<section class="panel"><h3>Akses Ditolak</h3><p>Hanya Administrator dan Owner.</p></section>');
+  const ownerReadOnly=profile?.role==='OWNER';
 
   const [br,ar,cr,far]=await Promise.all([
     db.from('barns').select('id,code,name,active').order('code',{ascending:true}),
@@ -708,7 +709,7 @@ async function adminCycleLockPage(){
   };
 
   let html='<section class="panel"><h3>Buka / Tutup Siklus</h3>'+
-    '<p class="muted">Khusus Administrator. Pilih satu kandang untuk membuka / menutup satu siklus. Pilih <strong>Semua Kandang</strong> untuk membuka / mengunci <strong>BOP semua siklus CLOSED saja</strong>. Siklus yang masih PROSES tidak disentuh.</p>'+
+    '<p class="muted">'+(ownerReadOnly?'Mode Owner: lihat status siklus dan akses BOP saja. Tidak ada aksi perubahan.':'Khusus Administrator. Pilih satu kandang untuk membuka / menutup satu siklus. Pilih <strong>Semua Kandang</strong> untuk membuka / mengunci <strong>BOP semua siklus CLOSED saja</strong>. Siklus yang masih PROSES tidak disentuh.')+'</p>'+
     '<div class="form-vertical">'+
       '<label>Pilih Kandang<select id="adminCycleBarn"><option value="">Pilih Kandang</option><option value="__ALL__">Semua Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(barnLabel(b))+'</option>').join('')+'</select></label>'+
       '<label>Pilih Siklus<select id="adminCycleAssignment" disabled><option value="">Pilih Siklus</option></select></label>'+
@@ -738,14 +739,14 @@ async function adminCycleLockPage(){
       '<div class="muted">Aksi massal ini hanya mengubah akses pencatatan BOP. Siklus PROSES tetap aktif dan tidak disentuh.</div>'+
       '<p>CLOSED: <strong>'+closed.length+'</strong> · BOP terbuka: <strong>'+opened+'</strong> · BOP terkunci: <strong>'+(closed.length-opened)+'</strong> · PROSES tidak disentuh: <strong>'+process+'</strong></p>';
     action.hidden=true;
-    openAll.hidden=false;
-    cleanAll.hidden=false;
-    lockAll.hidden=false;
+    openAll.hidden=ownerReadOnly;
+    cleanAll.hidden=ownerReadOnly;
+    lockAll.hidden=ownerReadOnly;
   };
 
   const renderState=()=>{
     if(barnSel.value==='__ALL__'){renderBulkState();return;}
-    action.hidden=false;openAll.hidden=true;cleanAll.hidden=true;lockAll.hidden=true;
+    action.hidden=ownerReadOnly;openAll.hidden=true;cleanAll.hidden=true;lockAll.hidden=true;
     const a=selectedAssignment();
     if(!a){
       state.hidden=true;
@@ -777,6 +778,7 @@ async function adminCycleLockPage(){
     renderState();
   };
   cycleSel.onchange=renderState;
+  if(ownerReadOnly)return;
 
   const setAllBopAccess=async isOpen=>{
     const targets=closedAssignments().filter(a=>bopAccess.get(a.id)!==isOpen);
