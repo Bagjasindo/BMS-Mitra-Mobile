@@ -184,7 +184,28 @@
     };
     visit(doc.body);return [{name:title,rows}];
   }
-  function excelBlob(parts){return xlsx(htmlSheets(parts.join(''),'Laporan'))}
+  function applySafeExcelTotals(sheets){
+    const totalWords=/\b(total|jumlah|subtotal|grand total)\b/i;
+    for(const sheet of sheets){
+      const rows=sheet.rows;
+      for(let ri=1;ri<rows.length;ri++){
+        const row=rows[ri],label=String(row.find(v=>typeof v==='string'&&v.trim())||'').trim();
+        if(!totalWords.test(label))continue;
+        for(let ci=0;ci<row.length;ci++){
+          const current=row[ci];if(typeof current!=='number'||!Number.isFinite(current))continue;
+          let start=ri-1;while(start>=0&&typeof rows[start]?.[ci]==='number'&&Number.isFinite(rows[start][ci]))start--;
+          start++;
+          if(start>=ri||ri-start<1)continue;
+          const values=[];for(let r=start;r<ri;r++)values.push(rows[r][ci]);
+          const sum=values.reduce((n,v)=>n+v,0);
+          const tolerance=Math.max(0.01,Math.abs(current)*1e-9);
+          if(Math.abs(sum-current)<=tolerance)row[ci]={formula:'SUM('+colName(ci)+(start+1)+':'+colName(ci)+ri+')',value:current};
+        }
+      }
+    }
+    return sheets;
+  }
+  function excelBlob(parts){return xlsx(applySafeExcelTotals(htmlSheets(parts.join(''),'Laporan')))}
   function base64(bytes){let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));return scope.btoa(text)}
   function unbase64(text){return Uint8Array.from(scope.atob(text),c=>c.charCodeAt(0))}
   async function backupKey(password,salt,iterations){
