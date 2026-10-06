@@ -736,7 +736,9 @@ async function productionVisitPage(){
   const vr=await db.from('visits').select('*').not('contract_assignment_id','is',null).order('visited_on',{ascending:false});
   const rows=d.scopeRows(vr.data||[]);
   const visitAssignmentId=window.__pplVisitAssignment||'';
-  const historyVisits=visitAssignmentId?rows.filter(v=>v.contract_assignment_id===visitAssignmentId):[];
+  // Default: tampilkan seluruh riwayat yang berada dalam scope akun.
+  // Jika Kandang/Siklus dipilih, baru filter riwayat ke siklus tersebut.
+  const historyVisits=visitAssignmentId?rows.filter(v=>v.contract_assignment_id===visitAssignmentId):rows;
   window.__bmsTxnList=window.__bmsTxnList||{};
   const oldVisitPage=window.__bmsTxnList.pplVisit?.page||0;
   window.__bmsTxnList.pplVisit={from:'',to:'',barn:'',assignment:'',status:'',page:oldVisitPage};
@@ -754,7 +756,7 @@ async function productionVisitPage(){
     '</form></section>';
   const selectedVisitAssignment=d.assignments.find(a=>a.id===visitAssignmentId);
   html+='<section class="panel"><h3>Riwayat Kunjungan</h3>'+
-    '<p class="muted">'+(selectedVisitAssignment?'Menampilkan riwayat kandang yang sedang dipilih. Pilih kandang lain di form atas untuk mengganti riwayat.':'Pilih kandang pada form di atas untuk menampilkan riwayat kunjungan.')+'</p>'+
+    '<p class="muted">'+(selectedVisitAssignment?'Menampilkan riwayat kandang yang sedang dipilih. Pilih kandang lain di form atas untuk mengganti riwayat.':'Menampilkan seluruh riwayat kunjungan yang dapat diakses akun ini. Pilih kandang pada form di atas untuk memfilter riwayat.')+'</p>'+
     '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>Temuan</th><th>Rekomendasi</th><th>Tindak Lanjut</th><th>Status</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
     shownVisits.map(x=>{const a=d.assignments.find(a=>a.id===x.contract_assignment_id);return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodDateId(x.visited_on)+'</td><td>'+esc(x.findings||'-')+'</td><td>'+esc(x.recommendation||'-')+'</td><td>'+esc(x.follow_up||'-')+'</td><td>'+esc(x.follow_up_status||'-')+'</td><td>'+esc(x.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-visit="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('visits',x.id)+'</div></td></tr>'}).join('')+
     '</tbody></table></div>'+(!txnVisit.total?'<p>Data Kunjungan tidak ditemukan.</p>':'')+txnVisit.pager+'</section>';
