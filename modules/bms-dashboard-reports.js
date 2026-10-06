@@ -120,7 +120,7 @@ async function buildDashboardModel(){
     const fcStd=prodNum(st?.std_feed_g_per_bird);
     const fcLow=!!(latest&&fcStd>0&&fc<fcStd);
     const currentAge=ci?.arrived_on?prodAge(ci.arrived_on,prodToday()):0;
-    const recordingAge=latest?prodAge(ci?.arrived_on,latest.recorded_on):0;
+    const recordingAge=latest?prodNum(latest.age_days):0;
     const alerts=[];
     if(currentAge>=1&&!latest)alerts.push('Recording belum diisi · umur saat ini '+currentAge+' hari');
     if(latest&&currentAge>recordingAge)alerts.push('Recording terakhir umur '+recordingAge+' hari · umur saat ini '+currentAge+' hari');
