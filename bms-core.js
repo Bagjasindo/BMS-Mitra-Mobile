@@ -117,7 +117,7 @@
       const base=String(s.name||'Sheet').replace(/[\\/*?:\[\]]/g,'_').slice(0,31)||'Sheet';let name=base,n=1;
       while(names.has(name.toLowerCase())){const suffix='_'+(++n);name=base.slice(0,31-suffix.length)+suffix}names.add(name.toLowerCase());s.name=name;
       s.rows.forEach((row,ri)=>row.forEach((value,ci)=>{
-        if(value&&typeof value==='object'&&!(value instanceof Date))value=JSON.stringify(value);
+        if(value&&typeof value==='object'&&!(value instanceof Date)&&typeof value.formula!=='string')value=JSON.stringify(value);
         if(typeof value==='string'&&value.length>32767){
           const ref=s.name+'!'+colName(ci)+(ri+1);let part='',partIndex=1;
           for(const c of value){if(part.length+c.length>32000){longValues.push([ref,partIndex++,part]);part=''}part+=c}if(part)longValues.push([ref,partIndex,part]);
@@ -149,6 +149,10 @@
           let style=ri===0?1:(heading?5:0);
           if(value instanceof Date&&Number.isFinite(value.getTime()))data+='<c r="'+ref+'" s="2"><v>'+((Date.UTC(value.getUTCFullYear(),value.getUTCMonth(),value.getUTCDate())/86400000)+25569)+'</v></c>';
           else if(typeof value==='number'&&Number.isFinite(value)&&Math.abs(value)<1e15){style=Number.isInteger(value)?3:4;data+='<c r="'+ref+'" s="'+style+'"><v>'+value+'</v></c>';}
+          else if(value&&typeof value==='object'&&typeof value.formula==='string'){
+            style=Number.isInteger(value.value)?3:4;
+            data+='<c r="'+ref+'" s="'+style+'"><f>'+xml(value.formula.replace(/^=/,''))+'</f>'+(Number.isFinite(value.value)?'<v>'+value.value+'</v>':'')+'</c>';
+          }
           else if(typeof value==='boolean')data+='<c r="'+ref+'" t="b" s="'+style+'"><v>'+(value?1:0)+'</v></c>';
           else data+='<c r="'+ref+'" t="inlineStr" s="'+style+'"><is><t xml:space="preserve">'+xml(value)+'</t></is></c>';
         });data+='</row>'
