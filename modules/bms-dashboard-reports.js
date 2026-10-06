@@ -86,7 +86,12 @@ async function buildDashboardModel(){
 
   const metrics=active.map(a=>{
     const ci=d.chicks.find(x=>x.contract_assignment_id===a.id);
-    const rows=recs.filter(x=>x.contract_assignment_id===a.id).sort((u,v)=>prodNum(u.age_days)-prodNum(v.age_days));
+    // Dashboard wajib mengikuti recording nyata terbaru. Urutkan tanggal terlebih dahulu,
+    // lalu umur sebagai tie-breaker agar hasil tidak bergantung pada urutan JSON/RPC.
+    const rows=recs.filter(x=>x.contract_assignment_id===a.id).sort((u,v)=>{
+      const byDate=String(u.recorded_on||'').localeCompare(String(v.recorded_on||''));
+      return byDate||prodNum(u.age_days)-prodNum(v.age_days);
+    });
     const latest=rows[rows.length-1]||null,prev=rows[rows.length-2]||null;
     const initial=Math.max(0,prodNum(ci?.received)-prodNum(ci?.doa));
     const dead=rows.reduce((s,x)=>s+prodNum(x.mortality)+prodNum(x.culling),0);
