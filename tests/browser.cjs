@@ -35,7 +35,7 @@ async function until(expression){for(let i=0;i<100;i++){if(await evaluate(expres
   await evaluate('navigator.serviceWorker.ready');
   await until("!!navigator.serviceWorker.controller&&!!document.querySelector('#auth')&&!!document.querySelector('.login-logo')");
   assert.deepEqual(await evaluate('window.__auditErrors'),[]);
-  assert.equal(await evaluate("document.querySelector('.login-logo').getAttribute('alt')"),'Logo BMS');
+  await until("document.querySelector('.login-logo')?.getAttribute('alt')==='Logo BMS'");
   assert.equal(await evaluate("(await caches.keys()).includes('another-app-cache')"),true);
   const shell=await evaluate("const keys=(await caches.keys()).filter(k=>k.startsWith('bms-pwa-shell-'));if(keys.length!==1)throw new Error('Expected exactly one active BMS cache, got '+keys.join(','));return (await (await caches.open(keys[0])).keys()).map(r=>new URL(r.url).pathname)");
   for(const name of ['/main-2321.js','/bms-core.js','/bms-data-config.js','/vendor/supabase-2.57.0.js'])assert.ok(shell.includes(name),name+' was not cached');
