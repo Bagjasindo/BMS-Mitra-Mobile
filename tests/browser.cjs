@@ -13,8 +13,8 @@ const server=require('node:http').createServer((req,res)=>{
 server.listen(8787,'127.0.0.1');
 const executable=process.env.BMS_TEST_CHROMIUM;
 if(!executable)throw new Error('Set BMS_TEST_CHROMIUM to a local Chromium executable.');
-fs.mkdirSync(profile,{recursive:true});
-const browser=spawn(executable,['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-proxy-server','--remote-debugging-port=9393','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+fs.rmSync(profile,{recursive:true,force:true});fs.mkdirSync(profile,{recursive:true});
+const browser=spawn(executable,['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-proxy-server','--remote-debugging-address=127.0.0.1','--remote-debugging-port=9393','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
 let errors='';browser.stderr.on('data',x=>errors+=x.toString());
 let socket;const pending=new Map();let serial=0;
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
@@ -23,7 +23,7 @@ async function evaluate(expression){const r=await command('Runtime.evaluate',{ex
 async function until(expression){for(let i=0;i<100;i++){if(await evaluate(expression))return;await wait(100)}throw new Error('Browser condition timed out: '+expression)}
 (async()=>{
   let pages;
-  for(let i=0;i<100;i++){try{pages=await (await fetch('http://127.0.0.1:9393/json/list')).json();if(pages.length)break}catch{}await wait(100)}
+  for(let i=0;i<300;i++){try{pages=await (await fetch('http://127.0.0.1:9393/json/list')).json();if(pages.length)break}catch{}await wait(100)}
   if(!pages?.length)throw new Error('Chromium did not start: '+errors.slice(-2000));
   socket=new WebSocket(pages.find(p=>p.type==='page').webSocketDebuggerUrl);
   await new Promise((r,j)=>{socket.addEventListener('open',r,{once:true});socket.addEventListener('error',j,{once:true})});
