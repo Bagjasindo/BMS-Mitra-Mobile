@@ -197,7 +197,7 @@ const visibleTabs={
   KEUANGAN:['dashboard','finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi','finance_rhpp_real','bop','laba_rugi_kandang','laba_rugi_global','perawatan_kandang','aset_kandang','hutang_supplier','finance_pembelian_langsung','finance_beli_stok','bop_umum','form_pengajuan_kas','kasbon','cicilan','arus_kas','laporan_keuangan','profil'],
   OWNER:['dashboard','rhpp','laporan_expedisi','finance_rhpp_real','laba_rugi_kandang','laba_rugi_global','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report']
 };
-const canViewTab=k=>k==='profil'||(profile?.role&&visibleTabs[profile.role]?.includes(k));
+const canViewTab=k=>profile?.role==='OWNER'||k==='profil'||(profile?.role&&visibleTabs[profile.role]?.includes(k));
 const modules={
   kandang:{table:'barns',fields:[['name','Nama'],['capacity','Kapasitas','number'],['kind','Jenis','select:OPEN_HOUSE,SEMI_CLOSE_HOUSE,CLOSE_HOUSE'],['location','Lokasi']]},
   item:{table:'items',fields:[['name','Nama'],['category','Jenis','select:DOC,PAKAN,OVK1,OVK2,LAINNYA'],['feed_phase','Fase Pakan'],['unit','Satuan'],['supplier_id','Supplier','supplier'],['kg_per_unit','Kg / Satuan','number']]},
@@ -373,7 +373,7 @@ const roleDeleteTables={
   LOGISTIK:['logistics_shipments','logistics_external_shipments','logistics_returns','logistics_external_returns','logistics_mandiri_purchases'],
   KEUANGAN:['bop','barn_maintenance_costs','bop_outside','finance_expedition_trips','finance_expedition_invoices','finance_expedition_payments','finance_expedition_bop','finance_expedition_maintenance','advances','advance_payments','supplier_payments','finance_mandiri_sales_receipts','finance_mandiri_supplier_payments','rhpp_real','abk_cycle_salaries']
 };
-const canRoleDeleteTxn=table=>profile?.role==='ADMIN'||(roleDeleteTables[profile?.role]||[]).includes(table);
+const canRoleDeleteTxn=table=>profile?.role!=='OWNER'&&(profile?.role==='ADMIN'||(roleDeleteTables[profile?.role]||[]).includes(table));
 const adminDeleteTxnButton=(table,id,label='Hapus')=>canRoleDeleteTxn(table)?'<button type="button" class="btn-danger" data-admin-delete-table="'+esc(table)+'" data-admin-delete-id="'+esc(id)+'">'+esc(label)+'</button>':'';
 const bindAdminTransactionDeletes=(rerender)=>{
   root.querySelectorAll('[data-admin-delete-table]').forEach(btn=>btn.onclick=async()=>{
@@ -1052,6 +1052,21 @@ function updateTableScrollHints(){
 }
 window.addEventListener('resize',()=>requestAnimationFrame(updateTableScrollHints));
 
+function enforceOwnerReadOnly(){
+  if(profile?.role!=='OWNER')return;
+  root.querySelectorAll('form').forEach(form=>{
+    form.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=true;});
+    form.querySelectorAll('button').forEach(btn=>{btn.disabled=true;btn.hidden=true;});
+  });
+  root.querySelectorAll('button').forEach(btn=>{
+    if(btn.hasAttribute('data-tab'))return;
+    const t=String(btn.textContent||'').trim().toLowerCase();
+    const safe=/^(lihat|tampilkan|cetak|print|pdf|excel|export|filter|reset|kembali|batal|detail|unduh)/.test(t);
+    if(!safe){btn.disabled=true;btn.hidden=true;}
+  });
+  root.querySelectorAll('[contenteditable="true"]').forEach(el=>el.setAttribute('contenteditable','false'));
+}
+
 function layout(content){
   searchableSelectObservers.splice(0).forEach(observer=>observer.disconnect());
   const navHtml=appNav();
@@ -1114,6 +1129,7 @@ function layout(content){
     root.addEventListener('click',window.__legacyTxnDeleteCapture,true);
   }
   decorateNavigation(root);
+  enforceOwnerReadOnly();
   applyPendingSubmitFeedback();
   if(profile?.role!=='ADMIN'){
     root.querySelectorAll([
