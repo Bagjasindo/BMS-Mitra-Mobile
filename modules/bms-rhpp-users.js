@@ -483,7 +483,7 @@ async function financeRhppPage(){
         '<tr><td><strong>HASIL AKHIR SETELAH BIAYA TAMBAHAN</strong></td><td><strong>Rp '+prodFmt(companyNet,0)+'</strong></td></tr>'+
       '</tbody></table></div>'+
       '<p><strong>Status: '+status+'</strong></p>'+
-      (fin?'<p class="muted">Close Produksi '+prodDateId(fin.closed_on)+' · RHPP Sistem Rp '+prodFmt(fin.system_amount,0)+'</p>':ready?'<button type="button" class="btn-danger-soft" data-close-rhpp="'+esc(x.contract_assignment_id)+'">Deal & Close Produksi</button>':'<p class="muted">Lengkapi data operasional sebelum Close</p>')+
+      (fin?'<p class="muted">Close Produksi '+prodDateId(fin.closed_on)+' · RHPP Sistem Rp '+prodFmt(fin.system_amount,0)+'</p>':ready?(profile.role==='ADMIN'?'<button type="button" class="btn-danger-soft" data-close-rhpp="'+esc(x.contract_assignment_id)+'">Deal & Close Produksi</button>':'<p class="muted">RHPP siap diperiksa. Close Produksi hanya untuk Administrator.</p>'):'<p class="muted">Lengkapi data operasional sebelum Close</p>')+
       '</section>'+
     '</div>';
   });
@@ -669,7 +669,7 @@ async function financeRhppPage(){
     a.href=url;a.download='RHPP_Sistem.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
 
-  root.querySelectorAll('[data-close-rhpp]').forEach(btn=>btn.onclick=async()=>{
+  if(profile.role==='ADMIN')root.querySelectorAll('[data-close-rhpp]').forEach(btn=>btn.onclick=async()=>{
     const x=rows.find(v=>v.contract_assignment_id===btn.dataset.closeRhpp);
     if(!x)return;
     if(!await appConfirm('RHPP Sistem sudah diperiksa dan DEAL? Close Produksi akan mengunci seluruh transaksi operasional periode ini.'))return;
