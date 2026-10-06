@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2365';
-  assert.match(index,new RegExp('v='+build+'-owner-rhpp-readonly'));
-  assert.match(sw,new RegExp('v'+build+'-owner-rhpp-readonly'));
+  const build='2366';
+  assert.match(index,new RegExp('v='+build+'-owner-global-readonly'));
+  assert.match(sw,new RegExp('v'+build+'-owner-global-readonly'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
