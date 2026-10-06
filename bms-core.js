@@ -100,10 +100,10 @@
       const path=utf8.encode(name),bytes=typeof value==='string'?utf8.encode(value):value,crc=crc32(bytes);
       if(bytes.length>0xFFFFFFFF)throw new Error('File terlalu besar.');
       const local=new Uint8Array(30+path.length),v=new DataView(local.buffer);
-      v.setUint32(0,0x04034B50,true);v.setUint16(4,20,true);v.setUint16(6,0x800,true);v.setUint32(14,crc,true);v.setUint32(18,bytes.length,true);v.setUint32(22,bytes.length,true);v.setUint16(26,path.length,true);local.set(path,30);
+      v.setUint32(0,0x04034B50,true);v.setUint16(4,20,true);v.setUint16(6,0x800,true);v.setUint16(8,0,true);v.setUint16(10,0,true);v.setUint16(12,0,true);v.setUint32(14,crc,true);v.setUint32(18,bytes.length,true);v.setUint32(22,bytes.length,true);v.setUint16(26,path.length,true);local.set(path,30);
       parts.push(local,bytes);
       const index=new Uint8Array(46+path.length),iv=new DataView(index.buffer);
-      iv.setUint32(0,0x02014B50,true);iv.setUint16(4,20,true);iv.setUint16(6,20,true);iv.setUint16(8,0x800,true);iv.setUint32(16,crc,true);iv.setUint32(20,bytes.length,true);iv.setUint32(24,bytes.length,true);iv.setUint16(28,path.length,true);iv.setUint32(42,offset,true);index.set(path,46);
+      iv.setUint32(0,0x02014B50,true);iv.setUint16(4,20,true);iv.setUint16(6,20,true);iv.setUint16(8,0x800,true);iv.setUint16(10,0,true);iv.setUint16(12,0,true);iv.setUint16(14,0,true);iv.setUint32(16,crc,true);iv.setUint32(20,bytes.length,true);iv.setUint32(24,bytes.length,true);iv.setUint16(28,path.length,true);iv.setUint32(42,offset,true);index.set(path,46);
       central.push(index);centralSize+=index.length;offset+=local.length+bytes.length;
     }
     const end=new Uint8Array(22),ev=new DataView(end.buffer);ev.setUint32(0,0x06054B50,true);ev.setUint16(8,files.length,true);ev.setUint16(10,files.length,true);ev.setUint32(12,centralSize,true);ev.setUint32(16,offset,true);
