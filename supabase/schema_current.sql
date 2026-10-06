@@ -16453,6 +16453,22 @@ end $function$;
 DROP TRIGGER IF EXISTS trg_expedition_finance_first ON public.finance_expedition_trips;
 CREATE TRIGGER trg_expedition_finance_first BEFORE INSERT ON public.finance_expedition_trips FOR EACH ROW EXECUTE FUNCTION public.enforce_expedition_finance_first_v1();
 
+
+-- OWNER read-only parity for operational pages.
+CREATE POLICY "owner_read_all" ON "public"."audit_events" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."user_activity_logs" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."profiles" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."barn_assets" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."expeditions" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."harvests" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."rhpp_estimates" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."supplies" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."finance_stock_purchase_invoices" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."warehouse_stock_items" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."warehouse_stock_shipments" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."finance_cash_requests" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+CREATE POLICY "owner_read_all" ON "public"."finance_cash_request_items" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((private.my_bms_role() = 'OWNER'::public.bms_role));
+
 COMMIT;
 
 -- Standalone Finance Cash Request Form (administrative only; no BOP/cashflow posting)
