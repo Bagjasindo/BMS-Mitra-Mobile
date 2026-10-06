@@ -33,7 +33,7 @@ async function until(expression){for(let i=0;i<100;i++){if(await evaluate(expres
   await command('Page.navigate',{url:'http://127.0.0.1:8787/'});
   await until("!!document.querySelector('#auth input[name=email]')&&!!window.BMSCore");
   await evaluate('navigator.serviceWorker.ready');
-  await until("!!navigator.serviceWorker.controller&&!!document.querySelector('#auth')");
+  await until("!!navigator.serviceWorker.controller&&!!document.querySelector('#auth')&&!!document.querySelector('.login-logo')");
   assert.deepEqual(await evaluate('window.__auditErrors'),[]);
   assert.equal(await evaluate("document.querySelector('.login-logo').getAttribute('alt')"),'Logo BMS');
   assert.equal(await evaluate("(await caches.keys()).includes('another-app-cache')"),true);
