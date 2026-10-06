@@ -15917,8 +15917,10 @@ begin
   if v_price is null or v_price <= 0 then
     raise exception 'Harga kontrak untuk BW % Kg belum tersedia.', round(v_avg,3);
   end if;
+  if new.purchase_price_per_kg is null or new.purchase_price_per_kg <= 0 then
+    raise exception 'Harga beli aktual per Kg wajib lebih dari 0.';
+  end if;
 
-  new.purchase_price_per_kg := v_price;
   return new;
 end
 $$;
@@ -15969,10 +15971,20 @@ begin
     select m.contract_assignment_id,
            coalesce(m.birds,0)::numeric birds,
            m.weight_kg::numeric kg,
-           (m.weight_kg*m.purchase_price_per_kg)::numeric value,
+           (m.weight_kg*cp.price_per_kg)::numeric value,
            (coalesce(m.birds,0)*((m.purchase_date-ci.arrived_on)+1))::numeric age_weight
     from public.marketing_external_meat_purchases m
     join public.chick_ins ci on ci.contract_assignment_id=m.contract_assignment_id
+    join public.logistics_contract_assignments a on a.id=m.contract_assignment_id
+    join lateral (
+      select p.price_per_kg
+      from public.contract_live_prices p
+      where p.contract_id=a.master_contract_id
+        and (m.weight_kg/nullif(m.birds,0)) >= p.min_weight_kg
+        and (p.max_weight_kg is null or (m.weight_kg/nullif(m.birds,0)) < p.max_weight_kg)
+      order by p.min_weight_kg desc
+      limit 1
+    ) cp on true
   ),
   harvest as (
     select h.contract_assignment_id,

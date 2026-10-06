@@ -22,6 +22,9 @@ test('AUDIT-LOCK recovery schema contains latest business guards',()=>{
   assert.match(schema,/guard_external_meat_contract_price/);
   assert.match(schema,/with harvest_source as/);
   assert.match(schema,/marketing_external_meat_purchases/);
+  assert.match(schema,/Harga beli aktual per Kg wajib lebih dari 0/);
+  assert.doesNotMatch(schema,/new\.purchase_price_per_kg := v_price/);
+  assert.match(schema,/m\.weight_kg\*cp\.price_per_kg/);
   assert.match(schema,/v\.farmer_profit-v\.external_meat_cost-v\.external_sapronak_cost/);
 });
 
