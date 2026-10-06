@@ -318,6 +318,7 @@ async function adminUserActivityLogPage(){
 
 async function adminDataArchivePage(){
   if(!['ADMIN','OWNER'].includes(profile?.role))return layout('<section class="panel"><h3>Akses Dikunci</h3><p class="muted">Hanya Administrator dan Owner yang dapat melihat Arsip Data.</p></section>');
+  if(profile?.role==='OWNER')return layout('<section class="panel"><h3>Arsip Data</h3><p class="muted">Mode Owner · baca saja. Menu tersedia untuk melihat fungsi arsip/recovery, tetapi export dan backup tetap khusus Administrator.</p><div class="owner-empty-ok">Backup/recovery dikelola Administrator. Tidak ada aksi perubahan untuk akun Owner.</div></section>');
   layout('<section class="panel"><h3>Arsip Data</h3><p class="muted">Seluruh tabel diambil dalam satu snapshot. Excel memiliki satu sheet per tabel. Backup pemulihan mencakup data dan akun, disimpan terenkripsi.</p><label>Password backup<input id="archiveBackupPassword" type="password" minlength="12" autocomplete="new-password" placeholder="Minimal 12 karakter"></label><p class="muted">Simpan password backup di tempat aman. File hanya dapat dibuka dengan password tersebut.</p><div class="inline-actions"><button type="button" id="exportAllDataBtn">Export Semua Data Excel</button><button type="button" id="exportAllBackupBtn">Simpan Backup Terenkripsi</button></div><p id="exportAllDataStatus" class="muted"></p></section>');
   const buttons=[document.getElementById('exportAllDataBtn'),document.getElementById('exportAllBackupBtn')],status=document.getElementById('exportAllDataStatus');
   const run=async kind=>{
