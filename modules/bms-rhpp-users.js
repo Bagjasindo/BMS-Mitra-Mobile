@@ -763,7 +763,23 @@ async function employeeMasterPage(){
 }
 
 async function users(){
-  if(profile.role!=='ADMIN')return layout('<p>Akses hanya untuk Administrator.</p>');
+  if(!['ADMIN','OWNER'].includes(profile.role))return layout('<p>Akses hanya untuk Administrator dan Owner.</p>');
+  if(profile.role==='OWNER'){
+    const {data,error}=await db.from('profiles').select('user_id,full_name,role,active').order('full_name',{ascending:true});
+    const rows=data||[];
+    const rolesList=['ADMIN','LOGISTIK','PPL','MARKETING','KEUANGAN','OWNER'];
+    layout('<section class="panel"><h3>Master Pengguna</h3><p class="muted">Mode Owner · baca saja. Pembuatan, perubahan role, aktivasi/nonaktif, dan password tetap khusus Administrator.</p>'+
+      '<div class="tablewrap"><table id="usersMasterTable"><thead><tr><th>Nama</th><th>Role</th><th>Status</th></tr></thead><tbody>'+
+      rows.map(x=>'<tr><td>'+esc(x.full_name||'-')+'</td><td>'+esc(x.role||'-')+'</td><td>'+(x.active?'Aktif':'Nonaktif')+'</td></tr>').join('')+
+      '</tbody></table></div>'+(!rows.length?'<p>Belum ada pengguna.</p>':'')+'</section>');
+    attachListFilter({tableId:'usersMasterTable',fields:[
+      {label:'Nama',col:0,placeholder:'Nama pengguna'},
+      {label:'Role',col:1,type:'select',options:rolesList},
+      {label:'Status',col:2,type:'select',options:['Aktif','Nonaktif']}
+    ]});
+    if(error)msg(error.message);
+    return;
+  }
 
   const {data,error}=await db.rpc('admin_list_bms_users');
   const rows=data||[];
