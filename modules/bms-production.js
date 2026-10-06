@@ -736,13 +736,13 @@ async function productionVisitPage(){
   const vr=await db.from('visits').select('*').not('contract_assignment_id','is',null).order('visited_on',{ascending:false});
   const rows=d.scopeRows(vr.data||[]);
   const visitAssignmentId=window.__pplVisitAssignment||'';
-  // Default: tampilkan seluruh riwayat yang berada dalam scope akun.
-  // Jika Kandang/Siklus dipilih, baru filter riwayat ke siklus tersebut.
-  const historyVisits=visitAssignmentId?rows.filter(v=>v.contract_assignment_id===visitAssignmentId):rows;
-  // Riwayat Kunjungan langsung tampil. Halaman ini tidak memakai tombol/filter
-  // txnListState, sehingga status "shown" tidak boleh menyembunyikan data yang sudah tersimpan.
-  const txnVisit={total:historyVisits.length,rows:historyVisits,pager:'<p class="muted" style="margin-top:10px">'+historyVisits.length+' data ditampilkan.</p>'},shownVisits=historyVisits;
   const eligibleVisits=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
+  // Filter riwayat berdiri sendiri dari form input. Siklus CLOSED tetap dapat dicari.
+  const historyAssignments=d.assignments.filter(a=>d.chicks.some(c=>c.contract_assignment_id===a.id));
+  const historyBarns=d.barns.filter(b=>historyAssignments.some(a=>a.barn_id===b.id));
+  const historyOptions=historyAssignments.map(a=>({id:a.id,barn_id:a.barn_id,label:prodAssignmentOption(d,a)}));
+  const txnVisit=txnListState(rows,'pplVisit','visited_on',5,historyBarns,'barn_id',{assignmentKey:'contract_assignment_id',assignments:historyOptions});
+  const shownVisits=txnVisit.rows;
   let html='<section class="panel"><h3>Kunjungan PPL</h3><form id="prodVisit" class="form-vertical">'+
     '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+eligibleVisits.map(a=>'<option value="'+esc(a.id)+'" '+(visitAssignmentId===a.id?'selected':'')+'>'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
     '<label>Tanggal Kunjungan<input type="date" name="date" value="'+prodToday()+'" required></label>'+
@@ -753,13 +753,14 @@ async function productionVisitPage(){
     '<label>Catatan<textarea name="notes"></textarea></label>'+
     '<div class="inline-actions"><button id="prodVisitSave">Simpan Kunjungan</button><button type="button" id="prodVisitCancel" style="display:none">Batal Edit</button></div>'+
     '</form></section>';
-  const selectedVisitAssignment=d.assignments.find(a=>a.id===visitAssignmentId);
   html+='<section class="panel"><h3>Riwayat Kunjungan</h3>'+
-    '<p class="muted">'+(selectedVisitAssignment?'Menampilkan riwayat kandang yang sedang dipilih. Pilih kandang lain di form atas untuk mengganti riwayat.':'Menampilkan seluruh riwayat kunjungan yang dapat diakses akun ini. Pilih kandang pada form di atas untuk memfilter riwayat.')+'</p>'+
+    '<p class="muted">Filter riwayat terpisah dari form input. Pilih kandang, lalu siklus bila diperlukan.</p>'+
+    txnVisit.controls+
     '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>Temuan</th><th>Rekomendasi</th><th>Tindak Lanjut</th><th>Status</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
     shownVisits.map(x=>{const a=d.assignments.find(a=>a.id===x.contract_assignment_id);return '<tr><td>'+esc(a?prodAssignmentOption(d,a):'-')+'</td><td>'+prodDateId(x.visited_on)+'</td><td>'+esc(x.findings||'-')+'</td><td>'+esc(x.recommendation||'-')+'</td><td>'+esc(x.follow_up||'-')+'</td><td>'+esc(x.follow_up_status||'-')+'</td><td>'+esc(x.notes||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-visit="'+esc(x.id)+'">Edit</button>'+adminDeleteTxnButton('visits',x.id)+'</div></td></tr>'}).join('')+
     '</tbody></table></div>'+(!txnVisit.total?'<p>Data Kunjungan tidak ditemukan.</p>':'')+txnVisit.pager+'</section>';
   layout(html);
+  bindTxnList(txnVisit,productionVisitPage);
   if(d.err||vr.error)msg((d.err||vr.error).message);
 
   const f=document.getElementById('prodVisit');
