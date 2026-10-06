@@ -1,5 +1,5 @@
 const CACHE_PREFIX='bms-pwa-shell-';
-const CACHE_NAME=CACHE_PREFIX+'v2370-ppl-age-green';
+const CACHE_NAME=CACHE_PREFIX+'2371-dashboard-recording-sync';
 const SHELL=[
   './',
   './index.html',
