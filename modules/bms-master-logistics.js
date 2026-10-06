@@ -1727,8 +1727,9 @@ async function marketingExternalMeatPage(editId=null){
       '<label>Ekor<input name="birds" id="meatBirds" data-number="1" inputmode="numeric" value="'+(selected?.birds?fmtNumber(selected.birds):'')+'" required></label>'+
       '<label>Berat (Kg)<input name="weight_kg" id="meatWeight" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.weight_kg):'')+'" required></label>'+
       '<label>BW Rata-rata<input id="meatAvgWeight" readonly tabindex="-1"></label>'+
-      '<label>Harga Kontrak / Kg<input id="meatPrice" readonly tabindex="-1"></label>'+
-      '<label>Total Pembelian<input id="meatTotal" readonly tabindex="-1"></label>'+
+      '<label>Harga Beli Aktual / Kg<input name="purchase_price_per_kg" id="meatPurchasePrice" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.purchase_price_per_kg):'')+'" required></label>'+
+      '<label>Harga Kontrak RHPP / Kg<input id="meatPrice" readonly tabindex="-1"></label>'+
+      '<label>Total Pembelian Aktual<input id="meatTotal" readonly tabindex="-1"></label>'+
       '<label>No. Nota / Referensi<input name="reference_number" value="'+esc(selected?.reference_number||'')+'"></label>'+
       '<label>Catatan<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
       '<button type="submit">'+(selected?'Simpan Perubahan':'Simpan Tambah Daging')+'</button>'+
@@ -1736,14 +1737,16 @@ async function marketingExternalMeatPage(editId=null){
     '</form></section>';
 
   html+='<section class="panel"><h3>Riwayat Tambah Daging</h3>'+txnMeat.controls+'<div class="tablewrap"><table><thead><tr>'+
-    '<th>Tanggal</th><th>Kandang</th><th>Kontrak</th><th>Supplier</th><th>Barang</th><th>Ekor</th><th>Kg</th><th>BW</th><th>Harga Kontrak/Kg</th><th>Total</th><th>Referensi</th><th>Aksi</th>'+
+    '<th>Tanggal</th><th>Kandang</th><th>Kontrak</th><th>Supplier</th><th>Barang</th><th>Ekor</th><th>Kg</th><th>BW</th><th>Harga Beli/Kg</th><th>Harga Kontrak RHPP/Kg</th><th>Total Beli</th><th>Referensi</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     shownMeat.map(x=>{
       const s=supplierRows.find(v=>v.id===x.supplier_id),b=barnRows.find(v=>v.id===x.barn_id),a=assignments.find(v=>v.id===x.contract_assignment_id),k=contractsRows.find(v=>v.id===a?.master_contract_id);
       const isLocked=!a?.active;
       const total=Number(x.weight_kg||0)*Number(x.purchase_price_per_kg||0);
       const avg=Number(x.birds||0)>0?Number(x.weight_kg||0)/Number(x.birds):0;
-      return '<tr><td>'+esc(x.purchase_date||'')+'</td><td>'+esc(assignmentIdentity(assignments,barnRows,contractsRows,a))+'</td><td>'+esc(shortContractLabel(k?.number)||'-')+'</td><td>'+esc(s?s.name:'-')+'</td><td>'+esc(x.product_name||'')+'</td><td>'+ (x.birds?fmtNumber(x.birds):'-') +'</td><td>'+fmtNumber(x.weight_kg)+'</td><td>'+(avg?fmtNumber(avg,3):'-')+'</td><td>Rp '+fmtNumber(x.purchase_price_per_kg)+'</td><td>Rp '+fmtNumber(total)+'</td><td>'+esc(x.reference_number||'-')+'</td><td>'+(isLocked?'<strong>Terkunci</strong>':'<button type="button" data-edit-bl="'+esc(x.id)+'">Edit</button> <button type="button" data-delete-bl="'+esc(x.id)+'">Hapus</button>')+'</td></tr>';
+      const contractRow=livePrices.find(p=>p.contract_id===a?.master_contract_id&&avg>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||avg<prodNum(p.max_weight_kg)));
+      const contractPrice=prodNum(contractRow?.price_per_kg);
+      return '<tr><td>'+esc(x.purchase_date||'')+'</td><td>'+esc(assignmentIdentity(assignments,barnRows,contractsRows,a))+'</td><td>'+esc(shortContractLabel(k?.number)||'-')+'</td><td>'+esc(s?s.name:'-')+'</td><td>'+esc(x.product_name||'')+'</td><td>'+ (x.birds?fmtNumber(x.birds):'-') +'</td><td>'+fmtNumber(x.weight_kg)+'</td><td>'+(avg?fmtNumber(avg,3):'-')+'</td><td>Rp '+fmtNumber(x.purchase_price_per_kg)+'</td><td>'+(contractPrice?'Rp '+fmtNumber(contractPrice):'-')+'</td><td>Rp '+fmtNumber(total)+'</td><td>'+esc(x.reference_number||'-')+'</td><td>'+(isLocked?'<strong>Terkunci</strong>':'<button type="button" data-edit-bl="'+esc(x.id)+'">Edit</button> <button type="button" data-delete-bl="'+esc(x.id)+'">Hapus</button>')+'</td></tr>';
     }).join('')+
     '</tbody></table></div>'+(!txnMeat.total?'<p>Data Tambah Daging tidak ditemukan.</p>':'')+txnMeat.pager+'</section>';
 
@@ -1775,7 +1778,7 @@ async function marketingExternalMeatPage(editId=null){
     };
   }
 
-  const form=document.getElementById('externalMeatForm'),birds=document.getElementById('meatBirds'),weight=document.getElementById('meatWeight'),avgWeight=document.getElementById('meatAvgWeight'),price=document.getElementById('meatPrice'),total=document.getElementById('meatTotal');
+  const form=document.getElementById('externalMeatForm'),birds=document.getElementById('meatBirds'),weight=document.getElementById('meatWeight'),purchasePrice=document.getElementById('meatPurchasePrice'),avgWeight=document.getElementById('meatAvgWeight'),price=document.getElementById('meatPrice'),total=document.getElementById('meatTotal');
   const contractPrice=()=>{
     const a=activeByBarn.get(meatBarnId.value),n=normalizeInputID(birds.value)||0,w=normalizeInputID(weight.value)||0;
     const avg=n>0?w/n:0;
@@ -1784,20 +1787,22 @@ async function marketingExternalMeatPage(editId=null){
     const row=livePrices.find(p=>p.contract_id===a.master_contract_id&&avg>=prodNum(p.min_weight_kg)&&(p.max_weight_kg==null||avg<prodNum(p.max_weight_kg)));
     const p=row?prodNum(row.price_per_kg):0;
     price.value=p?'Rp '+fmtNumber(p):'Harga kontrak BW belum tersedia';
-    total.value=p&&w?'Rp '+fmtNumber(w*p):'';
+    const actual=normalizeInputID(purchasePrice?.value)||0;
+    total.value=actual&&w?'Rp '+fmtNumber(w*actual):'';
     return p;
   };
-  birds.addEventListener('input',contractPrice);weight.addEventListener('input',contractPrice);contractPrice();
+  birds.addEventListener('input',contractPrice);weight.addEventListener('input',contractPrice);purchasePrice?.addEventListener('input',contractPrice);contractPrice();
 
   form.onsubmit=async ev=>{
     ev.preventDefault();
     const fd=new FormData(form),barnId=fd.get('barn_id'),assignment=activeByBarn.get(barnId);
     if(!assignment)return msg('Kandang belum memiliki kontrak Logistik aktif.');
-    const n=normalizeInputID(fd.get('birds')),w=normalizeInputID(fd.get('weight_kg')),p=contractPrice();
+    const n=normalizeInputID(fd.get('birds')),w=normalizeInputID(fd.get('weight_kg')),contract=contractPrice(),buyPrice=normalizeInputID(fd.get('purchase_price_per_kg'));
     if(!(n>0))return msg('Ekor harus lebih dari 0.');
     if(!(w>0))return msg('Berat harus lebih dari 0 Kg.');
-    if(!(p>0))return msg('Harga kontrak untuk BW '+fmtNumber(w/n,3)+' Kg belum tersedia.');
-    const payload={contract_assignment_id:assignment.id,barn_id:barnId,supplier_id:fd.get('supplier_id'),purchase_date:fd.get('purchase_date'),product_name:fd.get('product_name'),birds:n,weight_kg:w,purchase_price_per_kg:p,reference_number:fd.get('reference_number')||null,notes:fd.get('notes')||null};
+    if(!(buyPrice>0))return msg('Harga beli aktual per Kg harus lebih dari 0.');
+    if(!(contract>0))return msg('Harga kontrak untuk BW '+fmtNumber(w/n,3)+' Kg belum tersedia.');
+    const payload={contract_assignment_id:assignment.id,barn_id:barnId,supplier_id:fd.get('supplier_id'),purchase_date:fd.get('purchase_date'),product_name:fd.get('product_name'),birds:n,weight_kg:w,purchase_price_per_kg:buyPrice,reference_number:fd.get('reference_number')||null,notes:fd.get('notes')||null};
     const id=fd.get('id');
     const q=id?db.from('marketing_external_meat_purchases').update(payload).eq('id',id):db.from('marketing_external_meat_purchases').insert(payload);
     const {error}=await q;
