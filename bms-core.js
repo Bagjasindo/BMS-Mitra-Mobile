@@ -140,7 +140,7 @@
       if(s.rows.length>1048576||s.rows.some(r=>r.length>16384))throw new Error('Jumlah data melampaui batas Excel. Gunakan backup JSON.');
       const maxCols=Math.max(1,...s.rows.map(r=>r.length));
       const widths=Array.from({length:maxCols},(_,ci)=>Math.min(45,Math.max(10,...s.rows.slice(0,500).map(r=>String(r[ci]??'').length+2))));
-      let data='<worksheet xmlns="'+ns+'"><cols>'+widths.map((w,ci)=>'<col min="'+(ci+1)+'" max="'+(ci+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>';
+      let data='<worksheet xmlns="'+ns+'"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>'+widths.map((w,ci)=>'<col min="'+(ci+1)+'" max="'+(ci+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>';
       s.rows.forEach((row,ri)=>{
         const nonEmpty=row.filter(v=>String(v??'').trim()!=='').length;
         const heading=ri>0&&nonEmpty===1&&String(row.find(v=>String(v??'').trim()!=='')??'').length<120;
