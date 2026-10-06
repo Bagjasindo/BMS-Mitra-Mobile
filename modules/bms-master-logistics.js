@@ -2594,4 +2594,11 @@ const financeShortReferenceDisplay=v=>{
   return s;
 };
 const prodToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const prodAge=(a,b)=>Math.max(1,Math.floor((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000)+1);
+// Satu sumber umur produksi untuk seluruh modul PPL/Produksi:
+ // tanggal DOC datang = Hari 0, H+1 = umur 1.
+const prodAge=(a,b)=>{
+  if(!a||!b)return 0;
+  const start=Date.parse(String(a).slice(0,10)+'T00:00:00Z');
+  const end=Date.parse(String(b).slice(0,10)+'T00:00:00Z');
+  return Number.isFinite(start)&&Number.isFinite(end)?Math.max(0,Math.floor((end-start)/86400000)):0;
+};
