@@ -1,5 +1,5 @@
 const CACHE_PREFIX='bms-pwa-shell-';
-const CACHE_NAME=CACHE_PREFIX+'v2368-ppl-age-day0';
+const CACHE_NAME=CACHE_PREFIX+'v2369-ppl-age-shared';
 const SHELL=[
   './',
   './index.html',
