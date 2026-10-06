@@ -2594,8 +2594,8 @@ const financeShortReferenceDisplay=v=>{
   return s;
 };
 const prodToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-// Satu sumber umur produksi untuk seluruh modul PPL/Produksi:
- // tanggal DOC datang = Hari 0, H+1 = umur 1.
+// Satu sumber umur produksi untuk seluruh modul PPL/Produksi.
+// Tanggal DOC datang = Hari 0, H+1 = umur 1.
 const prodAge=(a,b)=>{
   if(!a||!b)return 0;
   const start=Date.parse(String(a).slice(0,10)+'T00:00:00Z');
