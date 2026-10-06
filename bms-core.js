@@ -165,8 +165,9 @@
   function htmlSheets(html,title='Laporan'){
     const doc=new DOMParser().parseFromString(html,'text/html');doc.querySelectorAll('script,style,button,form,.report-actions,.inline-actions').forEach(x=>x.remove());
     const rows=[];
-    const numeric=text=>{let s=text.trim();if(/^0\d+$/.test(s)||s.length>15)return s;
-      if(/^(?:Rp\s*)?-?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?$/.test(s)){const n=Number(s.replace(/^Rp\s*/,'').replace(/\./g,'').replace(',','.'));if(Number.isFinite(n))return n}return s};
+    const numeric=text=>{let s=text.trim();if(/^0\d+$/.test(s)||s.length>18)return s;
+      const negative=/^\(.*\)$/.test(s);if(negative)s=s.slice(1,-1).trim();
+      if(/^(?:Rp\s*)?-?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?$/.test(s)){const n=Number(s.replace(/^Rp\s*/,'').replace(/\./g,'').replace(',','.'));if(Number.isFinite(n))return negative?-Math.abs(n):n}return text.trim()};
     const visit=node=>{
       if(node.nodeType!==1)return;
       if(node.tagName==='TABLE'){
@@ -205,7 +206,38 @@
     }
     return sheets;
   }
-  function excelBlob(parts){return xlsx(applySafeExcelTotals(htmlSheets(parts.join(''),'Laporan')))}
+  function applyVerifiedReportFormulas(sheets){
+    const norm=v=>String(v??'').replace(/\s+/g,' ').trim().toUpperCase();
+    const close=(a,b)=>Math.abs(a-b)<=Math.max(0.01,Math.abs(b)*1e-9);
+    for(const sheet of sheets){
+      const rows=sheet.rows;
+      const cell=(ri,ci)=>colName(ci)+(ri+1);
+      const findValue=(ri,label)=>{
+        for(let r=ri-1;r>=0&&r>=ri-12;r--){
+          if(norm(rows[r]?.[0])!==label)continue;
+          for(let ci=1;ci<(rows[r]?.length||0);ci++)if(typeof rows[r][ci]==='number')return {r,ci,v:rows[r][ci]};
+        }return null;
+      };
+      for(let ri=0;ri<rows.length;ri++){
+        const label=norm(rows[ri]?.[0]);let targetCi=-1;
+        for(let ci=1;ci<(rows[ri]?.length||0);ci++)if(typeof rows[ri][ci]==='number'){targetCi=ci;break}
+        if(targetCi<0)continue;const current=rows[ri][targetCi];let refs=null,formula='';
+        if(label==='LABA/RUGI EXPEDISI'){
+          const a=findValue(ri,'PENDAPATAN EXPEDISI'),b=findValue(ri,'BOP EXPEDISI');
+          if(a&&b&&close(a.v-b.v,current)){formula=cell(a.r,a.ci)+'-'+cell(b.r,b.ci);}
+        }else if(label==='LABA/RUGI KANDANG'){
+          const a=findValue(ri,'TOTAL PENDAPATAN KANDANG'),b=findValue(ri,'TOTAL BOP PRODUKSI'),d=findValue(ri,'TOTAL BIAYA SAPRONAK'),e=findValue(ri,'TOTAL TAMBAH DAGING');
+          if(a&&b&&d&&e&&close(a.v-b.v-d.v-e.v,current)){formula=cell(a.r,a.ci)+'-'+cell(b.r,b.ci)+'-'+cell(d.r,d.ci)+'-'+cell(e.r,e.ci);}
+        }else if(label==='LABA/RUGI GLOBAL'){
+          const a=findValue(ri,'TOTAL LABA USAHA'),b=findValue(ri,'TOTAL BIAYA GLOBAL');
+          if(a&&b&&close(a.v+b.v,current)){formula=cell(a.r,a.ci)+'+'+cell(b.r,b.ci);}
+        }
+        if(formula)rows[ri][targetCi]={formula,value:current};
+      }
+    }
+    return sheets;
+  }
+  function excelBlob(parts){return xlsx(applyVerifiedReportFormulas(applySafeExcelTotals(htmlSheets(parts.join(''),'Laporan'))))}
   function base64(bytes){let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));return scope.btoa(text)}
   function unbase64(text){return Uint8Array.from(scope.atob(text),c=>c.charCodeAt(0))}
   async function backupKey(password,salt,iterations){
