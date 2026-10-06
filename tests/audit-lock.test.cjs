@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2343';
-  assert.match(index,new RegExp('v='+build+'-recording-age-h1-after-arrival'));
-  assert.match(sw,new RegExp('v'+build+'-recording-age-h1-after-arrival'));
+  const build='2363';
+  assert.match(index,new RegExp('v='+build+'-excel-audit-global'));
+  assert.match(sw,new RegExp('v'+build+'-excel-audit-global'));
   assert.match(schema,new RegExp('build '+build));
   assert.match(runbook,new RegExp('build '+build));
 });
