@@ -739,10 +739,9 @@ async function productionVisitPage(){
   // Default: tampilkan seluruh riwayat yang berada dalam scope akun.
   // Jika Kandang/Siklus dipilih, baru filter riwayat ke siklus tersebut.
   const historyVisits=visitAssignmentId?rows.filter(v=>v.contract_assignment_id===visitAssignmentId):rows;
-  window.__bmsTxnList=window.__bmsTxnList||{};
-  const oldVisitPage=window.__bmsTxnList.pplVisit?.page||0;
-  window.__bmsTxnList.pplVisit={from:'',to:'',barn:'',assignment:'',status:'',page:oldVisitPage};
-  const txnVisit=txnListState(historyVisits,'pplVisit','visited_on',5,null,'barn_id',{}),shownVisits=txnVisit.rows;
+  // Riwayat Kunjungan langsung tampil. Halaman ini tidak memakai tombol/filter
+  // txnListState, sehingga status "shown" tidak boleh menyembunyikan data yang sudah tersimpan.
+  const txnVisit={total:historyVisits.length,rows:historyVisits,pager:'<p class="muted" style="margin-top:10px">'+historyVisits.length+' data ditampilkan.</p>'},shownVisits=historyVisits;
   const eligibleVisits=d.assignments.filter(a=>a.active&&d.chicks.some(c=>c.contract_assignment_id===a.id));
   let html='<section class="panel"><h3>Kunjungan PPL</h3><form id="prodVisit" class="form-vertical">'+
     '<label>Kandang Aktif<select name="assignment" required><option value="">Pilih</option>'+eligibleVisits.map(a=>'<option value="'+esc(a.id)+'" '+(visitAssignmentId===a.id?'selected':'')+'>'+esc(prodActiveBarnOption(d,a))+'</option>').join('')+'</select></label>'+
@@ -780,8 +779,6 @@ async function productionVisitPage(){
 
   f.assignment.onchange=async()=>{
     window.__pplVisitAssignment=f.assignment.value||'';
-    window.__bmsTxnList=window.__bmsTxnList||{};
-    window.__bmsTxnList.pplVisit={from:'',to:'',barn:'',assignment:'',status:'',page:0};
     await productionVisitPage();
   };
 
