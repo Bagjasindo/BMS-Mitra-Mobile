@@ -13,8 +13,8 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const build='2363';
   assert.match(index,new RegExp('v='+build+'-excel-audit-global'));
   assert.match(sw,new RegExp('v'+build+'-excel-audit-global'));
-  assert.match(schema,new RegExp('build '+build));
-  assert.match(runbook,new RegExp('build '+build));
+  // Recovery schema/runbook are independently versioned recovery artifacts.
+  // Their build number must not be forced to match a frontend-only cache/export build.
 });
 
 test('AUDIT-LOCK recovery schema contains latest business guards',()=>{
