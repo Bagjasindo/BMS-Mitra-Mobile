@@ -135,17 +135,25 @@
     files.push(['_rels/.rels','<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>']);
     files.push(['xl/workbook.xml','<workbook xmlns="'+ns+'" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>'<sheet name="'+xml(s.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets></workbook>']);
     files.push(['xl/_rels/workbook.xml.rels','<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((_,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+'<Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>']);
-    files.push(['xl/styles.xml','<styleSheet xmlns="'+ns+'"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0"/><xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>']);
+    files.push(['xl/styles.xml','<styleSheet xmlns="'+ns+'"><numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="#,##0.00"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9EAF7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"><color rgb="FFD9E2F3"/></left><right style="thin"><color rgb="FFD9E2F3"/></right><top style="thin"><color rgb="FFD9E2F3"/></top><bottom style="thin"><color rgb="FFD9E2F3"/></bottom></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="14" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>']);
     sheets.forEach((s,i)=>{
       if(s.rows.length>1048576||s.rows.some(r=>r.length>16384))throw new Error('Jumlah data melampaui batas Excel. Gunakan backup JSON.');
-      let data='<worksheet xmlns="'+ns+'"><sheetData>';
-      s.rows.forEach((row,ri)=>{data+='<row r="'+(ri+1)+'">';row.forEach((value,ci)=>{
-        const ref=colName(ci)+(ri+1),style=ri===0?' s="1"':'';
-        if(value instanceof Date&&Number.isFinite(value.getTime()))data+='<c r="'+ref+'" s="2"><v>'+((Date.UTC(value.getUTCFullYear(),value.getUTCMonth(),value.getUTCDate())/86400000)+25569)+'</v></c>';
-        else if(typeof value==='number'&&Number.isFinite(value)&&Math.abs(value)<1e15)data+='<c r="'+ref+'"'+style+'><v>'+value+'</v></c>';
-        else if(typeof value==='boolean')data+='<c r="'+ref+'" t="b"'+style+'><v>'+(value?1:0)+'</v></c>';
-        else data+='<c r="'+ref+'" t="inlineStr"'+style+'><is><t xml:space="preserve">'+xml(value)+'</t></is></c>';
-      });data+='</row>'});data+='</sheetData></worksheet>';files.push(['xl/worksheets/sheet'+(i+1)+'.xml',data]);
+      const maxCols=Math.max(1,...s.rows.map(r=>r.length));
+      const widths=Array.from({length:maxCols},(_,ci)=>Math.min(45,Math.max(10,...s.rows.slice(0,500).map(r=>String(r[ci]??'').length+2))));
+      let data='<worksheet xmlns="'+ns+'"><cols>'+widths.map((w,ci)=>'<col min="'+(ci+1)+'" max="'+(ci+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>';
+      s.rows.forEach((row,ri)=>{
+        const nonEmpty=row.filter(v=>String(v??'').trim()!=='').length;
+        const heading=ri>0&&nonEmpty===1&&String(row.find(v=>String(v??'').trim()!=='')??'').length<120;
+        data+='<row r="'+(ri+1)+'"'+(ri===0?' ht="22" customHeight="1"':'')+'>';row.forEach((value,ci)=>{
+          const ref=colName(ci)+(ri+1);
+          let style=ri===0?1:(heading?5:0);
+          if(value instanceof Date&&Number.isFinite(value.getTime()))data+='<c r="'+ref+'" s="2"><v>'+((Date.UTC(value.getUTCFullYear(),value.getUTCMonth(),value.getUTCDate())/86400000)+25569)+'</v></c>';
+          else if(typeof value==='number'&&Number.isFinite(value)&&Math.abs(value)<1e15){style=Number.isInteger(value)?3:4;data+='<c r="'+ref+'" s="'+style+'"><v>'+value+'</v></c>';}
+          else if(typeof value==='boolean')data+='<c r="'+ref+'" t="b" s="'+style+'"><v>'+(value?1:0)+'</v></c>';
+          else data+='<c r="'+ref+'" t="inlineStr" s="'+style+'"><is><t xml:space="preserve">'+xml(value)+'</t></is></c>';
+        });data+='</row>'
+      });
+      data+='</sheetData><autoFilter ref="A1:'+colName(maxCols-1)+Math.max(1,s.rows.length)+'"/></worksheet>';files.push(['xl/worksheets/sheet'+(i+1)+'.xml',data]);
     });
     return zip(files);
   }
