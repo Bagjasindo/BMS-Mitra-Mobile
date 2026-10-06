@@ -114,8 +114,16 @@ async function buildDashboardModel(){
     const fc=initial>0?feed*1000/initial:0;
     const fcStd=prodNum(st?.std_feed_g_per_bird);
     const fcLow=!!(latest&&fcStd>0&&fc<fcStd);
-    const currentAge=ci?.arrived_on?prodAge(ci.arrived_on,prodToday()):0;
-    const recordingAge=latest?(prodNum(latest.age_days)||prodAge(ci?.arrived_on,latest.recorded_on)):0;
+    // Umur produksi mengikuti aturan PPL: hari DOC datang = Hari 0.
+    // Hitung selisih tanggal langsung agar dashboard tidak memakai helper lama yang inklusif (+1).
+    const pplAge=(from,to)=>{
+      if(!from||!to)return 0;
+      const start=Date.parse(String(from).slice(0,10)+'T00:00:00Z');
+      const end=Date.parse(String(to).slice(0,10)+'T00:00:00Z');
+      return Number.isFinite(start)&&Number.isFinite(end)?Math.max(0,Math.floor((end-start)/86400000)):0;
+    };
+    const currentAge=ci?.arrived_on?pplAge(ci.arrived_on,prodToday()):0;
+    const recordingAge=latest?pplAge(ci?.arrived_on,latest.recorded_on):0;
     const alerts=[];
     if(currentAge>=1&&!latest)alerts.push('Recording belum diisi · umur saat ini '+currentAge+' hari');
     if(latest&&currentAge>recordingAge)alerts.push('Recording terakhir umur '+recordingAge+' hari · umur saat ini '+currentAge+' hari');
