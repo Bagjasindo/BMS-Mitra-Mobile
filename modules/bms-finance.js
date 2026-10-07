@@ -1063,14 +1063,14 @@ async function financeExpeditionMasterPage(){
   const drivers=dr.data||[],vehicles=vr.data||[],customers=cr.data||[],routes=rr.data||[],destinations=der.data||[];
   const err=[dr,vr,cr,rr,der].find(x=>x.error)?.error;
 
-  let html='<section class="panel"><h3>Master Data Expedisi</h3><p class="muted">Acuan untuk Data / Operasional dan hasil cetak Invoice Expedisi. Hanya Administrator yang mengubah master.</p></section>'+
+  let html='<section class="panel"><h3>Master Data Expedisi</h3><p class="muted">Acuan untuk Data / Operasional dan hasil cetak Invoice Expedisi. Hanya Administrator yang mengubah master.</p><div class="report-actions"><button type="button" id="expMasterPrint">Cetak</button> <button type="button" id="expMasterPdf">PDF</button> <button type="button" id="expMasterExcel">Excel Semua Master</button></div></section>'+
     '<section class="panel"><h3>Master Sopir</h3><form id="expDriverForm" class="form-vertical">'+
       '<label>Kode<input name="code" required placeholder="DRV-001"></label>'+
       '<label>Nama Sopir<input name="name" required></label>'+
       '<label>No. HP<input name="phone"></label><label>No. SIM<input name="license_number"></label>'+
       '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
       '<button type="submit">Simpan Sopir</button></form>'+
-      '<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Nama</th><th>HP</th><th>SIM</th><th>Status</th></tr></thead><tbody>'+
+      '<div class="tablewrap"><table id="expDriverTable"><thead><tr><th>Kode</th><th>Nama</th><th>HP</th><th>SIM</th><th>Status</th></tr></thead><tbody>'+
       drivers.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.phone||'-')+'</td><td>'+esc(x.license_number||'-')+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div></section>'+
     '<section class="panel"><h3>Master Kendaraan</h3><form id="expVehicleForm" class="form-vertical">'+
@@ -1079,7 +1079,7 @@ async function financeExpeditionMasterPage(){
       '<label>Kapasitas Qty<input name="capacity_qty" type="text" inputmode="decimal" data-number="1"></label>'+
       '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
       '<button type="submit">Simpan Kendaraan</button></form>'+
-      '<div class="tablewrap"><table><thead><tr><th>No. Polisi</th><th>Jenis</th><th>Kapasitas</th><th>Status</th></tr></thead><tbody>'+
+      '<div class="tablewrap"><table id="expVehicleTable"><thead><tr><th>No. Polisi</th><th>Jenis</th><th>Kapasitas</th><th>Status</th></tr></thead><tbody>'+
       vehicles.map(x=>'<tr><td>'+esc(x.plate_number)+'</td><td>'+esc(x.vehicle_type||'-')+'</td><td>'+prodFmt(x.capacity_qty||0,0)+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div></section>'+
     '<section class="panel"><h3>Master Rute Expedisi</h3><form id="expRouteForm" class="form-vertical">'+
@@ -1089,7 +1089,7 @@ async function financeExpeditionMasterPage(){
       '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
       '<label>Catatan<input name="notes"></label>'+
       '<button type="submit">Simpan Rute</button></form>'+
-      '<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Zona / Rute</th><th>Harga Trip</th><th>Status</th></tr></thead><tbody>'+
+      '<div class="tablewrap"><table id="expRouteTable"><thead><tr><th>Kode</th><th>Zona / Rute</th><th>Harga Trip</th><th>Status</th></tr></thead><tbody>'+
       routes.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.route_name)+'</td><td>Rp '+prodFmt(x.default_trip_price,0)+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div>'+
       '<div style="margin-top:14px"><h4>Biaya BOP Standar per Rute</h4><p class="muted">Isi sekali. Keuangan nanti cukup klik Masukkan BOP pada Trip.</p>'+
@@ -1110,7 +1110,7 @@ async function financeExpeditionMasterPage(){
       '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
       '<label>Catatan<input name="notes"></label>'+
       '<button type="submit">Simpan Tujuan</button></form>'+
-      '<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Tujuan</th><th>Alamat / Lokasi</th><th>Status</th></tr></thead><tbody>'+
+      '<div class="tablewrap"><table id="expDestinationTable"><thead><tr><th>Kode</th><th>Tujuan</th><th>Alamat / Lokasi</th><th>Status</th></tr></thead><tbody>'+
       destinations.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.address||'-')+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div></section>'+
     '<section class="panel"><h3>Master Pelanggan Expedisi</h3><form id="expCustomerForm" class="form-vertical">'+
@@ -1120,11 +1120,22 @@ async function financeExpeditionMasterPage(){
       '<label>NPWP<input name="tax_number"></label>'+
       '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
       '<button type="submit">Simpan Pelanggan</button></form>'+
-      '<div class="tablewrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Alamat</th><th>Telepon</th><th>Status</th></tr></thead><tbody>'+
+      '<div class="tablewrap"><table id="expCustomerTable"><thead><tr><th>Kode</th><th>Pelanggan</th><th>Alamat</th><th>Telepon</th><th>Status</th></tr></thead><tbody>'+
       customers.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.address||'-')+'</td><td>'+esc(x.phone||'-')+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div></section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  attachListFilter({tableId:'expDriverTable',fields:[{label:'Kode',col:0,placeholder:'Cari kode'},{label:'Nama',col:1,placeholder:'Cari sopir'},{label:'Status',col:4,placeholder:'AKTIF / NONAKTIF'}]});
+  attachListFilter({tableId:'expVehicleTable',fields:[{label:'No. Polisi',col:0,placeholder:'Cari kendaraan'},{label:'Jenis',col:1,placeholder:'Cari jenis'},{label:'Status',col:3,placeholder:'AKTIF / NONAKTIF'}]});
+  attachListFilter({tableId:'expRouteTable',fields:[{label:'Kode',col:0,placeholder:'Cari kode'},{label:'Rute',col:1,placeholder:'Cari rute'},{label:'Status',col:3,placeholder:'AKTIF / NONAKTIF'}]});
+  attachListFilter({tableId:'expDestinationTable',fields:[{label:'Kode',col:0,placeholder:'Cari kode'},{label:'Tujuan',col:1,placeholder:'Cari tujuan'},{label:'Alamat',col:2,placeholder:'Cari alamat'},{label:'Status',col:3,placeholder:'AKTIF / NONAKTIF'}]});
+  attachListFilter({tableId:'expCustomerTable',fields:[{label:'Kode',col:0,placeholder:'Cari kode'},{label:'Pelanggan',col:1,placeholder:'Cari pelanggan'},{label:'Status',col:4,placeholder:'AKTIF / NONAKTIF'}]});
+  const masterTables=[['Master Sopir','expDriverTable'],['Master Kendaraan','expVehicleTable'],['Master Rute','expRouteTable'],['Master Tujuan','expDestinationTable'],['Master Pelanggan','expCustomerTable']];
+  const masterBody=()=>masterTables.map(([t,id])=>'<h3>'+esc(t)+'</h3>'+document.getElementById(id).outerHTML).join('');
+  const printMaster=async pdf=>{const {data:company}=await db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle();const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+(pdf?'Master_Expedisi_PDF':'Master Expedisi')+'</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;margin-bottom:8px}.head img{width:52px;height:52px;object-fit:contain}table{width:100%;border-collapse:collapse;margin-bottom:12px}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body><div class="head"><img src="'+esc(company?.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company?.company_name||company?.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company?.address||'')+'</div></div></div><h2>Master Data Expedisi</h2>'+masterBody()+'</body></html>');w.document.close();setTimeout(()=>{w.focus();w.print();},500);};
+  document.getElementById('expMasterPrint').onclick=()=>printMaster(false);
+  document.getElementById('expMasterPdf').onclick=()=>printMaster(true);
+  document.getElementById('expMasterExcel').onclick=()=>{const sheets=masterTables.map(([name,id])=>{const table=document.getElementById(id),rows=[...table.rows].map(tr=>[...tr.cells].map(td=>td.textContent.trim()));return {name,rows};});BMSCore.downloadWorkbook(sheets,'Master_Expedisi');};
 
   const d=document.getElementById('expDriverForm');if(d)d.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(d);
