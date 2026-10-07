@@ -746,16 +746,17 @@ async function logisticsContractPage(){
 }
 
 async function logisticsShippingPage(editId=null){
-  const [br,ir,sr,sir,ar,kr]=await Promise.all([
+  const [br,ir,sr,sir,ar,kr,cpr]=await Promise.all([
     db.from('barns').select('id,code,name,location,kind,active').eq('active',true).order('code',{ascending:true}),
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_shipments').select('*').order('shipment_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('logistics_shipment_items').select('*').order('created_at',{ascending:false}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at,cycle_type').order('created_at',{ascending:false}),
-    db.from('contracts').select('id,number,pre_starter_price,starter_price,finisher_price,doc_price,ovk_price_basis,ovk_price,ovk_vat_percent').is('cycle_id',null)
+    db.from('contracts').select('id,number,pre_starter_price,starter_price,finisher_price,doc_price,ovk_price_basis,ovk_price,ovk_vat_percent').is('cycle_id',null),
+    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
   ]);
 
-  const barns=br.data||[], itemsAll=ir.data||[], shipments=sr.data||[], shipmentItems=sir.data||[], assignments=ar.data||[], masters=kr.data||[];
+  const barns=br.data||[], itemsAll=ir.data||[], shipments=sr.data||[], shipmentItems=sir.data||[], assignments=ar.data||[], masters=kr.data||[], company=cpr.data||{};
   const shippingHistoryState=window.__shippingHistoryFilter||{barn_id:'',assignment_id:'',date_from:'',date_to:'',shown:false};
   window.__shippingHistoryFilter=shippingHistoryState;
   const historyAssignments=assignments.filter(a=>(a.cycle_type||'MITRA')==='MITRA'&&(!shippingHistoryState.barn_id||a.barn_id===shippingHistoryState.barn_id));
@@ -819,7 +820,7 @@ async function logisticsShippingPage(editId=null){
       '<div class="inline-actions"><button type="button" id="shippingHistoryApply">Tampilkan</button><button type="button" id="shippingHistoryReset">Reset</button></div>'+
       '<p class="muted">Semua kiriman sesuai kandang, siklus, dan tanggal ditampilkan sekaligus tanpa pagination.</p>'+
     '</div>'+
-    (shippingHistoryState.shown?'<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>No. SJ</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    (shippingHistoryState.shown?'<div class="report-actions"><button type="button" id="shippingHistoryPrint">Cetak</button> <button type="button" id="shippingHistoryPdf">PDF</button> <button type="button" id="shippingHistoryExcel">Excel</button></div><div class="tablewrap"><table id="shippingHistoryTable"><thead><tr><th>Kandang</th><th>Tanggal</th><th>No. SJ</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
     shownShipments.flatMap(s=>{
       const b=barns.find(x=>x.id===s.barn_id), a=assignments.find(x=>x.id===s.contract_assignment_id);
       const isLocked=a?.active===false;
@@ -880,6 +881,37 @@ async function logisticsShippingPage(editId=null){
   if(shippingHistoryReset)shippingHistoryReset.onclick=()=>{
     window.__shippingHistoryFilter={barn_id:'',assignment_id:'',date_from:'',date_to:'',shown:false};
     logisticsShippingPage();
+  };
+
+  if(shippingHistoryState.shown){
+    const historyTable=document.getElementById('shippingHistoryTable');
+    const reportHtml=()=>{
+      const b=barns.find(x=>x.id===shippingHistoryState.barn_id),a=assignments.find(x=>x.id===shippingHistoryState.assignment_id);
+      const table=historyTable?historyTable.cloneNode(true):null;
+      if(table){
+        table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      }
+      return '<!doctype html><html><head><meta charset="utf-8"><title>Riwayat Pengiriman Sapronak</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body>'+
+        '<div class="head"><img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><div>'+esc([company.phone,company.email].filter(Boolean).join(' · '))+'</div></div></div>'+
+        '<h2>Riwayat Pengiriman Sapronak</h2><p>Periode: '+esc(shippingHistoryState.date_from||'-')+' s/d '+esc(shippingHistoryState.date_to||'-')+' · Kandang: '+esc(b?shortBarnLabel(b):'Semua Kandang')+' · Siklus: '+esc(a?assignmentCycleLabel(assignments,a):'Semua Siklus')+'</p>'+
+        (table?table.outerHTML:'<p>Tidak ada data.</p>')+'</body></html>';
+    };
+    const doPrint=pdf=>{
+      const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
+      const html=reportHtml();w.document.write(pdf?html.replace('<title>Riwayat Pengiriman Sapronak</title>','<title>Riwayat_Pengiriman_Sapronak_PDF</title>'):html);w.document.close();
+      setTimeout(()=>{w.focus();w.print();},500);
+    };
+    const printBtn=document.getElementById('shippingHistoryPrint'),pdfBtn=document.getElementById('shippingHistoryPdf'),excelBtn=document.getElementById('shippingHistoryExcel');
+    if(printBtn)printBtn.onclick=()=>doPrint(false);
+    if(pdfBtn)pdfBtn.onclick=()=>doPrint(true);
+    if(excelBtn)excelBtn.onclick=()=>{
+      if(!historyTable)return;
+      const table=historyTable.cloneNode(true);
+      table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Pengiriman Sapronak</h2>'+table.outerHTML+'</body></html>';
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Pengiriman_Sapronak.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
   };
 
   const barnSearch=document.getElementById('shippingBarnSearch');
@@ -1105,7 +1137,7 @@ async function logisticsShippingPage(editId=null){
     await logisticsShippingPage();
     msg('Draft pengiriman dihapus.',true);
   });
-  const err=br.error||ir.error||sr.error||sir.error||ar.error||kr.error;
+  const err=br.error||ir.error||sr.error||sir.error||ar.error||kr.error||cpr.error;
   if(err)msg(err.message);
 }
 
