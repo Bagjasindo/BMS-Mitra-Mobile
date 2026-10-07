@@ -435,8 +435,8 @@ async function recordingPplPage(){
     '<label>Pilih Kandang / Siklus<select id="prodRecHistoryAssignment"><option value="">Pilih History Recording</option>'+
       historyAssignments.map(a=>'<option value="'+esc(a.id)+'" '+(historyAssignmentId===a.id?'selected':'')+'>'+esc(recordingHistoryLabel(a)+(a.active?' · AKTIF':' · SELESAI'))+'</option>').join('')+
     '</select></label>'+
-    (selectedHistoryAssignment?'<p class="muted" style="margin-top:8px">Menampilkan: <strong>'+esc(recordingHistoryLabel(selectedHistoryAssignment))+'</strong></p>':'')+
-    '<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Hari</th><th>Pop.</th><th>M+A</th><th>Depl.</th><th>BW A/S</th><th>Pakan A/S</th><th>FI</th><th>FCR</th><th>ADG</th><th>IP</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
+    (selectedHistoryAssignment?'<p class="muted" style="margin-top:8px">Menampilkan: <strong>'+esc(recordingHistoryLabel(selectedHistoryAssignment))+'</strong></p><div class="report-actions"><button type="button" id="recordingHistoryPrint">Cetak</button> <button type="button" id="recordingHistoryPdf">PDF</button> <button type="button" id="recordingHistoryExcel">Excel</button></div>':'')+
+    '<div class="tablewrap"><table id="recordingHistoryTable"><thead><tr><th>Kandang</th><th>Hari</th><th>Pop.</th><th>M+A</th><th>Depl.</th><th>BW A/S</th><th>Pakan A/S</th><th>FI</th><th>FCR</th><th>ADG</th><th>IP</th><th>Aksi</th></tr></thead><tbody id="prodPerfBody"></tbody></table></div>'+
     '<p id="prodPerfPage" class="muted" style="margin-top:10px"></p>'+
     '</section>';
   layout(html);
@@ -468,6 +468,7 @@ async function recordingPplPage(){
     window.__pplRecordingHistoryAssignment=historySelect.value||'';
     await recordingPplPage();
   };
+  if(selectedHistoryAssignment)bindTableExportActions({tableId:'recordingHistoryTable',printId:'recordingHistoryPrint',pdfId:'recordingHistoryPdf',excelId:'recordingHistoryExcel',title:'Riwayat Recording Harian',filename:'Riwayat_Recording_'+recordingHistoryLabel(selectedHistoryAssignment).replace(/[^A-Za-z0-9_-]+/g,'_'),dropLast:true});
 
   const f=document.getElementById('prodRec'),wr=document.getElementById('weightRows'),saveBtn=document.getElementById('prodRecSave'),cancelBtn=document.getElementById('prodRecCancel');
   let weights=[0],editingId=null,editingDay=null,feedStock=[];
@@ -1047,7 +1048,8 @@ async function productionEstimatePage(){
       '</select></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button></div>'+
     '</form>'+
-    '<div class="estimate-history-list">'+(
+    (estimateHistoryState.shown&&selectedEstimateHistoryAssignment?'<div class="report-actions"><button type="button" id="estimateHistoryPrint">Cetak</button> <button type="button" id="estimateHistoryPdf">PDF</button> <button type="button" id="estimateHistoryExcel">Excel</button></div>':'')+
+    '<div id="estimateHistoryOutput" class="estimate-history-list">'+(
       !estimateHistoryState.shown
         ?'<p class="muted">Pilih Kandang dan Siklus, lalu tekan Tampilkan.</p>'
         :(estimateHistoryCards||'<p class="muted">Belum ada isian Estimasi tersimpan mulai umur 23 hari pada siklus ini.</p>')
@@ -1058,6 +1060,7 @@ async function productionEstimatePage(){
   if(d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||extShipR.error||extShipItemR.error||returnR.error||returnItemR.error||itemR.error)msg((d.err||er.error||sr.error||rr.error||bonusR.error||shipR.error||shipItemR.error||extShipR.error||extShipItemR.error||returnR.error||returnItemR.error||itemR.error).message);
 
   bindAdminTransactionDeletes(()=>productionEstimatePage());
+  if(estimateHistoryState.shown&&selectedEstimateHistoryAssignment)bindHtmlExportActions({elementId:'estimateHistoryOutput',printId:'estimateHistoryPrint',pdfId:'estimateHistoryPdf',excelId:'estimateHistoryExcel',title:'Riwayat Estimasi',filename:'Riwayat_Estimasi',filterText:prodAssignmentOption(d,selectedEstimateHistoryAssignment)});
 
   const historyFilter=document.getElementById('estimateHistoryFilter');
   if(historyFilter){
@@ -1449,7 +1452,7 @@ async function leagueByBarnViewPage(){
   if(st.assignment){
     html+='<section class="panel"><div class="owner-section-title"><div><h3>Liga ABK · '+esc(selectedBarn?shortBarnLabel(selectedBarn):'-')+' · '+esc(assignmentCycleLabel(d.assignments,selectedAssignment))+'</h3>'+
       '<p class="muted">'+(selectedAssignment?.active?'Status PROSES · ranking sementara dari data Liga ABK yang sudah masuk':'Status CLOSED · hasil final')+' · Pendapatan/Ekor 50% · FCR 30% · IP 20%</p></div><span class="owner-trophy">🏆</span></div>'+
-      '<div class="tablewrap"><table class="owner-table"><thead><tr><th>Peringkat</th><th>ABK</th><th class="num">Siklus</th><th class="num">Total Populasi</th><th class="num">Total Ekor Panen</th><th class="num">Pendapatan/Ekor</th><th class="num">IP</th><th class="num">FCR</th><th class="num">BW</th></tr></thead><tbody>'+
+      '<div class="report-actions"><button type="button" id="leagueBarnPrint">Cetak</button> <button type="button" id="leagueBarnPdf">PDF</button> <button type="button" id="leagueBarnExcel">Excel</button></div><div class="tablewrap"><table id="leagueBarnTable" class="owner-table"><thead><tr><th>Peringkat</th><th>ABK</th><th class="num">Siklus</th><th class="num">Total Populasi</th><th class="num">Total Ekor Panen</th><th class="num">Pendapatan/Ekor</th><th class="num">IP</th><th class="num">FCR</th><th class="num">BW</th></tr></thead><tbody>'+
       league.map((x,i)=>{
         const e=d.abks.find(v=>v.id===x.abk_id);
         const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
@@ -1459,6 +1462,7 @@ async function leagueByBarnViewPage(){
   }
 
   layout(html);
+  if(st.assignment)bindTableExportActions({tableId:'leagueBarnTable',printId:'leagueBarnPrint',pdfId:'leagueBarnPdf',excelId:'leagueBarnExcel',title:'Liga ABK per Kandang',filename:'Liga_ABK_per_Kandang',filterText:(selectedBarn?shortBarnLabel(selectedBarn):'-')+' · '+assignmentCycleLabel(d.assignments,selectedAssignment)});
   const form=document.getElementById('leagueByBarnFilter');
   const select=document.getElementById('leagueByBarnSelect');
   const assignment=document.getElementById('leagueByBarnAssignment');
@@ -1645,7 +1649,7 @@ async function leagueAbkPage(editSizeId=null){
     '</form>'+
     '<p class="muted">'+(hf.shown?'Total '+visibleHistory.length+' transaksi sesuai filter. Geser kanan/kiri untuk melihat seluruh rincian.':'Pilih filter lalu klik Cari untuk menampilkan riwayat.')+'</p>'+
     (hf.shown?
-      '<div class="tablewrap" style="overflow-x:auto;max-height:none"><table style="min-width:820px"><thead><tr><th>Tanggal</th><th>ABK</th><th>Kandang</th><th>Status</th><th>Umur</th><th>Ekor</th><th>KG</th><th>BW</th><th>Aksi</th></tr></thead><tbody>'+
+      '<div class="report-actions"><button type="button" id="abkHistoryPrint">Cetak</button> <button type="button" id="abkHistoryPdf">PDF</button> <button type="button" id="abkHistoryExcel">Excel</button></div><div class="tablewrap" style="overflow-x:auto;max-height:none"><table id="abkHistoryTable" style="min-width:820px"><thead><tr><th>Tanggal</th><th>ABK</th><th>Kandang</th><th>Status</th><th>Umur</th><th>Ekor</th><th>KG</th><th>BW</th><th>Aksi</th></tr></thead><tbody>'+
       visibleHistory.map(x=>{const locked=!x.a?.active;return '<tr><td>'+prodDateId(x.s.harvest_date)+'</td><td>'+esc(leagueAbkName(x.e))+'</td><td>'+esc(leagueBarnName(d,x.a))+'</td><td>'+(locked?'CLOSED':'PROSES')+'</td><td>'+prodFmt(x.age,0)+' hari</td><td>'+fmtNumber(x.s.birds)+'</td><td>'+fmtNumber(x.s.weight_kg)+'</td><td>'+prodFmt(x.bw,2)+' kg</td><td>'+(locked?'<strong>Terkunci</strong>':'<button type="button" data-edit-abk-harvest="'+esc(x.s.id)+'">Edit</button> <button type="button" data-delete-abk-harvest="'+esc(x.s.id)+'">Hapus</button>')+'</td></tr>'}).join('')+
       '</tbody></table></div>'+(!visibleHistory.length?'<p>Data riwayat tidak ditemukan sesuai filter.</p>':'')
       :''
@@ -1656,6 +1660,7 @@ async function leagueAbkPage(editSizeId=null){
   layout(html);
   if(d.err||rr.error||sr.error)msg((d.err||rr.error||sr.error).message);
   bindNumberInputs();
+  if(hf.shown)bindTableExportActions({tableId:'abkHistoryTable',printId:'abkHistoryPrint',pdfId:'abkHistoryPdf',excelId:'abkHistoryExcel',title:'Riwayat Panen ABK',filename:'Riwayat_Panen_ABK',filterText:'Periode '+(hf.from||'-')+' s/d '+(hf.to||'-'),dropLast:true});
 
   const historyFilter=document.getElementById('abkHistoryFilter');
   if(historyFilter&&!selected){
