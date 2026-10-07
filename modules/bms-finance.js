@@ -692,13 +692,14 @@ async function logisticsWarehouseSendPage(editId=null){
   const cancel=document.getElementById('warehouseSendCancel');if(cancel)cancel.onclick=()=>logisticsWarehouseSendPage();
 }
 
-async function financeDirectPurchasePage(){
+async function financeDirectPurchasePage(editId=null){
   const [hr,dr,br]=await Promise.all([
     db.from('finance_asset_purchase_invoices').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('finance_direct_purchases').select('id,invoice_id,standard_name,description,quantity,unit,unit_price,total_amount,linked_id').eq('purchase_type','ASSET').order('created_at',{ascending:true}),
     db.from('barns').select('id,code,name,active').order('code',{ascending:true})
   ]);
   const invoices=hr.data||[],details=dr.data||[],barns=br.data||[];
+  const selected=editId?invoices.find(x=>x.id===editId):null;
   window.__financeAssetHistory=window.__financeAssetHistory||{from:'',to:'',shown:false};
   const assetHistoryState=window.__financeAssetHistory;
   const visibleAssetInvoices=assetHistoryState.shown?invoices.filter(h=>
@@ -712,20 +713,20 @@ async function financeDirectPurchasePage(){
   const barnLabel=id=>{const x=barns.find(b=>b.id===id);return x?shortBarnLabel(x):'-'};
   const invoiceItems=id=>details.filter(x=>x.invoice_id===id);
 
-  let html='<section class="panel"><h3>Beli Aset</h3>'+
+  let html='<section class="panel"><h3>'+(selected?'Koreksi Nota Aset':'Beli Aset')+'</h3>'+
     '<p class="muted">Satu nota dapat berisi beberapa aset. Isi data nota sekali, lalu tambahkan setiap barang dengan tombol <strong>+ Barang</strong>. Setiap barang menjadi aset tersendiri, sedangkan Arus Kas tetap dihitung satu kali sebesar total nota.</p>'+
-    '<form id="financeAssetInvoiceForm" class="form-vertical">'+
-      '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+today+'" required></label>'+
-      '<label>Supplier<input name="supplier_name" placeholder="Masukkan nama supplier"></label>'+
-      '<label>Lokasi Aset<select name="asset_location_type" id="assetLocationType" required><option value="KANDANG">Kandang</option><option value="KANTOR">Kantor</option></select></label>'+
-      '<label id="directBarnWrap">Kandang<select name="barn_id" id="directBarn"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Metode Pembayaran<select name="payment_method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option></select></label>'+
-      '<label>Referensi / No. Nota<input name="reference"></label>'+
-      '<label>Catatan Nota<textarea name="notes"></textarea></label>'+
+    '<form id="financeAssetInvoiceForm" class="form-vertical"><input type="hidden" name="invoice_id" value="'+esc(selected?.id||'')+'">'+
+      '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+esc(selected?.purchase_date||today)+'" required></label>'+
+      '<label>Supplier<input name="supplier_name" value="'+esc(selected?.supplier_name||'')+'" placeholder="Masukkan nama supplier"></label>'+
+      '<label>Lokasi Aset<select name="asset_location_type" id="assetLocationType" required><option value="KANDANG" '+(selected?.asset_location_type!=='KANTOR'?'selected':'')+'>Kandang</option><option value="KANTOR" '+(selected?.asset_location_type==='KANTOR'?'selected':'')+'>Kantor</option></select></label>'+
+      '<label id="directBarnWrap">Kandang<select name="barn_id" id="directBarn"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(selected?.barn_id===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Metode Pembayaran<select name="payment_method" required><option value="TRANSFER" '+(selected?.payment_method==='TRANSFER'?'selected':'')+'>Transfer</option><option value="TUNAI" '+(selected?.payment_method==='TUNAI'?'selected':'')+'>Tunai</option></select></label>'+
+      '<label>Referensi / No. Nota<input name="reference" value="'+esc(selected?.reference||'')+'"></label>'+
+      '<label>Catatan Nota<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
       '<datalist id="assetStandardNames">'+standardNames.map(x=>'<option value="'+esc(x)+'"></option>').join('')+'</datalist>'+
       '<div class="tablewrap"><table><thead><tr><th>Nama Standar</th><th>Deskripsi</th><th>Jumlah</th><th>Satuan</th><th>Harga/Satuan</th><th>Total</th><th></th></tr></thead><tbody id="assetItemRows"></tbody></table></div>'+
-      '<div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.75rem"><button type="button" id="addAssetItem">+ Barang</button><strong>Total Nota: <span id="assetInvoiceTotal">Rp 0</span></strong></div>'+
-      '<button type="submit">Simpan Nota Aset</button>'+
+      '<div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.75rem">'+(selected?'':'<button type="button" id="addAssetItem">+ Barang</button>')+'<strong>Total Nota: <span id="assetInvoiceTotal">Rp 0</span></strong></div>'+
+      '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Simpan Nota Aset')+'</button>'+(selected?'<button type="button" id="assetInvoiceCancel">Batal Koreksi</button>':'')+'</div>'+
     '</form></section>';
 
   html+='<section class="panel"><h3>Riwayat Nota Aset</h3>'+
@@ -735,13 +736,13 @@ async function financeDirectPurchasePage(){
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="financeAssetHistoryReset">Reset</button></div>'+
     '</form>'+
     (assetHistoryState.shown?'<div class="report-actions"><button type="button" id="assetHistoryPrint">Cetak</button> <button type="button" id="assetHistoryPdf">PDF</button> <button type="button" id="assetHistoryExcel">Excel</button></div><div class="tablewrap"><table id="assetHistoryTable"><thead><tr>'+
-    '<th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Lokasi</th><th>Barang</th><th>Jumlah Jenis</th><th>Total Nota</th><th>Metode</th>'+
+    '<th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Lokasi</th><th>Barang</th><th>Jumlah Jenis</th><th>Total Nota</th><th>Metode</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     visibleAssetInvoices.map(h=>{
       const lines=invoiceItems(h.id);
       const names=lines.map(x=>x.standard_name+' ('+prodFmt(x.quantity,2)+' '+(x.unit||'')+')').join(', ');
       const loc=h.asset_location_type==='KANTOR'?'Kantor':barnLabel(h.barn_id);
-      return '<tr><td>'+prodDateId(h.purchase_date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier_name||'-')+'</td><td>'+esc(loc)+'</td><td>'+esc(names||'-')+'</td><td>'+lines.length+'</td><td><strong>Rp '+prodFmt(h.total_amount,0)+'</strong></td><td>'+esc(h.payment_method||'-')+'</td></tr>';
+      return '<tr><td>'+prodDateId(h.purchase_date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier_name||'-')+'</td><td>'+esc(loc)+'</td><td>'+esc(names||'-')+'</td><td>'+lines.length+'</td><td><strong>Rp '+prodFmt(h.total_amount,0)+'</strong></td><td>'+esc(h.payment_method||'-')+'</td><td><button type="button" data-edit-asset-invoice="'+esc(h.id)+'">Edit</button> '+(profile.role==='ADMIN'?'<button type="button" data-delete-asset-invoice="'+esc(h.id)+'">Hapus</button>':'')+'</td></tr>';
     }).join('')+
     '</tbody></table></div>'+(visibleAssetInvoices.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
 
@@ -750,7 +751,7 @@ async function financeDirectPurchasePage(){
   const assetHistoryReset=document.getElementById('financeAssetHistoryReset');
   if(assetHistoryFilter)assetHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(assetHistoryFilter);assetHistoryState.from=String(fd.get('from')||'');assetHistoryState.to=String(fd.get('to')||'');if(assetHistoryState.from&&assetHistoryState.to&&assetHistoryState.from>assetHistoryState.to){const t=assetHistoryState.from;assetHistoryState.from=assetHistoryState.to;assetHistoryState.to=t}assetHistoryState.shown=true;await financeDirectPurchasePage();};
   if(assetHistoryReset)assetHistoryReset.onclick=async()=>{window.__financeAssetHistory={from:'',to:'',shown:false};await financeDirectPurchasePage();};
-  if(assetHistoryState.shown)bindTableExportActions({tableId:'assetHistoryTable',printId:'assetHistoryPrint',pdfId:'assetHistoryPdf',excelId:'assetHistoryExcel',title:'Riwayat Nota Aset',filename:'Riwayat_Nota_Aset',filterText:'Periode '+(assetHistoryState.from||'-')+' s/d '+(assetHistoryState.to||'-')});
+  if(assetHistoryState.shown)bindTableExportActions({tableId:'assetHistoryTable',printId:'assetHistoryPrint',pdfId:'assetHistoryPdf',excelId:'assetHistoryExcel',title:'Riwayat Nota Aset',filename:'Riwayat_Nota_Aset',filterText:'Periode '+(assetHistoryState.from||'-')+' s/d '+(assetHistoryState.to||'-'),dropLast:true});
 
   const form=document.getElementById('financeAssetInvoiceForm');
   const locationType=document.getElementById('assetLocationType');
@@ -810,11 +811,11 @@ async function financeDirectPurchasePage(){
       '<td><input class="asset-unit" placeholder="UNIT / PCS" value="'+esc(seed.unit||'')+'"></td>'+
       '<td><input class="asset-price" type="text" data-number="1" inputmode="decimal" value="'+esc(seed.unit_price||'')+'"></td>'+
       '<td><strong class="asset-line-total">Rp 0</strong></td>'+
-      '<td><button type="button" class="asset-remove btn-danger">Hapus</button></td>';
+      '<td>'+(selected?'':'<button type="button" class="asset-remove btn-danger">Hapus</button>')+'</td>';
     rowsEl.appendChild(tr);bindRow(tr);bindNumberInputs();calcInvoice();
   };
-  document.getElementById('addAssetItem').onclick=()=>addRow();
-  addRow();
+  const addAssetBtn=document.getElementById('addAssetItem');if(addAssetBtn)addAssetBtn.onclick=()=>addRow();
+  if(selected){const lines=invoiceItems(selected.id);if(lines.length)lines.forEach(x=>addRow({standard_name:x.standard_name,description:x.description,quantity:prodFmt(x.quantity,2),unit:x.unit,unit_price:prodFmt(x.unit_price,0)}));else addRow();}else addRow();
 
   if(form)form.onsubmit=async ev=>{
     ev.preventDefault();
@@ -844,7 +845,9 @@ async function financeDirectPurchasePage(){
     const loc=String(fd.get('asset_location_type')||'KANDANG');
     const info=loc==='KANTOR'?'Kantor':barnLabel(String(fd.get('barn_id')||''));
     if(!await appConfirm('Simpan 1 nota dengan '+items.length+' barang, total Rp '+prodFmt(total,0)+' ke '+info+'?'))return;
-    const {error}=await db.rpc('finance_save_asset_invoice_atomic',{
+    const invoiceId=String(fd.get('invoice_id')||'');
+    const {error}=await db.rpc(invoiceId?'finance_correct_asset_invoice_atomic':'finance_save_asset_invoice_atomic',{
+      ...(invoiceId?{p_invoice_id:invoiceId}:{}),
       p_purchase_date:String(fd.get('purchase_date')||''),
       p_supplier_name:String(fd.get('supplier_name')||'')||null,
       p_asset_location_type:loc,
@@ -856,8 +859,11 @@ async function financeDirectPurchasePage(){
     });
     if(error)return msg(error.message);
     await financeDirectPurchasePage();
-    msg('Nota aset tersimpan. '+items.length+' barang dibuat sebagai aset terpisah dan Arus Kas dihitung satu kali sebesar total nota.',true);
+    msg(invoiceId?'Koreksi nota aset tersimpan dan aset terkait diperbarui.':'Nota aset tersimpan. '+items.length+' barang dibuat sebagai aset terpisah dan Arus Kas dihitung satu kali sebesar total nota.',true);
   };
+  root.querySelectorAll('[data-edit-asset-invoice]').forEach(btn=>btn.onclick=()=>financeDirectPurchasePage(btn.dataset.editAssetInvoice));
+  root.querySelectorAll('[data-delete-asset-invoice]').forEach(btn=>btn.onclick=async()=>{if(!await appConfirm('Hapus nota aset ini beserta aset terkait?'))return;const {error}=await db.rpc('finance_delete_asset_invoice_atomic',{p_invoice_id:btn.dataset.deleteAssetInvoice});if(error)return msg(error.message);await financeDirectPurchasePage();msg('Nota aset dan aset terkait dihapus.',true);});
+  const cancel=document.getElementById('assetInvoiceCancel');if(cancel)cancel.onclick=()=>financeDirectPurchasePage();
 }
 
 async function financeSupplierPayablesPage(){
