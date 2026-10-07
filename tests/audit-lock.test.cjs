@@ -53,3 +53,45 @@ test('AUDIT-LOCK Recording PPL starts day 1 after DOC arrival',()=>{
   assert.match(production,/p_recorded_on:prodDateAdd\(ci\.arrived_on,currentDay\)/);
   assert.doesNotMatch(production,/p_recorded_on:prodDateAdd\(ci\.arrived_on,currentDay-1\)/);
 });
+
+
+test('AUDIT-LOCK completion pack keeps reports filters status and correction controls wired',()=>{
+  const logistics=read('modules/bms-master-logistics.js');
+  const finance=read('modules/bms-finance.js');
+  const production=read('modules/bms-production.js');
+  const admin=read('modules/bms-admin.js');
+  const schema=read('supabase/schema_current.sql');
+
+  for(const id of [
+    'mandiriPurchasePrint','shippingHistoryPrint','externalHistoryPrint','returnHistoryPrint',
+    'externalReturnHistoryPrint','equipmentHistoryPrint','harvestMitraHistoryPrint',
+    'harvestMandiriHistoryPrint','meatHistoryPrint'
+  ]) assert.match(logistics+finance,new RegExp(id));
+
+  for(const id of [
+    'assetHistoryPrint','goodsHistoryPrint','mandiriReceivablePrint','mandiriReceiptHistoryPrint',
+    'mandiriDebtPrint','mandiriSupplierHistoryPrint','mandiriReportPrint','fxPaymentHistoryPrint',
+    'fxBopHistoryPrint','fxMaintenancePrint','warehouseStockPrint','warehouseSendPrint','expMasterPrint'
+  ]) assert.match(finance,new RegExp(id));
+
+  for(const id of ['recordingHistoryPrint','estimateHistoryPrint','abkHistoryPrint','leagueBarnPrint'])
+    assert.match(production,new RegExp(id));
+
+  assert.match(admin,/data-toggle-barn/);
+  assert.match(admin,/data-toggle-item/);
+  assert.match(admin,/assetMasterPrint/);
+  assert.match(admin,/activityLogPrint/);
+  assert.match(logistics,/marketingCustomerTable/);
+  assert.match(logistics,/contractTemplatePrint/);
+  assert.match(logistics,/performanceMasterPrint/);
+
+  for(const rpc of [
+    'delete_logistics_equipment_purchase_atomic',
+    'correct_warehouse_stock_shipment_atomic',
+    'delete_warehouse_stock_shipment_atomic',
+    'finance_correct_stock_invoice_atomic',
+    'finance_delete_stock_invoice_atomic',
+    'finance_correct_asset_invoice_atomic',
+    'finance_delete_asset_invoice_atomic'
+  ]) assert.match(schema,new RegExp(rpc));
+});
