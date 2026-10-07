@@ -1693,7 +1693,7 @@ async function marketingContractHarvestPage(editId=null,mode='MITRA'){
       (selected?' <button type="button" id="cancelHarvestEdit">Batal Edit</button>':'')+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Panen '+mode+'</h3>'+txnHarvest.controls+(mode==='MITRA'&&txnHarvest.st.shown?'<div class="report-actions"><button type="button" id="harvestMitraHistoryPrint">Cetak</button> <button type="button" id="harvestMitraHistoryPdf">PDF</button> <button type="button" id="harvestMitraHistoryExcel">Excel</button></div>':'')+'<div class="tablewrap"><table id="harvestHistoryTable"><thead><tr>'+
+  html+='<section class="panel"><h3>Riwayat Panen '+mode+'</h3>'+txnHarvest.controls+(txnHarvest.st.shown?'<div class="report-actions">'+(mode==='MITRA'?'<button type="button" id="harvestMitraHistoryPrint">Cetak</button> <button type="button" id="harvestMitraHistoryPdf">PDF</button> <button type="button" id="harvestMitraHistoryExcel">Excel</button>':'<button type="button" id="harvestMandiriHistoryPrint">Cetak</button> <button type="button" id="harvestMandiriHistoryPdf">PDF</button> <button type="button" id="harvestMandiriHistoryExcel">Excel</button>')+'</div>':'')+'<div class="tablewrap"><table id="harvestHistoryTable"><thead><tr>'+
     '<th>Tanggal</th><th>Kandang / Siklus</th><th>Jenis</th><th>Pembeli</th><th>No Mobil</th><th>Ekor</th><th>KG</th><th>Harga/Kg</th><th>Total</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     pageRows.map(x=>{
@@ -1732,6 +1732,35 @@ async function marketingContractHarvestPage(editId=null,mode='MITRA'){
       const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Panen Mitra</h2>'+table.outerHTML+'</body></html>';
       const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
       const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Panen_Mitra.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+  };
+  if(mode==='MANDIRI'&&txnHarvest.st.shown){
+    const historyTable=document.getElementById('harvestHistoryTable');
+    const harvestReportHtml=()=>{
+      const table=historyTable?historyTable.cloneNode(true):null;
+      if(table)table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const b=barns.find(x=>x.id===txnHarvest.st.barn);
+      const a=assignments.find(x=>x.id===txnHarvest.st.assignment);
+      return '<!doctype html><html><head><meta charset="utf-8"><title>Riwayat Panen Mandiri</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body>'+
+        '<div class="head"><img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><div>'+esc([company.phone,company.email].filter(Boolean).join(' · '))+'</div></div></div>'+
+        '<h2>Riwayat Panen Mandiri</h2><p>Periode: '+esc(txnHarvest.st.from||'-')+' s/d '+esc(txnHarvest.st.to||'-')+' · Kandang: '+esc(b?shortBarnLabel(b):'Semua Kandang')+' · Siklus: '+esc(a?assignmentCycleLabel(assignments,a):'Semua Siklus')+'</p>'+
+        (table?table.outerHTML:'<p>Tidak ada data.</p>')+'</body></html>';
+    };
+    const printHarvestHistory=pdf=>{
+      const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
+      const html=harvestReportHtml();w.document.write(pdf?html.replace('<title>Riwayat Panen Mandiri</title>','<title>Riwayat_Panen_Mandiri_PDF</title>'):html);w.document.close();
+      setTimeout(()=>{w.focus();w.print();},500);
+    };
+    const printBtn=document.getElementById('harvestMandiriHistoryPrint'),pdfBtn=document.getElementById('harvestMandiriHistoryPdf'),excelBtn=document.getElementById('harvestMandiriHistoryExcel');
+    if(printBtn)printBtn.onclick=()=>printHarvestHistory(false);
+    if(pdfBtn)pdfBtn.onclick=()=>printHarvestHistory(true);
+    if(excelBtn)excelBtn.onclick=()=>{
+      if(!historyTable)return;
+      const table=historyTable.cloneNode(true);
+      table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Panen Mandiri</h2>'+table.outerHTML+'</body></html>';
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Panen_Mandiri.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     };
   };
 
