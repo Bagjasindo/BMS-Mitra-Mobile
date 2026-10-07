@@ -580,10 +580,12 @@ async function logisticsWarehouseStockPage(){
   const items=ir.data||[],headers=hr.data||[],ships=sr.data||[];
   const err=[ir,hr,sr].find(x=>x.error)?.error;
   const sent=id=>ships.filter(x=>x.stock_item_id===id).reduce((n,x)=>n+prodNum(x.quantity),0);
-  let html='<section class="panel"><h3>Stok Barang</h3><p class="muted"><strong>OTOMATIS.</strong> Stok masuk berasal dari Keuangan → Pembelian Barang. Stok keluar berasal dari Logistik → Kirim Barang dari Gudang.</p><div class="tablewrap"><table><thead><tr><th>Barang</th><th>Jenis</th><th>Supplier</th><th>Tanggal Masuk</th><th>Masuk</th><th>Sudah Dikirim</th><th>Sisa Gudang</th><th>Nilai Sisa</th></tr></thead><tbody>'+
+  let html='<section class="panel"><h3>Stok Barang</h3><p class="muted"><strong>OTOMATIS.</strong> Stok masuk berasal dari Keuangan → Pembelian Barang. Stok keluar berasal dari Logistik → Kirim Barang dari Gudang.</p><div class="report-actions"><button type="button" id="warehouseStockPrint">Cetak</button> <button type="button" id="warehouseStockPdf">PDF</button> <button type="button" id="warehouseStockExcel">Excel</button></div><div class="tablewrap"><table id="warehouseStockTable"><thead><tr><th>Barang</th><th>Jenis</th><th>Supplier</th><th>Tanggal Masuk</th><th>Masuk</th><th>Sudah Dikirim</th><th>Sisa Gudang</th><th>Nilai Sisa</th></tr></thead><tbody>'+
     items.map(x=>{const h=headers.find(v=>v.id===x.invoice_id),s=sent(x.id),r=Math.max(0,prodNum(x.quantity)-s);return '<tr><td><strong>'+esc(x.standard_name)+'</strong><br><small>'+esc(x.description||'')+'</small></td><td>'+esc(x.stock_kind==='HABIS_PAKAI'?'Habis Pakai':'Aset')+'</td><td>'+esc(h?.supplier_name||'-')+'</td><td>'+prodDateId(h?.purchase_date||'')+'</td><td>'+prodFmt(x.quantity,2)+' '+esc(x.unit)+'</td><td>'+prodFmt(s,2)+' '+esc(x.unit)+'</td><td><strong>'+prodFmt(r,2)+' '+esc(x.unit)+'</strong></td><td>Rp '+prodFmt(r*prodNum(x.unit_price),0)+'</td></tr>';}).join('')+
     '</tbody></table></div>'+(items.length?'':'<p>Belum ada stok gudang.</p>')+'</section>';
   layout(html);if(err)msg(err.message);
+  attachListFilter({tableId:'warehouseStockTable',fields:[{label:'Barang',col:0,placeholder:'Cari barang'},{label:'Jenis',col:1,placeholder:'Aset / Habis Pakai'},{label:'Supplier',col:2,placeholder:'Cari supplier'},{label:'Tanggal Masuk',col:3,placeholder:'YYYY-MM-DD'}]});
+  bindTableExportActions({tableId:'warehouseStockTable',printId:'warehouseStockPrint',pdfId:'warehouseStockPdf',excelId:'warehouseStockExcel',title:'Stok Barang Gudang',filename:'Stok_Barang_Gudang'});
 }
 
 async function logisticsWarehouseSendPage(){
@@ -627,7 +629,7 @@ async function logisticsWarehouseSendPage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(warehouseHistoryFilter.to||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="warehouseSendHistoryReset">Reset</button></div>'+
     '</form>'+
-    (warehouseHistoryFilter.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Barang</th><th>Jumlah</th><th>Tujuan</th><th>Status</th><th>Referensi</th></tr></thead><tbody>'+
+    (warehouseHistoryFilter.shown?'<div class="report-actions"><button type="button" id="warehouseSendPrint">Cetak</button> <button type="button" id="warehouseSendPdf">PDF</button> <button type="button" id="warehouseSendExcel">Excel</button></div><div class="tablewrap"><table id="warehouseSendTable"><thead><tr><th>Tanggal</th><th>Barang</th><th>Jumlah</th><th>Tujuan</th><th>Status</th><th>Referensi</th></tr></thead><tbody>'+
       warehouseHistoryRows.map(s=>{const x=items.find(v=>v.id===s.stock_item_id),b=barns.find(v=>v.id===s.barn_id);return '<tr><td>'+prodDateId(s.shipment_date)+'</td><td>'+esc(x?.standard_name||'-')+'</td><td>'+prodFmt(s.quantity,2)+' '+esc(x?.unit||'')+'</td><td>'+esc(s.destination_type==='KANTOR'?'Kantor':shortBarnLabel(b))+'</td><td>'+(s.make_asset?'Menjadi Aset':'Distribusi / Pemakaian')+'</td><td>'+esc(s.reference||'-')+'</td></tr>';}).join('')+
       '</tbody></table></div>'+(warehouseHistoryRows.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
     '</section>';
@@ -652,6 +654,7 @@ async function logisticsWarehouseSendPage(){
     window.__warehouseSendHistoryFilter={item:'',destination:'',barn:'',from:'',to:'',shown:false};
     await logisticsWarehouseSendPage();
   };
+  if(warehouseHistoryFilter.shown)bindTableExportActions({tableId:'warehouseSendTable',printId:'warehouseSendPrint',pdfId:'warehouseSendPdf',excelId:'warehouseSendExcel',title:'Riwayat Pengiriman Gudang',filename:'Riwayat_Pengiriman_Gudang',filterText:'Periode '+(warehouseHistoryFilter.from||'-')+' s/d '+(warehouseHistoryFilter.to||'-')});
 
   const dest=document.getElementById('warehouseDestination'),wrap=document.getElementById('warehouseBarnWrap');
   const sync=()=>{wrap.style.display=dest.value==='KANDANG'?'':'none';if(dest.value==='KANTOR')wrap.querySelector('select').value='';};dest.onchange=sync;sync();
@@ -1689,7 +1692,9 @@ async function financeExpeditionMaintenancePage(){
   const rows=mr.data||[],vehicles=vr.data||[],err=(mr.error||vr.error);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const total=rows.reduce((n,x)=>n+prodNum(x.amount),0);
-
+  window.__fxMaintenanceHistory=window.__fxMaintenanceHistory||{vehicle:'',category:'',from:'',to:'',shown:false};
+  const mh=window.__fxMaintenanceHistory;
+  const historyRows=mh.shown?rows.filter(x=>(!mh.vehicle||x.vehicle===mh.vehicle)&&(!mh.category||x.category===mh.category)&&(!mh.from||String(x.incurred_on||'')>=mh.from)&&(!mh.to||String(x.incurred_on||'')<=mh.to)):[];
   window.__fxMaintenanceEdit=window.__fxMaintenanceEdit||'';
   const editId=window.__fxMaintenanceEdit;
   const selected=rows.find(x=>x.id===editId)||null;
@@ -1710,10 +1715,20 @@ async function financeExpeditionMaintenancePage(){
       '<label>Pilih data yang akan dikoreksi<select id="fxMaintenanceEditSelect"><option value="">Tambah data baru / tidak ada koreksi</option>'+
         rows.map(x=>'<option value="'+esc(x.id)+'" '+(editId===x.id?'selected':'')+'>'+esc(prodDateId(x.incurred_on)+' · '+String(x.category||'').replaceAll('_',' ')+' · '+(x.vehicle||'-')+' · Rp '+prodFmt(x.amount,0))+'</option>').join('')+
       '</select></label>'+
+    '</section>'+
+    '<section class="panel"><h3>Riwayat Perawatan Expedisi</h3><form id="fxMaintenanceHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Kendaraan<select name="vehicle"><option value="">Semua Kendaraan</option>'+vehicles.map(v=>'<option value="'+esc(v.plate_number)+'" '+(mh.vehicle===v.plate_number?'selected':'')+'>'+esc(v.plate_number)+'</option>').join('')+'</select></label>'+
+      '<label>Kategori<select name="category"><option value="">Semua Kategori</option>'+['SERVIS','BAN','PAJAK_KENDARAAN','PERBAIKAN','LAINNYA'].map(v=>'<option value="'+v+'" '+(mh.category===v?'selected':'')+'>'+v.replaceAll('_',' ')+'</option>').join('')+'</select></label>'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(mh.from||'')+'"></label><label>Tanggal Sampai<input type="date" name="to" value="'+esc(mh.to||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="fxMaintenanceHistoryReset">Reset</button></div></form>'+
+      (mh.shown?'<div class="report-actions"><button type="button" id="fxMaintenancePrint">Cetak</button> <button type="button" id="fxMaintenancePdf">PDF</button> <button type="button" id="fxMaintenanceExcel">Excel</button></div><div class="tablewrap"><table id="fxMaintenanceHistoryTable"><thead><tr><th>Tanggal</th><th>Kategori</th><th>Kendaraan</th><th>Nominal</th><th>Referensi</th><th>Catatan</th></tr></thead><tbody>'+historyRows.map(x=>'<tr><td>'+prodDateId(x.incurred_on)+'</td><td>'+esc(String(x.category||'').replaceAll('_',' '))+'</td><td>'+esc(x.vehicle||'-')+'</td><td>Rp '+prodFmt(x.amount,0)+'</td><td>'+esc(x.reference||'-')+'</td><td>'+esc(x.notes||'-')+'</td></tr>').join('')+'</tbody></table></div>'+(historyRows.length?'':'<p class="muted">Data tidak ditemukan.</p>'):'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+
     '</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
 
+  const mhf=document.getElementById('fxMaintenanceHistoryFilter');if(mhf)mhf.onsubmit=async e=>{e.preventDefault();const fd=new FormData(mhf);mh.vehicle=String(fd.get('vehicle')||'');mh.category=String(fd.get('category')||'');mh.from=String(fd.get('from')||'');mh.to=String(fd.get('to')||'');if(mh.from&&mh.to&&mh.from>mh.to){const t=mh.from;mh.from=mh.to;mh.to=t}mh.shown=true;await financeExpeditionMaintenancePage();};
+  const mhr=document.getElementById('fxMaintenanceHistoryReset');if(mhr)mhr.onclick=async()=>{window.__fxMaintenanceHistory={vehicle:'',category:'',from:'',to:'',shown:false};await financeExpeditionMaintenancePage();};
+  if(mh.shown)bindTableExportActions({tableId:'fxMaintenanceHistoryTable',printId:'fxMaintenancePrint',pdfId:'fxMaintenancePdf',excelId:'fxMaintenanceExcel',title:'Riwayat Perawatan Expedisi',filename:'Riwayat_Perawatan_Expedisi',filterText:'Periode '+(mh.from||'-')+' s/d '+(mh.to||'-')});
   const editSelect=document.getElementById('fxMaintenanceEditSelect');
   if(editSelect)editSelect.onchange=async()=>{
     window.__fxMaintenanceEdit=editSelect.value||'';
@@ -2494,6 +2509,9 @@ async function financeMandiriSupplierDebtPage(){
     const balance=Math.max(0,total-paid);
     return {...p,total,paid,balance,status:balance<=0.005?'LUNAS':paid>0?'SEBAGIAN':'BELUM BAYAR'};
   });
+  window.__mandiriDebtFilter=window.__mandiriDebtFilter||{supplier:'',status:'',from:'',to:'',shown:false};
+  const debtFilter=window.__mandiriDebtFilter;
+  const visibleRows=debtFilter.shown?rows.filter(x=>(!debtFilter.supplier||x.supplier_id===debtFilter.supplier)&&(!debtFilter.status||x.status===debtFilter.status)&&(!debtFilter.from||String(x.purchase_date||'')>=debtFilter.from)&&(!debtFilter.to||String(x.purchase_date||'')<=debtFilter.to)):[];
   const totalDebt=rows.reduce((n,x)=>n+x.total,0);
   const totalPaid=rows.reduce((n,x)=>n+x.paid,0);
   const totalBalance=rows.reduce((n,x)=>n+x.balance,0);
@@ -2505,8 +2523,13 @@ async function financeMandiriSupplierDebtPage(){
       '<div class="rhpp-summary-card"><span>Sudah Dibayar</span><strong>Rp '+prodFmt(totalPaid,0)+'</strong></div>'+
       '<div class="rhpp-summary-card"><span>Sisa Hutang</span><strong>Rp '+prodFmt(totalBalance,0)+'</strong></div>'+
     '</div></section>'+
-    '<section class="panel"><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Item</th><th>Jumlah</th><th>Harga Beli</th><th>Nilai</th><th>Dibayar</th><th>Sisa Hutang</th><th>Status</th><th>Referensi</th></tr></thead><tbody>'+
-    rows.map(p=>{const s=suppliers.find(x=>x.id===p.supplier_id),i=items.find(x=>x.id===p.item_id);return '<tr>'+
+    '<section class="panel"><h3>Riwayat Hutang Supplier Mandiri</h3><form id="mandiriDebtFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
+      '<label>Supplier<select name="supplier"><option value="">Semua Supplier</option>'+suppliers.map(s=>'<option value="'+esc(s.id)+'" '+(debtFilter.supplier===s.id?'selected':'')+'>'+esc(s.name||'-')+'</option>').join('')+'</select></label>'+
+      '<label>Status<select name="status"><option value="">Semua Status</option>'+['BELUM BAYAR','SEBAGIAN','LUNAS'].map(v=>'<option value="'+v+'" '+(debtFilter.status===v?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
+      '<label>Tanggal Dari<input type="date" name="from" value="'+esc(debtFilter.from||'')+'"></label><label>Tanggal Sampai<input type="date" name="to" value="'+esc(debtFilter.to||'')+'"></label>'+
+      '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="mandiriDebtReset">Reset</button></div></form>'+
+      (debtFilter.shown?'<div class="report-actions"><button type="button" id="mandiriDebtPrint">Cetak</button> <button type="button" id="mandiriDebtPdf">PDF</button> <button type="button" id="mandiriDebtExcel">Excel</button></div><div class="tablewrap"><table id="mandiriDebtTable"><thead><tr><th>Tanggal</th><th>Supplier</th><th>Item</th><th>Jumlah</th><th>Harga Beli</th><th>Nilai</th><th>Dibayar</th><th>Sisa Hutang</th><th>Status</th><th>Referensi</th></tr></thead><tbody>'+
+    visibleRows.map(p=>{const s=suppliers.find(x=>x.id===p.supplier_id),i=items.find(x=>x.id===p.item_id);return '<tr>'+
       '<td>'+prodDateId(p.purchase_date)+'</td>'+
       '<td>'+esc(s?.name||'-')+'</td>'+
       '<td>'+esc(i?.name||'-')+'</td>'+
@@ -2518,9 +2541,12 @@ async function financeMandiriSupplierDebtPage(){
       '<td><strong>'+esc(p.status)+'</strong></td>'+
       '<td>'+esc(p.reference_number||'-')+'</td>'+
     '</tr>';}).join('')+
-    '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada pembelian Mandiri.</p>')+'</section>';
+    '</tbody></table></div>'+(visibleRows.length?'':'<p class="muted">Data hutang tidak ditemukan.</p>'):'<p class="muted">Pilih filter lalu tekan Tampilkan.</p>')+'</section>';
   layout(html);
   const err=[pr,sr,ir,pyr].find(x=>x.error)?.error;if(err)msg(err.message);
+  const df=document.getElementById('mandiriDebtFilter');if(df)df.onsubmit=async e=>{e.preventDefault();const fd=new FormData(df);debtFilter.supplier=String(fd.get('supplier')||'');debtFilter.status=String(fd.get('status')||'');debtFilter.from=String(fd.get('from')||'');debtFilter.to=String(fd.get('to')||'');if(debtFilter.from&&debtFilter.to&&debtFilter.from>debtFilter.to){const t=debtFilter.from;debtFilter.from=debtFilter.to;debtFilter.to=t}debtFilter.shown=true;await financeMandiriSupplierDebtPage();};
+  const drs=document.getElementById('mandiriDebtReset');if(drs)drs.onclick=async()=>{window.__mandiriDebtFilter={supplier:'',status:'',from:'',to:'',shown:false};await financeMandiriSupplierDebtPage();};
+  if(debtFilter.shown)bindTableExportActions({tableId:'mandiriDebtTable',printId:'mandiriDebtPrint',pdfId:'mandiriDebtPdf',excelId:'mandiriDebtExcel',title:'Hutang Supplier Mandiri',filename:'Hutang_Supplier_Mandiri',filterText:'Periode '+(debtFilter.from||'-')+' s/d '+(debtFilter.to||'-')});
 }
 
 async function financeMandiriSupplierPaymentPage(){
