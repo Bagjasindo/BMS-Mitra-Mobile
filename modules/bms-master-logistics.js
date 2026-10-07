@@ -1142,16 +1142,17 @@ async function logisticsShippingPage(editId=null){
 }
 
 async function logisticsExternalShippingPage(editId=null){
-  const [br,sr,ir,ar,hr,hir]=await Promise.all([
+  const [br,sr,ir,ar,hr,hir,cpr]=await Promise.all([
     db.from('barns').select('id,code,name,location,active').eq('active',true).order('code',{ascending:true}),
     db.from('suppliers').select('id,code,name,active,supplier_type').eq('active',true).eq('supplier_type','SAPRONAK').order('code',{ascending:true}),
     db.from('items').select('id,code,name,category,feed_phase,unit,kg_per_unit,supplier_id,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,active,start_date,cycle_type').order('created_at',{ascending:false}),
     db.from('logistics_external_shipments').select('*').order('shipment_date',{ascending:false}).order('created_at',{ascending:false}),
-    db.from('logistics_external_shipment_items').select('*').order('created_at',{ascending:false})
+    db.from('logistics_external_shipment_items').select('*').order('created_at',{ascending:false}),
+    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
   ]);
   const barns=br.data||[], supplierRows=sr.data||[], itemRows=ir.data||[], assignments=ar.data||[];
-  const headers=hr.data||[], detailRows=hir.data||[];
+  const headers=hr.data||[], detailRows=hir.data||[], company=cpr.data||{};
   const txnExternal=txnListState(headers,'externalSapronak','shipment_date',5,barns),shownHeaders=txnExternal.rows;
   const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
@@ -1188,7 +1189,7 @@ async function logisticsExternalShippingPage(editId=null){
       (selected?' <button type="button" id="cancelExternalEdit">Batal Edit</button>':'')+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Tambah Sapronak</h3>'+txnExternal.controls+'<div class="tablewrap"><table><thead><tr>'+
+  html+='<section class="panel"><h3>Riwayat Tambah Sapronak</h3>'+txnExternal.controls+(txnExternal.st.shown?'<div class="report-actions"><button type="button" id="externalHistoryPrint">Cetak</button> <button type="button" id="externalHistoryPdf">PDF</button> <button type="button" id="externalHistoryExcel">Excel</button></div>':'')+'<div class="tablewrap"><table id="externalHistoryTable"><thead><tr>'+
     '<th>Tanggal</th><th>Kandang</th><th>Supplier</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg/Satuan</th><th>Total Kg</th><th>Harga/Satuan</th><th>Harga/Kg</th><th>Total</th><th>Referensi</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     shownHeaders.map(h=>{
@@ -1206,9 +1207,38 @@ async function logisticsExternalShippingPage(editId=null){
     '</tbody></table></div>'+(!txnExternal.total?'<p>Data Tambah Sapronak tidak ditemukan.</p>':'')+txnExternal.pager+'</section>';
 
   layout(html);
-  [br,sr,ir,ar,hr,hir].forEach(x=>{if(x.error)msg(x.error.message)});
+  [br,sr,ir,ar,hr,hir,cpr].forEach(x=>{if(x.error)msg(x.error.message)});
   bindNumberInputs();
   bindTxnList(txnExternal,()=>logisticsExternalShippingPage());
+
+  if(txnExternal.st.shown){
+    const historyTable=document.getElementById('externalHistoryTable');
+    const externalReportHtml=()=>{
+      const table=historyTable?historyTable.cloneNode(true):null;
+      if(table)table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const b=barns.find(x=>x.id===txnExternal.st.barn);
+      return '<!doctype html><html><head><meta charset="utf-8"><title>Riwayat Tambah Sapronak</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:8.5px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body>'+
+        '<div class="head"><img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><div>'+esc([company.phone,company.email].filter(Boolean).join(' · '))+'</div></div></div>'+
+        '<h2>Riwayat Tambah Sapronak</h2><p>Periode: '+esc(txnExternal.st.from||'-')+' s/d '+esc(txnExternal.st.to||'-')+' · Kandang: '+esc(b?shortBarnLabel(b):'Semua Kandang')+'</p>'+
+        (table?table.outerHTML:'<p>Tidak ada data.</p>')+'</body></html>';
+    };
+    const printExternalHistory=pdf=>{
+      const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
+      const html=externalReportHtml();w.document.write(pdf?html.replace('<title>Riwayat Tambah Sapronak</title>','<title>Riwayat_Tambah_Sapronak_PDF</title>'):html);w.document.close();
+      setTimeout(()=>{w.focus();w.print();},500);
+    };
+    const printBtn=document.getElementById('externalHistoryPrint'),pdfBtn=document.getElementById('externalHistoryPdf'),excelBtn=document.getElementById('externalHistoryExcel');
+    if(printBtn)printBtn.onclick=()=>printExternalHistory(false);
+    if(pdfBtn)pdfBtn.onclick=()=>printExternalHistory(true);
+    if(excelBtn)excelBtn.onclick=()=>{
+      if(!historyTable)return;
+      const table=historyTable.cloneNode(true);
+      table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Tambah Sapronak</h2>'+table.outerHTML+'</body></html>';
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Tambah_Sapronak.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+  };
 
   const form=document.getElementById('externalShippingForm');
   const externalBarnSearch=document.getElementById('externalBarnSearch');
