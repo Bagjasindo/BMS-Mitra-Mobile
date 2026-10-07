@@ -467,7 +467,7 @@ async function financeStockPurchasePage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(goodsHistoryState.to||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="financeGoodsHistoryReset">Reset</button></div>'+
     '</form>'+
-    (goodsHistoryState.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Tujuan</th><th>Barang</th><th>Total</th><th>Metode</th></tr></thead><tbody>'+
+    (goodsHistoryState.shown?'<div class="report-actions"><button type="button" id="goodsHistoryPrint">Cetak</button> <button type="button" id="goodsHistoryPdf">PDF</button> <button type="button" id="goodsHistoryExcel">Excel</button></div><div class="tablewrap"><table id="goodsHistoryTable"><thead><tr><th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Tujuan</th><th>Barang</th><th>Total</th><th>Metode</th></tr></thead><tbody>'+
     visibleHistory.map(h=>'<tr><td>'+prodDateId(h.date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier||'-')+'</td><td>'+esc(h.destination)+'</td><td>'+esc(h.items||'-')+'</td><td>Rp '+prodFmt(h.total,0)+'</td><td>'+esc(h.method||'-')+'</td></tr>').join('')+
     '</tbody></table></div>'+(visibleHistory.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
 
@@ -477,6 +477,7 @@ async function financeStockPurchasePage(){
   const goodsHistoryReset=document.getElementById('financeGoodsHistoryReset');
   if(goodsHistoryFilter)goodsHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(goodsHistoryFilter);goodsHistoryState.from=String(fd.get('from')||'');goodsHistoryState.to=String(fd.get('to')||'');if(goodsHistoryState.from&&goodsHistoryState.to&&goodsHistoryState.from>goodsHistoryState.to){const t=goodsHistoryState.from;goodsHistoryState.from=goodsHistoryState.to;goodsHistoryState.to=t}goodsHistoryState.shown=true;await financeStockPurchasePage();};
   if(goodsHistoryReset)goodsHistoryReset.onclick=async()=>{window.__financeGoodsHistory={from:'',to:'',shown:false};await financeStockPurchasePage();};
+  if(goodsHistoryState.shown)bindTableExportActions({tableId:'goodsHistoryTable',printId:'goodsHistoryPrint',pdfId:'goodsHistoryPdf',excelId:'goodsHistoryExcel',title:'Riwayat Pembelian Barang',filename:'Riwayat_Pembelian_Barang',filterText:'Periode '+(goodsHistoryState.from||'-')+' s/d '+(goodsHistoryState.to||'-')});
 
   const form=document.getElementById('financeGoodsPurchaseForm');
   const tbody=document.getElementById('goodsPurchaseRows');
@@ -707,7 +708,7 @@ async function financeDirectPurchasePage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(assetHistoryState.to||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="financeAssetHistoryReset">Reset</button></div>'+
     '</form>'+
-    (assetHistoryState.shown?'<div class="tablewrap"><table><thead><tr>'+
+    (assetHistoryState.shown?'<div class="report-actions"><button type="button" id="assetHistoryPrint">Cetak</button> <button type="button" id="assetHistoryPdf">PDF</button> <button type="button" id="assetHistoryExcel">Excel</button></div><div class="tablewrap"><table id="assetHistoryTable"><thead><tr>'+
     '<th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Lokasi</th><th>Barang</th><th>Jumlah Jenis</th><th>Total Nota</th><th>Metode</th>'+
     '</tr></thead><tbody>'+
     visibleAssetInvoices.map(h=>{
@@ -723,6 +724,7 @@ async function financeDirectPurchasePage(){
   const assetHistoryReset=document.getElementById('financeAssetHistoryReset');
   if(assetHistoryFilter)assetHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(assetHistoryFilter);assetHistoryState.from=String(fd.get('from')||'');assetHistoryState.to=String(fd.get('to')||'');if(assetHistoryState.from&&assetHistoryState.to&&assetHistoryState.from>assetHistoryState.to){const t=assetHistoryState.from;assetHistoryState.from=assetHistoryState.to;assetHistoryState.to=t}assetHistoryState.shown=true;await financeDirectPurchasePage();};
   if(assetHistoryReset)assetHistoryReset.onclick=async()=>{window.__financeAssetHistory={from:'',to:'',shown:false};await financeDirectPurchasePage();};
+  if(assetHistoryState.shown)bindTableExportActions({tableId:'assetHistoryTable',printId:'assetHistoryPrint',pdfId:'assetHistoryPdf',excelId:'assetHistoryExcel',title:'Riwayat Nota Aset',filename:'Riwayat_Nota_Aset',filterText:'Periode '+(assetHistoryState.from||'-')+' s/d '+(assetHistoryState.to||'-')});
 
   const form=document.getElementById('financeAssetInvoiceForm');
   const locationType=document.getElementById('assetLocationType');
@@ -1227,7 +1229,7 @@ async function financeExpeditionPaymentPage(){
         '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(fxHistoryState.to||'')+'"></label>'+
         '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="fxPaymentHistoryReset">Reset</button></div>'+
       '</form>'+
-      (fxHistoryState.shown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Invoice</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+fxHistoryRows.map(p=>{const i=invoices.find(x=>x.id===p.invoice_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(i?.invoice_number||'-')+'</td><td>'+esc(p.method||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-exp-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_expedition_payments',p.id)+'</div></td></tr>';}).join('')+'</tbody></table></div>'+(fxHistoryRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
+      (fxHistoryState.shown?'<div class="report-actions"><button type="button" id="fxPaymentHistoryPrint">Cetak</button> <button type="button" id="fxPaymentHistoryPdf">PDF</button> <button type="button" id="fxPaymentHistoryExcel">Excel</button></div><div class="tablewrap"><table id="fxPaymentHistoryTable"><thead><tr><th>Tanggal</th><th>Invoice</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+fxHistoryRows.map(p=>{const i=invoices.find(x=>x.id===p.invoice_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(i?.invoice_number||'-')+'</td><td>'+esc(p.method||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.reference||'-')+'</td><td><div class="inline-actions"><button type="button" data-edit-exp-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_expedition_payments',p.id)+'</div></td></tr>';}).join('')+'</tbody></table></div>'+(fxHistoryRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
     '</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
@@ -1236,6 +1238,7 @@ async function financeExpeditionPaymentPage(){
   const fxPaymentHistoryReset=document.getElementById('fxPaymentHistoryReset');
   if(fxPaymentHistoryFilter)fxPaymentHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(fxPaymentHistoryFilter);fxHistoryState.from=String(fd.get('from')||'');fxHistoryState.to=String(fd.get('to')||'');if(fxHistoryState.from&&fxHistoryState.to&&fxHistoryState.from>fxHistoryState.to){const t=fxHistoryState.from;fxHistoryState.from=fxHistoryState.to;fxHistoryState.to=t}fxHistoryState.shown=true;await financeExpeditionPaymentPage();};
   if(fxPaymentHistoryReset)fxPaymentHistoryReset.onclick=async()=>{window.__fxPaymentHistory={from:'',to:'',shown:false};await financeExpeditionPaymentPage();};
+  if(fxHistoryState.shown)bindTableExportActions({tableId:'fxPaymentHistoryTable',printId:'fxPaymentHistoryPrint',pdfId:'fxPaymentHistoryPdf',excelId:'fxPaymentHistoryExcel',title:'Riwayat Penerimaan Expedisi',filename:'Riwayat_Penerimaan_Expedisi',filterText:'Periode '+(fxHistoryState.from||'-')+' s/d '+(fxHistoryState.to||'-'),dropLast:true});
 
   root.querySelectorAll('[data-edit-exp-payment]').forEach(btn=>btn.onclick=async()=>{window.__fxPaymentEdit=btn.dataset.editExpPayment||'';await financeExpeditionPaymentPage();document.getElementById('fxPaymentForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
   const cancelEdit=document.getElementById('fxPaymentCancelEdit');if(cancelEdit)cancelEdit.onclick=async()=>{window.__fxPaymentEdit='';await financeExpeditionPaymentPage();};
@@ -2002,7 +2005,7 @@ async function financeExpeditionBopPage(){
       '<div><h3 style="margin-bottom:4px">Trip Belum / Sudah Masuk BOP</h3><p class="muted" style="margin:0">Belum: '+countPending+' · Sudah: '+countDone+' · Total trip fisik: '+physicalTrips.length+'</p></div>'+
       '<label style="min-width:220px">Filter Status<select id="fxBopStatusFilter"><option value="BELUM" '+(bopFilter==='BELUM'?'selected':'')+'>Belum Masuk</option><option value="SUDAH" '+(bopFilter==='SUDAH'?'selected':'')+'>Sudah Masuk</option><option value="SEMUA" '+(bopFilter==='SEMUA'?'selected':'')+'>Semua</option></select></label>'+
     '</div>'+
-    '<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Rute</th><th>Sopir / Truk</th><th>Nominal OP</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    '<div class="report-actions"><button type="button" id="fxBopHistoryPrint">Cetak</button> <button type="button" id="fxBopHistoryPdf">PDF</button> <button type="button" id="fxBopHistoryExcel">Excel</button></div><div class="tablewrap"><table id="fxBopHistoryTable"><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Rute</th><th>Sopir / Truk</th><th>Nominal OP</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
       visibleTrips.map(t=>{
         const posted=autoTotalFor(t.id),done=posted>0;
         return '<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.zone||'-')+'</td>'+
@@ -2014,6 +2017,7 @@ async function financeExpeditionBopPage(){
     '</tbody></table></div>'+(visibleTrips.length?'':'<p class="muted">'+(bopFilter==='BELUM'&&countPending===0?'Semua trip sudah masuk BOP. Tidak ada trip yang menunggu input.':'Tidak ada trip pada filter ini.')+'</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  bindTableExportActions({tableId:'fxBopHistoryTable',printId:'fxBopHistoryPrint',pdfId:'fxBopHistoryPdf',excelId:'fxBopHistoryExcel',title:'BOP Expedisi',filename:'BOP_Expedisi',filterText:'Status '+bopFilter,dropLast:true});
 
   const kasForm=document.getElementById('fxKasJalanForm');
   if(kasForm){
@@ -2402,7 +2406,7 @@ async function financeMandiriReceiptsPage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(st.historyTo||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="mandiriReceiptHistoryReset">Reset</button></div>'+
     '</form>'+
-    (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+selectedReceiptRows.map(r=>'<tr><td>'+prodDateId(r.received_on)+'</td><td>'+esc(r.method)+'</td><td>Rp '+prodFmt(r.amount,0)+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(r.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-receipt="'+esc(r.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_sales_receipts',r.id)+'</div></td></tr>').join('')+
+    (st.historyShown?'<div class="report-actions"><button type="button" id="mandiriReceiptHistoryPrint">Cetak</button> <button type="button" id="mandiriReceiptHistoryPdf">PDF</button> <button type="button" id="mandiriReceiptHistoryExcel">Excel</button></div><div class="tablewrap"><table id="mandiriReceiptHistoryTable"><thead><tr><th>Tanggal</th><th>Metode</th><th>Nominal</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+selectedReceiptRows.map(r=>'<tr><td>'+prodDateId(r.received_on)+'</td><td>'+esc(r.method)+'</td><td>Rp '+prodFmt(r.amount,0)+'</td><td>'+esc(r.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(r.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-receipt="'+esc(r.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_sales_receipts',r.id)+'</div></td></tr>').join('')+
     '</tbody></table></div>'+(selectedReceiptRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
@@ -2410,6 +2414,7 @@ async function financeMandiriReceiptsPage(){
   const mandiriReceiptHistoryReset=document.getElementById('mandiriReceiptHistoryReset');
   if(mandiriReceiptHistoryFilter)mandiriReceiptHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(mandiriReceiptHistoryFilter);st.historyFrom=String(fd.get('from')||'');st.historyTo=String(fd.get('to')||'');if(st.historyFrom&&st.historyTo&&st.historyFrom>st.historyTo){const t=st.historyFrom;st.historyFrom=st.historyTo;st.historyTo=t}st.historyShown=true;await financeMandiriReceiptsPage();};
   if(mandiriReceiptHistoryReset)mandiriReceiptHistoryReset.onclick=async()=>{st.historyFrom='';st.historyTo='';st.historyShown=false;await financeMandiriReceiptsPage();};
+  if(st.historyShown)bindTableExportActions({tableId:'mandiriReceiptHistoryTable',printId:'mandiriReceiptHistoryPrint',pdfId:'mandiriReceiptHistoryPdf',excelId:'mandiriReceiptHistoryExcel',title:'Riwayat Penerimaan Penjualan Mandiri',filename:'Riwayat_Penerimaan_Mandiri',filterText:'Periode '+(st.historyFrom||'-')+' s/d '+(st.historyTo||'-'),dropLast:true});
 
   const status=document.getElementById('mandiriReceiptStatus');
   if(status)status.onchange=async()=>{st.status=status.value||'';st.selected='';await financeMandiriReceiptsPage();};
@@ -2466,10 +2471,11 @@ async function financeMandiriReceivablePage(){
   const sales=rows.reduce((n,x)=>n+prodNum(x.total_amount),0),received=rows.reduce((n,x)=>n+x.received,0),balance=rows.reduce((n,x)=>n+x.balance,0);
   let html='<section class="panel"><h3>Piutang Penjualan Mandiri</h3><p class="muted">READ ONLY. Panen Mandiri dari Marketing otomatis menjadi piutang pelanggan. Penerimaan uang dilakukan dari submenu Penerimaan Penjualan.</p>'+
     '<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Total Penjualan</span><strong>Rp '+prodFmt(sales,0)+'</strong></div><div class="rhpp-summary-card"><span>Sudah Diterima</span><strong>Rp '+prodFmt(received,0)+'</strong></div><div class="rhpp-summary-card"><span>Sisa Piutang</span><strong>Rp '+prodFmt(balance,0)+'</strong></div></div></section>'+
-    '<section class="panel"><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Kandang / Siklus</th><th>Pelanggan</th><th>No. Transaksi</th><th>Penjualan</th><th>Diterima</th><th>Sisa Piutang</th><th>Status</th></tr></thead><tbody>'+
+    '<section class="panel"><div class="report-actions"><button type="button" id="mandiriReceivablePrint">Cetak</button> <button type="button" id="mandiriReceivablePdf">PDF</button> <button type="button" id="mandiriReceivableExcel">Excel</button></div><div class="tablewrap"><table id="mandiriReceivableTable"><thead><tr><th>Tanggal</th><th>Kandang / Siklus</th><th>Pelanggan</th><th>No. Transaksi</th><th>Penjualan</th><th>Diterima</th><th>Sisa Piutang</th><th>Status</th></tr></thead><tbody>'+
     rows.map(x=>{const a=map.get(x.contract_assignment_id);return '<tr><td>'+prodDateId(x.harvested_on)+'</td><td>'+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):'-')+'</td><td>'+esc(x.buyer_name||'-')+'</td><td>'+esc(x.transaction_number||'-')+'</td><td>Rp '+prodFmt(x.total_amount,0)+'</td><td>Rp '+prodFmt(x.received,0)+'</td><td><strong>Rp '+prodFmt(x.balance,0)+'</strong></td><td><strong>'+esc(x.status)+'</strong></td></tr>';}).join('')+
     '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada penjualan Mandiri.</p>')+'</section>';
   layout(html);const err=[hr,ar,br,rr,cr].find(x=>x.error)?.error;if(err)msg(err.message);
+  bindTableExportActions({tableId:'mandiriReceivableTable',printId:'mandiriReceivablePrint',pdfId:'mandiriReceivablePdf',excelId:'mandiriReceivableExcel',title:'Piutang Penjualan Mandiri',filename:'Piutang_Penjualan_Mandiri'});
 }
 
 async function financeMandiriSupplierDebtPage(){
@@ -2593,7 +2599,7 @@ async function financeMandiriSupplierPaymentPage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(st.historyTo||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="mandiriSupplierHistoryReset">Reset</button></div>'+
     '</form>'+
-    (st.historyShown?'<div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
+    (st.historyShown?'<div class="report-actions"><button type="button" id="mandiriSupplierHistoryPrint">Cetak</button> <button type="button" id="mandiriSupplierHistoryPdf">PDF</button> <button type="button" id="mandiriSupplierHistoryExcel">Excel</button></div><div class="tablewrap"><table id="mandiriSupplierHistoryTable"><thead><tr><th>Tanggal</th><th>Supplier</th><th>Nominal</th><th>Metode</th><th>Referensi</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+
       history.map(p=>{const pur=purchases.find(x=>x.id===p.purchase_id),s=suppliers.find(x=>x.id===pur?.supplier_id);return '<tr><td>'+prodDateId(p.paid_on)+'</td><td>'+esc(s?.name||'-')+'</td><td>Rp '+prodFmt(p.amount,0)+'</td><td>'+esc(p.method)+'</td><td>'+esc(p.reference||'-')+'</td><td>'+esc(financeOriginalNoteDisplay(p.notes))+'</td><td><div class="inline-actions"><button type="button" data-edit-mandiri-supplier-payment="'+esc(p.id)+'">Edit</button>'+adminDeleteTxnButton('finance_mandiri_supplier_payments',p.id)+'</div></td></tr>';}).join('')+
       '</tbody></table></div>'+(history.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
     '</section>';
@@ -2605,6 +2611,7 @@ async function financeMandiriSupplierPaymentPage(){
   const mandiriSupplierHistoryReset=document.getElementById('mandiriSupplierHistoryReset');
   if(mandiriSupplierHistoryFilter)mandiriSupplierHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(mandiriSupplierHistoryFilter);st.historyFrom=String(fd.get('from')||'');st.historyTo=String(fd.get('to')||'');if(st.historyFrom&&st.historyTo&&st.historyFrom>st.historyTo){const t=st.historyFrom;st.historyFrom=st.historyTo;st.historyTo=t}st.historyShown=true;await financeMandiriSupplierPaymentPage();};
   if(mandiriSupplierHistoryReset)mandiriSupplierHistoryReset.onclick=async()=>{st.historyFrom='';st.historyTo='';st.historyShown=false;await financeMandiriSupplierPaymentPage();};
+  if(st.historyShown)bindTableExportActions({tableId:'mandiriSupplierHistoryTable',printId:'mandiriSupplierHistoryPrint',pdfId:'mandiriSupplierHistoryPdf',excelId:'mandiriSupplierHistoryExcel',title:'Riwayat Pembayaran Supplier Mandiri',filename:'Riwayat_Pembayaran_Supplier_Mandiri',filterText:'Periode '+(st.historyFrom||'-')+' s/d '+(st.historyTo||'-'),dropLast:true});
 
   const status=document.getElementById('mandiriSupplierPaymentStatus');
   if(status)status.onchange=async()=>{st.status=status.value||'';st.selected='';await financeMandiriSupplierPaymentPage();};
@@ -2655,10 +2662,11 @@ async function financeMandiriReportPage(){
   const net=sales-bop-sap-meat;
   let html='<section class="panel"><h3>Laporan Keuangan Mandiri</h3><p class="muted">Khusus siklus Mandiri. Tidak mencampur RHPP Real Mitra. Laba Operasional belum mengurangi Perawatan Jangka Panjang.</p>'+
     '<div class="rhpp-summary-cards"><div class="rhpp-summary-card"><span>Penjualan Mandiri</span><strong>Rp '+prodFmt(sales,0)+'</strong></div><div class="rhpp-summary-card"><span>BOP Produksi</span><strong>Rp '+prodFmt(bop,0)+'</strong></div><div class="rhpp-summary-card"><span>Biaya Sapronak</span><strong>Rp '+prodFmt(sap,0)+'</strong></div><div class="rhpp-summary-card"><span>Laba Operasional (Sebelum Perawatan)</span><strong>Rp '+prodFmt(net,0)+'</strong></div></div></section>'+
-    '<section class="panel"><div class="tablewrap"><table><thead><tr><th>Kandang / Siklus</th><th>Status</th><th>Penjualan</th><th>BOP</th><th>Sapronak</th><th>Tambah Daging</th><th>Laba Operasional</th></tr></thead><tbody>'+
+    '<section class="panel"><div class="report-actions"><button type="button" id="mandiriReportPrint">Cetak</button> <button type="button" id="mandiriReportPdf">PDF</button> <button type="button" id="mandiriReportExcel">Excel</button></div><div class="tablewrap"><table id="mandiriReportTable"><thead><tr><th>Kandang / Siklus</th><th>Status</th><th>Penjualan</th><th>BOP</th><th>Sapronak</th><th>Tambah Daging</th><th>Laba Operasional</th></tr></thead><tbody>'+
     rows.map(x=>{const a=amap.get(x.contract_assignment_id);const n=prodNum(x.rhpp_real)-prodNum(x.bop_produksi)-prodNum(x.sapronak_luar)-prodNum(x.tambah_daging);return '<tr><td>'+esc(a?assignmentIdentity(assignments,barns,contractsRows,a):'-')+'</td><td>'+esc(x.active?'PROSES':'CLOSED')+'</td><td>Rp '+prodFmt(x.rhpp_real,0)+'</td><td>Rp '+prodFmt(x.bop_produksi,0)+'</td><td>Rp '+prodFmt(x.sapronak_luar,0)+'</td><td>Rp '+prodFmt(x.tambah_daging,0)+'</td><td><strong>Rp '+prodFmt(n,0)+'</strong></td></tr>';}).join('')+
     '</tbody></table></div>'+(rows.length?'':'<p class="muted">Belum ada siklus Mandiri.</p>')+'</section>';
   layout(html);const err=[xr,ar,br,cr].find(x=>x.error)?.error;if(err)msg(err.message);
+  bindTableExportActions({tableId:'mandiriReportTable',printId:'mandiriReportPrint',pdfId:'mandiriReportPdf',excelId:'mandiriReportExcel',title:'Laporan Keuangan Mandiri',filename:'Laporan_Keuangan_Mandiri'});
 }
 
 
