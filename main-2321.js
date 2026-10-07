@@ -185,6 +185,19 @@ const bindTableExportActions=({tableId,printId,pdfId,excelId,title,filename,filt
   if(pdfBtn)pdfBtn.onclick=async()=>{const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');w.document.write((await reportHtml()).replace('<title>'+esc(title)+'</title>','<title>'+esc(filename+'_PDF')+'</title>'));w.document.close();setTimeout(()=>{w.focus();w.print();},500);};
   if(excelBtn)excelBtn.onclick=()=>{const t=cleanTable();const html='<html><head><meta charset="utf-8"></head><body><h2>'+esc(title)+'</h2>'+(filterText?'<p>'+esc(filterText)+'</p>':'')+t.outerHTML+'</body></html>';const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 };
+const bindHtmlExportActions=({elementId,printId,pdfId,excelId,title,filename,filterText=''})=>{
+  const source=document.getElementById(elementId);if(!source)return;
+  const clean=()=>{const x=source.cloneNode(true);x.querySelectorAll('[data-export-skip]').forEach(n=>n.remove());return x;};
+  const reportHtml=async()=>{
+    const {data:company}=await db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle();
+    const x=clean();
+    return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body><div class="head"><img src="'+esc(company?.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company?.company_name||company?.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company?.address||'')+'</div><div>'+esc([company?.phone,company?.email].filter(Boolean).join(' · '))+'</div></div></div><h2>'+esc(title)+'</h2>'+(filterText?'<p>'+esc(filterText)+'</p>':'')+x.outerHTML+'</body></html>';
+  };
+  const p=document.getElementById(printId),d=document.getElementById(pdfId),e=document.getElementById(excelId);
+  if(p)p.onclick=async()=>{const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');w.document.write(await reportHtml());w.document.close();setTimeout(()=>{w.focus();w.print();},500);};
+  if(d)d.onclick=async()=>{const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');w.document.write((await reportHtml()).replace('<title>'+esc(title)+'</title>','<title>'+esc(filename+'_PDF')+'</title>'));w.document.close();setTimeout(()=>{w.focus();w.print();},500);};
+  if(e)e.onclick=()=>{const x=clean();const html='<html><head><meta charset="utf-8"></head><body><h2>'+esc(title)+'</h2>'+(filterText?'<p>'+esc(filterText)+'</p>':'')+x.outerHTML+'</body></html>';const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+};
 const bindTxnList=(x,render)=>{
   const barn=root.querySelector('[data-txn-barn="'+x.key+'"]'),assignment=root.querySelector('[data-txn-assignment="'+x.key+'"]'),status=root.querySelector('[data-txn-status="'+x.key+'"]'),from=root.querySelector('[data-txn-from="'+x.key+'"]'),to=root.querySelector('[data-txn-to="'+x.key+'"]'),search=root.querySelector('[data-txn-search="'+x.key+'"]'),reset=root.querySelector('[data-txn-reset="'+x.key+'"]');
   if(barn&&assignment)barn.onchange=()=>{
