@@ -177,7 +177,7 @@ async function contractMasterPage(){
     '</tbody></table></div></section>';
 
   html+='<section class="panel"><h3>Template Kontrak</h3><p class="muted">Penggunaan kontrak dilakukan dari menu Logistik → Buat Siklus, lalu pilih Mitra.</p>';
-  html+='<div class="tablewrap"><table id="contractTemplateTable"><thead><tr><th>Nama Kontrak</th><th>Tanggal Berlaku</th><th>Performa</th><th>Harga</th><th>Bonus IP</th><th>Bonus FCR / Deplesi</th><th>Aksi</th></tr></thead><tbody>'+
+  html+='<div class="report-actions"><button type="button" id="contractTemplatePrint">Cetak</button> <button type="button" id="contractTemplatePdf">PDF</button> <button type="button" id="contractTemplateExcel">Excel</button></div><div class="tablewrap"><table id="contractTemplateTable"><thead><tr><th>Nama Kontrak</th><th>Tanggal Berlaku</th><th>Performa</th><th>Harga</th><th>Bonus IP</th><th>Bonus FCR / Deplesi</th><th>Aksi</th></tr></thead><tbody>'+
     templates.map(t=>{
       const tPrices=(pr.data||[]).filter(x=>x.contract_id===t.id);
       const tBonuses=(br.data||[]).filter(x=>x.contract_id===t.id);
@@ -200,6 +200,7 @@ async function contractMasterPage(){
     {label:'Tanggal Berlaku',col:1,placeholder:'YYYY-MM-DD'},
     {label:'Performa',col:2,placeholder:'Template performa'}
   ]});
+  bindTableExportActions({tableId:'contractTemplateTable',printId:'contractTemplatePrint',pdfId:'contractTemplatePdf',excelId:'contractTemplateExcel',title:'Master Kontrak',filename:'Master_Kontrak',dropLast:true});
 
   if(!can)return;
 
@@ -348,7 +349,7 @@ async function performanceMasterPage(){
     '</form>';
   }
 
-  html+='<div class="tablewrap"><table id="performanceMasterTable"><thead><tr><th>Umur</th><th>Std Pakan g/ekor</th><th>Std BW g</th><th>Std FCR</th>'+(can?'<th>Aksi</th>':'')+'</tr></thead><tbody>'+
+  html+='<div class="report-actions"><button type="button" id="performanceMasterPrint">Cetak</button> <button type="button" id="performanceMasterPdf">PDF</button> <button type="button" id="performanceMasterExcel">Excel</button></div><div class="tablewrap"><table id="performanceMasterTable"><thead><tr><th>Umur</th><th>Std Pakan g/ekor</th><th>Std BW g</th><th>Std FCR</th>'+(can?'<th>Aksi</th>':'')+'</tr></thead><tbody>'+
     rows.map(x=>'<tr><td>'+fmtNumber(x.age_days)+'</td><td>'+(x.std_feed_g_per_bird==null?'-':fmtNumber(x.std_feed_g_per_bird))+'</td><td>'+(x.std_body_weight_g==null?'-':fmtNumber(x.std_body_weight_g))+'</td><td>'+(x.std_fcr==null?'-':fmtNumber(x.std_fcr))+'</td>'+(can?'<td><button type="button" data-edit-perf="'+esc(x.id)+'">Edit</button></td>':'')+'</tr>').join('')+
     '</tbody></table></div></section>';
 
@@ -360,6 +361,7 @@ async function performanceMasterPage(){
     {label:'Std BW',col:2,placeholder:'Standar BW'},
     {label:'Std FCR',col:3,placeholder:'Standar FCR'}
   ]});
+  bindTableExportActions({tableId:'performanceMasterTable',printId:'performanceMasterPrint',pdfId:'performanceMasterPdf',excelId:'performanceMasterExcel',title:'Master Performa '+selected,filename:'Master_Performa_'+String(selected||'Template').replace(/[^A-Za-z0-9_-]+/g,'_'),dropLast:can});
 
   const sel=document.getElementById('perfTemplateSelect');
   if(sel)sel.onchange=()=>{
@@ -1625,10 +1627,11 @@ async function marketingCustomerPage(){
       '<label>Catatan<textarea name="notes"></textarea></label>'+
       '<button type="submit" id="marketingCustomerSave">Simpan Pelanggan</button><button type="button" id="marketingCustomerCancel" hidden>Batal Edit</button>'+
     '</form></section>'+
-    '<section class="panel"><h3>Data Pelanggan</h3><div class="tablewrap"><table><thead><tr><th>Nama</th><th>Alamat</th><th>Telepon</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    '<section class="panel"><h3>Data Pelanggan</h3><div class="tablewrap"><table id="marketingCustomerTable"><thead><tr><th>Nama</th><th>Alamat</th><th>Telepon</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
       rows.map(x=>'<tr><td>'+esc(x.name||'')+'</td><td>'+esc(x.address||'-')+'</td><td>'+esc(x.phone||'-')+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td><td><button type="button" data-edit-marketing-customer="'+esc(x.id)+'">Edit</button> <button type="button" data-toggle-marketing-customer="'+esc(x.id)+'">'+(x.active?'Nonaktifkan':'Aktifkan')+'</button></td></tr>').join('')+
     '</tbody></table></div>'+(!rows.length?'<p>Belum ada pelanggan.</p>':'')+'</section>';
   layout(html);if(error)msg(error.message);
+  attachListFilter({tableId:'marketingCustomerTable',fields:[{label:'Nama',col:0,placeholder:'Cari pelanggan'},{label:'Alamat',col:1,placeholder:'Cari alamat'},{label:'Telepon',col:2,placeholder:'Cari telepon'},{label:'Status',col:3,placeholder:'AKTIF / NONAKTIF'}]});
   const form=document.getElementById('marketingCustomerForm'),save=document.getElementById('marketingCustomerSave'),cancel=document.getElementById('marketingCustomerCancel');
   const reset=()=>{form.reset();form.elements.id.value='';save.textContent='Simpan Pelanggan';cancel.hidden=true;};
   cancel.onclick=reset;
