@@ -1654,15 +1654,16 @@ async function marketingCustomerPage(){
 }
 
 async function marketingContractHarvestPage(editId=null,mode='MITRA'){
-  const [br,ar,cr,hr,lpr,cur]=await Promise.all([
+  const [br,ar,cr,hr,lpr,cur,cpr]=await Promise.all([
     db.from('barns').select('id,code,name,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,start_date,active,cycle_type').order('start_date',{ascending:false}),
     db.from('contracts').select('id,number,doc_price,pre_starter_price,starter_price,finisher_price,ovk_price,ovk_price_basis,ovk_vat_percent').is('cycle_id',null),
     db.from('marketing_contract_harvests').select('*').order('harvested_on',{ascending:false}).order('created_at',{ascending:false}),
     db.from('contract_live_prices').select('contract_id,min_weight_kg,max_weight_kg,price_per_kg').order('min_weight_kg'),
-    db.from('marketing_customers').select('id,name,address,phone,active').eq('active',true).order('name',{ascending:true})
+    db.from('marketing_customers').select('id,name,address,phone,active').eq('active',true).order('name',{ascending:true}),
+    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
   ]);
-  const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],livePrices=lpr.data||[],customers=cur.data||[];
+  const barns=br.data||[],assignments=ar.data||[],contractsRows=cr.data||[],livePrices=lpr.data||[],customers=cur.data||[],company=cpr.data||{};
   const assignmentsById=new Map(assignments.map(a=>[a.id,a]));
   const rows=(hr.data||[]).filter(h=>(assignmentsById.get(h.contract_assignment_id)?.cycle_type||'MITRA')===mode);
   const txnHarvest=txnListState(rows,'marketingHarvest'+mode,'harvested_on',5,barns,'barn_id',{assignmentKey:'contract_assignment_id',assignments:assignments.filter(a=>(a.cycle_type||'MITRA')===mode).map(a=>({id:a.id,barn_id:a.barn_id,label:assignmentCycleLabel(assignments,a)+' · '+mode+' · '+(a.active?'AKTIF':'CLOSED')}))}),pageRows=txnHarvest.rows;
@@ -1692,7 +1693,7 @@ async function marketingContractHarvestPage(editId=null,mode='MITRA'){
       (selected?' <button type="button" id="cancelHarvestEdit">Batal Edit</button>':'')+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Panen '+mode+'</h3>'+txnHarvest.controls+'<div class="tablewrap"><table><thead><tr>'+
+  html+='<section class="panel"><h3>Riwayat Panen '+mode+'</h3>'+txnHarvest.controls+(mode==='MITRA'&&txnHarvest.st.shown?'<div class="report-actions"><button type="button" id="harvestMitraHistoryPrint">Cetak</button> <button type="button" id="harvestMitraHistoryPdf">PDF</button> <button type="button" id="harvestMitraHistoryExcel">Excel</button></div>':'')+'<div class="tablewrap"><table id="harvestHistoryTable"><thead><tr>'+
     '<th>Tanggal</th><th>Kandang / Siklus</th><th>Jenis</th><th>Pembeli</th><th>No Mobil</th><th>Ekor</th><th>KG</th><th>Harga/Kg</th><th>Total</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     pageRows.map(x=>{
@@ -1703,7 +1704,36 @@ async function marketingContractHarvestPage(editId=null,mode='MITRA'){
     '</tbody></table></div>'+(!txnHarvest.total?'<p>Data Panen tidak ditemukan.</p>':'')+txnHarvest.pager+'</section>';
 
   layout(html);bindNumberInputs();bindTxnList(txnHarvest,()=>marketingContractHarvestPage(null,mode));
-  const err=[br,ar,cr,hr,lpr,cur].find(x=>x.error)?.error;if(err)msg(err.message);
+  const err=[br,ar,cr,hr,lpr,cur,cpr].find(x=>x.error)?.error;if(err)msg(err.message);
+  if(mode==='MITRA'&&txnHarvest.st.shown){
+    const historyTable=document.getElementById('harvestHistoryTable');
+    const harvestReportHtml=()=>{
+      const table=historyTable?historyTable.cloneNode(true):null;
+      if(table)table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const b=barns.find(x=>x.id===txnHarvest.st.barn);
+      const a=assignments.find(x=>x.id===txnHarvest.st.assignment);
+      return '<!doctype html><html><head><meta charset="utf-8"><title>Riwayat Panen Mitra</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body>'+
+        '<div class="head"><img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><div>'+esc([company.phone,company.email].filter(Boolean).join(' · '))+'</div></div></div>'+
+        '<h2>Riwayat Panen Mitra</h2><p>Periode: '+esc(txnHarvest.st.from||'-')+' s/d '+esc(txnHarvest.st.to||'-')+' · Kandang: '+esc(b?shortBarnLabel(b):'Semua Kandang')+' · Siklus: '+esc(a?assignmentCycleLabel(assignments,a):'Semua Siklus')+'</p>'+
+        (table?table.outerHTML:'<p>Tidak ada data.</p>')+'</body></html>';
+    };
+    const printHarvestHistory=pdf=>{
+      const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
+      const html=harvestReportHtml();w.document.write(pdf?html.replace('<title>Riwayat Panen Mitra</title>','<title>Riwayat_Panen_Mitra_PDF</title>'):html);w.document.close();
+      setTimeout(()=>{w.focus();w.print();},500);
+    };
+    const printBtn=document.getElementById('harvestMitraHistoryPrint'),pdfBtn=document.getElementById('harvestMitraHistoryPdf'),excelBtn=document.getElementById('harvestMitraHistoryExcel');
+    if(printBtn)printBtn.onclick=()=>printHarvestHistory(false);
+    if(pdfBtn)pdfBtn.onclick=()=>printHarvestHistory(true);
+    if(excelBtn)excelBtn.onclick=()=>{
+      if(!historyTable)return;
+      const table=historyTable.cloneNode(true);
+      table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Panen Mitra</h2>'+table.outerHTML+'</body></html>';
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Panen_Mitra.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+  };
 
   const harvestBarnSearch=document.getElementById('harvestBarnSearch');
   const harvestBarnId=document.getElementById('harvestBarnId');
