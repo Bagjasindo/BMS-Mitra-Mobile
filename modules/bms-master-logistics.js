@@ -1926,7 +1926,7 @@ async function marketingExternalMeatPage(editId=null){
   const cancel=document.getElementById('cancelBlEdit');if(cancel)cancel.onclick=()=>marketingExternalMeatPage();
 }
 async function logisticsExternalReturnPage(editId=null){
-  const [br,ar,ir,sr,supr,er,rr,rir,tr]=await Promise.all([
+  const [br,ar,ir,sr,supr,er,rr,rir,tr,cpr]=await Promise.all([
     db.from('barns').select('id,code,name,location,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_contract_assignments').select('id,barn_id,active,cycle_type').order('created_at',{ascending:false}),
     db.from('items').select('id,code,name,unit,kg_per_unit,active').eq('active',true).order('code',{ascending:true}),
@@ -1935,9 +1935,10 @@ async function logisticsExternalReturnPage(editId=null){
     db.from('logistics_external_shipment_items').select('*').order('created_at',{ascending:false}),
     db.from('logistics_external_returns').select('*').order('return_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('logistics_external_return_items').select('*').order('created_at',{ascending:false}),
-    db.from('logistics_external_return_transfers').select('*').order('created_at',{ascending:false})
+    db.from('logistics_external_return_transfers').select('*').order('created_at',{ascending:false}),
+    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
   ]);
-  const barns=br.data||[],assignments=ar.data||[],items=ir.data||[],heads=sr.data||[],suppliers=supr.data||[],details=er.data||[],returns=rr.data||[],returnItems=rir.data||[],transfers=tr.data||[];
+  const barns=br.data||[],assignments=ar.data||[],items=ir.data||[],heads=sr.data||[],suppliers=supr.data||[],details=er.data||[],returns=rr.data||[],returnItems=rir.data||[],transfers=tr.data||[],company=cpr.data||{};
   window.__externalReturnTransferHistoryFilter=window.__externalReturnTransferHistoryFilter||{source:'',target:'',from:'',to:'',shown:false};
   const extTransferHistoryFilter=window.__externalReturnTransferHistoryFilter;
   const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA'),activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
@@ -2024,14 +2025,14 @@ async function logisticsExternalReturnPage(editId=null){
         '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(extTransferHistoryFilter.to||'')+'"></label>'+
         '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="externalReturnTransferHistoryReset">Reset</button></div>'+
       '</form>'+
-      (extTransferHistoryFilter.shown?'<div class="tablewrap compact-table"><table><thead><tr><th>Tanggal</th><th>Dari</th><th>Ke</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Status</th></tr></thead><tbody>'+
+      (extTransferHistoryFilter.shown?'<div class="report-actions"><button type="button" id="externalReturnHistoryPrint">Cetak</button> <button type="button" id="externalReturnHistoryPdf">PDF</button> <button type="button" id="externalReturnHistoryExcel">Excel</button></div><div class="tablewrap compact-table"><table id="externalReturnHistoryTable"><thead><tr><th>Tanggal</th><th>Dari</th><th>Ke</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Status</th></tr></thead><tbody>'+
       sentRows.map(x=>'<tr><td>'+esc(x.t.transferred_on||'-')+'</td><td>'+esc(x.src?shortBarnLabel(x.src):'-')+'</td><td>'+esc(x.dst?shortBarnLabel(x.dst):'-')+'</td><td>'+esc(x.it?x.it.code+' · '+x.it.name:'-')+'</td><td>'+fmtNumber(x.t.quantity)+'</td><td>'+esc(x.it?.unit||'-')+'</td><td><span class="pill">TERKIRIM</span></td></tr>').join('')+
       '</tbody></table></div>'+(sentRows.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
     '</section>';
 
   layout(html);
   bindNumberInputs();
-  const err=[br,ar,ir,sr,supr,er,rr,rir,tr].find(x=>x?.error)?.error;if(err)msg(err.message);
+  const err=[br,ar,ir,sr,supr,er,rr,rir,tr,cpr].find(x=>x?.error)?.error;if(err)msg(err.message);
   const extTransferHistoryForm=document.getElementById('externalReturnTransferHistoryForm');
   const extTransferHistoryReset=document.getElementById('externalReturnTransferHistoryReset');
   if(extTransferHistoryForm)extTransferHistoryForm.onsubmit=async ev=>{
@@ -2041,6 +2042,31 @@ async function logisticsExternalReturnPage(editId=null){
     extTransferHistoryFilter.shown=true;await logisticsExternalReturnPage();
   };
   if(extTransferHistoryReset)extTransferHistoryReset.onclick=async()=>{window.__externalReturnTransferHistoryFilter={source:'',target:'',from:'',to:'',shown:false};await logisticsExternalReturnPage();};
+
+  if(extTransferHistoryFilter.shown){
+    const historyTable=document.getElementById('externalReturnHistoryTable');
+    const extReturnReportHtml=()=>{
+      const src=barns.find(x=>x.id===extTransferHistoryFilter.source),dst=barns.find(x=>x.id===extTransferHistoryFilter.target);
+      return '<!doctype html><html><head><meta charset="utf-8"><title>Riwayat Retur Sapronak Luar</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body>'+
+        '<div class="head"><img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><div>'+esc([company.phone,company.email].filter(Boolean).join(' · '))+'</div></div></div>'+
+        '<h2>Riwayat Retur Sapronak Luar</h2><p>Periode: '+esc(extTransferHistoryFilter.from||'-')+' s/d '+esc(extTransferHistoryFilter.to||'-')+' · Dari: '+esc(src?shortBarnLabel(src):'Semua Kandang')+' · Ke: '+esc(dst?shortBarnLabel(dst):'Semua Kandang')+'</p>'+
+        (historyTable?historyTable.outerHTML:'<p>Tidak ada data.</p>')+'</body></html>';
+    };
+    const printExtReturnHistory=pdf=>{
+      const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
+      const html=extReturnReportHtml();w.document.write(pdf?html.replace('<title>Riwayat Retur Sapronak Luar</title>','<title>Riwayat_Retur_Sapronak_Luar_PDF</title>'):html);w.document.close();
+      setTimeout(()=>{w.focus();w.print();},500);
+    };
+    const printBtn=document.getElementById('externalReturnHistoryPrint'),pdfBtn=document.getElementById('externalReturnHistoryPdf'),excelBtn=document.getElementById('externalReturnHistoryExcel');
+    if(printBtn)printBtn.onclick=()=>printExtReturnHistory(false);
+    if(pdfBtn)pdfBtn.onclick=()=>printExtReturnHistory(true);
+    if(excelBtn)excelBtn.onclick=()=>{
+      if(!historyTable)return;
+      const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Retur Sapronak Luar</h2>'+historyTable.outerHTML+'</body></html>';
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Retur_Sapronak_Luar.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+  };
 
   const barnSearch=document.getElementById('extReturnBarnSearch'),barnId=document.getElementById('extReturnBarnId'),barnSugs=document.getElementById('extReturnBarnSuggestions');
   const itemSearch=document.getElementById('extReturnItemSearch'),sourceInput=document.getElementById('extReturnSourceItem'),itemSugs=document.getElementById('extReturnItemSuggestions'),info=document.getElementById('extReturnInfo');
