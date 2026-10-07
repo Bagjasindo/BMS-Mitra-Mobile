@@ -297,16 +297,17 @@ async function financeMaintenancePage(){
   if(print)print.onclick=()=>printFinanceDocument('maintenancePrintArea','Laporan Perawatan Kandang');const maintenanceExcel=document.getElementById('maintenancePrintExcel');if(maintenanceExcel)maintenanceExcel.onclick=()=>exportFinanceDocumentExcel('maintenancePrintArea','Laporan Perawatan Kandang');
 }
 
-async function logisticsEquipmentPurchasePage(){
-  const [br,sr,ir,pr,ar,cpr]=await Promise.all([
+async function logisticsEquipmentPurchasePage(editId=null){
+  const [br,sr,ir,pr,ar,cpr,pyr]=await Promise.all([
     db.from('barns').select('id,code,name,active').order('code',{ascending:true}),
     db.from('suppliers').select('id,code,name,active,supplier_type').eq('active',true).order('code',{ascending:true}),
     db.from('items').select('id,code,name,category,ovk_type,unit,active').eq('active',true).eq('category','OVK').eq('ovk_type','OVK2').order('code',{ascending:true}),
     db.from('logistics_equipment_purchases').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('barn_assets').select('id,reference'),
-    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
+    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle(),
+    db.from('supplier_payments').select('source_id').eq('source_type','BELI_PERALATAN')
   ]);
-  const barns=br.data||[],suppliers=sr.data||[],equipment=ir.data||[],purchases=pr.data||[],assets=ar.data||[],company=cpr.data||{};
+  const barns=br.data||[],suppliers=sr.data||[],equipment=ir.data||[],purchases=pr.data||[],assets=ar.data||[],company=cpr.data||{},paidEquipment=new Set((pyr.data||[]).map(x=>x.source_id));
   window.__equipmentPurchaseHistoryFilter=window.__equipmentPurchaseHistoryFilter||{supplier:'',barn:'',from:'',to:'',shown:false};
   const equipmentHistoryFilter=window.__equipmentPurchaseHistoryFilter;
   const equipmentHistoryRows=equipmentHistoryFilter.shown?purchases.filter(p=>
@@ -315,25 +316,27 @@ async function logisticsEquipmentPurchasePage(){
     (!equipmentHistoryFilter.from||String(p.purchase_date||'')>=equipmentHistoryFilter.from)&&
     (!equipmentHistoryFilter.to||String(p.purchase_date||'')<=equipmentHistoryFilter.to)
   ):[];
-  const err=[br,sr,ir,pr,ar,cpr].find(x=>x.error)?.error;
+  const err=[br,sr,ir,pr,ar,cpr,pyr].find(x=>x.error)?.error;
+  const selected=editId?purchases.find(x=>x.id===editId):null;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const itemName=id=>{const x=equipment.find(v=>v.id===id);return x?x.code+' · '+x.name:'-'};
   const supplierName=id=>{const x=suppliers.find(v=>v.id===id);return x?((x.code||'')+' · '+x.name):'-'};
   const barnName=id=>{const x=barns.find(v=>v.id===id);return x?shortBarnLabel(x):'-'};
   const assetRef=id=>assets.find(x=>x.id===id)?.reference||'-';
 
-  let html='<section class="panel"><h3>Beli Peralatan · OVK2</h3>'+
+  let html='<section class="panel"><h3>'+(selected?'Koreksi Beli Peralatan':'Beli Peralatan · OVK2')+'</h3>'+
     '<p class="muted">Khusus barang Master Data berjenis <strong>OVK2 / Peralatan</strong>. Saat disimpan, sistem otomatis membuat Aset per Kandang dan Hutang Supplier. Tidak masuk BOP atau RHPP.</p>'+
     '<form id="equipmentPurchaseForm" class="form-vertical">'+
-      '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+today+'" required></label>'+
-      '<label>Supplier<select name="supplier_id" required><option value="">Pilih Supplier</option>'+suppliers.map(s=>'<option value="'+esc(s.id)+'">'+esc((s.code||'')+' · '+s.name)+'</option>').join('')+'</select></label>'+
-      '<label>Peralatan OVK2<select name="item_id" required><option value="">Pilih Peralatan</option>'+equipment.map(i=>'<option value="'+esc(i.id)+'">'+esc(i.code+' · '+i.name+' · '+(i.unit||'-'))+'</option>').join('')+'</select></label>'+
-      '<label>Kandang Tujuan<select name="barn_id" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Jumlah<input type="text" name="quantity" data-number="1" inputmode="decimal" required></label>'+
-      '<label>Harga Beli / Satuan<input type="text" name="purchase_unit_price" data-number="1" inputmode="decimal" required></label>'+
-      '<label>No. Nota / Referensi<input name="reference_number"></label>'+
-      '<label>Catatan<textarea name="notes"></textarea></label>'+
-      '<button type="submit">Simpan Pembelian Peralatan</button>'+
+      '<input type="hidden" name="id" value="'+esc(selected?.id||'')+'">'+
+      '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+esc(selected?.purchase_date||today)+'" required></label>'+
+      '<label>Supplier<select name="supplier_id" required><option value="">Pilih Supplier</option>'+suppliers.map(s=>'<option value="'+esc(s.id)+'" '+(selected?.supplier_id===s.id?'selected':'')+'>'+esc((s.code||'')+' · '+s.name)+'</option>').join('')+'</select></label>'+
+      '<label>Peralatan OVK2<select name="item_id" required><option value="">Pilih Peralatan</option>'+equipment.map(i=>'<option value="'+esc(i.id)+'" '+(selected?.item_id===i.id?'selected':'')+'>'+esc(i.code+' · '+i.name+' · '+(i.unit||'-'))+'</option>').join('')+'</select></label>'+
+      '<label>Kandang Tujuan<select name="barn_id" required><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(selected?.barn_id===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+      '<label>Jumlah<input type="text" name="quantity" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.quantity):'')+'" required></label>'+
+      '<label>Harga Beli / Satuan<input type="text" name="purchase_unit_price" data-number="1" inputmode="decimal" value="'+(selected?fmtNumber(selected.purchase_unit_price):'')+'" required></label>'+
+      '<label>No. Nota / Referensi<input name="reference_number" value="'+esc(selected?.reference_number||'')+'"></label>'+
+      '<label>Catatan<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
+      '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Simpan Pembelian Peralatan')+'</button>'+(selected?'<button type="button" id="equipmentEditCancel">Batal Koreksi</button>':'')+'</div>'+
     '</form>'+
     (!equipment.length?'<p class="error">Belum ada barang OVK2 di Master Sapronak. Tambahkan/ubah barang menjadi Kategori OVK · Jenis OVK2 terlebih dahulu.</p>':'')+
     '</section>';
@@ -347,9 +350,9 @@ async function logisticsEquipmentPurchasePage(){
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="equipmentPurchaseHistoryReset">Reset</button></div>'+
     '</form>'+
     (equipmentHistoryFilter.shown?'<div class="report-actions"><button type="button" id="equipmentHistoryPrint">Cetak</button> <button type="button" id="equipmentHistoryPdf">PDF</button> <button type="button" id="equipmentHistoryExcel">Excel</button></div><div class="tablewrap"><table id="equipmentHistoryTable"><thead><tr>'+
-    '<th>Tanggal</th><th>Supplier</th><th>Peralatan</th><th>Kandang</th><th>Jumlah</th><th>Harga/Satuan</th><th>Total</th><th>Aset</th><th>Referensi</th>'+
+    '<th>Tanggal</th><th>Supplier</th><th>Peralatan</th><th>Kandang</th><th>Jumlah</th><th>Harga/Satuan</th><th>Total</th><th>Aset</th><th>Referensi</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
-    equipmentHistoryRows.map(p=>'<tr><td>'+esc(p.purchase_date||'')+'</td><td>'+esc(supplierName(p.supplier_id))+'</td><td>'+esc(itemName(p.item_id))+'</td><td>'+esc(barnName(p.barn_id))+'</td><td>'+fmtNumber(p.quantity)+'</td><td>Rp '+fmtNumber(p.purchase_unit_price)+'</td><td><strong>Rp '+fmtNumber(prodNum(p.quantity)*prodNum(p.purchase_unit_price))+'</strong></td><td>'+esc(assetRef(p.asset_id))+'</td><td>'+esc(p.reference_number||'-')+'</td></tr>').join('')+
+    equipmentHistoryRows.map(p=>'<tr><td>'+esc(p.purchase_date||'')+'</td><td>'+esc(supplierName(p.supplier_id))+'</td><td>'+esc(itemName(p.item_id))+'</td><td>'+esc(barnName(p.barn_id))+'</td><td>'+fmtNumber(p.quantity)+'</td><td>Rp '+fmtNumber(p.purchase_unit_price)+'</td><td><strong>Rp '+fmtNumber(prodNum(p.quantity)*prodNum(p.purchase_unit_price))+'</strong></td><td>'+esc(assetRef(p.asset_id))+'</td><td>'+esc(p.reference_number||'-')+'</td><td>'+(paidEquipment.has(p.id)?'<strong>Terkunci · sudah dibayar</strong>':'<button type="button" data-edit-equipment="'+esc(p.id)+'">Edit</button> <button type="button" data-delete-equipment="'+esc(p.id)+'">Hapus</button>')+'</td></tr>').join('')+
     '</tbody></table></div>'+(equipmentHistoryRows.length?'':'<p class="muted">Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
     '</section>';
 
@@ -371,7 +374,7 @@ async function logisticsEquipmentPurchasePage(){
       return '<!doctype html><html><head><meta charset="utf-8"><title>Riwayat Beli Peralatan</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body>'+
         '<div class="head"><img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><div>'+esc([company.phone,company.email].filter(Boolean).join(' · '))+'</div></div></div>'+
         '<h2>Riwayat Beli Peralatan</h2><p>Periode: '+esc(equipmentHistoryFilter.from||'-')+' s/d '+esc(equipmentHistoryFilter.to||'-')+' · Supplier: '+esc(supplier?.name||'Semua Supplier')+' · Kandang: '+esc(barn?shortBarnLabel(barn):'Semua Kandang')+'</p>'+
-        (historyTable?historyTable.outerHTML:'<p>Tidak ada data.</p>')+'</body></html>';
+        (historyTable?(()=>{const t=historyTable.cloneNode(true);t.querySelectorAll('tr').forEach(r=>{if(r.cells.length)r.deleteCell(r.cells.length-1)});return t.outerHTML})():'<p>Tidak ada data.</p>')+'</body></html>';
     };
     const printEquipmentHistory=pdf=>{
       const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
@@ -383,7 +386,7 @@ async function logisticsEquipmentPurchasePage(){
     if(pdfBtn)pdfBtn.onclick=()=>printEquipmentHistory(true);
     if(excelBtn)excelBtn.onclick=()=>{
       if(!historyTable)return;
-      const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Beli Peralatan</h2>'+historyTable.outerHTML+'</body></html>';
+      const t=historyTable.cloneNode(true);t.querySelectorAll('tr').forEach(r=>{if(r.cells.length)r.deleteCell(r.cells.length-1)});const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Beli Peralatan</h2>'+t.outerHTML+'</body></html>';
       const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
       const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Beli_Peralatan.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     };
@@ -401,14 +404,17 @@ async function logisticsEquipmentPurchasePage(){
     if(!item)return msg('Pilih peralatan OVK2 dari Master Data.');
     if(!await appConfirm('Simpan pembelian '+item.name+' dan otomatis buat Aset per Kandang serta Hutang Supplier?'))return;
     const {error}=await db.rpc('save_logistics_equipment_purchase_atomic',{
-      p_id:null,p_supplier_id:String(fd.get('supplier_id')||''),p_item_id:item.id,p_barn_id:String(fd.get('barn_id')||''),
+      p_id:String(fd.get('id')||'')||null,p_supplier_id:String(fd.get('supplier_id')||''),p_item_id:item.id,p_barn_id:String(fd.get('barn_id')||''),
       p_purchase_date:String(fd.get('purchase_date')||''),p_quantity:quantity,p_purchase_unit_price:price,
       p_reference_number:String(fd.get('reference_number')||'')||null,p_notes:String(fd.get('notes')||'')||null
     });
     if(error)return msg(error.message);
     await logisticsEquipmentPurchasePage();
-    msg('Pembelian peralatan tersimpan. Aset dan Hutang Supplier dibuat otomatis tanpa masuk BOP/RHPP.',true);
+    msg(selected?'Koreksi pembelian peralatan tersimpan dan aset terkait ikut diperbarui.':'Pembelian peralatan tersimpan. Aset dan Hutang Supplier dibuat otomatis tanpa masuk BOP/RHPP.',true);
   };
+  root.querySelectorAll('[data-edit-equipment]').forEach(btn=>btn.onclick=()=>logisticsEquipmentPurchasePage(btn.dataset.editEquipment));
+  root.querySelectorAll('[data-delete-equipment]').forEach(btn=>btn.onclick=async()=>{if(!await appConfirm('Hapus pembelian peralatan ini beserta aset terkait?'))return;const {error}=await db.rpc('delete_logistics_equipment_purchase_atomic',{p_id:btn.dataset.deleteEquipment});if(error)return msg(error.message);await logisticsEquipmentPurchasePage();msg('Pembelian peralatan dan aset terkait dihapus.',true);});
+  const cancel=document.getElementById('equipmentEditCancel');if(cancel)cancel.onclick=()=>logisticsEquipmentPurchasePage();
 }
 
 
