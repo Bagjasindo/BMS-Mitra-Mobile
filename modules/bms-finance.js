@@ -594,7 +594,7 @@ async function logisticsWarehouseStockPage(){
   bindTableExportActions({tableId:'warehouseStockTable',printId:'warehouseStockPrint',pdfId:'warehouseStockPdf',excelId:'warehouseStockExcel',title:'Stok Barang Gudang',filename:'Stok_Barang_Gudang'});
 }
 
-async function logisticsWarehouseSendPage(){
+async function logisticsWarehouseSendPage(editId=null){
   const [ir,hr,sr,br]=await Promise.all([
     db.from('warehouse_stock_items').select('*').order('created_at',{ascending:false}),
     db.from('finance_stock_purchase_invoices').select('id,purchase_date,supplier_name,reference').order('purchase_date',{ascending:false}),
@@ -602,6 +602,7 @@ async function logisticsWarehouseSendPage(){
     db.from('barns').select('id,code,name,active').eq('active',true).order('code')
   ]);
   const items=ir.data||[],headers=hr.data||[],ships=sr.data||[],barns=br.data||[];
+  const selected=editId?ships.find(x=>x.id===editId):null;
   window.__warehouseSendHistoryFilter=window.__warehouseSendHistoryFilter||{item:'',destination:'',barn:'',from:'',to:'',shown:false};
   const warehouseHistoryFilter=window.__warehouseSendHistoryFilter;
   const warehouseHistoryRows=warehouseHistoryFilter.shown?ships.filter(s=>
@@ -612,19 +613,18 @@ async function logisticsWarehouseSendPage(){
     (!warehouseHistoryFilter.to||String(s.shipment_date||'')<=warehouseHistoryFilter.to)
   ):[];
   const err=[ir,hr,sr,br].find(x=>x.error)?.error;
-  const sent=id=>ships.filter(x=>x.stock_item_id===id).reduce((n,x)=>n+prodNum(x.quantity),0);
+  const sent=id=>ships.filter(x=>x.stock_item_id===id&&(!selected||x.id!==selected.id)).reduce((n,x)=>n+prodNum(x.quantity),0);
   const remain=x=>Math.max(0,prodNum(x.quantity)-sent(x.id));
-  const available=items.filter(x=>remain(x)>0);
+  const available=items.filter(x=>remain(x)>0||x.id===selected?.stock_item_id);
   const itemLabel=x=>x.standard_name+' · sisa '+prodFmt(remain(x),2)+' '+x.unit;
-  let html='<section class="panel"><h3>Kirim Barang dari Gudang</h3><p class="muted">Pengiriman mengurangi stok gudang. Barang berjenis <strong>Aset</strong> otomatis masuk Aset Kandang/Kantor saat dikirim; barang <strong>Habis Pakai</strong> hanya mengurangi stok.</p>'+
-    '<form id="warehouseSendForm" class="form-vertical"><label>Tanggal Kirim<input type="date" name="shipment_date" value="'+prodToday()+'" required></label>'+
-    '<label>Barang<select name="stock_item_id" required><option value="">Pilih Barang</option>'+available.map(x=>'<option value="'+esc(x.id)+'">'+esc(itemLabel(x))+'</option>').join('')+'</select></label>'+
-    '<label>Tujuan<select name="destination_type" id="warehouseDestination" required><option value="KANDANG">Kandang</option><option value="KANTOR">Kantor</option></select></label>'+
-    '<label id="warehouseBarnWrap">Kandang<select name="barn_id"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-    '<label>Jumlah Kirim<input name="quantity" data-number="1" inputmode="decimal" required></label>'+
-
-    '<label>Referensi<input name="reference"></label><label>Catatan<textarea name="notes"></textarea></label>'+
-    '<button type="submit">Kirim Barang</button></form></section>';
+  let html='<section class="panel"><h3>'+(selected?'Koreksi Pengiriman Gudang':'Kirim Barang dari Gudang')+'</h3><p class="muted">Pengiriman mengurangi stok gudang. Barang berjenis <strong>Aset</strong> otomatis masuk Aset Kandang/Kantor saat dikirim; barang <strong>Habis Pakai</strong> hanya mengurangi stok.</p>'+
+    '<form id="warehouseSendForm" class="form-vertical"><input type="hidden" name="shipment_id" value="'+esc(selected?.id||'')+'"><label>Tanggal Kirim<input type="date" name="shipment_date" value="'+esc(selected?.shipment_date||prodToday())+'" required></label>'+
+    (selected?'<input type="hidden" name="stock_item_id" value="'+esc(selected.stock_item_id)+'"><label>Barang<input value="'+esc(items.find(x=>x.id===selected.stock_item_id)?.standard_name||'-')+'" readonly></label>':'<label>Barang<select name="stock_item_id" required><option value="">Pilih Barang</option>'+available.map(x=>'<option value="'+esc(x.id)+'">'+esc(itemLabel(x))+'</option>').join('')+'</select></label>')+
+    '<label>Tujuan<select name="destination_type" id="warehouseDestination" required><option value="KANDANG" '+(selected?.destination_type==='KANDANG'?'selected':'')+'>Kandang</option><option value="KANTOR" '+(selected?.destination_type==='KANTOR'?'selected':'')+'>Kantor</option></select></label>'+
+    '<label id="warehouseBarnWrap">Kandang<select name="barn_id"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'" '+(selected?.barn_id===b.id?'selected':'')+'>'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
+    '<label>Jumlah Kirim<input name="quantity" data-number="1" inputmode="decimal" value="'+(selected?prodFmt(selected.quantity,2):'')+'" required></label>'+
+    '<label>Referensi<input name="reference" value="'+esc(selected?.reference||'')+'"></label><label>Catatan<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
+    '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Kirim Barang')+'</button>'+(selected?'<button type="button" id="warehouseSendCancel">Batal Koreksi</button>':'')+'</div></form></section>';
   html+='<section class="panel"><h3>Riwayat Pengiriman Gudang</h3>'+
     '<p class="muted">Pilih filter lalu klik Tampilkan untuk melihat riwayat distribusi stok.</p>'+
     '<form id="warehouseSendHistoryFilter" class="form-vertical compact-form" data-no-submit-guard="1">'+
@@ -635,8 +635,8 @@ async function logisticsWarehouseSendPage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(warehouseHistoryFilter.to||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="warehouseSendHistoryReset">Reset</button></div>'+
     '</form>'+
-    (warehouseHistoryFilter.shown?'<div class="report-actions"><button type="button" id="warehouseSendPrint">Cetak</button> <button type="button" id="warehouseSendPdf">PDF</button> <button type="button" id="warehouseSendExcel">Excel</button></div><div class="tablewrap"><table id="warehouseSendTable"><thead><tr><th>Tanggal</th><th>Barang</th><th>Jumlah</th><th>Tujuan</th><th>Status</th><th>Referensi</th></tr></thead><tbody>'+
-      warehouseHistoryRows.map(s=>{const x=items.find(v=>v.id===s.stock_item_id),b=barns.find(v=>v.id===s.barn_id);return '<tr><td>'+prodDateId(s.shipment_date)+'</td><td>'+esc(x?.standard_name||'-')+'</td><td>'+prodFmt(s.quantity,2)+' '+esc(x?.unit||'')+'</td><td>'+esc(s.destination_type==='KANTOR'?'Kantor':shortBarnLabel(b))+'</td><td>'+(s.make_asset?'Menjadi Aset':'Distribusi / Pemakaian')+'</td><td>'+esc(s.reference||'-')+'</td></tr>';}).join('')+
+    (warehouseHistoryFilter.shown?'<div class="report-actions"><button type="button" id="warehouseSendPrint">Cetak</button> <button type="button" id="warehouseSendPdf">PDF</button> <button type="button" id="warehouseSendExcel">Excel</button></div><div class="tablewrap"><table id="warehouseSendTable"><thead><tr><th>Tanggal</th><th>Barang</th><th>Jumlah</th><th>Tujuan</th><th>Status</th><th>Referensi</th><th>Aksi</th></tr></thead><tbody>'+
+      warehouseHistoryRows.map(s=>{const x=items.find(v=>v.id===s.stock_item_id),b=barns.find(v=>v.id===s.barn_id);return '<tr><td>'+prodDateId(s.shipment_date)+'</td><td>'+esc(x?.standard_name||'-')+'</td><td>'+prodFmt(s.quantity,2)+' '+esc(x?.unit||'')+'</td><td>'+esc(s.destination_type==='KANTOR'?'Kantor':shortBarnLabel(b))+'</td><td>'+(s.make_asset?'Menjadi Aset':'Distribusi / Pemakaian')+'</td><td>'+esc(s.reference||'-')+'</td><td><button type="button" data-edit-warehouse-send="'+esc(s.id)+'">Edit</button> <button type="button" data-delete-warehouse-send="'+esc(s.id)+'">Hapus</button></td></tr>';}).join('')+
       '</tbody></table></div>'+(warehouseHistoryRows.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+
     '</section>';
   layout(html);bindNumberInputs();if(err)msg(err.message);
@@ -660,7 +660,7 @@ async function logisticsWarehouseSendPage(){
     window.__warehouseSendHistoryFilter={item:'',destination:'',barn:'',from:'',to:'',shown:false};
     await logisticsWarehouseSendPage();
   };
-  if(warehouseHistoryFilter.shown)bindTableExportActions({tableId:'warehouseSendTable',printId:'warehouseSendPrint',pdfId:'warehouseSendPdf',excelId:'warehouseSendExcel',title:'Riwayat Pengiriman Gudang',filename:'Riwayat_Pengiriman_Gudang',filterText:'Periode '+(warehouseHistoryFilter.from||'-')+' s/d '+(warehouseHistoryFilter.to||'-')});
+  if(warehouseHistoryFilter.shown)bindTableExportActions({tableId:'warehouseSendTable',printId:'warehouseSendPrint',pdfId:'warehouseSendPdf',excelId:'warehouseSendExcel',title:'Riwayat Pengiriman Gudang',filename:'Riwayat_Pengiriman_Gudang',filterText:'Periode '+(warehouseHistoryFilter.from||'-')+' s/d '+(warehouseHistoryFilter.to||'-'),dropLast:true});
 
   const dest=document.getElementById('warehouseDestination'),wrap=document.getElementById('warehouseBarnWrap');
   const sync=()=>{wrap.style.display=dest.value==='KANDANG'?'':'none';if(dest.value==='KANTOR')wrap.querySelector('select').value='';};dest.onchange=sync;sync();
@@ -669,10 +669,16 @@ async function logisticsWarehouseSendPage(){
     if(!x)return msg('Pilih barang gudang.');if(q<=0||q>remain(x))return msg('Jumlah kirim melebihi stok yang tersedia.');
     if(String(fd.get('destination_type'))==='KANDANG'&&!fd.get('barn_id'))return msg('Pilih kandang tujuan.');
     if(!await appConfirm('Kirim '+prodFmt(q,2)+' '+x.unit+' '+x.standard_name+' dari gudang?'))return;
-    const {error}=await db.rpc('logistics_send_warehouse_stock_atomic',{p_stock_item_id:id,p_shipment_date:String(fd.get('shipment_date')||''),p_destination_type:String(fd.get('destination_type')||''),p_barn_id:String(fd.get('barn_id')||'')||null,p_quantity:q,p_make_asset:false,p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null});
+    const shipmentId=String(fd.get('shipment_id')||'');
+    const {error}=shipmentId
+      ?await db.rpc('correct_warehouse_stock_shipment_atomic',{p_id:shipmentId,p_shipment_date:String(fd.get('shipment_date')||''),p_destination_type:String(fd.get('destination_type')||''),p_barn_id:String(fd.get('barn_id')||'')||null,p_quantity:q,p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null})
+      :await db.rpc('logistics_send_warehouse_stock_atomic',{p_stock_item_id:id,p_shipment_date:String(fd.get('shipment_date')||''),p_destination_type:String(fd.get('destination_type')||''),p_barn_id:String(fd.get('barn_id')||'')||null,p_quantity:q,p_make_asset:false,p_reference:String(fd.get('reference')||'')||null,p_notes:String(fd.get('notes')||'')||null});
     if(error)return msg(error.message);
-    await logisticsWarehouseSendPage();msg('Barang berhasil dikirim dan stok gudang otomatis berkurang.',true);
+    await logisticsWarehouseSendPage();msg(shipmentId?'Koreksi pengiriman gudang tersimpan dan aset terkait ikut diperbarui.':'Barang berhasil dikirim dan stok gudang otomatis berkurang.',true);
   };
+  root.querySelectorAll('[data-edit-warehouse-send]').forEach(btn=>btn.onclick=()=>logisticsWarehouseSendPage(btn.dataset.editWarehouseSend));
+  root.querySelectorAll('[data-delete-warehouse-send]').forEach(btn=>btn.onclick=async()=>{if(!await appConfirm('Hapus pengiriman gudang ini dan kembalikan stok?'))return;const {error}=await db.rpc('delete_warehouse_stock_shipment_atomic',{p_id:btn.dataset.deleteWarehouseSend});if(error)return msg(error.message);await logisticsWarehouseSendPage();msg('Pengiriman dihapus, stok gudang kembali, dan aset terkait dibatalkan.',true);});
+  const cancel=document.getElementById('warehouseSendCancel');if(cancel)cancel.onclick=()=>logisticsWarehouseSendPage();
 }
 
 async function financeDirectPurchasePage(){
