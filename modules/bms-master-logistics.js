@@ -1899,7 +1899,7 @@ async function marketingExternalMeatPage(editId=null){
       (selected?' <button type="button" id="cancelBlEdit">Batal Edit</button>':'')+
     '</form></section>';
 
-  html+='<section class="panel"><h3>Riwayat Tambah Daging</h3>'+txnMeat.controls+'<div class="tablewrap"><table><thead><tr>'+
+  html+='<section class="panel"><h3>Riwayat Tambah Daging</h3>'+txnMeat.controls+(txnMeat.st.shown?'<div class="report-actions"><button type="button" id="meatHistoryPrint">Cetak</button> <button type="button" id="meatHistoryPdf">PDF</button> <button type="button" id="meatHistoryExcel">Excel</button></div>':'')+'<div class="tablewrap"><table id="meatHistoryTable"><thead><tr>'+
     '<th>Tanggal</th><th>Kandang</th><th>Kontrak</th><th>Supplier</th><th>Barang</th><th>Ekor</th><th>Kg</th><th>BW</th><th>Harga Beli/Kg</th><th>Harga Kontrak RHPP/Kg</th><th>Total Beli</th><th>Referensi</th><th>Aksi</th>'+
     '</tr></thead><tbody>'+
     shownMeat.map(x=>{
@@ -1914,6 +1914,7 @@ async function marketingExternalMeatPage(editId=null){
     '</tbody></table></div>'+(!txnMeat.total?'<p>Data Tambah Daging tidak ditemukan.</p>':'')+txnMeat.pager+'</section>';
 
   layout(html);
+  if(txnMeat.st.shown)bindTableExportActions({tableId:'meatHistoryTable',printId:'meatHistoryPrint',pdfId:'meatHistoryPdf',excelId:'meatHistoryExcel',title:'Riwayat Tambah Daging',filename:'Riwayat_Tambah_Daging',filterText:'Periode '+(txnMeat.st.from||'-')+' s/d '+(txnMeat.st.to||'-'),dropLast:true});
   [sr,pr,br,ar,cr,lpr].forEach(x=>{if(x.error)msg(x.error.message)});
   bindNumberInputs();
   bindTxnList(txnMeat,()=>marketingExternalMeatPage());
