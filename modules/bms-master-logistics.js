@@ -2176,16 +2176,17 @@ async function logisticsExternalReturnPage(editId=null){
 }
 
 async function logisticsReturnPage(editId=null){
-  const [br,ir,rr,rir,ar,kr]=await Promise.all([
+  const [br,ir,rr,rir,ar,kr,cpr]=await Promise.all([
     db.from('barns').select('id,code,name,location,kind,active').eq('active',true).order('code',{ascending:true}),
     db.from('items').select('id,code,name,category,unit,kg_per_unit,active').eq('active',true).order('code',{ascending:true}),
     db.from('logistics_returns').select('*').order('return_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('logistics_return_items').select('*').order('created_at',{ascending:false}),
     db.from('logistics_contract_assignments').select('id,barn_id,master_contract_id,performance_template_name,active,created_at,cycle_type').order('created_at',{ascending:false}),
-    db.from('contracts').select('id,number').is('cycle_id',null)
+    db.from('contracts').select('id,number').is('cycle_id',null),
+    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
   ]);
 
-  const barns=br.data||[], itemsAll=ir.data||[], returns=rr.data||[], returnItems=rir.data||[], assignments=ar.data||[], masters=kr.data||[];
+  const barns=br.data||[], itemsAll=ir.data||[], returns=rr.data||[], returnItems=rir.data||[], assignments=ar.data||[], masters=kr.data||[], company=cpr.data||{};
   const txnReturn=txnListState(returns,'logisticsReturn','return_date',5,barns),shownReturns=txnReturn.rows;
   const activeAssignments=assignments.filter(a=>a.active&&(a.cycle_type||'MITRA')==='MITRA');
   const activeByBarn=new Map(activeAssignments.map(a=>[a.barn_id,a]));
@@ -2229,7 +2230,7 @@ async function logisticsReturnPage(editId=null){
   }
   html+='</section>';
 
-  html+='<section class="panel"><h3>Riwayat Retur</h3>'+txnReturn.controls+'<div class="tablewrap"><table><thead><tr><th>Kandang</th><th>Tanggal</th><th>Referensi</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+  html+='<section class="panel"><h3>Riwayat Retur</h3>'+txnReturn.controls+(txnReturn.st.shown?'<div class="report-actions"><button type="button" id="returnHistoryPrint">Cetak</button> <button type="button" id="returnHistoryPdf">PDF</button> <button type="button" id="returnHistoryExcel">Excel</button></div>':'')+'<div class="tablewrap"><table id="returnHistoryTable"><thead><tr><th>Kandang</th><th>Tanggal</th><th>Referensi</th><th>Sapronak</th><th>Jumlah</th><th>Satuan</th><th>Kg</th><th>Harga/Satuan</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
     shownReturns.flatMap(r=>{
       const b=barns.find(x=>x.id===r.barn_id), a=assignments.find(x=>x.id===r.contract_assignment_id);
       const isLocked=a?.active===false;
@@ -2248,6 +2249,35 @@ async function logisticsReturnPage(editId=null){
   layout(html);
   bindNumberInputs();
   bindTxnList(txnReturn,()=>logisticsReturnPage());
+
+  if(txnReturn.st.shown){
+    const historyTable=document.getElementById('returnHistoryTable');
+    const returnReportHtml=()=>{
+      const table=historyTable?historyTable.cloneNode(true):null;
+      if(table)table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const b=barns.find(x=>x.id===txnReturn.st.barn);
+      return '<!doctype html><html><head><meta charset="utf-8"><title>Riwayat Retur Sapronak</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body>'+
+        '<div class="head"><img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><div>'+esc([company.phone,company.email].filter(Boolean).join(' · '))+'</div></div></div>'+
+        '<h2>Riwayat Retur Sapronak</h2><p>Periode: '+esc(txnReturn.st.from||'-')+' s/d '+esc(txnReturn.st.to||'-')+' · Kandang: '+esc(b?shortBarnLabel(b):'Semua Kandang')+'</p>'+
+        (table?table.outerHTML:'<p>Tidak ada data.</p>')+'</body></html>';
+    };
+    const printReturnHistory=pdf=>{
+      const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
+      const html=returnReportHtml();w.document.write(pdf?html.replace('<title>Riwayat Retur Sapronak</title>','<title>Riwayat_Retur_Sapronak_PDF</title>'):html);w.document.close();
+      setTimeout(()=>{w.focus();w.print();},500);
+    };
+    const printBtn=document.getElementById('returnHistoryPrint'),pdfBtn=document.getElementById('returnHistoryPdf'),excelBtn=document.getElementById('returnHistoryExcel');
+    if(printBtn)printBtn.onclick=()=>printReturnHistory(false);
+    if(pdfBtn)pdfBtn.onclick=()=>printReturnHistory(true);
+    if(excelBtn)excelBtn.onclick=()=>{
+      if(!historyTable)return;
+      const table=historyTable.cloneNode(true);
+      table.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length)tr.deleteCell(tr.cells.length-1);});
+      const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Retur Sapronak</h2>'+table.outerHTML+'</body></html>';
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Retur_Sapronak.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+  };
 
   const returnBarnSearch=document.getElementById('returnBarnSearch');
   const returnBarnId=document.getElementById('returnBarnId');
@@ -2397,7 +2427,7 @@ async function logisticsReturnPage(editId=null){
     await logisticsReturnPage();
     msg('Draft retur dihapus.',true);
   });
-  const err=br.error||ir.error||rr.error||rir.error||ar.error||kr.error;
+  const err=br.error||ir.error||rr.error||rir.error||ar.error||kr.error||cpr.error;
   if(err)msg(err.message);
 }
 
