@@ -298,14 +298,15 @@ async function financeMaintenancePage(){
 }
 
 async function logisticsEquipmentPurchasePage(){
-  const [br,sr,ir,pr,ar]=await Promise.all([
+  const [br,sr,ir,pr,ar,cpr]=await Promise.all([
     db.from('barns').select('id,code,name,active').order('code',{ascending:true}),
     db.from('suppliers').select('id,code,name,active,supplier_type').eq('active',true).order('code',{ascending:true}),
     db.from('items').select('id,code,name,category,ovk_type,unit,active').eq('active',true).eq('category','OVK').eq('ovk_type','OVK2').order('code',{ascending:true}),
     db.from('logistics_equipment_purchases').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}),
-    db.from('barn_assets').select('id,reference')
+    db.from('barn_assets').select('id,reference'),
+    db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle()
   ]);
-  const barns=br.data||[],suppliers=sr.data||[],equipment=ir.data||[],purchases=pr.data||[],assets=ar.data||[];
+  const barns=br.data||[],suppliers=sr.data||[],equipment=ir.data||[],purchases=pr.data||[],assets=ar.data||[],company=cpr.data||{};
   window.__equipmentPurchaseHistoryFilter=window.__equipmentPurchaseHistoryFilter||{supplier:'',barn:'',from:'',to:'',shown:false};
   const equipmentHistoryFilter=window.__equipmentPurchaseHistoryFilter;
   const equipmentHistoryRows=equipmentHistoryFilter.shown?purchases.filter(p=>
@@ -314,7 +315,7 @@ async function logisticsEquipmentPurchasePage(){
     (!equipmentHistoryFilter.from||String(p.purchase_date||'')>=equipmentHistoryFilter.from)&&
     (!equipmentHistoryFilter.to||String(p.purchase_date||'')<=equipmentHistoryFilter.to)
   ):[];
-  const err=[br,sr,ir,pr,ar].find(x=>x.error)?.error;
+  const err=[br,sr,ir,pr,ar,cpr].find(x=>x.error)?.error;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const itemName=id=>{const x=equipment.find(v=>v.id===id);return x?x.code+' · '+x.name:'-'};
   const supplierName=id=>{const x=suppliers.find(v=>v.id===id);return x?((x.code||'')+' · '+x.name):'-'};
@@ -345,7 +346,7 @@ async function logisticsEquipmentPurchasePage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(equipmentHistoryFilter.to||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="equipmentPurchaseHistoryReset">Reset</button></div>'+
     '</form>'+
-    (equipmentHistoryFilter.shown?'<div class="tablewrap"><table><thead><tr>'+
+    (equipmentHistoryFilter.shown?'<div class="report-actions"><button type="button" id="equipmentHistoryPrint">Cetak</button> <button type="button" id="equipmentHistoryPdf">PDF</button> <button type="button" id="equipmentHistoryExcel">Excel</button></div><div class="tablewrap"><table id="equipmentHistoryTable"><thead><tr>'+
     '<th>Tanggal</th><th>Supplier</th><th>Peralatan</th><th>Kandang</th><th>Jumlah</th><th>Harga/Satuan</th><th>Total</th><th>Aset</th><th>Referensi</th>'+
     '</tr></thead><tbody>'+
     equipmentHistoryRows.map(p=>'<tr><td>'+esc(p.purchase_date||'')+'</td><td>'+esc(supplierName(p.supplier_id))+'</td><td>'+esc(itemName(p.item_id))+'</td><td>'+esc(barnName(p.barn_id))+'</td><td>'+fmtNumber(p.quantity)+'</td><td>Rp '+fmtNumber(p.purchase_unit_price)+'</td><td><strong>Rp '+fmtNumber(prodNum(p.quantity)*prodNum(p.purchase_unit_price))+'</strong></td><td>'+esc(assetRef(p.asset_id))+'</td><td>'+esc(p.reference_number||'-')+'</td></tr>').join('')+
@@ -362,6 +363,31 @@ async function logisticsEquipmentPurchasePage(){
     equipmentHistoryFilter.shown=true;await logisticsEquipmentPurchasePage();
   };
   if(equipmentHistoryReset)equipmentHistoryReset.onclick=async()=>{window.__equipmentPurchaseHistoryFilter={supplier:'',barn:'',from:'',to:'',shown:false};await logisticsEquipmentPurchasePage();};
+
+  if(equipmentHistoryFilter.shown){
+    const historyTable=document.getElementById('equipmentHistoryTable');
+    const equipmentReportHtml=()=>{
+      const supplier=suppliers.find(x=>x.id===equipmentHistoryFilter.supplier),barn=barns.find(x=>x.id===equipmentHistoryFilter.barn);
+      return '<!doctype html><html><head><meta charset="utf-8"><title>Riwayat Beli Peralatan</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;padding-bottom:5px;margin-bottom:7px}.head img{width:52px;height:52px;object-fit:contain}h2{margin:0 0 5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body>'+
+        '<div class="head"><img src="'+esc(company.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company.company_name||company.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company.address||'')+'</div><div>'+esc([company.phone,company.email].filter(Boolean).join(' · '))+'</div></div></div>'+
+        '<h2>Riwayat Beli Peralatan</h2><p>Periode: '+esc(equipmentHistoryFilter.from||'-')+' s/d '+esc(equipmentHistoryFilter.to||'-')+' · Supplier: '+esc(supplier?.name||'Semua Supplier')+' · Kandang: '+esc(barn?shortBarnLabel(barn):'Semua Kandang')+'</p>'+
+        (historyTable?historyTable.outerHTML:'<p>Tidak ada data.</p>')+'</body></html>';
+    };
+    const printEquipmentHistory=pdf=>{
+      const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');
+      const html=equipmentReportHtml();w.document.write(pdf?html.replace('<title>Riwayat Beli Peralatan</title>','<title>Riwayat_Beli_Peralatan_PDF</title>'):html);w.document.close();
+      setTimeout(()=>{w.focus();w.print();},500);
+    };
+    const printBtn=document.getElementById('equipmentHistoryPrint'),pdfBtn=document.getElementById('equipmentHistoryPdf'),excelBtn=document.getElementById('equipmentHistoryExcel');
+    if(printBtn)printBtn.onclick=()=>printEquipmentHistory(false);
+    if(pdfBtn)pdfBtn.onclick=()=>printEquipmentHistory(true);
+    if(excelBtn)excelBtn.onclick=()=>{
+      if(!historyTable)return;
+      const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Beli Peralatan</h2>'+historyTable.outerHTML+'</body></html>';
+      const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(html)]);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Riwayat_Beli_Peralatan.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+  };
 
   const form=document.getElementById('equipmentPurchaseForm');
   if(form)form.onsubmit=async ev=>{
