@@ -418,7 +418,7 @@ async function logisticsEquipmentPurchasePage(editId=null){
 }
 
 
-async function financeStockPurchasePage(){
+async function financeStockPurchasePage(editId=null){
   const [shr,sir,ahr,adr,br]=await Promise.all([
     db.from('finance_stock_purchase_invoices').select('*').order('purchase_date',{ascending:false}).order('created_at',{ascending:false}),
     db.from('warehouse_stock_items').select('*').order('created_at',{ascending:true}),
@@ -427,6 +427,7 @@ async function financeStockPurchasePage(){
     db.from('barns').select('id,code,name,active').eq('active',true).order('code',{ascending:true})
   ]);
   const stockInvoices=shr.data||[],stockItems=sir.data||[],assetInvoices=ahr.data||[],assetDetails=adr.data||[],barns=br.data||[];
+  const selected=editId?stockInvoices.find(x=>x.id===editId):null;
   const err=[shr,sir,ahr,adr,br].find(x=>x.error)?.error;
   const today=prodToday();
   const stockLines=id=>stockItems.filter(x=>x.invoice_id===id);
@@ -437,12 +438,12 @@ async function financeStockPurchasePage(){
   const goodsHistoryState=window.__financeGoodsHistory;
   const history=[
     ...stockInvoices.map(h=>({
-      date:h.purchase_date,created_at:h.created_at||'',reference:h.reference||'',supplier:h.supplier_name||'',
+      id:h.id,source:'STOCK',date:h.purchase_date,created_at:h.created_at||'',reference:h.reference||'',supplier:h.supplier_name||'',
       destination:'Gudang',total:h.total_amount,method:h.payment_method,
       items:stockLines(h.id).map(x=>x.standard_name+' ('+prodFmt(x.quantity,2)+' '+x.unit+' · '+(x.stock_kind==='HABIS_PAKAI'?'Habis Pakai':'Aset')+')').join(', ')
     })),
     ...assetInvoices.map(h=>({
-      date:h.purchase_date,created_at:h.created_at||'',reference:h.reference||'',supplier:h.supplier_name||'',
+      id:h.id,source:'ASSET',date:h.purchase_date,created_at:h.created_at||'',reference:h.reference||'',supplier:h.supplier_name||'',
       destination:h.asset_location_type==='KANTOR'?'Kantor':barnLabel(h.barn_id),total:h.total_amount,method:h.payment_method,
       items:assetLines(h.id).map(x=>x.standard_name+' ('+prodFmt(x.quantity,2)+' '+x.unit+')').join(', ')
     }))
@@ -452,19 +453,19 @@ async function financeStockPurchasePage(){
     (!goodsHistoryState.to||String(h.date||'')<=goodsHistoryState.to)
   ):[];
 
-  let html='<section class="panel"><h3>Pembelian Barang</h3>'+
+  let html='<section class="panel"><h3>'+(selected?'Koreksi Pembelian Stok Gudang':'Pembelian Barang')+'</h3>'+
     '<p class="muted"><strong>Satu pintu pembelian.</strong> Pilih tujuan <strong>Gudang</strong> jika barang belum dipakai. Pilih <strong>Kandang/Kantor</strong> jika barang langsung ditempatkan sebagai aset. Aset Kandang/Kantor akan dibuat otomatis.</p>'+
-    '<form id="financeGoodsPurchaseForm" class="form-vertical">'+
-      '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+today+'" required></label>'+
-      '<label>Supplier<input name="supplier_name" placeholder="Masukkan nama supplier"></label>'+
-      '<label>Tujuan Barang<select name="destination_type" id="goodsDestination" required><option value="GUDANG">Gudang</option><option value="KANDANG">Kandang</option><option value="KANTOR">Kantor</option></select></label>'+
+    '<form id="financeGoodsPurchaseForm" class="form-vertical"><input type="hidden" name="invoice_id" value="'+esc(selected?.id||'')+'">'+
+      '<label>Tanggal Pembelian<input type="date" name="purchase_date" value="'+esc(selected?.purchase_date||today)+'" required></label>'+
+      '<label>Supplier<input name="supplier_name" value="'+esc(selected?.supplier_name||'')+'" placeholder="Masukkan nama supplier"></label>'+
+      '<label>Tujuan Barang<select name="destination_type" id="goodsDestination" required '+(selected?'disabled':'')+'><option value="GUDANG" '+(selected?'selected':'')+'>Gudang</option><option value="KANDANG">Kandang</option><option value="KANTOR">Kantor</option></select></label>'+
       '<label id="goodsBarnWrap" style="display:none">Kandang<select name="barn_id" id="goodsBarn"><option value="">Pilih Kandang</option>'+barns.map(b=>'<option value="'+esc(b.id)+'">'+esc(shortBarnLabel(b))+'</option>').join('')+'</select></label>'+
-      '<label>Metode Pembayaran<select name="payment_method" required><option value="TRANSFER">Transfer</option><option value="TUNAI">Tunai</option></select></label>'+
-      '<label>Referensi / No. Nota<input name="reference"></label>'+
-      '<label>Catatan Nota<textarea name="notes"></textarea></label>'+
+      '<label>Metode Pembayaran<select name="payment_method" required><option value="TRANSFER" '+(selected?.payment_method==='TRANSFER'?'selected':'')+'>Transfer</option><option value="TUNAI" '+(selected?.payment_method==='TUNAI'?'selected':'')+'>Tunai</option></select></label>'+
+      '<label>Referensi / No. Nota<input name="reference" value="'+esc(selected?.reference||'')+'"></label>'+
+      '<label>Catatan Nota<textarea name="notes">'+esc(selected?.notes||'')+'</textarea></label>'+
       '<div class="tablewrap"><table><thead><tr><th>Nama Barang</th><th>Deskripsi</th><th>Jenis</th><th>Jumlah</th><th>Satuan</th><th>Harga/Satuan</th><th>Total</th><th></th></tr></thead><tbody id="goodsPurchaseRows"></tbody></table></div>'+
       '<div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.75rem"><button type="button" id="addGoodsPurchaseItem">+ Barang</button><strong>Total Nota: <span id="goodsPurchaseTotal">Rp 0</span></strong></div>'+
-      '<button type="submit">Simpan Pembelian</button>'+
+      '<div class="inline-actions"><button type="submit">'+(selected?'Simpan Koreksi':'Simpan Pembelian')+'</button>'+(selected?'<button type="button" id="financeGoodsEditCancel">Batal Koreksi</button>':'')+'</div>'+
     '</form></section>';
 
   html+='<section class="panel"><h3>Riwayat Pembelian Barang</h3>'+
@@ -473,8 +474,8 @@ async function financeStockPurchasePage(){
       '<label>Tanggal Sampai<input type="date" name="to" value="'+esc(goodsHistoryState.to||'')+'"></label>'+
       '<div class="inline-actions"><button type="submit">Tampilkan</button><button type="button" id="financeGoodsHistoryReset">Reset</button></div>'+
     '</form>'+
-    (goodsHistoryState.shown?'<div class="report-actions"><button type="button" id="goodsHistoryPrint">Cetak</button> <button type="button" id="goodsHistoryPdf">PDF</button> <button type="button" id="goodsHistoryExcel">Excel</button></div><div class="tablewrap"><table id="goodsHistoryTable"><thead><tr><th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Tujuan</th><th>Barang</th><th>Total</th><th>Metode</th></tr></thead><tbody>'+
-    visibleHistory.map(h=>'<tr><td>'+prodDateId(h.date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier||'-')+'</td><td>'+esc(h.destination)+'</td><td>'+esc(h.items||'-')+'</td><td>Rp '+prodFmt(h.total,0)+'</td><td>'+esc(h.method||'-')+'</td></tr>').join('')+
+    (goodsHistoryState.shown?'<div class="report-actions"><button type="button" id="goodsHistoryPrint">Cetak</button> <button type="button" id="goodsHistoryPdf">PDF</button> <button type="button" id="goodsHistoryExcel">Excel</button></div><div class="tablewrap"><table id="goodsHistoryTable"><thead><tr><th>Tanggal</th><th>No. Nota</th><th>Supplier</th><th>Tujuan</th><th>Barang</th><th>Total</th><th>Metode</th><th>Aksi</th></tr></thead><tbody>'+
+    visibleHistory.map(h=>'<tr><td>'+prodDateId(h.date)+'</td><td>'+esc(h.reference||'-')+'</td><td>'+esc(h.supplier||'-')+'</td><td>'+esc(h.destination)+'</td><td>'+esc(h.items||'-')+'</td><td>Rp '+prodFmt(h.total,0)+'</td><td>'+esc(h.method||'-')+'</td><td>'+(h.source==='STOCK'?'<button type="button" data-edit-stock-invoice="'+esc(h.id)+'">Edit</button> '+(profile.role==='ADMIN'?'<button type="button" data-delete-stock-invoice="'+esc(h.id)+'">Hapus</button>':''):'Koreksi di menu Beli Aset')+'</td></tr>').join('')+
     '</tbody></table></div>'+(visibleHistory.length?'':'<p>Data riwayat tidak ditemukan.</p>'):'<p class="muted">Riwayat belum ditampilkan.</p>')+'</section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
@@ -483,7 +484,7 @@ async function financeStockPurchasePage(){
   const goodsHistoryReset=document.getElementById('financeGoodsHistoryReset');
   if(goodsHistoryFilter)goodsHistoryFilter.onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(goodsHistoryFilter);goodsHistoryState.from=String(fd.get('from')||'');goodsHistoryState.to=String(fd.get('to')||'');if(goodsHistoryState.from&&goodsHistoryState.to&&goodsHistoryState.from>goodsHistoryState.to){const t=goodsHistoryState.from;goodsHistoryState.from=goodsHistoryState.to;goodsHistoryState.to=t}goodsHistoryState.shown=true;await financeStockPurchasePage();};
   if(goodsHistoryReset)goodsHistoryReset.onclick=async()=>{window.__financeGoodsHistory={from:'',to:'',shown:false};await financeStockPurchasePage();};
-  if(goodsHistoryState.shown)bindTableExportActions({tableId:'goodsHistoryTable',printId:'goodsHistoryPrint',pdfId:'goodsHistoryPdf',excelId:'goodsHistoryExcel',title:'Riwayat Pembelian Barang',filename:'Riwayat_Pembelian_Barang',filterText:'Periode '+(goodsHistoryState.from||'-')+' s/d '+(goodsHistoryState.to||'-')});
+  if(goodsHistoryState.shown)bindTableExportActions({tableId:'goodsHistoryTable',printId:'goodsHistoryPrint',pdfId:'goodsHistoryPdf',excelId:'goodsHistoryExcel',title:'Riwayat Pembelian Barang',filename:'Riwayat_Pembelian_Barang',filterText:'Periode '+(goodsHistoryState.from||'-')+' s/d '+(goodsHistoryState.to||'-'),dropLast:true});
 
   const form=document.getElementById('financeGoodsPurchaseForm');
   const tbody=document.getElementById('goodsPurchaseRows');
@@ -514,13 +515,13 @@ async function financeStockPurchasePage(){
     });
   };
 
-  const addRow=()=>{
+  const addRow=(seed={})=>{
     const tr=document.createElement('tr');
-    tr.innerHTML='<td><input name="standard_name" required></td><td><input name="description"></td>'+
-      '<td><select name="stock_kind" required><option value="ASET">Aset</option><option value="HABIS_PAKAI">Habis Pakai</option></select></td>'+
-      '<td><input name="quantity" data-number="1" inputmode="decimal" required></td>'+
-      '<td><input name="unit" placeholder="UNIT/PCS/ROLL" required></td>'+
-      '<td><input name="unit_price" data-number="1" inputmode="decimal" required></td>'+
+    tr.innerHTML='<td><input name="standard_name" value="'+esc(seed.standard_name||'')+'" required></td><td><input name="description" value="'+esc(seed.description||'')+'"></td>'+
+      '<td><select name="stock_kind" required><option value="ASET" '+(seed.stock_kind==='ASET'?'selected':'')+'>Aset</option><option value="HABIS_PAKAI" '+(seed.stock_kind==='HABIS_PAKAI'?'selected':'')+'>Habis Pakai</option></select></td>'+
+      '<td><input name="quantity" data-number="1" inputmode="decimal" value="'+(seed.quantity!=null?prodFmt(seed.quantity,2):'')+'" required></td>'+
+      '<td><input name="unit" value="'+esc(seed.unit||'')+'" placeholder="UNIT/PCS/ROLL" required></td>'+
+      '<td><input name="unit_price" data-number="1" inputmode="decimal" value="'+(seed.unit_price!=null?prodFmt(seed.unit_price,0):'')+'" required></td>'+
       '<td class="goodsLineTotal">Rp 0</td><td><button type="button" class="removeGoodsPurchaseItem">Hapus</button></td>';
     tbody.appendChild(tr);bindNumberInputs();
     tr.querySelectorAll('input').forEach(x=>x.addEventListener('input',recalc));
@@ -528,14 +529,14 @@ async function financeStockPurchasePage(){
     recalc();syncDestination();
   };
 
-  document.getElementById('addGoodsPurchaseItem').onclick=addRow;
+  document.getElementById('addGoodsPurchaseItem').onclick=()=>addRow();
   destination.onchange=syncDestination;
-  addRow();
+  if(selected){const lines=stockLines(selected.id);if(lines.length)lines.forEach(addRow);else addRow();syncDestination();}else addRow();
 
   form.onsubmit=async e=>{
     e.preventDefault();
     const fd=new FormData(e.target);
-    const d=String(fd.get('destination_type')||'GUDANG');
+    const d=selected?'GUDANG':String(fd.get('destination_type')||'GUDANG');
     const lines=[...tbody.querySelectorAll('tr')].map(tr=>({
       standard_name:String(tr.querySelector('[name="standard_name"]').value||'').trim(),
       description:String(tr.querySelector('[name="description"]').value||'').trim(),
@@ -551,7 +552,14 @@ async function financeStockPurchasePage(){
 
     let error=null;
     if(d==='GUDANG'){
-      ({error}=await db.rpc('finance_save_stock_invoice_atomic',{
+      ({error}=selected?await db.rpc('finance_correct_stock_invoice_atomic',{p_invoice_id:selected.id,
+        p_purchase_date:String(fd.get('purchase_date')||''),
+        p_supplier_name:String(fd.get('supplier_name')||'')||null,
+        p_payment_method:String(fd.get('payment_method')||''),
+        p_reference:String(fd.get('reference')||'')||null,
+        p_notes:String(fd.get('notes')||'')||null,
+        p_items:lines
+      }):await db.rpc('finance_save_stock_invoice_atomic',{
         p_purchase_date:String(fd.get('purchase_date')||''),
         p_supplier_name:String(fd.get('supplier_name')||'')||null,
         p_payment_method:String(fd.get('payment_method')||''),
@@ -573,8 +581,11 @@ async function financeStockPurchasePage(){
     }
     if(error)return msg(error.message);
     await financeStockPurchasePage();
-    msg(d==='GUDANG'?'Pembelian tersimpan dan stok gudang otomatis bertambah.':'Pembelian tersimpan dan aset tujuan otomatis dibuat.',true);
+    msg(selected?'Koreksi pembelian stok tersimpan.':(d==='GUDANG'?'Pembelian tersimpan dan stok gudang otomatis bertambah.':'Pembelian tersimpan dan aset tujuan otomatis dibuat.'),true);
   };
+  root.querySelectorAll('[data-edit-stock-invoice]').forEach(btn=>btn.onclick=()=>financeStockPurchasePage(btn.dataset.editStockInvoice));
+  root.querySelectorAll('[data-delete-stock-invoice]').forEach(btn=>btn.onclick=async()=>{if(!await appConfirm('Hapus nota stok ini? Hanya bisa jika belum pernah dikirim dari gudang.'))return;const {error}=await db.rpc('finance_delete_stock_invoice_atomic',{p_invoice_id:btn.dataset.deleteStockInvoice});if(error)return msg(error.message);await financeStockPurchasePage();msg('Nota stok dihapus.',true);});
+  const cancel=document.getElementById('financeGoodsEditCancel');if(cancel)cancel.onclick=()=>financeStockPurchasePage();
 }
 
 async function logisticsWarehouseStockPage(){
