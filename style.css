@@ -3525,3 +3525,211 @@ main select.app-select-native{
   ::-webkit-scrollbar-thumb{background:#124c78;border:2px solid #04101f;border-radius:10px}
   ::selection{background:#137fd0;color:white}
 }
+
+
+/* desktop-dashboard-neon-refine-2377 */
+@media (min-width:901px){
+  /* Dashboard hero: remove remaining light surface and match neon reference */
+  .owner-hero{
+    position:relative!important;
+    min-height:112px!important;
+    padding:22px 24px!important;
+    margin:0 0 14px!important;
+    overflow:hidden!important;
+    border:1px solid rgba(33,149,255,.65)!important;
+    border-radius:14px!important;
+    background:
+      radial-gradient(circle at 76% 22%,rgba(17,151,255,.22),transparent 26%),
+      linear-gradient(100deg,#082443 0%,#061b34 48%,#031226 100%)!important;
+    box-shadow:0 0 0 1px rgba(23,132,236,.10),0 14px 34px rgba(0,0,0,.30),0 0 28px rgba(0,126,255,.13)!important;
+  }
+  .owner-hero:before{
+    content:"";position:absolute;inset:0;pointer-events:none!important;
+    background:
+      linear-gradient(90deg,transparent 0 57%,rgba(42,177,255,.05) 57% 58%,transparent 58% 100%),
+      repeating-linear-gradient(90deg,transparent 0 48px,rgba(56,161,238,.035) 49px,transparent 50px);
+    opacity:.75;
+  }
+  .owner-hero:after{
+    content:"BMS DIGITAL FARM";position:absolute;right:34px;bottom:18px;
+    color:rgba(56,184,255,.13);font-size:28px;font-weight:900;letter-spacing:.08em;
+    transform:skewX(-10deg);pointer-events:none;
+  }
+  .owner-hero>div,.owner-live{position:relative;z-index:1}
+  .owner-hero h3{
+    margin:4px 0 6px!important;color:#f5fbff!important;
+    font-size:28px!important;font-weight:820!important;letter-spacing:-.025em!important;
+    text-shadow:0 0 18px rgba(38,157,255,.26)!important;
+  }
+  .owner-hero p{color:#8db4d3!important;font-size:12px!important}
+  .owner-eyebrow{
+    color:#3ed8f7!important;font-size:9.5px!important;font-weight:850!important;
+    letter-spacing:.16em!important;text-shadow:0 0 10px rgba(44,211,238,.25)!important;
+  }
+  .owner-live{
+    padding:7px 11px!important;border:1px solid rgba(47,230,185,.44)!important;
+    background:rgba(12,86,80,.24)!important;color:#58efc5!important;
+    box-shadow:0 0 15px rgba(39,222,177,.10)!important;font-size:9px!important;
+  }
+
+  /* KPI cards: brighter hierarchy and dashboard-like visual accent */
+  .owner-kpis{
+    gap:12px!important;
+    margin:0 0 15px!important;
+  }
+  .owner-kpis .card{
+    min-height:116px!important;padding:16px 18px 14px 18px!important;
+    border-color:rgba(31,145,255,.48)!important;
+    background:
+      radial-gradient(circle at 86% 30%,rgba(21,141,255,.16),transparent 27%),
+      linear-gradient(145deg,#082849 0%,#041b34 58%,#031426 100%)!important;
+  }
+  .owner-kpis .card:before{
+    content:"";position:absolute;right:16px;bottom:19px;width:92px;height:34px;
+    background:
+      linear-gradient(135deg,transparent 0 8%,rgba(38,161,255,.82) 9% 12%,transparent 13% 28%,rgba(38,161,255,.62) 29% 32%,transparent 33% 48%,rgba(38,161,255,.92) 49% 52%,transparent 53% 68%,rgba(38,161,255,.7) 69% 72%,transparent 73%);
+    filter:drop-shadow(0 0 5px rgba(31,153,255,.50));opacity:.8;
+    clip-path:polygon(0 78%,15% 55%,30% 68%,45% 28%,60% 45%,77% 8%,100% 25%,100% 31%,77% 15%,60% 53%,45% 36%,30% 76%,15% 63%,0 86%);
+  }
+  .owner-kpis .card:nth-child(2):before{filter:hue-rotate(18deg) drop-shadow(0 0 5px rgba(35,210,238,.45))}
+  .owner-kpis .card:nth-child(3):before{filter:hue-rotate(65deg) drop-shadow(0 0 5px rgba(39,230,174,.42))}
+  .owner-kpis .card:nth-child(4):before{filter:hue-rotate(285deg) drop-shadow(0 0 5px rgba(255,77,133,.42))}
+  .owner-kpis .card strong{
+    position:relative;z-index:1;margin-top:7px!important;
+    font-size:27px!important;color:#fff!important;
+  }
+  .owner-kpis .card small{
+    position:relative;z-index:1;color:#739bbb!important;font-size:9.5px!important;
+    max-width:72%;line-height:1.35!important;
+  }
+
+  /* Main dashboard composition */
+  .owner-grid-main{
+    grid-template-columns:minmax(0,2.25fr) minmax(290px,.78fr)!important;
+    gap:14px!important;align-items:stretch!important;
+  }
+  .owner-performance,.owner-alert-panel{
+    min-height:100%!important;
+    background:linear-gradient(145deg,rgba(7,30,56,.97),rgba(3,18,35,.97))!important;
+  }
+  .owner-section-title{
+    padding-bottom:10px!important;margin-bottom:12px!important;
+    border-bottom:1px solid rgba(40,115,172,.24)!important;
+  }
+  .owner-section-title h3,.owner-alert-panel h3{
+    color:#f2f9ff!important;font-size:15.5px!important;
+  }
+  .owner-section-title p,.owner-alert-panel>p{color:#7095b2!important;font-size:10px!important}
+
+  /* Performa cards were the largest remaining white area */
+  .owner-barn-grid{gap:10px!important}
+  .owner-barn-card{
+    position:relative!important;padding:13px!important;overflow:hidden!important;
+    border:1px solid rgba(42,128,194,.42)!important;border-radius:11px!important;
+    background:
+      radial-gradient(circle at 92% 8%,rgba(23,133,225,.10),transparent 32%),
+      linear-gradient(145deg,rgba(8,35,62,.96),rgba(4,22,40,.96))!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.018),0 8px 22px rgba(0,0,0,.15)!important;
+  }
+  .owner-barn-card:before{
+    content:"";position:absolute;left:0;top:14px;bottom:14px;width:2px;border-radius:2px;
+    background:linear-gradient(#20a8ff,#22d3ee);box-shadow:0 0 9px rgba(31,168,255,.45);
+  }
+  .owner-barn-head>div{padding-left:3px}
+  .owner-barn-head strong{color:#eaf7ff!important;font-size:12.5px!important}
+  .owner-barn-head small{color:#7096b4!important;font-size:9px!important;line-height:1.45!important}
+  .owner-barn-head small strong{color:#86cfff!important;display:inline!important;font-size:inherit!important}
+  .owner-alert{
+    background:rgba(255,79,105,.10)!important;color:#ff8fa5!important;
+    border-color:rgba(255,88,115,.38)!important;
+  }
+  .owner-ok{
+    background:rgba(37,224,166,.09)!important;color:#55e9bc!important;
+    border-color:rgba(42,220,168,.30)!important;
+  }
+  .owner-sim{
+    background:rgba(255,190,78,.10)!important;color:#ffd078!important;
+    border:1px solid rgba(255,190,78,.28)!important;
+  }
+  .owner-metrics{gap:7px!important;margin-top:11px!important}
+  .owner-metrics div{
+    padding:8px 9px!important;
+    border:1px solid rgba(35,106,158,.36)!important;border-radius:8px!important;
+    background:rgba(5,24,44,.74)!important;
+  }
+  .owner-metrics span{color:#6e96b4!important;font-size:8.5px!important}
+  .owner-metrics b{
+    color:#dff3ff!important;font-size:11.5px!important;
+    text-shadow:0 0 9px rgba(36,153,235,.12)!important;
+  }
+  .owner-card-foot{
+    margin-top:9px!important;padding-top:8px!important;
+    border-top:1px solid rgba(37,94,136,.25)!important;
+    color:#799bb4!important;font-size:9px!important;line-height:1.5!important;
+  }
+  .owner-card-foot strong{color:#a9cee7!important}
+  .owner-fc-ok{color:#51e2b5!important}
+  .owner-fc-low{color:#ffb166!important}
+
+  /* Attention panel */
+  .owner-alert-panel{position:sticky!important;top:18px!important}
+  .owner-alert-row{
+    padding:10px 2px!important;border-bottom-color:rgba(48,103,145,.30)!important;
+  }
+  .owner-alert-row>span{
+    width:23px!important;height:23px!important;
+    background:rgba(255,171,71,.12)!important;color:#ffc56c!important;
+    border:1px solid rgba(255,182,73,.26)!important;
+  }
+  .owner-alert-row strong{color:#e6f4ff!important}
+  .owner-alert-row small{color:#769ab5!important}
+  .owner-empty-ok{
+    background:rgba(39,222,171,.08)!important;color:#56eabe!important;
+    border-color:rgba(39,222,171,.25)!important;
+  }
+
+  /* Estimate/dashboard detail */
+  .owner-estimate-card{
+    padding:13px!important;border:1px solid rgba(39,119,180,.38)!important;
+    background:linear-gradient(145deg,rgba(7,31,56,.94),rgba(4,21,39,.94))!important;
+  }
+  .owner-estimate-head strong{color:#e6f6ff!important}
+  .owner-estimate-head small{color:#7095b1!important}
+  .owner-estimate-head>span{
+    background:#082b4b!important;border-color:#1c5d8b!important;color:#83cbf5!important;
+  }
+  .owner-estimate-metrics>div{
+    background:rgba(5,23,42,.82)!important;border-color:rgba(39,107,157,.34)!important;
+  }
+  .owner-estimate-metrics span{color:#7096b3!important}
+  .owner-estimate-metrics b{color:#dff3ff!important}
+
+  /* Ranking */
+  .owner-league tbody tr:nth-child(-n+3) td{
+    background:rgba(13,46,70,.88)!important;
+  }
+  .owner-league tbody tr:first-child td{
+    box-shadow:inset 0 1px 0 rgba(255,201,86,.16)!important;
+  }
+  .owner-trophy{filter:drop-shadow(0 0 6px rgba(255,191,38,.34))}
+
+  /* Make general dashboard table region match reference density */
+  .owner-performance .tablewrap,.owner-league .tablewrap{
+    border-color:rgba(38,112,168,.35)!important;
+  }
+  .owner-performance th,.owner-league th{
+    background:#0b3153!important;color:#a8d8f7!important;
+  }
+  .owner-performance td,.owner-league td{
+    background:rgba(4,21,39,.82)!important;
+  }
+
+  /* Remove any late light-theme overrides inside dashboard-only components */
+  .owner-hero *,
+  .owner-barn-card *,
+  .owner-estimate-card *,
+  .owner-alert-panel *{box-shadow:none}
+  .owner-hero,.owner-kpis .card,.owner-barn-card,.owner-estimate-card,.owner-alert-panel{
+    color:#dcefff!important;
+  }
+}
