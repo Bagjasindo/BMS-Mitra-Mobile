@@ -1,0 +1,87 @@
+/* BMS Desktop Neon Theme 2378
+   Desktop only. Mobile/PWA <= 900px is intentionally untouched. */
+@media (min-width:901px){
+  body{background:#020914!important;color:#eaf6ff!important}
+  .shell>main{background:transparent!important}
+
+  .owner-hero{
+    background:radial-gradient(circle at 82% 20%,rgba(0,150,255,.18),transparent 28%),linear-gradient(110deg,#082846,#041a32 55%,#031225)!important;
+    border:1px solid rgba(28,148,255,.72)!important;
+    color:#eaf6ff!important;
+    box-shadow:0 0 0 1px rgba(27,140,240,.11),0 14px 32px rgba(0,0,0,.28),0 0 24px rgba(0,126,255,.13)!important;
+  }
+  .owner-hero h3{color:#f4fbff!important;text-shadow:0 0 16px rgba(54,169,255,.28)!important}
+  .owner-hero p{color:#8eb5d2!important}
+  .owner-eyebrow{color:#39d4f1!important}
+  .owner-live{background:rgba(15,107,95,.25)!important;border-color:rgba(56,228,190,.42)!important;color:#5bf0c8!important}
+
+  .owner-kpis .card{
+    background:radial-gradient(circle at 86% 20%,rgba(21,144,255,.15),transparent 31%),linear-gradient(145deg,#082849,#041b34 58%,#031426)!important;
+    border-color:rgba(32,148,255,.52)!important;color:#87abc7!important;
+  }
+  .owner-kpis .card strong{color:#fff!important}
+  .owner-kpis .card small{color:#7299b8!important}
+
+  .owner-performance,.owner-alert-panel,.owner-league,
+  .owner-grid-main>.panel,
+  main>.panel{
+    background:linear-gradient(145deg,rgba(7,30,56,.97),rgba(3,18,35,.97))!important;
+    border-color:rgba(33,137,219,.43)!important;
+    color:#deeffb!important;
+  }
+
+  .owner-barn-card{
+    background:radial-gradient(circle at 92% 8%,rgba(23,133,225,.11),transparent 34%),linear-gradient(145deg,#08233e,#04172b)!important;
+    border:1px solid rgba(42,128,194,.46)!important;
+    color:#dfefff!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.02),0 8px 20px rgba(0,0,0,.16)!important;
+  }
+  .owner-barn-head strong{color:#edf9ff!important}
+  .owner-barn-head small{color:#739bb9!important}
+  .owner-barn-head small strong{color:#86cfff!important}
+  .owner-metrics div{
+    background:#061b31!important;
+    border-color:rgba(39,111,164,.38)!important;
+  }
+  .owner-metrics span{color:#6f96b4!important}
+  .owner-metrics b{color:#ddf2ff!important}
+  .owner-card-foot{color:#7d9fb8!important;border-top-color:rgba(40,100,143,.28)!important}
+  .owner-card-foot strong{color:#acceea!important}
+
+  .owner-alert-panel h3,.owner-section-title h3{color:#f2f9ff!important}
+  .owner-section-title p,.owner-alert-panel>p{color:#7399b5!important}
+  .owner-alert-row{border-bottom-color:rgba(51,106,148,.30)!important}
+  .owner-alert-row strong{color:#e8f6ff!important}
+  .owner-alert-row small{color:#789bb5!important}
+  .owner-alert-row>span{background:rgba(255,173,67,.12)!important;border:1px solid rgba(255,185,80,.28)!important;color:#ffc56d!important}
+
+  .owner-estimate-card{
+    background:linear-gradient(145deg,#08213b,#04162a)!important;
+    border-color:rgba(39,119,180,.42)!important;
+    color:#dff1fd!important;
+  }
+  .owner-estimate-metrics>div{background:#061a30!important;border-color:rgba(39,107,157,.38)!important}
+  .owner-estimate-head strong,.owner-estimate-metrics b{color:#e5f6ff!important}
+  .owner-estimate-head small,.owner-estimate-metrics span{color:#7299b6!important}
+
+  .owner-table,.owner-league table{background:transparent!important}
+  .owner-table th,.owner-league th{background:#0b3153!important;color:#acdafa!important;border-color:#19547c!important}
+  .owner-table td,.owner-league td{background:#05182c!important;color:#bfdbea!important;border-color:#163e5d!important}
+  .owner-table tbody tr:nth-child(even) td,.owner-league tbody tr:nth-child(even) td{background:#071e35!important}
+  .owner-league tbody tr:nth-child(-n+3) td{background:#0b2943!important}
+  .owner-table tbody tr:hover td,.owner-league tbody tr:hover td{background:#0a3558!important;color:#fff!important}
+
+  .owner-alert{background:rgba(255,79,105,.10)!important;color:#ff91a6!important;border-color:rgba(255,88,115,.38)!important}
+  .owner-ok{background:rgba(37,224,166,.09)!important;color:#59eabd!important;border-color:rgba(42,220,168,.30)!important}
+  .owner-empty-ok{background:rgba(39,222,171,.08)!important;color:#5aeac0!important;border-color:rgba(39,222,171,.25)!important}
+
+  /* Hard guard against inherited light dashboard surfaces */
+  .owner-hero,
+  .owner-barn-card,
+  .owner-metrics div,
+  .owner-estimate-card,
+  .owner-estimate-metrics>div,
+  .owner-alert-panel,
+  .owner-performance,
+  .owner-league{color-scheme:dark!important}
+}
