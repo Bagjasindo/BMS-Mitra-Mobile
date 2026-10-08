@@ -625,7 +625,7 @@ async function marketingReports(){
     setTimeout(()=>{w.focus();w.print();},500);
   };
   document.getElementById('marketingPrint').onclick=()=>printOpen(false);
-  document.getElementById('marketingPdf').onclick=()=>printOpen(true);
+  document.getElementById('marketingPdf').onclick=()=>BMSCore.savePdfHtml(reportHtml(),'Laporan_Marketing.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
   document.getElementById('marketingExcel').onclick=()=>{
     renderRows();
     const html=document.getElementById('marketingReportSections').innerHTML+document.getElementById('marketingReportSummary').innerHTML;
@@ -1072,11 +1072,7 @@ async function logisticsReports(){
 
   document.getElementById('logisticsPdf').onclick=()=>{
     renderRows();
-    const w=window.open('','_blank');
-    if(!w)return msg('Popup PDF diblokir browser.');
-    w.document.write(reportHtml().replace('<title>Laporan Logistik</title>','<title>Laporan_Logistik_PDF</title>'));
-    w.document.close();
-    printWhenReady(w);
+    BMSCore.savePdfHtml(reportHtml(),'Laporan_Logistik.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
   };
 
   document.getElementById('logisticsExcel').onclick=()=>{
