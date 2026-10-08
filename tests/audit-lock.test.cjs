@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2374';
-  assert.match(index,new RegExp('v='+build+'-owner-global-readonly'));
-  assert.match(sw,new RegExp('v'+build+'-owner-global-readonly'));
+  const build='2375';
+  assert.match(index,new RegExp('v='+build+'-mobile-pdf-save'));
+  assert.match(sw,new RegExp('v'+build+'-mobile-pdf-save'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -110,4 +110,21 @@ test('OWNER global read-only keeps report filters interactive and blocks mutatio
   assert.match(main,/if\(!mutating\)return;/);
   assert.match(main,/if\(isMutationButton\(btn\)\)\{btn\.disabled=true;btn\.hidden=true;\}/);
   assert.doesNotMatch(main,/form\.querySelectorAll\('input,select,textarea'\)\.forEach\(el=>\{el\.disabled=true;\}\)/);
+});
+
+
+test('mobile PDF saves real files instead of routing PDF buttons through print',()=>{
+  const core=read('bms-core.js');
+  const main=read('main-2321.js');
+  const logistics=read('modules/bms-master-logistics.js');
+  const production=read('modules/bms-production.js');
+  const finance=read('modules/bms-finance.js');
+  const rhpp=read('modules/bms-rhpp-users.js');
+  const reports=read('modules/bms-dashboard-reports.js');
+  assert.match(core,/function pdfBlobFromHtml/);
+  assert.match(core,/async function savePdfHtml/);
+  assert.match(core,/application\/pdf/);
+  assert.match(core,/navigator\.share/);
+  for(const src of [main,logistics,production,finance,rhpp,reports])assert.match(src,/BMSCore\.savePdfHtml/);
+  for(const src of [main,logistics,production,finance,rhpp,reports])assert.doesNotMatch(src,/Pdf[^\n]{0,160}onclick[^\n]{0,160}(?:print\(|openPrint|printOpen)/);
 });
