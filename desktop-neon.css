@@ -416,3 +416,14 @@
     overflow:hidden!important;
   }
 }
+
+
+/* hide-redundant-dashboard-hero-2383 */
+@media (min-width:901px){
+  .owner-hero{
+    display:none!important;
+  }
+  .owner-kpis{
+    margin-top:0!important;
+  }
+}
