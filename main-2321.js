@@ -230,7 +230,7 @@ const visibleTabs={
   KEUANGAN:['dashboard','finance_mandiri_piutang','finance_mandiri_penerimaan','finance_mandiri_hutang','finance_mandiri_pembayaran','finance_mandiri_laporan','expedisi_pembayaran','bop_expedisi','perawatan_expedisi','laporan_expedisi','finance_rhpp_real','bop','laba_rugi_kandang','laba_rugi_global','perawatan_kandang','aset_kandang','hutang_supplier','finance_pembelian_langsung','finance_beli_stok','bop_umum','form_pengajuan_kas','kasbon','cicilan','arus_kas','laporan_keuangan','profil'],
   OWNER:['dashboard','rhpp','rhpp_history','laporan_expedisi','finance_rhpp_real','laba_rugi_kandang','laba_rugi_global','owner_logistics_report','owner_marketing_report','owner_finance_report','owner_production_report','owner_ppl_report','profil']
 };
-const canViewTab=k=>k==='profil'||Boolean(profile?.role&&visibleTabs[profile.role]?.includes(k));
+const canViewTab=k=>profile?.role==='OWNER'||k==='profil'||Boolean(profile?.role&&visibleTabs[profile.role]?.includes(k));
 const modules={
   kandang:{table:'barns',fields:[['name','Nama'],['capacity','Kapasitas','number'],['kind','Jenis','select:OPEN_HOUSE,SEMI_CLOSE_HOUSE,CLOSE_HOUSE'],['location','Lokasi']]},
   item:{table:'items',fields:[['name','Nama'],['category','Jenis','select:DOC,PAKAN,OVK1,OVK2,LAINNYA'],['feed_phase','Fase Pakan'],['unit','Satuan'],['supplier_id','Supplier','supplier'],['kg_per_unit','Kg / Satuan','number']]},
