@@ -1104,7 +1104,7 @@ async function financeExpeditionMasterPage(){
       const code=String(row.code||'').toUpperCase();
       if(!code.startsWith(prefix+'-'))continue;
       const suffix=code.slice(prefix.length+1);
-      if(/^\\d+$/.test(suffix))max=Math.max(max,Number(suffix));
+      if(/^\d+$/.test(suffix))max=Math.max(max,Number(suffix));
     }
     let candidate;
     do{max++;candidate=prefix+'-'+String(max).padStart(3,'0');}while(used.has(candidate));
