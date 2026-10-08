@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2379';
-  assert.match(index,new RegExp('v='+build+'-desktop-neon-polish'));
-  assert.match(sw,new RegExp('v'+build+'-desktop-neon-polish'));
+  const build='2380';
+  assert.match(index,new RegExp('v='+build+'-desktop-compact-flow'));
+  assert.match(sw,new RegExp('v'+build+'-desktop-compact-flow'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -180,5 +180,17 @@ test('desktop premium polish remains desktop-only',()=>{
   assert.match(block,/\.owner-kpis \.card:hover/);
   assert.match(block,/\.owner-barn-card:hover/);
   assert.match(block,/\.owner-table th,\.owner-league th/);
+  assert.doesNotMatch(block,/@media\s*\(max-width:/);
+});
+
+
+test('desktop dashboard compact flow removes empty vertical stretch',()=>{
+  const css=read('desktop-neon.css');
+  const marker=css.indexOf('/* compact-dashboard-flow-2380 */');
+  assert.ok(marker>=0);
+  const block=css.slice(marker);
+  assert.match(block,/\.owner-grid-main\{\s*align-items:start!important;/);
+  assert.match(block,/\.owner-performance,[\s\S]*min-height:0!important;/);
+  assert.match(block,/height:auto!important;/);
   assert.doesNotMatch(block,/@media\s*\(max-width:/);
 });
