@@ -1091,16 +1091,49 @@ async function financeExpeditionMasterPage(){
   ]);
   const drivers=dr.data||[],vehicles=vr.data||[],customers=cr.data||[],routes=rr.data||[],destinations=der.data||[];
   const err=[dr,vr,cr,rr,der].find(x=>x.error)?.error;
+  const expMasterCodes=[
+    {key:'Driver',table:'expedition_drivers',rows:drivers,prefix:'DRV'},
+    {key:'Route',table:'expedition_routes',rows:routes,prefix:'RTE'},
+    {key:'Destination',table:'expedition_destinations',rows:destinations,prefix:'DST'},
+    {key:'Customer',table:'expedition_customers',rows:customers,prefix:'CUST-EXP'}
+  ];
+  const nextExpCode=(rows,prefix)=>{
+    const used=new Set((rows||[]).map(x=>String(x.code||'').toUpperCase()));
+    let max=0;
+    for(const row of rows||[]){
+      const code=String(row.code||'').toUpperCase();
+      if(!code.startsWith(prefix+'-'))continue;
+      const suffix=code.slice(prefix.length+1);
+      if(/^\\d+$/.test(suffix))max=Math.max(max,Number(suffix));
+    }
+    let candidate;
+    do{max++;candidate=prefix+'-'+String(max).padStart(3,'0');}while(used.has(candidate));
+    return candidate;
+  };
+  const createMasterCode=async(table,prefix)=>{
+    const {data,error}=await db.from(table).select('code');
+    if(error)throw error;
+    return nextExpCode(data||[],prefix);
+  };
   const saveExpMaster=async(table,form,payload)=>{
     if(profile?.role!=='ADMIN')return {error:{message:'Hanya Administrator dapat mengubah Master Expedisi.'}};
     const id=form.dataset.editId||'';
-    return id?db.from(table).update(payload).eq('id',id):db.from(table).insert(payload);
+    if(id)return db.from(table).update(payload).eq('id',id);
+    const spec=expMasterCodes.find(x=>x.table===table);
+    if(!spec)return db.from(table).insert(payload);
+    for(let attempt=0;attempt<3;attempt++){
+      try{payload.code=await createMasterCode(table,spec.prefix);}
+      catch(error){return {error};}
+      const result=await db.from(table).insert(payload);
+      if(!result.error||result.error.code!=='23505')return result;
+    }
+    return {error:{message:'Kode otomatis sedang digunakan. Silakan simpan ulang.'}};
   };
 
 
   let html='<section class="panel"><h3>Master Data Expedisi</h3><p class="muted">Acuan untuk Data / Operasional dan hasil cetak Invoice Expedisi. Hanya Administrator yang mengubah master.</p><div class="report-actions"><button type="button" id="expMasterPrint">Cetak</button> <button type="button" id="expMasterPdf">PDF</button> <button type="button" id="expMasterExcel">Excel Semua Master</button></div></section>'+
     '<section class="panel"><h3>Master Sopir</h3><form id="expDriverForm" class="form-vertical">'+
-      '<label>Kode<input name="code" required placeholder="DRV-001"></label>'+
+      '<label>Kode<input name="code" readonly placeholder="Otomatis: DRV-001"></label>'+
       '<label>Nama Sopir<input name="name" required></label>'+
       '<label>No. HP<input name="phone"></label><label>No. SIM<input name="license_number"></label>'+
       '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
@@ -1118,7 +1151,7 @@ async function financeExpeditionMasterPage(){
       vehicles.map(x=>'<tr><td>'+esc(x.plate_number)+'</td><td>'+esc(x.vehicle_type||'-')+'</td><td>'+prodFmt(x.capacity_qty||0,0)+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div></section>'+
     '<section class="panel"><h3>Master Rute Expedisi</h3><form id="expRouteForm" class="form-vertical">'+
-      '<label>Kode Rute<input name="code" required placeholder="RTE-001"></label>'+
+      '<label>Kode Rute<input name="code" readonly placeholder="Otomatis: RTE-001"></label>'+
       '<label>Zona / Rute<input name="route_name" required placeholder="Cirebon-Majalengka"></label>'+
       '<label>Harga Trip Default<input name="default_trip_price" type="text" inputmode="decimal" data-number="1" required></label>'+
       '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
@@ -1139,7 +1172,7 @@ async function financeExpeditionMasterPage(){
         '<button type="submit">Simpan Biaya BOP Rute</button>'+
       '</form></div></section>'+
     '<section class="panel"><h3>Master Tujuan Expedisi</h3><form id="expDestinationForm" class="form-vertical">'+
-      '<label>Kode Tujuan<input name="code" required placeholder="DST-001"></label>'+
+      '<label>Kode Tujuan<input name="code" readonly placeholder="Otomatis: DST-001"></label>'+
       '<label>Nama Tujuan<input name="name" required placeholder="Kandang Putri A"></label>'+
       '<label>Alamat / Lokasi<textarea name="address"></textarea></label>'+
       '<label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>'+
@@ -1149,7 +1182,7 @@ async function financeExpeditionMasterPage(){
       destinations.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.address||'-')+'</td><td>'+(x.active?'AKTIF':'NONAKTIF')+'</td></tr>').join('')+
       '</tbody></table></div></section>'+
     '<section class="panel"><h3>Master Pelanggan Expedisi</h3><form id="expCustomerForm" class="form-vertical">'+
-      '<label>Kode<input name="code" required placeholder="CUST-EXP-001"></label>'+
+      '<label>Kode<input name="code" readonly placeholder="Otomatis: CUST-EXP-001"></label>'+
       '<label>Nama Pelanggan<input name="name" required></label>'+
       '<label>Alamat<textarea name="address"></textarea></label><label>Telepon<input name="phone"></label>'+
       '<label>NPWP<input name="tax_number"></label>'+
@@ -1160,6 +1193,15 @@ async function financeExpeditionMasterPage(){
       '</tbody></table></div></section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  if(profile?.role==='ADMIN'){
+    for(const spec of expMasterCodes){
+      const form=document.getElementById('exp'+spec.key+'Form');
+      if(!form)continue;
+      const field=form.elements.code;
+      if(field){field.value=nextExpCode(spec.rows,spec.prefix);field.readOnly=true;}
+    }
+  }
+
   if(profile?.role==='ADMIN'){
     const editGroups=[
       {key:'Driver',rows:drivers,fields:['code','name','phone','license_number','active']},
@@ -1196,6 +1238,8 @@ async function financeExpeditionMasterPage(){
       cancel.type='button';cancel.textContent='Batal Edit';cancel.hidden=true;
       cancel.onclick=()=>{
         form.reset();delete form.dataset.editId;cancel.hidden=true;
+        const spec=expMasterCodes.find(x=>x.key===group.key);
+        if(spec&&form.elements.code)form.elements.code.value=nextExpCode(spec.rows,spec.prefix);
         const submit=form.querySelector('button[type="submit"]');
         if(submit)submit.textContent='Simpan '+({Driver:'Sopir',Vehicle:'Kendaraan',Route:'Rute',Destination:'Tujuan',Customer:'Pelanggan'}[group.key]);
       };
