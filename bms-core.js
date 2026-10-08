@@ -238,6 +238,64 @@
     return sheets;
   }
   function excelBlob(parts){return xlsx(applyVerifiedReportFormulas(applySafeExcelTotals(htmlSheets(parts.join(''),'Laporan'))))}
+  function pdfEscape(text){return String(text??'').replace(/[^\x20-\x7E]/g,'?').replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)')}
+  function pdfLinesFromHtml(html){
+    const doc=new DOMParser().parseFromString(String(html||''),'text/html');
+    doc.querySelectorAll('script,style,button,form,.report-actions,.inline-actions').forEach(x=>x.remove());
+    const out=[];
+    const pushWrapped=(text,max=112)=>{
+      let s=String(text||'').replace(/\s+/g,' ').trim();if(!s)return;
+      while(s.length>max){let cut=s.lastIndexOf(' ',max);if(cut<40)cut=max;out.push(s.slice(0,cut));s=s.slice(cut).trim()}
+      if(s)out.push(s);
+    };
+    for(const el of doc.body.querySelectorAll('h1,h2,h3,h4,p,li,tr')){
+      if(el.tagName==='TR'){
+        const cells=[...el.children].filter(x=>['TD','TH'].includes(x.tagName)).map(x=>x.textContent.replace(/\s+/g,' ').trim());
+        if(cells.length)pushWrapped(cells.join(' | '));
+      }else pushWrapped(el.textContent);
+    }
+    if(!out.length)String(doc.body.innerText||doc.body.textContent||'').split(/\n+/).forEach(x=>pushWrapped(x));
+    return out.length?out:['Tidak ada data'];
+  }
+  function pdfBlobFromHtml(html){
+    const lines=pdfLinesFromHtml(html),pageLines=48,pages=[];
+    for(let i=0;i<lines.length;i+=pageLines)pages.push(lines.slice(i,i+pageLines));
+    const objects=[null,null,null];
+    const pageIds=[],contentIds=[];
+    let nextId=4;
+    pages.forEach(()=>{pageIds.push(nextId++);contentIds.push(nextId++)});
+    objects[1]='<< /Type /Catalog /Pages 2 0 R >>';
+    objects[2]='<< /Type /Pages /Count '+pages.length+' /Kids ['+pageIds.map(id=>id+' 0 R').join(' ')+'] >>';
+    objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>';
+    pages.forEach((rows,i)=>{
+      const content='BT\n/F1 8 Tf\n28 560 Td\n10 TL\n'+rows.map(x=>'('+pdfEscape(x)+') Tj\nT*').join('\n')+'\nET';
+      objects[contentIds[i]]='<< /Length '+content.length+' >>\nstream\n'+content+'\nendstream';
+      objects[pageIds[i]]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R >> >> /Contents '+contentIds[i]+' 0 R >>';
+    });
+    let pdf='%PDF-1.4\n',offsets=[0];
+    for(let id=1;id<objects.length;id++){offsets[id]=pdf.length;pdf+=id+' 0 obj\n'+objects[id]+'\nendobj\n'}
+    const xref=pdf.length;pdf+='xref\n0 '+objects.length+'\n0000000000 65535 f \n';
+    for(let id=1;id<objects.length;id++)pdf+=String(offsets[id]).padStart(10,'0')+' 00000 n \n';
+    pdf+='trailer\n<< /Size '+objects.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
+    return new Blob([pdf],{type:'application/pdf'});
+  }
+  async function savePdfHtml(html,fileName='Laporan.pdf'){
+    const name=String(fileName||'Laporan.pdf').replace(/[^A-Za-z0-9._-]+/g,'_').replace(/\.pdf$/i,'')+'.pdf';
+    const blob=pdfBlobFromHtml(html),mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(scope.navigator?.userAgent||'');
+    try{
+      if(mobile&&scope.navigator?.share&&scope.navigator?.canShare&&typeof File!=='undefined'){
+        const file=new File([blob],name,{type:'application/pdf'});
+        if(scope.navigator.canShare({files:[file]})){await scope.navigator.share({files:[file],title:name});return true}
+      }
+    }catch(error){if(error?.name==='AbortError')return false}
+    const url=URL.createObjectURL(blob);
+    if(mobile){
+      const w=scope.open?.(url,'_blank');
+      if(w){setTimeout(()=>URL.revokeObjectURL(url),60000);return true}
+    }
+    const a=scope.document.createElement('a');a.href=url;a.download=name;scope.document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);return true;
+  }
+
   function base64(bytes){let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));return scope.btoa(text)}
   function unbase64(text){return Uint8Array.from(scope.atob(text),c=>c.charCodeAt(0))}
   async function backupKey(password,salt,iterations){
@@ -259,7 +317,7 @@
     const clear=await scope.crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:utf8.encode('BMS_FULL_RECOVERY_V1')},key,unbase64(envelope.ciphertext));
     const document=JSON.parse(new TextDecoder().decode(clear));if(document.format!=='BMS_FULL_RECOVERY')throw new Error('Isi backup tidak valid.');return document;
   }
-  const api={dateAdd,sha256,createFetch,xlsx,excelBlob,htmlSheets,download,encryptRecovery,decryptRecovery,downloadWorkbook:(sheets,name)=>download(xlsx(sheets),name.replace(/\.xls(?:x)?$/i,'')+'.xlsx')};
+  const api={dateAdd,sha256,createFetch,xlsx,excelBlob,htmlSheets,download,pdfBlobFromHtml,savePdfHtml,encryptRecovery,decryptRecovery,downloadWorkbook:(sheets,name)=>download(xlsx(sheets),name.replace(/\.xls(?:x)?$/i,'')+'.xlsx')};
   scope.BMSCore=api;
   if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
