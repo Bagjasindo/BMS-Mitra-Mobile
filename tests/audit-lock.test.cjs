@@ -95,3 +95,10 @@ test('AUDIT-LOCK completion pack keeps reports filters status and correction con
     'finance_delete_asset_invoice_atomic'
   ]) assert.match(schema,new RegExp(rpc));
 });
+
+
+test('OWNER mobile navigation controls stay enabled while content remains read-only',()=>{
+  const main=read('main-2321.js');
+  assert.match(main,/btn\.closest\('nav,\.mobile-topbar,\.mobile-drawer-head'\)\)return/);
+  assert.match(main,/btn\.hasAttribute\('data-tab'\)\|\|btn\.closest\('nav,\.mobile-topbar,\.mobile-drawer-head'\)\)return/);
+});
