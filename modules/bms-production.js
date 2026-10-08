@@ -2784,7 +2784,7 @@ async function adminRhppHistoryPage(){
   const returns=rrr.data||[],returnItems=rir.data||[],printItems=itr.data||[],printFeedItems=printItems.filter(i=>i.category==='PAKAN'),printOvkItems=printItems.filter(i=>['OVK','OVK1'].includes(String(i.category||'').toUpperCase())),printContracts=ctr.data||[];
   const printSuppliers=supr.data||[],printPpl=ppr.data||[],printBarnDetails=bdr.data||[];
   const historyOnly=true;
-  const viewAssignments=d.assignments.filter(a=>finals.some(f=>f.contract_assignment_id===a.id));
+  const viewAssignments=d.assignments.filter(a=>!a.active||finals.some(f=>f.contract_assignment_id===a.id));
   const barnsForAssignments=[...new Map(viewAssignments.map(a=>{
     const b=d.barns.find(x=>x.id===a.barn_id);
     return b?[b.id,b]:null;
@@ -2798,6 +2798,8 @@ async function adminRhppHistoryPage(){
     window.__adminRhppHistoryState.assignment='';
   }
 
+  const missingFinal=selectedAssignment&&!finals.some(f=>f.contract_assignment_id===selectedAssignment);
+  if(missingFinal){selectedAssignment='';window.__adminRhppHistoryState.assignment='';}
   let html=RHPP_SCREEN_STYLE+'<div class="rhpp-ui"><section class="panel"><h3>'+(historyOnly?'Riwayat RHPP':'Lihat RHPP')+'</h3><p class="muted">'+(historyOnly?'Pilih kandang dan siklus CLOSED. Riwayat memakai snapshot final MITRA maupun MANDIRI saat produksi ditutup dan hanya untuk dilihat/cetak.':'Pilih kandang, lalu pilih siklus. Data CLOSED ditampilkan sebagai ringkasan RHPP Sistem.')+'</p>'+
     '<form id="pplRhppViewForm" class="form-vertical">'+
       '<label>Kandang<select id="pplRhppBarn" required><option value="">Pilih Kandang</option>'+
@@ -2809,7 +2811,7 @@ async function adminRhppHistoryPage(){
         '</option>').join('')+
       '</select></label>'+
       '<button type="submit">Tampilkan</button>'+
-    '</form></section>';
+    '</form>'+(missingFinal?'<p class="muted">Snapshot final RHPP untuk siklus ini belum tersedia atau tidak dapat dibaca oleh akun ini. Hubungi Administrator untuk memeriksa akses baca data final; tidak ada data yang diubah.</p>':'')+'</section>';
 
   if(selectedAssignment){
     const a=d.assignments.find(x=>x.id===selectedAssignment);
