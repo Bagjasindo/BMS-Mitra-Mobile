@@ -427,3 +427,39 @@
     margin-top:0!important;
   }
 }
+
+
+/* kpi-reference-icon-polish-2384 */
+@media (min-width:901px){
+  .owner-kpi-icon{
+    background:
+      radial-gradient(circle at 34% 30%,rgba(64,180,255,.30),rgba(7,54,98,.86) 56%,rgba(3,24,45,.98))!important;
+    border-width:1.2px!important;
+  }
+  .owner-kpi-icon svg{
+    width:25px!important;height:25px!important;
+    stroke-width:1.65!important;
+  }
+  .owner-kpi-1 .owner-kpi-icon{
+    border-color:#1798ff!important;
+    box-shadow:inset 0 0 16px rgba(23,152,255,.18),0 0 15px rgba(23,152,255,.26)!important;
+  }
+  .owner-kpi-1 .owner-kpi-icon svg{stroke:#a4ddff!important}
+  .owner-kpi-2 .owner-kpi-icon{
+    border-color:#2a9fff!important;
+    background:radial-gradient(circle at 34% 30%,rgba(61,174,255,.30),rgba(7,55,100,.87) 56%,rgba(3,24,46,.98))!important;
+  }
+  .owner-kpi-2 .owner-kpi-icon svg{stroke:#b2e3ff!important}
+  .owner-kpi-3 .owner-kpi-icon{
+    border-color:#20dcc5!important;
+    background:radial-gradient(circle at 34% 30%,rgba(42,229,204,.28),rgba(5,75,76,.86) 56%,rgba(3,29,39,.98))!important;
+    box-shadow:inset 0 0 16px rgba(34,221,196,.16),0 0 15px rgba(34,221,196,.22)!important;
+  }
+  .owner-kpi-3 .owner-kpi-icon svg{stroke:#8af7e3!important}
+  .owner-kpi-4 .owner-kpi-icon{
+    border-color:#ff4f92!important;
+    background:radial-gradient(circle at 34% 30%,rgba(255,82,148,.30),rgba(91,24,64,.87) 56%,rgba(38,8,29,.98))!important;
+    box-shadow:inset 0 0 16px rgba(255,75,141,.16),0 0 15px rgba(255,75,141,.24)!important;
+  }
+  .owner-kpi-4 .owner-kpi-icon svg{stroke:#ff9fc4!important}
+}
