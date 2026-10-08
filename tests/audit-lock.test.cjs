@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2373';
-  assert.match(index,new RegExp('v='+build+'-owner-mobile-nav'));
-  assert.match(sw,new RegExp('v'+build+'-owner-mobile-nav'));
+  const build='2374';
+  assert.match(index,new RegExp('v='+build+'-owner-global-readonly'));
+  assert.match(sw,new RegExp('v'+build+'-owner-global-readonly'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -101,4 +101,13 @@ test('OWNER mobile navigation controls stay enabled while content remains read-o
   const main=read('main-2321.js');
   assert.match(main,/btn\.closest\('nav,\.mobile-topbar,\.mobile-drawer-head'\)\)return/);
   assert.match(main,/btn\.hasAttribute\('data-tab'\)\|\|btn\.closest\('nav,\.mobile-topbar,\.mobile-drawer-head'\)\)return/);
+});
+
+
+test('OWNER global read-only keeps report filters interactive and blocks mutations',()=>{
+  const main=read('main-2321.js');
+  assert.match(main,/mutationText=/);
+  assert.match(main,/if\(!mutating\)return;/);
+  assert.match(main,/if\(isMutationButton\(btn\)\)\{btn\.disabled=true;btn\.hidden=true;\}/);
+  assert.doesNotMatch(main,/form\.querySelectorAll\('input,select,textarea'\)\.forEach\(el=>\{el\.disabled=true;\}\)/);
 });
