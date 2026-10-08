@@ -1091,6 +1091,12 @@ async function financeExpeditionMasterPage(){
   ]);
   const drivers=dr.data||[],vehicles=vr.data||[],customers=cr.data||[],routes=rr.data||[],destinations=der.data||[];
   const err=[dr,vr,cr,rr,der].find(x=>x.error)?.error;
+  const saveExpMaster=async(table,form,payload)=>{
+    if(profile?.role!=='ADMIN')return {error:{message:'Hanya Administrator dapat mengubah Master Expedisi.'}};
+    const id=form.dataset.editId||'';
+    return id?db.from(table).update(payload).eq('id',id):db.from(table).insert(payload);
+  };
+
 
   let html='<section class="panel"><h3>Master Data Expedisi</h3><p class="muted">Acuan untuk Data / Operasional dan hasil cetak Invoice Expedisi. Hanya Administrator yang mengubah master.</p><div class="report-actions"><button type="button" id="expMasterPrint">Cetak</button> <button type="button" id="expMasterPdf">PDF</button> <button type="button" id="expMasterExcel">Excel Semua Master</button></div></section>'+
     '<section class="panel"><h3>Master Sopir</h3><form id="expDriverForm" class="form-vertical">'+
@@ -1154,32 +1160,75 @@ async function financeExpeditionMasterPage(){
       '</tbody></table></div></section>';
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  if(profile?.role==='ADMIN'){
+    const editGroups=[
+      {key:'Driver',rows:drivers,fields:['code','name','phone','license_number','active']},
+      {key:'Vehicle',rows:vehicles,fields:['plate_number','vehicle_type','capacity_qty','active']},
+      {key:'Route',rows:routes,fields:['code','route_name','default_trip_price','active','notes']},
+      {key:'Destination',rows:destinations,fields:['code','name','address','active','notes']},
+      {key:'Customer',rows:customers,fields:['code','name','address','phone','tax_number','active']}
+    ];
+    for(const group of editGroups){
+      const table=document.getElementById('exp'+group.key+'Table');
+      const form=document.getElementById('exp'+group.key+'Form');
+      if(!table||!form)continue;
+      const header=table.querySelector('thead tr');
+      if(header){const th=document.createElement('th');th.textContent='Aksi';header.appendChild(th);}
+      table.querySelectorAll('tbody tr').forEach((tr,i)=>{
+        const item=group.rows[i];if(!item)return;
+        const td=document.createElement('td'),button=document.createElement('button');
+        button.type='button';button.textContent='Edit';
+        button.onclick=()=>{
+          form.dataset.editId=item.id;
+          for(const field of group.fields){
+            const input=form.elements[field];if(!input)continue;
+            const value=item[field];
+            input.value=field==='active'?String(value!==false):(['capacity_qty','default_trip_price'].includes(field)?fmtNumber(value??0):String(value??''));
+          }
+          const submit=form.querySelector('button[type="submit"]');
+          if(submit)submit.textContent='Simpan Perubahan';
+          cancel.hidden=false;
+          form.scrollIntoView({behavior:'smooth',block:'start'});
+        };
+        td.appendChild(button);tr.appendChild(td);
+      });
+      const cancel=document.createElement('button');
+      cancel.type='button';cancel.textContent='Batal Edit';cancel.hidden=true;
+      cancel.onclick=()=>{
+        form.reset();delete form.dataset.editId;cancel.hidden=true;
+        const submit=form.querySelector('button[type="submit"]');
+        if(submit)submit.textContent='Simpan '+({Driver:'Sopir',Vehicle:'Kendaraan',Route:'Rute',Destination:'Tujuan',Customer:'Pelanggan'}[group.key]);
+      };
+      form.appendChild(cancel);
+    }
+  }
+
   attachListFilter({tableId:'expDriverTable',fields:[{label:'Kode',col:0,placeholder:'Cari kode'},{label:'Nama',col:1,placeholder:'Cari sopir'},{label:'Status',col:4,placeholder:'AKTIF / NONAKTIF'}]});
   attachListFilter({tableId:'expVehicleTable',fields:[{label:'No. Polisi',col:0,placeholder:'Cari kendaraan'},{label:'Jenis',col:1,placeholder:'Cari jenis'},{label:'Status',col:3,placeholder:'AKTIF / NONAKTIF'}]});
   attachListFilter({tableId:'expRouteTable',fields:[{label:'Kode',col:0,placeholder:'Cari kode'},{label:'Rute',col:1,placeholder:'Cari rute'},{label:'Status',col:3,placeholder:'AKTIF / NONAKTIF'}]});
   attachListFilter({tableId:'expDestinationTable',fields:[{label:'Kode',col:0,placeholder:'Cari kode'},{label:'Tujuan',col:1,placeholder:'Cari tujuan'},{label:'Alamat',col:2,placeholder:'Cari alamat'},{label:'Status',col:3,placeholder:'AKTIF / NONAKTIF'}]});
   attachListFilter({tableId:'expCustomerTable',fields:[{label:'Kode',col:0,placeholder:'Cari kode'},{label:'Pelanggan',col:1,placeholder:'Cari pelanggan'},{label:'Status',col:4,placeholder:'AKTIF / NONAKTIF'}]});
   const masterTables=[['Master Sopir','expDriverTable'],['Master Kendaraan','expVehicleTable'],['Master Rute','expRouteTable'],['Master Tujuan','expDestinationTable'],['Master Pelanggan','expCustomerTable']];
-  const masterBody=()=>masterTables.map(([t,id])=>'<h3>'+esc(t)+'</h3>'+document.getElementById(id).outerHTML).join('');
+  const masterBody=()=>masterTables.map(([t,id])=>{const copy=document.getElementById(id).cloneNode(true);copy.querySelectorAll('tr').forEach(tr=>{if(tr.cells.length&&tr.cells[tr.cells.length-1].textContent.trim()==='Aksi')tr.deleteCell(-1);else if(tr.cells.length&&tr.cells[tr.cells.length-1].querySelector('button'))tr.deleteCell(-1);});return '<h3>'+esc(t)+'</h3>'+copy.outerHTML;}).join('');
   const printMaster=async pdf=>{const {data:company}=await db.from('company_profile').select('company_name,legal_name,logo_url,address,phone,email').eq('id',true).maybeSingle();const w=window.open('','_blank');if(!w)return msg('Popup cetak diblokir browser.');w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+(pdf?'Master_Expedisi_PDF':'Master Expedisi')+'</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial,sans-serif;font-size:9px}.head{display:flex;gap:8px;align-items:center;border-bottom:1px solid #555;margin-bottom:8px}.head img{width:52px;height:52px;object-fit:contain}table{width:100%;border-collapse:collapse;margin-bottom:12px}th,td{border:1px solid #999;padding:3px;text-align:left}th{background:#eee}</style></head><body><div class="head"><img src="'+esc(company?.logo_url||BMS_PRINT_LOGO)+'"><div><h2>'+esc(company?.company_name||company?.legal_name||'Nama perusahaan belum diisi')+'</h2><div>'+esc(company?.address||'')+'</div></div></div><h2>Master Data Expedisi</h2>'+masterBody()+'</body></html>');w.document.close();setTimeout(()=>{w.focus();w.print();},500);};
   document.getElementById('expMasterPrint').onclick=()=>printMaster(false);
   document.getElementById('expMasterPdf').onclick=()=>BMSCore.savePdfHtml('<html><head><meta charset="utf-8"></head><body><h2>Master Data Expedisi</h2>'+masterBody()+'</body></html>','Master_Expedisi.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
-  document.getElementById('expMasterExcel').onclick=()=>{const sheets=masterTables.map(([name,id])=>{const table=document.getElementById(id),rows=[...table.rows].map(tr=>[...tr.cells].map(td=>td.textContent.trim()));return {name,rows};});BMSCore.downloadWorkbook(sheets,'Master_Expedisi');};
+  document.getElementById('expMasterExcel').onclick=()=>{const sheets=masterTables.map(([name,id])=>{const table=document.getElementById(id),rows=[...table.rows].map(tr=>[...tr.cells].filter(td=>!td.querySelector('button')&&td.textContent.trim()!=='Aksi').map(td=>td.textContent.trim()));return {name,rows};});BMSCore.downloadWorkbook(sheets,'Master_Expedisi');};
 
   const d=document.getElementById('expDriverForm');if(d)d.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(d);
-    const {error}=await db.from('expedition_drivers').insert({code:String(fd.get('code')||'').trim(),name:String(fd.get('name')||'').trim(),phone:String(fd.get('phone')||'')||null,license_number:String(fd.get('license_number')||'')||null,active:String(fd.get('active'))==='true'});
+    const {error}=await saveExpMaster('expedition_drivers',d,{code:String(fd.get('code')||'').trim(),name:String(fd.get('name')||'').trim(),phone:String(fd.get('phone')||'')||null,license_number:String(fd.get('license_number')||'')||null,active:String(fd.get('active'))==='true'});
     if(error)return msg(error.message);await financeExpeditionMasterPage();msg('Master sopir tersimpan.',true);
   };
   const v=document.getElementById('expVehicleForm');if(v)v.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(v),cap=normalizeInputID(fd.get('capacity_qty'));
-    const {error}=await db.from('expedition_vehicles').insert({plate_number:String(fd.get('plate_number')||'').trim().toUpperCase(),vehicle_type:String(fd.get('vehicle_type')||'')||null,capacity_qty:cap,active:String(fd.get('active'))==='true'});
+    const {error}=await saveExpMaster('expedition_vehicles',v,{plate_number:String(fd.get('plate_number')||'').trim().toUpperCase(),vehicle_type:String(fd.get('vehicle_type')||'')||null,capacity_qty:cap,active:String(fd.get('active'))==='true'});
     if(error)return msg(error.message);await financeExpeditionMasterPage();msg('Master kendaraan tersimpan.',true);
   };
   const r=document.getElementById('expRouteForm');if(r)r.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(r),price=normalizeInputID(fd.get('default_trip_price'));
     if(price===null||price<0)return msg('Harga trip tidak valid.');
-    const {error}=await db.from('expedition_routes').insert({code:String(fd.get('code')||'').trim(),route_name:String(fd.get('route_name')||'').trim(),default_trip_price:price,active:String(fd.get('active'))==='true',notes:String(fd.get('notes')||'')||null});
+    const {error}=await saveExpMaster('expedition_routes',r,{code:String(fd.get('code')||'').trim(),route_name:String(fd.get('route_name')||'').trim(),default_trip_price:price,active:String(fd.get('active'))==='true',notes:String(fd.get('notes')||'')||null});
     if(error)return msg(error.message);await financeExpeditionMasterPage();msg('Master rute tersimpan.',true);
   };
   const rb=document.getElementById('expRouteBopForm'),rbRoute=document.getElementById('expRouteBopRoute');
@@ -1204,7 +1253,7 @@ async function financeExpeditionMasterPage(){
   };
   const de=document.getElementById('expDestinationForm');if(de)de.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(de);
-    const {error}=await db.from('expedition_destinations').insert({
+    const {error}=await saveExpMaster('expedition_destinations',de,{
       code:String(fd.get('code')||'').trim(),
       name:String(fd.get('name')||'').trim(),
       address:String(fd.get('address')||'')||null,
@@ -1215,7 +1264,7 @@ async function financeExpeditionMasterPage(){
   };
   const c=document.getElementById('expCustomerForm');if(c)c.onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(c);
-    const {error}=await db.from('expedition_customers').insert({code:String(fd.get('code')||'').trim(),name:String(fd.get('name')||'').trim(),address:String(fd.get('address')||'')||null,phone:String(fd.get('phone')||'')||null,tax_number:String(fd.get('tax_number')||'')||null,active:String(fd.get('active'))==='true'});
+    const {error}=await saveExpMaster('expedition_customers',c,{code:String(fd.get('code')||'').trim(),name:String(fd.get('name')||'').trim(),address:String(fd.get('address')||'')||null,phone:String(fd.get('phone')||'')||null,tax_number:String(fd.get('tax_number')||'')||null,active:String(fd.get('active'))==='true'});
     if(error)return msg(error.message);await financeExpeditionMasterPage();msg('Master pelanggan tersimpan.',true);
   };
 }
