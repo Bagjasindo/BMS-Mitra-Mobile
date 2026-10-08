@@ -1089,18 +1089,28 @@ window.addEventListener('resize',()=>requestAnimationFrame(updateTableScrollHint
 
 function enforceOwnerReadOnly(){
   if(profile?.role!=='OWNER')return;
+  const mutationText=/\b(simpan|tambah|buat|edit|ubah|koreksi|hapus|delete|remove|kirim|bayar|terima|proses|posting|verifikasi|approve|setujui|tolak|void|batalkan transaksi|aktifkan|nonaktifkan|buka siklus|tutup siklus|buka bop|kunci bop|bersihkan data|reset klasemen)\b/i;
+  const mutationData=/^(data-(?:edit|delete|remove|toggle|save|submit|approve|reject|void|post|send|pay|receive|close|open|reset)|formaction)$/i;
+  const isMutationButton=btn=>{
+    const label=String(btn.textContent||btn.getAttribute('aria-label')||btn.title||'').trim();
+    if(mutationText.test(label))return true;
+    return [...btn.attributes].some(a=>mutationData.test(a.name));
+  };
   root.querySelectorAll('form').forEach(form=>{
-    form.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=true;});
-    form.querySelectorAll('button').forEach(btn=>{
-      if(btn.closest('nav,.mobile-topbar,.mobile-drawer-head'))return;
+    const mutating=[...form.querySelectorAll('button,input[type="submit"],input[type="button"]')].some(el=>isMutationButton(el));
+    if(!mutating)return;
+    form.querySelectorAll('input,select,textarea').forEach(el=>{
+      if(['hidden','search'].includes(String(el.type||'').toLowerCase()))return;
+      el.disabled=true;
+    });
+    form.querySelectorAll('button,input[type="submit"],input[type="button"]').forEach(btn=>{
+      if(!isMutationButton(btn))return;
       btn.disabled=true;btn.hidden=true;
     });
   });
   root.querySelectorAll('button').forEach(btn=>{
     if(btn.hasAttribute('data-tab')||btn.closest('nav,.mobile-topbar,.mobile-drawer-head'))return;
-    const t=String(btn.textContent||'').trim().toLowerCase();
-    const safe=/^(lihat|tampilkan|cetak|print|pdf|excel|export|filter|reset|kembali|batal|detail|unduh)/.test(t);
-    if(!safe){btn.disabled=true;btn.hidden=true;}
+    if(isMutationButton(btn)){btn.disabled=true;btn.hidden=true;}
   });
   root.querySelectorAll('[contenteditable="true"]').forEach(el=>el.setAttribute('contenteditable','false'));
 }
