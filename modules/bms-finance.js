@@ -383,7 +383,7 @@ async function logisticsEquipmentPurchasePage(editId=null){
     };
     const printBtn=document.getElementById('equipmentHistoryPrint'),pdfBtn=document.getElementById('equipmentHistoryPdf'),excelBtn=document.getElementById('equipmentHistoryExcel');
     if(printBtn)printBtn.onclick=()=>printEquipmentHistory(false);
-    if(pdfBtn)pdfBtn.onclick=()=>printEquipmentHistory(true);
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(equipmentReportHtml(),'Riwayat_Beli_Peralatan.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(excelBtn)excelBtn.onclick=()=>{
       if(!historyTable)return;
       const t=historyTable.cloneNode(true);t.querySelectorAll('tr').forEach(r=>{if(r.cells.length)r.deleteCell(r.cells.length-1)});const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Beli Peralatan</h2>'+t.outerHTML+'</body></html>';
