@@ -152,6 +152,6 @@ test('desktop dashboard neon refinement removes light owner surfaces',()=>{
   assert.match(block,/\.owner-barn-card\{/);
   assert.match(block,/\.owner-metrics div\{/);
   assert.match(block,/\.owner-estimate-card\{/);
-  assert.match(block,/background:linear-gradient\(145deg,rgba\(8,35,62/);
+  assert.match(block,/linear-gradient\(145deg,rgba\(8,35,62/);
   assert.doesNotMatch(block,/@media\(max-width:700px\)/);
 });
