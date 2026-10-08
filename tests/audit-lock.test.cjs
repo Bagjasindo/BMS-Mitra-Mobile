@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2375';
-  assert.match(index,new RegExp('v='+build+'-mobile-pdf-save'));
-  assert.match(sw,new RegExp('v'+build+'-mobile-pdf-save'));
+  const build='2376';
+  assert.match(index,new RegExp('v='+build+'-desktop-neon-blue'));
+  assert.match(sw,new RegExp('v'+build+'-desktop-neon-blue'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -127,4 +127,17 @@ test('mobile PDF saves real files instead of routing PDF buttons through print',
   assert.match(core,/navigator\.share/);
   for(const src of [main,logistics,production,finance,rhpp,reports])assert.match(src,/BMSCore\.savePdfHtml/);
   for(const src of [main,logistics,production,finance,rhpp,reports])assert.doesNotMatch(src,/Pdf[^\n]{0,160}onclick[^\n]{0,160}(?:print\(|openPrint|printOpen)/);
+});
+
+
+test('desktop neon theme stays desktop-only and preserves mobile styles',()=>{
+  const css=read('style.css');
+  const marker=css.indexOf('/* desktop-neon-blue-2376 */');
+  assert.ok(marker>=0);
+  const block=css.slice(marker);
+  assert.match(block,/@media \(min-width:901px\)\{/);
+  assert.match(block,/--desk-bg:#020b18/);
+  assert.match(block,/background:linear-gradient\(180deg,rgba\(2,14,29/);
+  assert.match(block,/border-color:rgba\(37,153,255/);
+  assert.doesNotMatch(block,/@media\(max-width:700px\)/);
 });
