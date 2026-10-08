@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2378';
-  assert.match(index,new RegExp('v='+build+'-desktop-neon-final'));
-  assert.match(sw,new RegExp('v'+build+'-desktop-neon-final'));
+  const build='2379';
+  assert.match(index,new RegExp('v='+build+'-desktop-neon-polish'));
+  assert.match(sw,new RegExp('v'+build+'-desktop-neon-polish'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -167,4 +167,18 @@ test('final desktop neon override loads after mobile stylesheet',()=>{
   assert.match(css,/\.owner-hero\{/);
   assert.match(css,/\.owner-barn-card\{/);
   assert.match(css,/\.owner-table td,\.owner-league td/);
+});
+
+
+test('desktop premium polish remains desktop-only',()=>{
+  const css=read('desktop-neon.css');
+  const marker=css.indexOf('/* premium-desktop-polish-2379 */');
+  assert.ok(marker>=0);
+  const block=css.slice(marker);
+  assert.match(block,/@media \(min-width:901px\)/);
+  assert.match(block,/#appSidebar nav button\.active/);
+  assert.match(block,/\.owner-kpis \.card:hover/);
+  assert.match(block,/\.owner-barn-card:hover/);
+  assert.match(block,/\.owner-table th,\.owner-league th/);
+  assert.doesNotMatch(block,/@media\s*\(max-width:/);
 });
