@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2381';
-  assert.match(index,new RegExp('v='+build+'-desktop-kpi-neon'));
-  assert.match(sw,new RegExp('v'+build+'-desktop-kpi-neon'));
+  const build='2382';
+  assert.match(index,new RegExp('v='+build+'-kpi-icon-fix'));
+  assert.match(sw,new RegExp('v'+build+'-kpi-icon-fix'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -209,4 +209,17 @@ test('desktop KPI neon cards use icon and waveform structure',()=>{
   assert.match(reports,/owner-kpi-wave/);
   assert.match(reports,/kpiIcons/);
   assert.doesNotMatch(block,/@media\s*\(max-width:/);
+});
+
+
+test('KPI SVG hard fix prevents giant filled icons',()=>{
+  const css=read('desktop-neon.css');
+  const marker=css.indexOf('/* kpi-icon-hard-fix-2382 */');
+  assert.ok(marker>=0);
+  const block=css.slice(marker);
+  assert.match(block,/\.owner-kpi-icon\{[\s\S]*width:50px!important;/);
+  assert.match(block,/\.owner-kpi-icon svg\{[\s\S]*width:27px!important;/);
+  assert.match(block,/fill:none!important;/);
+  assert.match(block,/\.owner-kpi-icon svg path,/);
+  assert.match(block,/vector-effect:non-scaling-stroke!important;/);
 });
