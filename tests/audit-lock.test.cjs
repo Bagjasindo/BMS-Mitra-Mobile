@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2380';
-  assert.match(index,new RegExp('v='+build+'-desktop-compact-flow'));
-  assert.match(sw,new RegExp('v'+build+'-desktop-compact-flow'));
+  const build='2381';
+  assert.match(index,new RegExp('v='+build+'-desktop-kpi-neon'));
+  assert.match(sw,new RegExp('v'+build+'-desktop-kpi-neon'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -192,5 +192,21 @@ test('desktop dashboard compact flow removes empty vertical stretch',()=>{
   assert.match(block,/\.owner-grid-main\{\s*align-items:start!important;/);
   assert.match(block,/\.owner-performance,[\s\S]*min-height:0!important;/);
   assert.match(block,/height:auto!important;/);
+  assert.doesNotMatch(block,/@media\s*\(max-width:/);
+});
+
+
+test('desktop KPI neon cards use icon and waveform structure',()=>{
+  const css=read('desktop-neon.css');
+  const reports=read('modules/bms-dashboard-reports.js');
+  const marker=css.indexOf('/* kpi-neon-cards-2381 */');
+  assert.ok(marker>=0);
+  const block=css.slice(marker);
+  assert.match(block,/\.owner-kpi-card/);
+  assert.match(block,/\.owner-kpi-icon/);
+  assert.match(block,/\.owner-kpi-wave/);
+  assert.match(reports,/owner-kpi-icon/);
+  assert.match(reports,/owner-kpi-wave/);
+  assert.match(reports,/kpiIcons/);
   assert.doesNotMatch(block,/@media\s*\(max-width:/);
 });
