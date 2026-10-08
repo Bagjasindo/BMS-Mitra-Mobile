@@ -2140,7 +2140,7 @@ async function productionRecapPage(){
   const pdfBtn=document.getElementById('productionRecapPdf');
   const excelBtn=document.getElementById('productionRecapExcel');
   if(printBtn)printBtn.onclick=openPrint;
-  if(pdfBtn)pdfBtn.onclick=openPrint;
+  if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(exportHtml(),fileBase+'.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
   if(excelBtn)excelBtn.onclick=()=>{
     const clone=exportArea?.cloneNode(true);if(!clone)return;
     clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
@@ -2409,9 +2409,9 @@ async function pplRhppAbkViewPage(){
     const pdfBtnTop=document.getElementById('pplRhppAbkPdfTop');
     const xBtnTop=document.getElementById('pplRhppAbkExcelTop');
     if(pBtn)pBtn.onclick=openPrint;
-    if(pdfBtn)pdfBtn.onclick=openPrint;
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(docHtml(),fileBase+'.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(pBtnTop)pBtnTop.onclick=openPrint;
-    if(pdfBtnTop)pdfBtnTop.onclick=openPrint;
+    if(pdfBtnTop)pdfBtnTop.onclick=()=>BMSCore.savePdfHtml(docHtml(),fileBase+'.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     const exportAbkExcel=()=>{
       const clone=exportArea?.cloneNode(true);if(!clone)return;
       clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
@@ -2752,7 +2752,7 @@ async function pplRhppViewPage(){
     const pdfBtn=document.getElementById('pplRhppPdf');
     const xBtn=document.getElementById('pplRhppExcel');
     if(pBtn)pBtn.onclick=openPrint;
-    if(pdfBtn)pdfBtn.onclick=openPrint;
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(docHtml(),fileBase+'.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(xBtn)xBtn.onclick=()=>{
       const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(docHtml())]);
       const url=URL.createObjectURL(blob),link=document.createElement('a');
