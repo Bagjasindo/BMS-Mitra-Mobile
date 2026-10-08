@@ -905,7 +905,7 @@ async function logisticsShippingPage(editId=null){
     };
     const printBtn=document.getElementById('shippingHistoryPrint'),pdfBtn=document.getElementById('shippingHistoryPdf'),excelBtn=document.getElementById('shippingHistoryExcel');
     if(printBtn)printBtn.onclick=()=>doPrint(false);
-    if(pdfBtn)pdfBtn.onclick=()=>doPrint(true);
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(reportHtml(),'Riwayat_Pengiriman_Sapronak.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(excelBtn)excelBtn.onclick=()=>{
       if(!historyTable)return;
       const table=historyTable.cloneNode(true);
@@ -1231,7 +1231,7 @@ async function logisticsExternalShippingPage(editId=null){
     };
     const printBtn=document.getElementById('externalHistoryPrint'),pdfBtn=document.getElementById('externalHistoryPdf'),excelBtn=document.getElementById('externalHistoryExcel');
     if(printBtn)printBtn.onclick=()=>printExternalHistory(false);
-    if(pdfBtn)pdfBtn.onclick=()=>printExternalHistory(true);
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(externalReportHtml(),'Riwayat_Tambah_Sapronak.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(excelBtn)excelBtn.onclick=()=>{
       if(!historyTable)return;
       const table=historyTable.cloneNode(true);
@@ -1520,7 +1520,7 @@ async function logisticsMandiriPurchasePage(editId=null){
     };
     const printBtn=document.getElementById('mandiriPurchasePrint'),pdfBtn=document.getElementById('mandiriPurchasePdf'),excelBtn=document.getElementById('mandiriPurchaseExcel');
     if(printBtn)printBtn.onclick=()=>printHistory(false);
-    if(pdfBtn)pdfBtn.onclick=()=>printHistory(true);
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(reportHtml(),'Riwayat_Pembelian_Mandiri.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(excelBtn)excelBtn.onclick=()=>{
       const rows=historyReportRows();
       BMSCore.downloadWorkbook([{name:'Pembelian Mandiri',rows:[
@@ -1727,7 +1727,7 @@ async function marketingContractHarvestPage(editId=null,mode='MITRA'){
     };
     const printBtn=document.getElementById('harvestMitraHistoryPrint'),pdfBtn=document.getElementById('harvestMitraHistoryPdf'),excelBtn=document.getElementById('harvestMitraHistoryExcel');
     if(printBtn)printBtn.onclick=()=>printHarvestHistory(false);
-    if(pdfBtn)pdfBtn.onclick=()=>printHarvestHistory(true);
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(harvestReportHtml(),mode==='MITRA'?'Riwayat_Panen_Mitra.pdf':'Riwayat_Panen_Mandiri.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(excelBtn)excelBtn.onclick=()=>{
       if(!historyTable)return;
       const table=historyTable.cloneNode(true);
@@ -1756,7 +1756,7 @@ async function marketingContractHarvestPage(editId=null,mode='MITRA'){
     };
     const printBtn=document.getElementById('harvestMandiriHistoryPrint'),pdfBtn=document.getElementById('harvestMandiriHistoryPdf'),excelBtn=document.getElementById('harvestMandiriHistoryExcel');
     if(printBtn)printBtn.onclick=()=>printHarvestHistory(false);
-    if(pdfBtn)pdfBtn.onclick=()=>printHarvestHistory(true);
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(harvestReportHtml(),mode==='MITRA'?'Riwayat_Panen_Mitra.pdf':'Riwayat_Panen_Mandiri.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(excelBtn)excelBtn.onclick=()=>{
       if(!historyTable)return;
       const table=historyTable.cloneNode(true);
@@ -2122,7 +2122,7 @@ async function logisticsExternalReturnPage(editId=null){
     };
     const printBtn=document.getElementById('externalReturnHistoryPrint'),pdfBtn=document.getElementById('externalReturnHistoryPdf'),excelBtn=document.getElementById('externalReturnHistoryExcel');
     if(printBtn)printBtn.onclick=()=>printExtReturnHistory(false);
-    if(pdfBtn)pdfBtn.onclick=()=>printExtReturnHistory(true);
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(extReturnReportHtml(),'Riwayat_Retur_Sapronak_Luar.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(excelBtn)excelBtn.onclick=()=>{
       if(!historyTable)return;
       const html='<html><head><meta charset="utf-8"></head><body><h2>Riwayat Retur Sapronak Luar</h2>'+historyTable.outerHTML+'</body></html>';
@@ -2357,7 +2357,7 @@ async function logisticsReturnPage(editId=null){
     };
     const printBtn=document.getElementById('returnHistoryPrint'),pdfBtn=document.getElementById('returnHistoryPdf'),excelBtn=document.getElementById('returnHistoryExcel');
     if(printBtn)printBtn.onclick=()=>printReturnHistory(false);
-    if(pdfBtn)pdfBtn.onclick=()=>printReturnHistory(true);
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(returnReportHtml(),'Riwayat_Retur_Sapronak.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(excelBtn)excelBtn.onclick=()=>{
       if(!historyTable)return;
       const table=historyTable.cloneNode(true);
