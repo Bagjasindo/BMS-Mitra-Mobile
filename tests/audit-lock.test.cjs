@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2383';
-  assert.match(index,new RegExp('v='+build+'-hide-dashboard-hero'));
-  assert.match(sw,new RegExp('v'+build+'-hide-dashboard-hero'));
+  const build='2384';
+  assert.match(index,new RegExp('v='+build+'-kpi-reference-icons'));
+  assert.match(sw,new RegExp('v'+build+'-kpi-reference-icons'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -232,4 +232,15 @@ test('desktop hides redundant dashboard hero',()=>{
   const block=css.slice(marker);
   assert.match(block,/\.owner-hero\{\s*display:none!important;/);
   assert.doesNotMatch(block,/@media\s*\(max-width:/);
+});
+
+
+test('KPI reference icons use poultry feed production and mortality symbols',()=>{
+  const reports=read('modules/bms-dashboard-reports.js');
+  const css=read('desktop-neon.css');
+  assert.match(reports,/M8 4h8l-1\.3 3/);
+  assert.match(reports,/M5 19V13h3v6/);
+  assert.match(reports,/M12 20s-7-4\.1-7-9\.1/);
+  assert.match(css,/kpi-reference-icon-polish-2384/);
+  assert.match(css,/\.owner-kpi-4 \.owner-kpi-icon svg\{stroke:#ff9fc4!important\}/);
 });
