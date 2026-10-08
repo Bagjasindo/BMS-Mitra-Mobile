@@ -1,45 +1,12 @@
 function renderDashboardTemplate(cfg){
   const kpis=(cfg.kpis||[]).slice(0,4);
-  const kpiIcons=[
-    '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 29c0-8.2 5.8-14.3 14.2-14.3 6.2 0 11.4 3.1 14.1 7.8 2.9.1 5 1.3 6.4 3-2 2.1-4.2 3.2-6.9 3.3-1.6 6.5-6.9 11.1-14.3 11.1C16.7 39.9 11 35.6 11 29Z"/><path d="M19.5 39.1v5.2M28.4 39.1v5.2M15.7 44.3h8.1M24.8 44.3H33M19.7 16.3l-3.1-5.1M24 15.1l.5-6.1M40.4 21l4.3-2.9"/><circle cx="31.1" cy="21.9" r="1.4"/></svg>',
-    '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M16 8h16l-2.6 6H18.6L16 8Z"/><path d="M17.2 14h13.6c4.2 4 6.2 9.2 6.2 14.5C37 35 32.8 40 24 40S11 35 11 28.5C11 23.2 13 18 17.2 14Z"/><path d="M18 24h12M19 30h10M24 20v15"/><path d="M15.5 13.8c1.5-3.3 4.5-5.3 8.5-5.3s7 2 8.5 5.3"/></svg>',
-    '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 39V27h6v12M21 39V19h6v20M32 39V11h6v28"/><path d="m8 21 9-7 7 5 11-11 7 4"/><path d="m37 7 5 .8-1 5"/><path d="M8 42h34"/></svg>',
-    '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 41s-14-8.2-14-18.2C10 17.4 13.4 14 18 14c3 0 5 1.4 6 3.7 0 0 2-3.7 6-3.7 4.6 0 8 3.4 8 8.8C38 32.8 24 41 24 41Z"/><path d="M16.5 25h4l2-4.4 3.6 9.2 2.2-4.8h3.4"/></svg>'
-  ];
-  const kpiHtml=kpis.map((x,i)=>'<div class="card owner-kpi-card owner-kpi-'+(i+1)+'"><div class="owner-kpi-icon">'+kpiIcons[i]+'</div><div class="owner-kpi-copy"><span class="owner-kpi-label">'+esc(x.label||'')+'</span><strong>'+(x.value||'-')+'</strong><small>'+esc(x.small||'')+'</small></div><div class="owner-kpi-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>').join('');
-  const fullName=String(profile?.full_name||'Pengguna').trim();
-  const firstName=fullName.split(/\s+/)[0]||'Pengguna';
-  const initials=fullName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'BM';
-  const now=new Date();
-  const dateText=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(now);
-  const timeText=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit'}).format(now);
-  layout('<div class="desktop-dashboard-shell">'+
-    '<section class="desktop-dashboard-topbar"><label class="desktop-dashboard-search"><span>⌕</span><input id="desktopDashSearch" type="search" placeholder="Cari menu, laporan, kandang..." autocomplete="off"></label>'+
-      '<div class="desktop-dashboard-user"><button type="button" id="desktopDashAlert" class="desktop-top-icon" aria-label="Lihat perhatian">♧<b id="desktopDashAlertCount"></b></button><div class="desktop-avatar">'+esc(initials)+'</div><div><strong>'+esc(fullName)+'</strong><small>'+esc(profile?.role||'')+'</small></div></div></section>'+
-    '<section class="desktop-welcome-hero"><div class="desktop-welcome-copy"><span>BMS BROILER FARM MANAGEMENT</span><h2>Selamat Datang Kembali, <em>'+esc(firstName)+'!</em></h2><p>Ringkasan kondisi operasional broiler dari data BMS hari ini.</p></div><div class="desktop-welcome-clock"><small>'+esc(dateText)+'</small><strong>'+esc(timeText)+'</strong></div></section>'+
-    '<section class="owner-hero"><div><span class="owner-eyebrow">'+esc(cfg.eyebrow||'')+'</span><h3>'+esc(cfg.heading||'Dashboard')+'</h3><p>'+esc(cfg.subtitle||'')+'</p></div><span class="owner-live">LIVE DATA</span></section>'+
+  const kpiHtml=kpis.map(x=>'<div class="card">'+esc(x.label||'')+'<strong>'+(x.value||'-')+'</strong><small>'+esc(x.small||'')+'</small></div>').join('');
+  layout('<section class="owner-hero"><div><span class="owner-eyebrow">'+esc(cfg.eyebrow||'')+'</span><h3>'+esc(cfg.heading||'Dashboard')+'</h3><p>'+esc(cfg.subtitle||'')+'</p></div><span class="owner-live">LIVE DATA</span></section>'+
     '<section class="cards owner-kpis">'+kpiHtml+'</section>'+
     '<section class="owner-grid-main"><div class="panel owner-performance"><div class="owner-section-title"><div><h3>'+esc(cfg.mainTitle||'Ringkasan Utama')+'</h3><p class="muted">'+esc(cfg.mainSubtitle||'')+'</p></div></div>'+(cfg.mainHtml||'<p class="muted">Belum ada data.</p>')+'</div>'+
     '<div class="panel owner-alert-panel"><h3>'+esc(cfg.attentionTitle||'Perlu Perhatian')+'</h3><p class="muted">'+esc(cfg.attentionSubtitle||'')+'</p>'+(cfg.attentionHtml||'<div class="owner-empty-ok">Tidak ada perhatian utama.</div>')+'</div></section>'+
-    '<section class="panel desktop-detail-panel"><div class="owner-section-title"><div><h3>'+esc(cfg.detailTitle||'Detail Operasional')+'</h3><p class="muted">'+esc(cfg.detailSubtitle||'')+'</p></div>'+(cfg.detailBadge||'')+'</div>'+(cfg.detailHtml||'<p class="muted">Belum ada detail tambahan.</p>')+'</section>'+
-    '<section class="panel owner-league"><div class="owner-section-title"><div><h3>'+esc(cfg.bottomTitle||'Ringkasan')+'</h3><p class="muted">'+esc(cfg.bottomSubtitle||'')+'</p></div>'+(cfg.bottomBadge||'')+'</div>'+(cfg.bottomHtml||'<p class="muted">Belum ada ringkasan tambahan.</p>')+'</section>'+
-  '</div>');
-  const dashSearch=document.getElementById('desktopDashSearch');
-  if(dashSearch)dashSearch.onkeydown=ev=>{
-    if(ev.key!=='Enter')return;
-    const q=String(dashSearch.value||'').trim().toLowerCase();
-    if(!q)return;
-    const target=[...document.querySelectorAll('#appSidebar [data-tab]')].find(btn=>String(btn.textContent||'').toLowerCase().includes(q));
-    if(target)target.click();else msg('Menu tidak ditemukan.');
-  };
-  const alertBtn=document.getElementById('desktopDashAlert');
-  if(alertBtn)alertBtn.onclick=()=>document.querySelector('.owner-alert-panel')?.scrollIntoView({behavior:'smooth',block:'start'});
-  const alertCount=document.getElementById('desktopDashAlertCount');
-  if(alertCount){
-    const count=document.querySelectorAll('.owner-alert-panel .owner-alert-row').length;
-    alertCount.textContent=count?String(count):'';
-    alertCount.hidden=!count;
-  }
+    '<section class="panel"><div class="owner-section-title"><div><h3>'+esc(cfg.detailTitle||'Detail Operasional')+'</h3><p class="muted">'+esc(cfg.detailSubtitle||'')+'</p></div>'+(cfg.detailBadge||'')+'</div>'+(cfg.detailHtml||'<p class="muted">Belum ada detail tambahan.</p>')+'</section>'+
+    '<section class="panel owner-league"><div class="owner-section-title"><div><h3>'+esc(cfg.bottomTitle||'Ringkasan')+'</h3><p class="muted">'+esc(cfg.bottomSubtitle||'')+'</p></div>'+(cfg.bottomBadge||'')+'</div>'+(cfg.bottomHtml||'<p class="muted">Belum ada ringkasan tambahan.</p>')+'</section>');
 }
 
 async function buildDashboardModel(){
