@@ -7,12 +7,39 @@ function renderDashboardTemplate(cfg){
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.1-7-9.1C5 8.2 6.7 6.5 9 6.5c1.5 0 2.5.7 3 1.8 0 0 1-1.8 3-1.8 2.3 0 4 1.7 4 4.4C19 15.9 12 20 12 20Z"/><path d="M8.2 12h2l1-2.2 1.8 4.6 1.1-2.4h1.7"/></svg>'
   ];
   const kpiHtml=kpis.map((x,i)=>'<div class="card owner-kpi-card owner-kpi-'+(i+1)+'"><div class="owner-kpi-icon">'+kpiIcons[i]+'</div><div class="owner-kpi-copy"><span class="owner-kpi-label">'+esc(x.label||'')+'</span><strong>'+(x.value||'-')+'</strong><small>'+esc(x.small||'')+'</small></div><div class="owner-kpi-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>').join('');
-  layout('<section class="owner-hero"><div><span class="owner-eyebrow">'+esc(cfg.eyebrow||'')+'</span><h3>'+esc(cfg.heading||'Dashboard')+'</h3><p>'+esc(cfg.subtitle||'')+'</p></div><span class="owner-live">LIVE DATA</span></section>'+
+  const fullName=String(profile?.full_name||'Pengguna').trim();
+  const firstName=fullName.split(/\s+/)[0]||'Pengguna';
+  const initials=fullName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'BM';
+  const now=new Date();
+  const dateText=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(now);
+  const timeText=new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit'}).format(now);
+  layout('<div class="desktop-dashboard-shell">'+
+    '<section class="desktop-dashboard-topbar"><label class="desktop-dashboard-search"><span>⌕</span><input id="desktopDashSearch" type="search" placeholder="Cari menu, laporan, kandang..." autocomplete="off"></label>'+
+      '<div class="desktop-dashboard-user"><button type="button" id="desktopDashAlert" class="desktop-top-icon" aria-label="Lihat perhatian">♧<b id="desktopDashAlertCount"></b></button><div class="desktop-avatar">'+esc(initials)+'</div><div><strong>'+esc(fullName)+'</strong><small>'+esc(profile?.role||'')+'</small></div></div></section>'+
+    '<section class="desktop-welcome-hero"><div class="desktop-welcome-copy"><span>BMS BROILER FARM MANAGEMENT</span><h2>Selamat Datang Kembali, <em>'+esc(firstName)+'!</em></h2><p>Ringkasan kondisi operasional broiler dari data BMS hari ini.</p></div><div class="desktop-welcome-clock"><small>'+esc(dateText)+'</small><strong>'+esc(timeText)+'</strong></div></section>'+
+    '<section class="owner-hero"><div><span class="owner-eyebrow">'+esc(cfg.eyebrow||'')+'</span><h3>'+esc(cfg.heading||'Dashboard')+'</h3><p>'+esc(cfg.subtitle||'')+'</p></div><span class="owner-live">LIVE DATA</span></section>'+
     '<section class="cards owner-kpis">'+kpiHtml+'</section>'+
     '<section class="owner-grid-main"><div class="panel owner-performance"><div class="owner-section-title"><div><h3>'+esc(cfg.mainTitle||'Ringkasan Utama')+'</h3><p class="muted">'+esc(cfg.mainSubtitle||'')+'</p></div></div>'+(cfg.mainHtml||'<p class="muted">Belum ada data.</p>')+'</div>'+
     '<div class="panel owner-alert-panel"><h3>'+esc(cfg.attentionTitle||'Perlu Perhatian')+'</h3><p class="muted">'+esc(cfg.attentionSubtitle||'')+'</p>'+(cfg.attentionHtml||'<div class="owner-empty-ok">Tidak ada perhatian utama.</div>')+'</div></section>'+
-    '<section class="panel"><div class="owner-section-title"><div><h3>'+esc(cfg.detailTitle||'Detail Operasional')+'</h3><p class="muted">'+esc(cfg.detailSubtitle||'')+'</p></div>'+(cfg.detailBadge||'')+'</div>'+(cfg.detailHtml||'<p class="muted">Belum ada detail tambahan.</p>')+'</section>'+
-    '<section class="panel owner-league"><div class="owner-section-title"><div><h3>'+esc(cfg.bottomTitle||'Ringkasan')+'</h3><p class="muted">'+esc(cfg.bottomSubtitle||'')+'</p></div>'+(cfg.bottomBadge||'')+'</div>'+(cfg.bottomHtml||'<p class="muted">Belum ada ringkasan tambahan.</p>')+'</section>');
+    '<section class="panel desktop-detail-panel"><div class="owner-section-title"><div><h3>'+esc(cfg.detailTitle||'Detail Operasional')+'</h3><p class="muted">'+esc(cfg.detailSubtitle||'')+'</p></div>'+(cfg.detailBadge||'')+'</div>'+(cfg.detailHtml||'<p class="muted">Belum ada detail tambahan.</p>')+'</section>'+
+    '<section class="panel owner-league"><div class="owner-section-title"><div><h3>'+esc(cfg.bottomTitle||'Ringkasan')+'</h3><p class="muted">'+esc(cfg.bottomSubtitle||'')+'</p></div>'+(cfg.bottomBadge||'')+'</div>'+(cfg.bottomHtml||'<p class="muted">Belum ada ringkasan tambahan.</p>')+'</section>'+
+  '</div>');
+  const dashSearch=document.getElementById('desktopDashSearch');
+  if(dashSearch)dashSearch.onkeydown=ev=>{
+    if(ev.key!=='Enter')return;
+    const q=String(dashSearch.value||'').trim().toLowerCase();
+    if(!q)return;
+    const target=[...document.querySelectorAll('#appSidebar [data-tab]')].find(btn=>String(btn.textContent||'').toLowerCase().includes(q));
+    if(target)target.click();else msg('Menu tidak ditemukan.');
+  };
+  const alertBtn=document.getElementById('desktopDashAlert');
+  if(alertBtn)alertBtn.onclick=()=>document.querySelector('.owner-alert-panel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  const alertCount=document.getElementById('desktopDashAlertCount');
+  if(alertCount){
+    const count=document.querySelectorAll('.owner-alert-panel .owner-alert-row').length;
+    alertCount.textContent=count?String(count):'';
+    alertCount.hidden=!count;
+  }
 }
 
 async function buildDashboardModel(){
