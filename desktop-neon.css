@@ -219,3 +219,41 @@
     box-shadow:0 0 12px rgba(42,218,184,.08)!important;
   }
 }
+
+
+/* compact-dashboard-flow-2380 */
+@media (min-width:901px){
+  .owner-grid-main{
+    align-items:start!important;
+  }
+  .owner-performance,
+  .owner-alert-panel{
+    min-height:0!important;
+    height:auto!important;
+    align-self:start!important;
+  }
+  .owner-performance{
+    padding-bottom:12px!important;
+  }
+  .owner-barn-grid{
+    align-items:start!important;
+  }
+  .owner-barn-card{
+    height:auto!important;
+    min-height:0!important;
+  }
+  .owner-alert-panel{
+    position:sticky!important;
+    top:18px!important;
+  }
+  main>.panel{
+    margin-top:10px!important;
+    margin-bottom:10px!important;
+  }
+  .owner-grid-main + .panel{
+    margin-top:10px!important;
+  }
+  .owner-league{
+    margin-top:10px!important;
+  }
+}
