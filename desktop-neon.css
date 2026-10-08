@@ -85,3 +85,137 @@
   .owner-performance,
   .owner-league{color-scheme:dark!important}
 }
+
+
+/* premium-desktop-polish-2379 */
+@media (min-width:901px){
+  /* Sidebar polish */
+  .shell>aside{
+    background:
+      radial-gradient(circle at 18% 2%,rgba(21,140,255,.11),transparent 25%),
+      linear-gradient(180deg,#020e1d 0%,#020914 100%)!important;
+    border-right-color:rgba(34,139,224,.32)!important;
+    box-shadow:12px 0 40px rgba(0,0,0,.34),1px 0 28px rgba(0,121,255,.10)!important;
+  }
+  #appSidebar nav button,
+  #appSidebar .nav-group>summary,
+  #appSidebar .nav-subgroup>summary{
+    position:relative!important;
+    letter-spacing:.005em!important;
+  }
+  #appSidebar .nav-icon{
+    color:#6fa3c7!important;
+    filter:drop-shadow(0 0 5px rgba(37,146,255,.12));
+  }
+  #appSidebar nav button:hover .nav-icon,
+  #appSidebar nav summary:hover .nav-icon{
+    color:#39c7f2!important;
+    filter:drop-shadow(0 0 7px rgba(38,187,255,.34));
+  }
+  #appSidebar nav button.active{
+    background:
+      linear-gradient(90deg,rgba(14,112,211,.44),rgba(8,58,106,.30))!important;
+    border-color:rgba(45,164,255,.78)!important;
+    box-shadow:inset 3px 0 0 #29b4ff,0 0 18px rgba(17,139,255,.17)!important;
+  }
+  #appSidebar nav button.active .nav-icon{
+    color:#43d5ff!important;
+    filter:drop-shadow(0 0 7px rgba(58,210,255,.45));
+  }
+  #appSidebar .nav-group{
+    border-bottom:1px solid rgba(35,89,129,.12);
+    padding-bottom:3px;margin-bottom:2px;
+  }
+
+  /* Slimmer, sharper top header */
+  header{
+    min-height:58px!important;
+    padding:10px 16px!important;
+    background:
+      linear-gradient(90deg,rgba(5,28,54,.96),rgba(3,18,36,.92))!important;
+    border-color:rgba(37,137,218,.42)!important;
+    box-shadow:0 8px 24px rgba(0,0,0,.20),0 0 18px rgba(0,115,255,.06)!important;
+  }
+  header h2{font-size:23px!important}
+  header small{font-size:10px!important;color:#7398b6!important}
+
+  /* KPI mini chart becomes more visible and premium */
+  .owner-kpis .card{
+    min-height:110px!important;
+    transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important;
+  }
+  .owner-kpis .card:hover{
+    transform:translateY(-2px);
+    border-color:rgba(63,176,255,.78)!important;
+    box-shadow:0 0 0 1px rgba(34,145,255,.13),0 14px 30px rgba(0,0,0,.26),0 0 22px rgba(0,130,255,.12)!important;
+  }
+  .owner-kpis .card:before{
+    width:120px!important;height:42px!important;right:14px!important;bottom:14px!important;
+    opacity:1!important;
+  }
+  .owner-kpis .card:after{
+    content:"";position:absolute;right:12px;bottom:10px;width:126px;height:48px;border-radius:8px;
+    background:
+      repeating-linear-gradient(0deg,transparent 0 10px,rgba(45,143,211,.07) 11px,transparent 12px),
+      repeating-linear-gradient(90deg,transparent 0 18px,rgba(45,143,211,.06) 19px,transparent 20px);
+    pointer-events:none;
+  }
+
+  /* Performance panel depth */
+  .owner-performance{
+    box-shadow:0 10px 30px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.018)!important;
+  }
+  .owner-barn-card{
+    transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+  }
+  .owner-barn-card:hover{
+    transform:translateY(-1px);
+    border-color:rgba(52,161,236,.68)!important;
+    box-shadow:0 10px 24px rgba(0,0,0,.20),0 0 16px rgba(14,126,220,.08)!important;
+  }
+  .owner-metrics div{
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.012)!important;
+  }
+
+  /* Cleaner attention card */
+  .owner-alert-panel{
+    box-shadow:0 10px 28px rgba(0,0,0,.19),inset 0 1px 0 rgba(255,255,255,.015)!important;
+  }
+  .owner-alert-row{transition:background .14s ease!important}
+  .owner-alert-row:hover{background:rgba(10,47,79,.34)!important}
+
+  /* Enterprise table density */
+  .owner-table th,.owner-league th{
+    padding:7px 9px!important;
+    font-size:9.5px!important;
+    letter-spacing:.025em!important;
+    text-transform:uppercase!important;
+  }
+  .owner-table td,.owner-league td{
+    padding:7px 9px!important;
+    font-size:10px!important;
+  }
+  .owner-league .tablewrap{
+    box-shadow:inset 0 0 0 1px rgba(20,80,123,.16)!important;
+  }
+  .owner-rank{
+    color:#8fd6ff!important;
+    text-shadow:0 0 8px rgba(55,177,255,.18)!important;
+  }
+
+  /* Section heading accent */
+  .owner-section-title h3,.owner-alert-panel h3{
+    position:relative;
+    padding-left:10px;
+  }
+  .owner-section-title h3:before,.owner-alert-panel h3:before{
+    content:"";position:absolute;left:0;top:2px;bottom:2px;width:2px;border-radius:2px;
+    background:linear-gradient(#2cb8ff,#21d4df);
+    box-shadow:0 0 8px rgba(39,182,255,.42);
+  }
+
+  /* Slight cyan polish without over-glow */
+  .owner-live,.owner-ok,.owner-empty-ok{
+    box-shadow:0 0 12px rgba(42,218,184,.08)!important;
+  }
+}
