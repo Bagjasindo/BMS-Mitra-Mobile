@@ -3149,7 +3149,7 @@ async function adminRhppHistoryPage(){
     const pdfBtn=document.getElementById('pplRhppPdf');
     const xBtn=document.getElementById('pplRhppExcel');
     if(pBtn)pBtn.onclick=openPrint;
-    if(pdfBtn)pdfBtn.onclick=openPrint;
+    if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(docHtml(),fileBase+'.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
     if(xBtn)xBtn.onclick=()=>{
       const blob=BMSCore.excelBlob(['\ufeff'+bmsExcelHtml(docHtml())]);
       const url=URL.createObjectURL(blob),link=document.createElement('a');
