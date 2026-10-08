@@ -1,6 +1,12 @@
 function renderDashboardTemplate(cfg){
   const kpis=(cfg.kpis||[]).slice(0,4);
-  const kpiHtml=kpis.map(x=>'<div class="card">'+esc(x.label||'')+'<strong>'+(x.value||'-')+'</strong><small>'+esc(x.small||'')+'</small></div>').join('');
+  const kpiIcons=[
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15c-2.7 0-4-1.8-4-4 0-2 1.4-3.8 3.5-4.4C7.4 4.4 9.4 3 12 3c3.7 0 6 2.6 6 6 0 2.4-1.1 4.2-3 5.2V18h2v2h-5v-2h1v-3h-3v3h1v2H6v-2h1v-3Z"/><path d="M18 6l3-1-1 3"/></svg>',
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9l8-5 8 5v10"/><path d="M8 19v-6h8v6"/><path d="M15.8 7.3a4 4 0 1 0 1.9 6.8A5.2 5.2 0 0 1 15.8 7.3Z"/></svg>',
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M3 20c0-4 2-7 5-7s5 3 5 7"/><path d="M12 20c.2-3 1.8-5.5 4.5-5.5S21 17 21 20"/></svg>',
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18a8 8 0 1 1 16 0"/><path d="m12 14 4-4"/><circle cx="12" cy="14" r="1.5"/><path d="M6.5 17h11"/></svg>'
+  ];
+  const kpiHtml=kpis.map((x,i)=>'<div class="card owner-kpi-card owner-kpi-'+(i+1)+'"><div class="owner-kpi-icon">'+kpiIcons[i]+'</div><div class="owner-kpi-copy"><span class="owner-kpi-label">'+esc(x.label||'')+'</span><strong>'+(x.value||'-')+'</strong><small>'+esc(x.small||'')+'</small></div><div class="owner-kpi-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>').join('');
   layout('<section class="owner-hero"><div><span class="owner-eyebrow">'+esc(cfg.eyebrow||'')+'</span><h3>'+esc(cfg.heading||'Dashboard')+'</h3><p>'+esc(cfg.subtitle||'')+'</p></div><span class="owner-live">LIVE DATA</span></section>'+
     '<section class="cards owner-kpis">'+kpiHtml+'</section>'+
     '<section class="owner-grid-main"><div class="panel owner-performance"><div class="owner-section-title"><div><h3>'+esc(cfg.mainTitle||'Ringkasan Utama')+'</h3><p class="muted">'+esc(cfg.mainSubtitle||'')+'</p></div></div>'+(cfg.mainHtml||'<p class="muted">Belum ada data.</p>')+'</div>'+
