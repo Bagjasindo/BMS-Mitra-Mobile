@@ -660,7 +660,7 @@ async function financeRhppPage(){
   const pdfBtn=document.getElementById('rhppPdf');
   const excelBtn=document.getElementById('rhppExcel');
   if(printBtn)printBtn.onclick=()=>rhppPrintOpen(false);
-  if(pdfBtn)pdfBtn.onclick=()=>rhppPrintOpen(true);
+  if(pdfBtn)pdfBtn.onclick=()=>BMSCore.savePdfHtml(rhppDocHtml(true),'RHPP_Sistem.pdf').catch(error=>msg(error?.message||'PDF gagal dibuat.'));
   if(excelBtn)excelBtn.onclick=()=>{
     const clone=rhppExport?.cloneNode(true);if(!clone)return;
     clone.querySelectorAll('button,.report-actions').forEach(x=>x.remove());
