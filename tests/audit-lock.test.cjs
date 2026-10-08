@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2377';
-  assert.match(index,new RegExp('v='+build+'-desktop-dashboard-refine'));
-  assert.match(sw,new RegExp('v'+build+'-desktop-dashboard-refine'));
+  const build='2378';
+  assert.match(index,new RegExp('v='+build+'-desktop-neon-final'));
+  assert.match(sw,new RegExp('v'+build+'-desktop-neon-final'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -154,4 +154,17 @@ test('desktop dashboard neon refinement removes light owner surfaces',()=>{
   assert.match(block,/\.owner-estimate-card\{/);
   assert.match(block,/linear-gradient\(145deg,rgba\(8,35,62/);
   assert.doesNotMatch(block,/@media\(max-width:700px\)/);
+});
+
+
+test('final desktop neon override loads after mobile stylesheet',()=>{
+  const html=read('index.html');
+  const css=read('desktop-neon.css');
+  const mobilePos=html.indexOf('mobile-form-responsive.css');
+  const neonPos=html.indexOf('desktop-neon.css');
+  assert.ok(mobilePos>=0&&neonPos>mobilePos);
+  assert.match(css,/@media \(min-width:901px\)/);
+  assert.match(css,/\.owner-hero\{/);
+  assert.match(css,/\.owner-barn-card\{/);
+  assert.match(css,/\.owner-table td,\.owner-league td/);
 });
