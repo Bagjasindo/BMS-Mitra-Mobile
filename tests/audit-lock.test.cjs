@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2376';
-  assert.match(index,new RegExp('v='+build+'-desktop-neon-blue'));
-  assert.match(sw,new RegExp('v'+build+'-desktop-neon-blue'));
+  const build='2377';
+  assert.match(index,new RegExp('v='+build+'-desktop-dashboard-refine'));
+  assert.match(sw,new RegExp('v'+build+'-desktop-dashboard-refine'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -139,5 +139,19 @@ test('desktop neon theme stays desktop-only and preserves mobile styles',()=>{
   assert.match(block,/--desk-bg:#020b18/);
   assert.match(block,/background:linear-gradient\(180deg,rgba\(2,14,29/);
   assert.match(block,/border-color:rgba\(37,153,255/);
+  assert.doesNotMatch(block,/@media\(max-width:700px\)/);
+});
+
+
+test('desktop dashboard neon refinement removes light owner surfaces',()=>{
+  const css=read('style.css');
+  const marker=css.indexOf('/* desktop-dashboard-neon-refine-2377 */');
+  assert.ok(marker>=0);
+  const block=css.slice(marker);
+  assert.match(block,/\.owner-hero\{/);
+  assert.match(block,/\.owner-barn-card\{/);
+  assert.match(block,/\.owner-metrics div\{/);
+  assert.match(block,/\.owner-estimate-card\{/);
+  assert.match(block,/background:linear-gradient\(145deg,rgba\(8,35,62/);
   assert.doesNotMatch(block,/@media\(max-width:700px\)/);
 });
