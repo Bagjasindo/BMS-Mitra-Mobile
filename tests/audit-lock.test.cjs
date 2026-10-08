@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2382';
-  assert.match(index,new RegExp('v='+build+'-kpi-icon-fix'));
-  assert.match(sw,new RegExp('v'+build+'-kpi-icon-fix'));
+  const build='2383';
+  assert.match(index,new RegExp('v='+build+'-hide-dashboard-hero'));
+  assert.match(sw,new RegExp('v'+build+'-hide-dashboard-hero'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -222,4 +222,14 @@ test('KPI SVG hard fix prevents giant filled icons',()=>{
   assert.match(block,/fill:none!important;/);
   assert.match(block,/\.owner-kpi-icon svg path,/);
   assert.match(block,/vector-effect:non-scaling-stroke!important;/);
+});
+
+
+test('desktop hides redundant dashboard hero',()=>{
+  const css=read('desktop-neon.css');
+  const marker=css.indexOf('/* hide-redundant-dashboard-hero-2383 */');
+  assert.ok(marker>=0);
+  const block=css.slice(marker);
+  assert.match(block,/\.owner-hero\{\s*display:none!important;/);
+  assert.doesNotMatch(block,/@media\s*\(max-width:/);
 });
