@@ -1,10 +1,10 @@
 function renderDashboardTemplate(cfg){
   const kpis=(cfg.kpis||[]).slice(0,4);
   const kpiIcons=[
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15c-2.7 0-4-1.8-4-4 0-2 1.4-3.8 3.5-4.4C7.4 4.4 9.4 3 12 3c3.7 0 6 2.6 6 6 0 2.4-1.1 4.2-3 5.2V18h2v2h-5v-2h1v-3h-3v3h1v2H6v-2h1v-3Z"/><path d="M18 6l3-1-1 3"/></svg>',
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9l8-5 8 5v10"/><path d="M8 19v-6h8v6"/><path d="M15.8 7.3a4 4 0 1 0 1.9 6.8A5.2 5.2 0 0 1 15.8 7.3Z"/></svg>',
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M3 20c0-4 2-7 5-7s5 3 5 7"/><path d="M12 20c.2-3 1.8-5.5 4.5-5.5S21 17 21 20"/></svg>',
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18a8 8 0 1 1 16 0"/><path d="m12 14 4-4"/><circle cx="12" cy="14" r="1.5"/><path d="M6.5 17h11"/></svg>'
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.4 13.2c0-3.4 2.4-6 5.9-6 2.5 0 4.7 1.3 5.8 3.2 1.2.1 2.1.6 2.6 1.3-.8.8-1.7 1.2-2.8 1.3-.6 2.8-2.8 4.8-5.9 4.8-3.2 0-5.6-1.9-5.6-4.6Z"/><path d="M9.2 17.4v2.2M13.6 17.4v2.2M7.5 19.6h3.1M12.1 19.6h3.1M9.3 7.8 8 5.5M11 7.3l.2-2.7M18.5 10l1.8-1.2"/><circle cx="14.8" cy="10.3" r=".7"/></svg>',
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l-1.3 3H9.3L8 4Z"/><path d="M8.6 7h6.8c2.1 2 3.1 4.6 3.1 7.2 0 3.3-2.1 5.8-6.5 5.8s-6.5-2.5-6.5-5.8C5.5 11.6 6.5 9 8.6 7Z"/><path d="M9 12h6M9.5 15h5M12 10v7"/></svg>',
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V13h3v6M10.5 19V9h3v10M16 19V5h3v14"/><path d="m4 10 4-3 3 2 5-5 4 2"/><path d="m17.5 4 2.5.4-.5 2.5"/></svg>',
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.1-7-9.1C5 8.2 6.7 6.5 9 6.5c1.5 0 2.5.7 3 1.8 0 0 1-1.8 3-1.8 2.3 0 4 1.7 4 4.4C19 15.9 12 20 12 20Z"/><path d="M8.2 12h2l1-2.2 1.8 4.6 1.1-2.4h1.7"/></svg>'
   ];
   const kpiHtml=kpis.map((x,i)=>'<div class="card owner-kpi-card owner-kpi-'+(i+1)+'"><div class="owner-kpi-icon">'+kpiIcons[i]+'</div><div class="owner-kpi-copy"><span class="owner-kpi-label">'+esc(x.label||'')+'</span><strong>'+(x.value||'-')+'</strong><small>'+esc(x.small||'')+'</small></div><div class="owner-kpi-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>').join('');
   layout('<section class="owner-hero"><div><span class="owner-eyebrow">'+esc(cfg.eyebrow||'')+'</span><h3>'+esc(cfg.heading||'Dashboard')+'</h3><p>'+esc(cfg.subtitle||'')+'</p></div><span class="owner-live">LIVE DATA</span></section>'+
