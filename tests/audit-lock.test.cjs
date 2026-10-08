@@ -10,9 +10,9 @@ test('AUDIT-LOCK build baseline stays synchronized across PWA and recovery artif
   const sw=read('sw.js');
   const schema=read('supabase/schema_current.sql');
   const runbook=read('docs/BMS_RECOVERY_RUNBOOK.md');
-  const build='2384';
-  assert.match(index,new RegExp('v='+build+'-kpi-reference-icons'));
-  assert.match(sw,new RegExp('v'+build+'-kpi-reference-icons'));
+  const build='2385';
+  assert.match(index,new RegExp('v='+build+'-desktop-reference-layout'));
+  assert.match(sw,new RegExp('v'+build+'-desktop-reference-layout'));
   // Recovery schema/runbook are independently versioned recovery artifacts.
   // Their build number must not be forced to match a frontend-only cache/export build.
 });
@@ -243,4 +243,19 @@ test('KPI reference icons use poultry feed production and mortality symbols',()=
   assert.match(reports,/M12 20s-7-4\.1-7-9\.1/);
   assert.match(css,/kpi-reference-icon-polish-2384/);
   assert.match(css,/\.owner-kpi-4 \.owner-kpi-icon svg\{stroke:#ff9fc4!important\}/);
+});
+
+
+test('desktop dashboard reference layout adds topbar welcome and three-column content',()=>{
+  const reports=read('modules/bms-dashboard-reports.js');
+  const css=read('desktop-neon.css');
+  const style=read('style.css');
+  assert.match(reports,/desktop-dashboard-topbar/);
+  assert.match(reports,/desktop-welcome-hero/);
+  assert.match(reports,/desktopDashSearch/);
+  assert.match(reports,/desktopDashAlert/);
+  assert.match(css,/desktop-reference-layout-2385/);
+  assert.match(css,/grid-template-areas:[\s\S]*"performance detail alert"/);
+  assert.match(css,/\.desktop-dashboard-shell>\.owner-grid-main\{display:contents!important\}/);
+  assert.match(style,/\.desktop-dashboard-topbar,\.desktop-welcome-hero\{display:none\}/);
 });
