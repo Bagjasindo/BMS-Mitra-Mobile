@@ -1091,10 +1091,13 @@ function enforceOwnerReadOnly(){
   if(profile?.role!=='OWNER')return;
   root.querySelectorAll('form').forEach(form=>{
     form.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=true;});
-    form.querySelectorAll('button').forEach(btn=>{btn.disabled=true;btn.hidden=true;});
+    form.querySelectorAll('button').forEach(btn=>{
+      if(btn.closest('nav,.mobile-topbar,.mobile-drawer-head'))return;
+      btn.disabled=true;btn.hidden=true;
+    });
   });
   root.querySelectorAll('button').forEach(btn=>{
-    if(btn.hasAttribute('data-tab'))return;
+    if(btn.hasAttribute('data-tab')||btn.closest('nav,.mobile-topbar,.mobile-drawer-head'))return;
     const t=String(btn.textContent||'').trim().toLowerCase();
     const safe=/^(lihat|tampilkan|cetak|print|pdf|excel|export|filter|reset|kembali|batal|detail|unduh)/.test(t);
     if(!safe){btn.disabled=true;btn.hidden=true;}
