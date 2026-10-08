@@ -238,11 +238,11 @@ test('desktop hides redundant dashboard hero',()=>{
 test('KPI reference icons use poultry feed production and mortality symbols',()=>{
   const reports=read('modules/bms-dashboard-reports.js');
   const css=read('desktop-neon.css');
-  assert.match(reports,/M8 4h8l-1\.3 3/);
-  assert.match(reports,/M5 19V13h3v6/);
-  assert.match(reports,/M12 20s-7-4\.1-7-9\.1/);
-  assert.match(css,/kpi-reference-icon-polish-2384/);
-  assert.match(css,/\.owner-kpi-4 \.owner-kpi-icon svg\{stroke:#ff9fc4!important\}/);
+  assert.match(reports,/M16 8h16l-2\.6 6/);
+  assert.match(reports,/M10 39V27h6v12/);
+  assert.match(reports,/M24 41s-14-8\.2-14-18\.2/);
+  assert.match(css,/bold-reference-kpi-icons-2385/);
+  assert.match(css,/\.owner-kpi-4 \.owner-kpi-icon svg\{stroke:#ffd0e1!important\}/);
 });
 
 
