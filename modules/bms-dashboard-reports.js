@@ -1,10 +1,10 @@
 function renderDashboardTemplate(cfg){
   const kpis=(cfg.kpis||[]).slice(0,4);
   const kpiIcons=[
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.4 13.2c0-3.4 2.4-6 5.9-6 2.5 0 4.7 1.3 5.8 3.2 1.2.1 2.1.6 2.6 1.3-.8.8-1.7 1.2-2.8 1.3-.6 2.8-2.8 4.8-5.9 4.8-3.2 0-5.6-1.9-5.6-4.6Z"/><path d="M9.2 17.4v2.2M13.6 17.4v2.2M7.5 19.6h3.1M12.1 19.6h3.1M9.3 7.8 8 5.5M11 7.3l.2-2.7M18.5 10l1.8-1.2"/><circle cx="14.8" cy="10.3" r=".7"/></svg>',
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l-1.3 3H9.3L8 4Z"/><path d="M8.6 7h6.8c2.1 2 3.1 4.6 3.1 7.2 0 3.3-2.1 5.8-6.5 5.8s-6.5-2.5-6.5-5.8C5.5 11.6 6.5 9 8.6 7Z"/><path d="M9 12h6M9.5 15h5M12 10v7"/></svg>',
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V13h3v6M10.5 19V9h3v10M16 19V5h3v14"/><path d="m4 10 4-3 3 2 5-5 4 2"/><path d="m17.5 4 2.5.4-.5 2.5"/></svg>',
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.1-7-9.1C5 8.2 6.7 6.5 9 6.5c1.5 0 2.5.7 3 1.8 0 0 1-1.8 3-1.8 2.3 0 4 1.7 4 4.4C19 15.9 12 20 12 20Z"/><path d="M8.2 12h2l1-2.2 1.8 4.6 1.1-2.4h1.7"/></svg>'
+    '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 29c0-8.2 5.8-14.3 14.2-14.3 6.2 0 11.4 3.1 14.1 7.8 2.9.1 5 1.3 6.4 3-2 2.1-4.2 3.2-6.9 3.3-1.6 6.5-6.9 11.1-14.3 11.1C16.7 39.9 11 35.6 11 29Z"/><path d="M19.5 39.1v5.2M28.4 39.1v5.2M15.7 44.3h8.1M24.8 44.3H33M19.7 16.3l-3.1-5.1M24 15.1l.5-6.1M40.4 21l4.3-2.9"/><circle cx="31.1" cy="21.9" r="1.4"/></svg>',
+    '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M16 8h16l-2.6 6H18.6L16 8Z"/><path d="M17.2 14h13.6c4.2 4 6.2 9.2 6.2 14.5C37 35 32.8 40 24 40S11 35 11 28.5C11 23.2 13 18 17.2 14Z"/><path d="M18 24h12M19 30h10M24 20v15"/><path d="M15.5 13.8c1.5-3.3 4.5-5.3 8.5-5.3s7 2 8.5 5.3"/></svg>',
+    '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 39V27h6v12M21 39V19h6v20M32 39V11h6v28"/><path d="m8 21 9-7 7 5 11-11 7 4"/><path d="m37 7 5 .8-1 5"/><path d="M8 42h34"/></svg>',
+    '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 41s-14-8.2-14-18.2C10 17.4 13.4 14 18 14c3 0 5 1.4 6 3.7 0 0 2-3.7 6-3.7 4.6 0 8 3.4 8 8.8C38 32.8 24 41 24 41Z"/><path d="M16.5 25h4l2-4.4 3.6 9.2 2.2-4.8h3.4"/></svg>'
   ];
   const kpiHtml=kpis.map((x,i)=>'<div class="card owner-kpi-card owner-kpi-'+(i+1)+'"><div class="owner-kpi-icon">'+kpiIcons[i]+'</div><div class="owner-kpi-copy"><span class="owner-kpi-label">'+esc(x.label||'')+'</span><strong>'+(x.value||'-')+'</strong><small>'+esc(x.small||'')+'</small></div><div class="owner-kpi-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>').join('');
   const fullName=String(profile?.full_name||'Pengguna').trim();
