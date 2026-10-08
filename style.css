@@ -3733,3 +3733,7 @@ main select.app-select-native{
     color:#dcefff!important;
   }
 }
+
+
+/* desktop-dashboard-elements-hidden-mobile-2385 */
+.desktop-dashboard-topbar,.desktop-welcome-hero{display:none}
