@@ -259,3 +259,14 @@ test('desktop dashboard reference layout adds topbar welcome and three-column co
   assert.match(css,/\.desktop-dashboard-shell>\.owner-grid-main\{display:contents!important\}/);
   assert.match(style,/\.desktop-dashboard-topbar,\.desktop-welcome-hero\{display:none\}/);
 });
+
+
+test('bold KPI icons match reference proportions',()=>{
+  const reports=read('modules/bms-dashboard-reports.js');
+  const css=read('desktop-neon.css');
+  assert.match(reports,/viewBox="0 0 48 48"/);
+  assert.match(css,/bold-reference-kpi-icons-2385/);
+  assert.match(css,/width:58px!important/);
+  assert.match(css,/width:34px!important/);
+  assert.match(css,/font-size:24px!important/);
+});
