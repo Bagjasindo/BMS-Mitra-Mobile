@@ -1453,7 +1453,7 @@ async function financeExpeditionBusinessPage(){
 
   let html='<section class="panel"><h3>Expedisi</h3><p class="muted"><strong>Unit usaha terpisah dari RHPP/Kandang.</strong> '+
     (role==='LOGISTIK'?'Logistik mengelola Trip dan Invoice.':role==='KEUANGAN'?'Keuangan mengelola Pembayaran, Piutang dan BOP Expedisi.':role==='OWNER'?'Owner melihat laporan Expedisi.':'Administrator memiliki akses penuh.')+
-    '</p>'+(canOps?'<p><a href="#fxInvoiceForm" class="btn" style="display:inline-block;padding:9px 13px;border-radius:7px;background:#11a6bc;color:#081b25;font-weight:700;text-decoration:none">Langsung Buat Invoice ('+unbilled.length+' trip tersedia) ↓</a></p>':'')+'</section>';
+    '</p></section>';
 
   if(canOps&&pendingSj.length){
     html+='<section class="panel"><h3>Antrean Surat Jalan dari Keuangan</h3><p class="muted">Kas Jalan sudah dicatat Keuangan. Logistik melengkapi SJ/MTS setelah dokumen kembali.</p>'+
@@ -1546,9 +1546,9 @@ async function financeExpeditionBusinessPage(){
         '<label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Catatan<textarea name="notes"></textarea></label><button type="submit">Simpan Trip</button>'+
       '</form></section>'+
-      '<section class="panel"><details><summary style="cursor:pointer;font-weight:700;padding:8px 0">Daftar Trip Expedisi ('+trips.length+' trip) — klik untuk tampilkan / sembunyikan</summary><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+      '<section class="panel"><h3>Daftar Trip Expedisi</h3><div class="form-vertical" id="expTripFilter" style="margin-bottom:12px"><label>Cari Trip (MTS/SJ, Sopir, Tujuan, Muatan)<input id="expTripSearch" type="search" placeholder="Ketik untuk mencari..."></label><label>Status<select id="expTripStatus"><option value="BELUM INVOICE">Belum Invoice</option><option value="SUDAH INVOICE">Sudah Invoice</option><option value="">Semua Status</option></select></label><label>Tanggal Awal<input id="expTripFrom" type="date"></label><label>Tanggal Akhir<input id="expTripTo" type="date"></label><button type="button" id="expTripReset">Reset Filter</button></div><p class="muted" id="expTripCount"></p><div class="tablewrap"><table id="expTripListTable"><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
         trips.map(t=>{const billed=used.has(t.id);return '<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(destinationText(t))+'</td><td>'+esc(cargoText(t))+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td><td>'+(billed?'SUDAH INVOICE':'BELUM INVOICE')+'</td><td><div class="inline-actions"><button type="button" data-edit-exp-trip="'+esc(t.id)+'">Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-exp-trip="'+esc(t.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
-      '</tbody></table></div>'+(trips.length?'':'<p class="muted">Belum ada trip Expedisi.</p>')+'</details></section>'+
+      '</tbody></table></div><div class="report-actions" style="margin-top:10px"><button type="button" id="expTripPrev">Sebelumnya</button><span id="expTripPageLabel"></span><button type="button" id="expTripNext">Berikutnya</button></div>'+(trips.length?'':'<p class="muted">Belum ada trip Expedisi.</p>')+'</section>'+
       '<section class="panel"><h3>Buat Invoice Expedisi</h3><p class="muted"><strong>No. Invoice otomatis.</strong> Format: 001/BMS-BSI/FMC/'+today.slice(0,4)+' dan naik berurutan sesuai tahun invoice.</p><form id="fxInvoiceForm" class="form-vertical">'+
         '<label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
         '<label>Jatuh Tempo<input name="due_date" type="date"></label>'+
@@ -1570,6 +1570,40 @@ async function financeExpeditionBusinessPage(){
 
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  // Paginate the existing trip table without changing transactional handlers.
+  const expTripTable=document.getElementById('expTripListTable');
+  if(expTripTable){
+    const allTripRows=[...expTripTable.querySelectorAll('tbody tr')];
+    const search=document.getElementById('expTripSearch'),status=document.getElementById('expTripStatus');
+    const from=document.getElementById('expTripFrom'),to=document.getElementById('expTripTo');
+    const prev=document.getElementById('expTripPrev'),next=document.getElementById('expTripNext');
+    const count=document.getElementById('expTripCount'),pageLabel=document.getElementById('expTripPageLabel');
+    let page=0;
+    const refresh=()=>{
+      const phrase=String(search.value||'').trim().toLowerCase(),selected=status.value;
+      const matched=allTripRows.filter(tr=>{
+        const cells=tr.cells;
+        const date=cells[0]?.textContent.trim().split('/');
+        const iso=date?.length===3?date[2]+'-'+date[1]+'-'+date[0]:'';
+        return (!phrase||[1,2,3,4,5].some(i=>cells[i]?.textContent.toLowerCase().includes(phrase)))&&
+          (!selected||cells[7]?.textContent.trim()===selected)&&
+          (!from.value||iso>=from.value)&&(!to.value||iso<=to.value);
+      });
+      const pages=Math.max(1,Math.ceil(matched.length/10));
+      page=Math.min(page,pages-1);
+      const shown=new Set(matched.slice(page*10,page*10+10));
+      allTripRows.forEach(tr=>{tr.hidden=!shown.has(tr);tr.style.display=shown.has(tr)?'':'none';});
+      count.textContent=matched.length+' dari '+allTripRows.length+' trip';
+      pageLabel.textContent='Halaman '+(page+1)+' / '+pages;
+      prev.disabled=page===0;next.disabled=page>=pages-1;
+    };
+    [search,status,from,to].forEach(el=>el.addEventListener(el===search?'input':'change',()=>{page=0;refresh();}));
+    prev.onclick=()=>{page--;refresh();};
+    next.onclick=()=>{page++;refresh();};
+    document.getElementById('expTripReset').onclick=()=>{search.value='';status.value='BELUM INVOICE';from.value='';to.value='';page=0;refresh();};
+    refresh();
+  }
+
   if(role==='LOGISTIK')document.getElementById('fxTripForm')?.closest('section')?.remove();
 
   root.querySelectorAll('[data-complete-sj]').forEach(btn=>btn.onclick=async()=>{window.__fxSjPendingEdit=btn.dataset.completeSj||'';await financeExpeditionBusinessPage();document.getElementById('fxCompleteSjForm')?.scrollIntoView({behavior:'smooth',block:'start'});});
