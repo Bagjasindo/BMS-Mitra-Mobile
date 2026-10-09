@@ -85,3 +85,21 @@ Tabel: `audit_events`, `barn_assets`, `expeditions`, `finance_cash_request_items
 
 ### Kesimpulan audit parsial
 **Tidak ada perubahan kode/database/policy akibat audit khusus ini.** Tidak terdapat temuan baru yang cukup terbukti untuk memaksa perubahan alur kerja. Status keseluruhan **belum 100% PASS** sampai uji akses aktif per-peran dan jalur fungsi laporan selesai. Jangan mengulang scan katalog identik pada chat berikutnya tanpa perubahan fungsi/policy atau insiden; lanjutkan pemeriksaan yang belum teruji.
+
+
+## 7. Aturan kerja stabilisasi per akun — TERKUNCI (2026-10-09)
+
+Tahap proyek saat ini: **stabilisasi dan perbaikan bertahap berdasarkan temuan nyata pada masing-masing akun**, bukan mengulang audit keseluruhan dari nol.
+
+1. **ADMIN:** Perbaikan berdasarkan temuan saat penggunaan.
+2. **OWNER:** Seluruh menu yang menjadi cakupan OWNER dapat dibuka/dilihat, termasuk filter, cetak, PDF, dan Excel; **tanpa aksi yang mengubah transaksi atau data**.
+3. **KEUANGAN:** Perbaikan alur transaksi dan laporan.
+4. **LOGISTIK:** Perbaikan operasional, stok, dan pengiriman.
+5. **MARKETING:** Perbaikan panen dan transaksi terkait.
+6. **PPL:** Perbaikan recording, produksi, dan estimasi.
+
+**Prosedur wajib:** temuan → perbaikan terbatas → uji ulang bagian terdampak → PASS sesuai bukti → catat tanggal, akun, fitur, dan commit di file audit.
+
+**Larangan:** jangan mengubah ritme kerja, tema Desktop klasik/HP, aturan RHPP terkunci, hak akses sah, atau fitur PASS tanpa kebutuhan terverifikasi. Audit berstatus belum diuji tetap terbuka; hasil PASS lama tidak berarti seluruh sistem otomatis 100% PASS.
+
+**Instruksi handoff chat:** baca bagian ini sebelum mengerjakan revisi per akun; tidak perlu mengulang scan PASS sebelumnya jika tidak ada perubahan terkait.
