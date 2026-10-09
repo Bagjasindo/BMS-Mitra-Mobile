@@ -1114,6 +1114,76 @@ function enforceOwnerReadOnly(){
   root.querySelectorAll('[contenteditable="true"]').forEach(el=>el.setAttribute('contenteditable','false'));
 }
 
+// Large transaction/history tables: compact global filter, at most ten rows per page.
+// Existing custom filters, report tables, and invoice/trip pagination stay untouched.
+function enhanceGlobalHistoryTables(){
+  const panels=[...root.querySelectorAll('main section.panel')];
+  for(const panel of panels){
+    const heading=String(panel.querySelector('h3,h4')?.textContent||'').trim();
+    if(!/^(riwayat|data |daftar |rincian |stok |antrean )/i.test(heading))continue;
+    if(/laporan|rekap|laba|arus kas|rhpp|ringkasan/i.test(heading))continue;
+    if(panel.querySelector('form, .report-actions, [id$="Filter"], [id$="Filters"]'))continue;
+    const tables=[...panel.querySelectorAll('table')];
+    if(tables.length!==1)continue;
+    const table=tables[0],rows=[...table.querySelectorAll('tbody > tr')];
+    if(rows.length<=10||table.dataset.globalFilterReady==='1')continue;
+    if(/^(expTripListTable|fxInvoiceListTable|expDriverTable|expVehicleTable|expRouteTable|expDestinationTable|expCustomerTable|warehouseStockTable|contractTemplateTable|performanceMasterTable|marketingCustomerTable|supplierTypedTable|employeeMasterTable|usersMasterTable)$/.test(table.id||''))continue;
+    table.dataset.globalFilterReady='1';
+    const box=document.createElement('div');
+    box.className='bms-table-quick-filter';
+    box.style.cssText='display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin:10px 0';
+    const searchWrap=document.createElement('label');
+    searchWrap.textContent='Cari data';
+    searchWrap.style.cssText='flex:1 1 180px;min-width:145px;font-size:12px';
+    const search=document.createElement('input');
+    search.type='search';search.placeholder='Cari nomor, nama, atau referensi';
+    search.style.cssText='display:block;width:100%;margin-top:4px';
+    searchWrap.appendChild(search);
+    const statusWrap=document.createElement('label');
+    statusWrap.textContent='Status';statusWrap.style.cssText='flex:0 1 170px;font-size:12px';
+    const status=document.createElement('select');status.style.cssText='display:block;width:100%;margin-top:4px';
+    const statuses=[...new Set(rows.map(tr=>[...tr.cells].slice(1).map(td=>td.textContent.trim()).find(v=>/^(aktif|nonaktif|closed|proses|pending|selesai|paid|issued|void|belum invoice|sudah invoice|lunas|belum lunas)$/i.test(v))).filter(Boolean))];
+    status.add(new Option('Semua status',''));
+    statuses.forEach(v=>status.add(new Option(v,v)));
+    statusWrap.appendChild(status);
+    const reset=document.createElement('button');reset.type='button';reset.textContent='Reset Filter';
+    box.append(searchWrap);
+    if(statuses.length)box.append(statusWrap);
+    box.append(reset);
+    const controls=document.createElement('div');
+    controls.className='report-actions';
+    controls.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px';
+    const info=document.createElement('span');info.style.fontSize='12px';
+    const previous=document.createElement('button');previous.type='button';previous.textContent='Sebelumnya';
+    const pageLabel=document.createElement('span');pageLabel.style.fontSize='12px';
+    const next=document.createElement('button');next.type='button';next.textContent='Berikutnya';
+    controls.append(info,previous,pageLabel,next);
+    table.closest('.tablewrap')?.before(box);
+    table.closest('.tablewrap')?.after(controls);
+    let page=0;
+    const renderPage=()=>{
+      const text=search.value.trim().toLowerCase(),selected=status.value.toLowerCase();
+      const matched=rows.filter(tr=>{
+        const full=tr.textContent.toLowerCase();
+        return (!text||full.includes(text))&&(!selected||[...tr.cells].some(td=>td.textContent.trim().toLowerCase()===selected));
+      });
+      const pages=Math.max(1,Math.ceil(matched.length/10));
+      page=Math.min(page,pages-1);
+      const active=new Set(matched.slice(page*10,(page+1)*10));
+      rows.forEach(tr=>{const show=active.has(tr);tr.hidden=!show;tr.style.display=show?'':'none';});
+      info.textContent=matched.length+' dari '+rows.length+' data';
+      pageLabel.textContent='Halaman '+(page+1)+' / '+pages;
+      previous.disabled=page===0;next.disabled=page>=pages-1;
+    };
+    search.addEventListener('input',()=>{page=0;renderPage();});
+    status.addEventListener('change',()=>{page=0;renderPage();});
+    reset.addEventListener('click',()=>{search.value='';status.value='';page=0;renderPage();});
+    previous.addEventListener('click',()=>{page=Math.max(0,page-1);renderPage();});
+    next.addEventListener('click',()=>{page++;renderPage();});
+    renderPage();
+  }
+}
+
 function layout(content){
   searchableSelectObservers.splice(0).forEach(observer=>observer.disconnect());
   const navHtml=appNav();
@@ -1191,6 +1261,7 @@ function layout(content){
   enhanceSearchableSelects();
   decorateMobileActionIcons(root);
   requestAnimationFrame(updateTableScrollHints);
+  requestAnimationFrame(enhanceGlobalHistoryTables);
   if(navInitialCollapsePending){root.querySelectorAll('details.nav-group').forEach(d=>d.open=false);navInitialCollapsePending=false;}
   const sidebar=document.getElementById('appSidebar');
   const backdrop=document.getElementById('mobileNavBackdrop');
