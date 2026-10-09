@@ -1564,12 +1564,56 @@ async function financeExpeditionBusinessPage(){
   }
 
   html+='<section class="panel" id="fxInvoiceReport"><div class="rhpp-section-head"><div><h3>Invoice & Piutang Expedisi</h3></div><div class="report-actions"><button type="button" id="fxReportPrint">Cetak / PDF</button><button type="button" id="fxReportPrintExcel">Excel</button></div></div>'+
-    '<div class="tablewrap"><table><thead><tr><th>No Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Piutang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    '<div class="form-vertical" id="fxInvoiceFilters" style="margin-bottom:12px">'+
+      '<label>Cari Invoice / Pelanggan<input id="fxInvoiceSearch" type="search" placeholder="Nomor invoice atau nama pelanggan"></label>'+
+      '<label>Status<select id="fxInvoiceStatus"><option value="">Semua Status</option><option value="UNPAID">Belum Lunas</option><option value="PAID">Lunas</option><option value="VOID">Void</option></select></label>'+
+      '<label>Tanggal Awal<input type="date" id="fxInvoiceFrom"></label>'+
+      '<label>Tanggal Akhir<input type="date" id="fxInvoiceTo"></label>'+
+      '<button type="button" id="fxInvoiceFilterReset">Reset Filter</button></div>'+
+    '<p class="muted" id="fxInvoiceCount"></p>'+
+    '<div class="tablewrap"><table id="fxInvoiceListTable"><thead><tr><th>No Invoice</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Pelanggan</th><th>Total</th><th>Dibayar</th><th>Piutang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
       summaries.map(x=>'<tr><td>'+esc(x.invoice_number)+'</td><td>'+prodDateId(x.invoice_date)+'</td><td>'+(x.due_date?prodDateId(x.due_date):'-')+'</td><td>'+esc(x.customer_name)+'</td><td>Rp '+prodFmt(x.invoice_total,0)+'</td><td>Rp '+prodFmt(x.paid_total,0)+'</td><td><strong>Rp '+prodFmt(x.receivable,0)+'</strong></td><td>'+esc(x.status)+'</td><td><div class="inline-actions"><button type="button" data-fx-print="'+esc(x.invoice_id)+'">Cetak Invoice</button><button type="button" data-fx-excel="'+esc(x.invoice_id)+'">Excel</button>'+(canOps?'<button type="button" data-edit-exp-invoice="'+esc(x.invoice_id)+'">Koreksi</button>':'')+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-exp-invoice="'+esc(x.invoice_id)+'">Hapus</button>':'')+'</div></td></tr>').join('')+
-    '</tbody></table></div>'+(summaries.length?'':'<p class="muted">Belum ada invoice Expedisi.</p>')+'</section>';
+    '</tbody></table></div><div class="report-actions" style="margin-top:10px"><button type="button" id="fxInvoicePrev">Sebelumnya</button><span id="fxInvoicePageLabel"></span><button type="button" id="fxInvoiceNext">Berikutnya</button></div>'+(summaries.length?'':'<p class="muted">Belum ada invoice Expedisi.</p>')+'</section>';
 
 
   layout(html);bindNumberInputs();if(err)msg(err.message);
+  const invoiceList=document.getElementById('fxInvoiceListTable');
+  if(invoiceList){
+    const allRows=[...invoiceList.querySelectorAll('tbody tr')];
+    const search=document.getElementById('fxInvoiceSearch');
+    const status=document.getElementById('fxInvoiceStatus');
+    const from=document.getElementById('fxInvoiceFrom');
+    const to=document.getElementById('fxInvoiceTo');
+    const reset=document.getElementById('fxInvoiceFilterReset');
+    const prev=document.getElementById('fxInvoicePrev');
+    const next=document.getElementById('fxInvoiceNext');
+    const count=document.getElementById('fxInvoiceCount');
+    const label=document.getElementById('fxInvoicePageLabel');
+    let page=0;
+    const dateIso=value=>{const parts=String(value||'').split('/');return parts.length===3?parts[2]+'-'+parts[1]+'-'+parts[0]:'';};
+    const update=()=>{
+      const q=search.value.trim().toLowerCase(),state=status.value;
+      const matches=allRows.filter(tr=>{
+        const c=tr.cells,st=(c[7]?.textContent||'').trim().toUpperCase();
+        const outstanding=prodNum(summaries.find(x=>x.invoice_number===c[0]?.textContent.trim())?.receivable||0);
+        const matchStatus=!state||(state==='VOID'?st==='VOID':state==='PAID'?st==='PAID'||(st!=='VOID'&&outstanding<=0):st!=='VOID'&&outstanding>0);
+        const d=dateIso(c[1]?.textContent.trim());
+        return (!q||[0,3].some(i=>c[i]?.textContent.toLowerCase().includes(q)))&&matchStatus&&(!from.value||d>=from.value)&&(!to.value||d<=to.value);
+      });
+      const pages=Math.max(1,Math.ceil(matches.length/10));page=Math.min(page,pages-1);
+      const visible=new Set(matches.slice(page*10,page*10+10));
+      allRows.forEach(tr=>{tr.hidden=!visible.has(tr);tr.style.display=visible.has(tr)?'':'none';});
+      count.textContent=matches.length+' dari '+allRows.length+' invoice';
+      label.textContent='Halaman '+(page+1)+' / '+pages;
+      prev.disabled=page<=0;next.disabled=page>=pages-1;
+    };
+    [search,status,from,to].forEach(el=>el.addEventListener(el===search?'input':'change',()=>{page=0;update();}));
+    prev.onclick=()=>{page=Math.max(0,page-1);update();};
+    next.onclick=()=>{page++;update();};
+    reset.onclick=()=>{search.value='';status.value='';from.value='';to.value='';page=0;update();};
+    update();
+  }
+
   // Paginate the existing trip table without changing transactional handlers.
   const expTripTable=document.getElementById('expTripListTable');
   if(expTripTable){
