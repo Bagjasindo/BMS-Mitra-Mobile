@@ -60,3 +60,28 @@ Pada 2026-10-09, pengguna melaporkan **8/8 PASS** untuk daftar maksimal 10 baris
 5. Jangan ubah database/kode tanpa temuan terverifikasi dan uji dampak; jangan ulang tugas yang telah benar-benar diverifikasi di baseline relevan.
 
 **Aturan status:** `PASS` hanya untuk pemeriksaan yang dijalankan dan terbukti; `PASS TERBATAS` untuk subset; `BELUM DIUJI` untuk sisa; `TEMUAN` untuk risiko yang masih memerlukan penyelesaian.
+
+
+## 6. Audit khusus 37 SECURITY DEFINER & 13 temuan multiple RLS (2026-10-09)
+
+**Metode:** SELECT pada katalog PostgreSQL (`pg_proc`, `pg_policies`) dan Supabase Security/Performance Advisors; tidak ada pemanggilan fungsi dengan efek samping atau perubahan RLS.
+
+### 37 fungsi `SECURITY DEFINER` yang executable oleh `authenticated`
+- **37/37** fungsi tidak callable oleh `anon` saat audit (hasil `has_function_privilege`).
+- **37/37** definisi mengandung pemeriksaan `auth.uid()`, akses profil aktif, atau helper `private.my_bms_role()` (fungsi laporan SQL yang memanggil fungsi lain dengan guard juga perlu dilihat sebagai satu rantai otorisasi).
+- Fungsi `log_user_activity` hanya memerlukan `auth.uid()` untuk menulis log pengguna sendiri; ini tidak identik dengan fungsi mutasi bisnis.
+- Fungsi laporan `finance_company_profit_loss_v1`, `finance_expedition_profit_loss_v1/v2`, dan `finance_expedition_summary_v1` perlu pemeriksaan lanjutan **jalur pemanggil dan cakupan data**, sebab guard berada pada helper/pemanggil terkait, tidak terlihat langsung sebagai role check di awal SQL function.
+- **Keputusan:** Tidak mencabut izin `authenticated` secara global karena aplikasi memang membutuhkan RPC tersebut. **PASS TERBATAS: anon tertutup dan guard teridentifikasi secara statis; BELUM PASS: simulasi abuse per akun dan seluruh alur pemanggil.**
+
+### 13 peringatan `multiple_permissive_policies`
+Seluruh **13/13** temuan yang dikembalikan advisor merupakan **dua kebijakan `SELECT`** pada role `authenticated`: `owner_read_all` disandingkan dengan `bms_select` atau policy baca khusus modul.
+
+Tabel: `audit_events`, `barn_assets`, `expeditions`, `finance_cash_request_items`, `finance_cash_requests`, `finance_stock_purchase_invoices`, `harvests`, `profiles`, `rhpp_estimates`, `supplies`, `user_activity_logs`, `warehouse_stock_items`, `warehouse_stock_shipments`.
+
+- Penggunaan `owner_read_all` pada SELECT mendukung SOP OWNER baca-saja; tabel terkait tetap memiliki kontrol mutasi terpisah.
+- **Tidak ditemukan overlap kebijakan mutasi (INSERT/UPDATE/DELETE) pada daftar 13 peringatan tersebut.**
+- Tanda `WARN` tetap muncul karena bentuk policy dapat menambah biaya evaluasi, **bukan bukti kebocoran akses atau salahnya hak OWNER**.
+- **Keputusan:** DIPERTAHANKAN (accepted warning; alasan: tidak mengubah ritme kerja dan aturan OWNER). Optimalisasi hanya setelah benchmark serta pengujian regresi per-peran.
+
+### Kesimpulan audit parsial
+**Tidak ada perubahan kode/database/policy akibat audit khusus ini.** Tidak terdapat temuan baru yang cukup terbukti untuk memaksa perubahan alur kerja. Status keseluruhan **belum 100% PASS** sampai uji akses aktif per-peran dan jalur fungsi laporan selesai. Jangan mengulang scan katalog identik pada chat berikutnya tanpa perubahan fungsi/policy atau insiden; lanjutkan pemeriksaan yang belum teruji.
