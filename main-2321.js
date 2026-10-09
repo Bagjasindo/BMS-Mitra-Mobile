@@ -709,9 +709,8 @@ function appNav(){
     if(section.label==='Logistik'&&canViewTab('expedisi_usaha')){
       const expOpen=tab==='expedisi_usaha'?' open':'';
       itemHtml+='<details class="nav-subgroup"'+expOpen+'><summary>Expedisi</summary><div class="nav-child-item">'+
-        '<details class="nav-subgroup"'+expOpen+'><summary>Operasional</summary><div class="nav-child-item">'+
         navButton('expedisi_usaha').replace('>'+esc(navLabel('expedisi_usaha')||'expedisi_usaha')+'<','>Data / Operasional<')+
-        '</div></details></div></details>';
+        '</div></details>';
     }
     html+='<details class="nav-group"'+open+'><summary>'+esc(section.label)+'</summary><div class="nav-sub">'+itemHtml+'</div></details>';
 
