@@ -1453,7 +1453,7 @@ async function financeExpeditionBusinessPage(){
 
   let html='<section class="panel"><h3>Expedisi</h3><p class="muted"><strong>Unit usaha terpisah dari RHPP/Kandang.</strong> '+
     (role==='LOGISTIK'?'Logistik mengelola Trip dan Invoice.':role==='KEUANGAN'?'Keuangan mengelola Pembayaran, Piutang dan BOP Expedisi.':role==='OWNER'?'Owner melihat laporan Expedisi.':'Administrator memiliki akses penuh.')+
-    '</p></section>';
+    '</p>'+(canOps?'<p><a href="#fxInvoiceForm" class="btn" style="display:inline-block;padding:9px 13px;border-radius:7px;background:#11a6bc;color:#081b25;font-weight:700;text-decoration:none">Langsung Buat Invoice ('+unbilled.length+' trip tersedia) ↓</a></p>':'')+'</section>';
 
   if(canOps&&pendingSj.length){
     html+='<section class="panel"><h3>Antrean Surat Jalan dari Keuangan</h3><p class="muted">Kas Jalan sudah dicatat Keuangan. Logistik melengkapi SJ/MTS setelah dokumen kembali.</p>'+
@@ -1546,9 +1546,9 @@ async function financeExpeditionBusinessPage(){
         '<label>Potongan<input name="deduction" type="text" inputmode="decimal" data-number="1" value="0"></label>'+
         '<label>Catatan<textarea name="notes"></textarea></label><button type="submit">Simpan Trip</button>'+
       '</form></section>'+
-      '<section class="panel"><h3>Daftar Trip Expedisi</h3><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+      '<section class="panel"><details><summary style="cursor:pointer;font-weight:700;padding:8px 0">Daftar Trip Expedisi ('+trips.length+' trip) — klik untuk tampilkan / sembunyikan</summary><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>MTS/SJ</th><th>Sopir</th><th>Truk</th><th>Tujuan</th><th>Muatan</th><th>Total Trip</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
         trips.map(t=>{const billed=used.has(t.id);return '<tr><td>'+prodDateId(t.trip_date)+'</td><td>'+esc(t.mts_sj||'-')+'</td><td>'+esc(t.driver||'-')+'</td><td>'+esc(t.vehicle||'-')+'</td><td>'+esc(destinationText(t))+'</td><td>'+esc(cargoText(t))+'</td><td>Rp '+prodFmt(tripTotal(t),0)+'</td><td>'+(billed?'SUDAH INVOICE':'BELUM INVOICE')+'</td><td><div class="inline-actions"><button type="button" data-edit-exp-trip="'+esc(t.id)+'">Koreksi</button>'+(profile?.role==='ADMIN'?'<button type="button" class="btn-danger" data-delete-exp-trip="'+esc(t.id)+'">Hapus</button>':'')+'</div></td></tr>';}).join('')+
-      '</tbody></table></div>'+(trips.length?'':'<p class="muted">Belum ada trip Expedisi.</p>')+'</section>'+
+      '</tbody></table></div>'+(trips.length?'':'<p class="muted">Belum ada trip Expedisi.</p>')+'</details></section>'+
       '<section class="panel"><h3>Buat Invoice Expedisi</h3><p class="muted"><strong>No. Invoice otomatis.</strong> Format: 001/BMS-BSI/FMC/'+today.slice(0,4)+' dan naik berurutan sesuai tahun invoice.</p><form id="fxInvoiceForm" class="form-vertical">'+
         '<label>Tanggal Invoice<input name="invoice_date" type="date" value="'+today+'" required></label>'+
         '<label>Jatuh Tempo<input name="due_date" type="date"></label>'+
